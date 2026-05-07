@@ -1,0 +1,118 @@
+import Link from "next/link";
+import { Check, Lightning } from "@phosphor-icons/react/dist/ssr";
+
+const TIERS = [
+  {
+    name: "Solo",
+    slug: "solo",
+    tag: "For 1-man bands",
+    price: 29,
+    highlight: false,
+    features: [
+      "Unlimited quotes & invoices",
+      "1 user account",
+      "Branded PDF + email",
+      "Client list",
+      "Email support",
+    ],
+  },
+  {
+    name: "Crew",
+    slug: "crew",
+    tag: "Most tradies pick this",
+    price: 79,
+    highlight: true,
+    features: [
+      "Everything in Solo",
+      "Up to 5 users",
+      "Shared client list",
+      "Photo attachments",
+      "Priority support",
+    ],
+  },
+  {
+    name: "Builder",
+    slug: "builder",
+    tag: "Small crews + GCs",
+    price: 199,
+    highlight: false,
+    features: [
+      "Everything in Crew",
+      "Up to 20 users",
+      "Custom terms templates",
+      "API + webhooks",
+      "Dedicated success mate",
+    ],
+  },
+];
+
+export function Pricing() {
+  return (
+    <section
+      id="pricing"
+      data-testid="section-pricing"
+      className="relative border-b border-ink-600 bg-ink-900 py-24 md:py-32 overflow-hidden"
+    >
+      <div className="absolute -top-20 left-1/2 -translate-x-1/2 w-[700px] h-[400px] rounded-full bg-brand/10 blur-3xl pointer-events-none animate-blob-slow" />
+      <div className="absolute bottom-0 right-1/4 w-[420px] h-[420px] rounded-full bg-hivis/8 blur-3xl pointer-events-none animate-blob" />
+
+      <div className="relative max-w-7xl mx-auto px-6 md:px-12">
+        <div className="text-center max-w-2xl mx-auto mb-16">
+          <div className="t2q-section-label mb-4 mx-auto inline-block">// pricing</div>
+          <h2 className="font-display text-4xl sm:text-5xl lg:text-6xl tracking-tighter uppercase leading-[0.95]">
+            Cheaper than a coffee a day. <br />
+            <span className="text-brand">Wins back your weekends.</span>
+          </h2>
+          <p className="mt-5 text-lg text-ink-200">
+            7-day free trial. No credit card. Cancel by text if you want.
+          </p>
+        </div>
+
+        <div className="grid md:grid-cols-3 gap-6">
+          {TIERS.map((t) => (
+            <div
+              key={t.name}
+              data-testid={`pricing-tier-${t.slug}`}
+              className={`relative p-8 md:p-10 border-2 ${
+                t.highlight
+                  ? "border-brand bg-ink-800 t2q-shadow-brutal"
+                  : "border-ink-600 bg-ink-800/70"
+              } rounded-sm flex flex-col hover:-translate-y-1 transition-transform`}
+            >
+              {t.highlight && (
+                <div className="absolute -top-3 left-6 bg-hivis text-ink-900 font-display text-xs px-3 py-1 uppercase tracking-tight flex items-center gap-1.5 z-10">
+                  <Lightning size={12} weight="fill" /> Most popular
+                </div>
+              )}
+              <div className="flex items-baseline justify-between">
+                <h3 className="font-display text-3xl uppercase tracking-tight">{t.name}</h3>
+                <span className="text-xs font-mono uppercase tracking-[0.2em] text-ink-300">
+                  {t.tag}
+                </span>
+              </div>
+              <div className="mt-6 flex items-end gap-1">
+                <span className="font-display text-6xl text-white">${t.price}</span>
+                <span className="text-ink-300 mb-2">/mo</span>
+              </div>
+              <ul className="mt-8 space-y-3 flex-1">
+                {t.features.map((f) => (
+                  <li key={f} className="flex items-start gap-3">
+                    <Check size={20} weight="bold" className="text-brand shrink-0 mt-0.5" />
+                    <span className="text-ink-100">{f}</span>
+                  </li>
+                ))}
+              </ul>
+              <Link
+                href="/signup"
+                data-testid={`pricing-cta-${t.slug}`}
+                className={`mt-8 ${t.highlight ? "t2q-btn-primary" : "t2q-btn-ghost"} w-full`}
+              >
+                Start 7-day trial
+              </Link>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}

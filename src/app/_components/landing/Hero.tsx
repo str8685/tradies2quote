@@ -1,0 +1,401 @@
+"use client";
+
+import Link from "next/link";
+import { motion } from "framer-motion";
+import { useEffect, useRef, useState } from "react";
+import { FileText, Receipt, ArrowRight, Check } from "@phosphor-icons/react";
+import { VoiceWaveform3D } from "./VoiceWaveform3D";
+
+function CountUp({ to = 4820, duration = 1400 }: { to?: number; duration?: number }) {
+  const [n, setN] = useState(0);
+  useEffect(() => {
+    const t0 = performance.now();
+    let raf: number;
+    const step = (t: number) => {
+      const k = Math.min(1, (t - t0) / duration);
+      const ease = 1 - Math.pow(1 - k, 3);
+      setN(Math.floor(to * ease));
+      if (k < 1) raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf);
+  }, [to, duration]);
+  return <>{n.toLocaleString()}</>;
+}
+
+export function Hero() {
+  const stageRef = useRef<HTMLDivElement>(null);
+
+  function onMove(e: React.MouseEvent) {
+    const el = stageRef.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    const x = (e.clientX - r.left) / r.width - 0.5;
+    const y = (e.clientY - r.top) / r.height - 0.5;
+    el.style.setProperty("--rx", `${(-y * 8).toFixed(2)}deg`);
+    el.style.setProperty("--ry", `${(x * 10).toFixed(2)}deg`);
+  }
+  function onLeave() {
+    const el = stageRef.current;
+    if (!el) return;
+    el.style.setProperty("--rx", "0deg");
+    el.style.setProperty("--ry", "0deg");
+  }
+
+  // CountUp is part of the design language but isn't displayed in this hero —
+  // exporting via void prevents an unused-import lint.
+  void CountUp;
+
+  return (
+    <section
+      className="relative overflow-hidden border-b border-ink-600 bg-ink-800"
+      onMouseMove={onMove}
+      onMouseLeave={onLeave}
+    >
+      <div className="absolute inset-0 t2q-aurora pointer-events-none" />
+      <div className="absolute inset-0 t2q-grid-bg pointer-events-none opacity-50" />
+      <div className="absolute -top-40 -right-40 w-[560px] h-[560px] rounded-full bg-brand/30 blur-3xl pointer-events-none animate-blob" />
+      <div className="absolute -bottom-40 -left-40 w-[520px] h-[520px] rounded-full bg-hivis/15 blur-3xl pointer-events-none animate-blob-slow" />
+      <div className="absolute top-1/3 left-1/2 w-[420px] h-[420px] rounded-full bg-brand/10 blur-3xl pointer-events-none animate-blob-mid" />
+      <VoiceWaveform3D />
+
+      <div className="relative max-w-7xl mx-auto px-6 md:px-12 pt-24 pb-20 lg:pt-32 lg:pb-28 grid lg:grid-cols-12 gap-10 items-center">
+        <div className="lg:col-span-7">
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            className="inline-flex items-center gap-2 mb-6 border border-ink-600 px-3 py-1.5 rounded-sm bg-ink-800"
+          >
+            <span className="w-2 h-2 rounded-full bg-brand animate-pulse" />
+            <span className="font-mono text-[11px] tracking-[0.2em] uppercase text-ink-300">
+              Built by a builder · New Zealand · NZ-first beta
+            </span>
+          </motion.div>
+
+          <motion.h1
+            initial={{ opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.05 }}
+            className="font-display text-5xl sm:text-6xl lg:text-7xl xl:text-8xl tracking-tighter leading-[0.9] text-white uppercase"
+          >
+            Quote the job.
+            <br />
+            <span className="text-brand">Send the invoice.</span>
+            <br />
+            <span className="text-white/90">Get paid faster.</span>
+          </motion.h1>
+
+          <motion.p
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.15 }}
+            className="mt-7 text-lg md:text-xl text-ink-200 max-w-xl leading-relaxed"
+          >
+            Stop losing your weekends. Talk through the job once and watch a branded
+            quote — and follow-up invoice — land in your client&apos;s inbox before
+            you&apos;ve packed up the ute.
+          </motion.p>
+
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.25 }}
+            className="mt-10 flex flex-wrap gap-4"
+          >
+            <Link
+              href="/signup"
+              data-testid="hero-cta-start-trial"
+              className="t2q-btn-primary"
+            >
+              <FileText size={20} weight="bold" /> Get beta access
+            </Link>
+            <a
+              href="#how"
+              data-testid="hero-cta-how-it-works"
+              className="t2q-btn-ghost"
+            >
+              See how it works <ArrowRight size={20} weight="bold" />
+            </a>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.5, duration: 0.6 }}
+            className="mt-10 flex flex-wrap items-center gap-6 text-ink-300 font-mono text-xs uppercase tracking-[0.18em]"
+          >
+            <span>No credit card</span>
+            <span className="w-1 h-1 rounded-full bg-ink-500" />
+            <span>Cancel anytime</span>
+            <span className="w-1 h-1 rounded-full bg-ink-500" />
+            <span>Built for tradies</span>
+          </motion.div>
+        </div>
+
+        {/* 3D phone mockup */}
+        <div className="lg:col-span-5 relative">
+          <div
+            ref={stageRef}
+            className="t2q-stage relative mx-auto w-full max-w-[380px] aspect-[9/19]"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.92, rotate: -3 }}
+              animate={{ opacity: 1, scale: 1, rotate: 0 }}
+              transition={{ duration: 0.7 }}
+              className="relative w-full h-full t2q-shadow-brutal"
+              style={{
+                transform: "rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg)) translateZ(0)",
+                transition: "transform 200ms ease-out",
+              }}
+            >
+              {/* Titanium frame */}
+              <div
+                className="absolute inset-0 rounded-[48px]"
+                style={{
+                  background:
+                    "linear-gradient(140deg, #2b2b2b 0%, #0e0e0e 30%, #1a1a1a 55%, #050505 100%)",
+                  boxShadow:
+                    "inset 0 0 0 1.5px #3a3a3a, inset 0 1px 0 rgba(255,255,255,0.08), 0 30px 60px -20px rgba(0,0,0,0.7)",
+                }}
+              />
+              {/* Side buttons */}
+              <div className="absolute -left-[3px] top-[88px] w-[3px] h-7 rounded-l-sm bg-ink-700" />
+              <div className="absolute -left-[3px] top-[130px] w-[3px] h-12 rounded-l-sm bg-ink-700" />
+              <div className="absolute -left-[3px] top-[190px] w-[3px] h-12 rounded-l-sm bg-ink-700" />
+              <div className="absolute -right-[3px] top-[150px] w-[3px] h-16 rounded-r-sm bg-ink-700" />
+
+              {/* Inner bezel */}
+              <div className="absolute inset-[6px] rounded-[42px] bg-black overflow-hidden">
+                <div className="absolute inset-[3px] rounded-[39px] bg-white overflow-hidden">
+                  {/* Status bar */}
+                  <div className="relative z-20 flex justify-between items-center px-7 pt-2.5 pb-1 text-[10px] font-mono text-ink-900 bg-white">
+                    <span className="font-semibold tracking-tight">9:41</span>
+                    <span className="flex items-center gap-1.5">
+                      <span className="flex items-end gap-[1.5px] h-2.5">
+                        <span className="w-[2px] h-1 bg-ink-900 rounded-[1px]" />
+                        <span className="w-[2px] h-1.5 bg-ink-900 rounded-[1px]" />
+                        <span className="w-[2px] h-2 bg-ink-900 rounded-[1px]" />
+                        <span className="w-[2px] h-2.5 bg-ink-900 rounded-[1px]" />
+                      </span>
+                      <span className="text-[9px] font-semibold">5G</span>
+                      <span className="relative w-6 h-3 border border-ink-900 rounded-[3px] flex items-center pl-[1px]">
+                        <span className="block h-[7px] w-[16px] bg-ink-900 rounded-[1px]" />
+                        <span className="absolute -right-[3px] top-1/2 -translate-y-1/2 w-[2px] h-1.5 bg-ink-900 rounded-r-sm" />
+                      </span>
+                    </span>
+                  </div>
+
+                  {/* Dynamic Island */}
+                  <div className="absolute top-[7px] left-1/2 -translate-x-1/2 z-30 w-[110px] h-[30px] bg-black rounded-full flex items-center justify-end pr-3">
+                    <span className="w-1.5 h-1.5 rounded-full bg-brand animate-pulse" />
+                  </div>
+
+                  {/* App header */}
+                  <div className="relative z-10 px-4 pt-2 pb-3 bg-white border-b border-ink-200">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="w-7 h-7 bg-brand grid place-items-center rounded-sm">
+                          <FileText size={14} weight="bold" className="text-white" />
+                        </div>
+                        <div>
+                          <div className="font-display text-[11px] uppercase tracking-tight leading-none">
+                            tradies2Quote
+                          </div>
+                          <div className="font-mono text-[8px] uppercase tracking-[0.18em] text-ink-500 mt-0.5">
+                            STR8 Builders
+                          </div>
+                        </div>
+                      </div>
+                      <span className="font-mono text-[8px] uppercase tracking-[0.2em] px-1.5 py-0.5 bg-brand text-white rounded-[2px]">
+                        Q-202602-9F
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Auto-scrolling quote body */}
+                  <div className="absolute left-0 right-0 top-[78px] bottom-[58px] overflow-hidden bg-white">
+                    <div className="pointer-events-none absolute top-0 left-0 right-0 h-6 bg-gradient-to-b from-white to-transparent z-10" />
+                    <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-white to-transparent z-10" />
+                    <div className="t2q-phone-scroll">
+                      {[0, 1].map((loop) => (
+                        <div key={loop} className="text-ink-900">
+                          <div className="px-4 py-4 bg-ink-50">
+                            <div className="font-mono text-[8px] uppercase tracking-[0.22em] text-brand">
+                              // quote
+                            </div>
+                            <div className="font-display text-lg uppercase tracking-tighter leading-tight mt-1">
+                              Bathroom Reno —
+                              <br />
+                              Vanity, Tiles &amp; Fixtures
+                            </div>
+                            <div className="mt-2 text-[10px] text-ink-500 leading-snug">
+                              For Sarah K · 12 Beach Rd, Auckland
+                              <br />
+                              Issued 06 Feb 2026 · Valid 30 days
+                            </div>
+                            <div className="mt-3 flex items-end justify-between">
+                              <div>
+                                <div className="font-mono text-[8px] uppercase tracking-[0.18em] text-ink-500">
+                                  Total (NZD)
+                                </div>
+                                <div className="font-display text-2xl text-brand leading-none mt-0.5">
+                                  $4,820.00
+                                </div>
+                              </div>
+                              <div className="px-2 py-1 bg-hivis text-ink-900 font-display text-[9px] uppercase tracking-tight rounded-sm">
+                                GST inc.
+                              </div>
+                            </div>
+                          </div>
+                          <div className="px-4 pt-4 pb-1">
+                            <div className="font-mono text-[8px] uppercase tracking-[0.22em] text-ink-500">
+                              // materials
+                            </div>
+                          </div>
+                          {[
+                            { d: "Vanity unit 900mm + soft-close", v: 980 },
+                            { d: "Mixer tap (brushed brass)", v: 220 },
+                            { d: "Floor tiles 600x600 porcelain · 6m²", v: 540 },
+                            { d: "Tile adhesive + grout + sealant", v: 145 },
+                            { d: "Rainfall shower head + arm", v: 380 },
+                            { d: "Waterproof membrane + primer", v: 165 },
+                          ].map((it, i) => (
+                            <div
+                              key={`m${i}`}
+                              className="px-4 py-2 flex items-center justify-between text-[11px] border-b border-ink-100"
+                            >
+                              <div className="flex items-center gap-2">
+                                <Check size={12} weight="bold" className="text-brand shrink-0" />
+                                <span className="text-ink-900 leading-snug">{it.d}</span>
+                              </div>
+                              <span className="font-mono text-ink-900">${it.v}</span>
+                            </div>
+                          ))}
+                          <div className="px-4 pt-4 pb-1">
+                            <div className="font-mono text-[8px] uppercase tracking-[0.22em] text-ink-500">
+                              // labour
+                            </div>
+                          </div>
+                          {[
+                            { d: "Demolition + removal (1 day)", v: 480 },
+                            { d: "Plumbing rough-in & connect", v: 620 },
+                            { d: "Tiling install · 2 days", v: 1180 },
+                            { d: "Painting + prep · 1 day", v: 480 },
+                            { d: "Site clean & rubbish removal", v: 180 },
+                          ].map((it, i) => (
+                            <div
+                              key={`l${i}`}
+                              className="px-4 py-2 flex items-center justify-between text-[11px] border-b border-ink-100"
+                            >
+                              <div className="flex items-center gap-2">
+                                <Check size={12} weight="bold" className="text-brand shrink-0" />
+                                <span className="text-ink-900 leading-snug">{it.d}</span>
+                              </div>
+                              <span className="font-mono text-ink-900">${it.v}</span>
+                            </div>
+                          ))}
+                          <div className="px-4 py-3 bg-ink-50 border-y border-ink-200 mt-3">
+                            <div className="flex justify-between text-[10px] text-ink-500 font-mono">
+                              <span>Subtotal</span>
+                              <span>$4,191.30</span>
+                            </div>
+                            <div className="flex justify-between text-[10px] text-ink-500 font-mono mt-1">
+                              <span>GST (15%)</span>
+                              <span>$628.70</span>
+                            </div>
+                            <div className="flex justify-between font-display text-base mt-2 pt-2 border-t border-ink-200">
+                              <span className="uppercase tracking-tight">Total</span>
+                              <span className="text-brand">$4,820.00</span>
+                            </div>
+                          </div>
+                          <div className="px-4 py-3">
+                            <div className="font-mono text-[8px] uppercase tracking-[0.22em] text-ink-500 mb-1">
+                              // terms
+                            </div>
+                            <p className="text-[10px] text-ink-600 leading-snug">
+                              Quote valid for 30 days. 30% deposit required to confirm booking.
+                              Final invoice on completion.
+                            </p>
+                          </div>
+                          <div className="px-4 py-4 bg-ink-900 text-white">
+                            <div className="font-mono text-[8px] uppercase tracking-[0.22em] text-hivis">
+                              // approve
+                            </div>
+                            <div className="font-display text-sm uppercase tracking-tight mt-1">
+                              Tap to accept &amp; book
+                            </div>
+                            <div className="mt-2 h-9 bg-brand text-ink-900 grid place-items-center rounded-sm font-display text-[11px] uppercase tracking-tight">
+                              Accept quote — book in
+                            </div>
+                          </div>
+                          <div className="h-6" />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Bottom dock */}
+                  <div className="absolute left-0 right-0 bottom-0 z-20 px-4 py-2.5 bg-white border-t border-ink-200 flex gap-2">
+                    <button className="flex-1 h-9 bg-brand text-white font-display text-[10px] uppercase tracking-tight rounded-sm">
+                      Send to client
+                    </button>
+                    <button className="px-3 h-9 bg-ink-100 border border-ink-200 font-display text-[10px] uppercase tracking-tight rounded-sm">
+                      Edit
+                    </button>
+                  </div>
+                  <div className="absolute bottom-1 left-1/2 -translate-x-1/2 w-24 h-[3px] rounded-full bg-ink-900/70 z-30" />
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Floating PAID stamp */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.7, rotate: -20 }}
+              animate={{ opacity: 1, scale: 1, rotate: -12 }}
+              transition={{ delay: 1.4, type: "spring", stiffness: 220 }}
+              style={{ zIndex: 30 }}
+              className="hidden lg:block absolute -left-20 top-12 w-32 px-4 py-3 bg-hivis text-ink-900 border-2 border-ink-900 t2q-shadow-brutal rotate-[-12deg]"
+            >
+              <div className="font-mono text-[9px] uppercase tracking-[0.22em] opacity-70">
+                Status
+              </div>
+              <div className="font-display text-2xl uppercase tracking-tighter leading-none">
+                PAID
+              </div>
+              <div className="mt-1 font-mono text-[9px] uppercase tracking-[0.18em] opacity-70">
+                3 days · NZD
+              </div>
+            </motion.div>
+
+            {/* Floating invoice card */}
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.6 }}
+              style={{ zIndex: 30 }}
+              className="hidden lg:block absolute -right-12 -bottom-12 w-56 bg-ink-900 text-white p-4 rounded-sm border border-ink-600 t2q-shadow-brutal-yellow rotate-[3deg]"
+            >
+              <div className="flex items-center justify-between mb-2">
+                <span className="font-display text-[10px] uppercase tracking-tight text-hivis">
+                  INV-202602-A4
+                </span>
+                <Receipt size={16} weight="bold" className="text-hivis" />
+              </div>
+              <div className="font-display text-xl">$4,820.00</div>
+              <div className="text-[9px] text-ink-400 font-mono uppercase tracking-[0.18em] mt-1">
+                Due in 7 days · auto-reminders on
+              </div>
+              <div className="mt-3 h-1 bg-ink-700">
+                <div className="h-full bg-hivis w-[62%]" />
+              </div>
+              <div className="mt-2 text-[9px] font-mono text-ink-400 uppercase tracking-[0.18em]">
+                Sent · viewed by client
+              </div>
+            </motion.div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}

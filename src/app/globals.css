@@ -1,0 +1,243 @@
+@import "tailwindcss";
+
+@theme {
+  /* Brand orange */
+  --color-brand: #FF5F15;
+  --color-brand-50:  #FFF1EA;
+  --color-brand-100: #FFE0CD;
+  --color-brand-200: #FFB68A;
+  --color-brand-300: #FF8F52;
+  --color-brand-400: #FF7A3D;
+  --color-brand-500: #FF5F15;
+  --color-brand-600: #E04F0A;
+  --color-brand-700: #B33E08;
+  --color-brand-800: #7A2804;
+  --color-brand-900: #3D1402;
+
+  /* Hi-vis yellow */
+  --color-hivis: #FFEA00;
+
+  /* Ink (near-black scale — aligned to design system) */
+  --color-ink-950: #0A0A0A;
+  --color-ink-900: #111111;
+  --color-ink-800: #1A1A1A;
+  --color-ink-700: #1F1F1F;
+  --color-ink-600: #262626;
+  --color-ink-500: #404040;
+  --color-ink-400: #737373;
+  --color-ink-300: #A8A8A8;
+  --color-ink-200: #D4D4D4;
+  --color-ink-100: #E5E5E5;
+  --color-ink-50:  #F5F5F5;
+
+  /* Fonts — next/font/google injects these CSS vars at runtime */
+  --font-display: var(--font-archivo-black), "Archivo Black", system-ui, sans-serif;
+  --font-sans:    var(--font-ibm-plex-sans), "IBM Plex Sans", system-ui, sans-serif;
+  --font-mono:    var(--font-ibm-plex-mono), "IBM Plex Mono", ui-monospace, monospace;
+
+  /* Animations */
+  --animate-marquee:    marquee 40s linear infinite;
+  --animate-wave:       wave 1.1s ease-in-out infinite;
+  --animate-pulse-ring: pulse-ring 1.6s cubic-bezier(.215,.61,.355,1) infinite;
+}
+
+/* ─── Global base ─────────────────────────────────────────────────────────── */
+html {
+  scroll-behavior: smooth;
+  background: #0A0A0A;
+  color-scheme: dark;
+}
+
+body {
+  background: #0A0A0A;
+  color: #ffffff;
+  font-family: var(--font-ibm-plex-sans), "IBM Plex Sans", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: "ss01" on, "cv11" on;
+}
+
+::selection { background: #FF5F15; color: #0A0A0A; }
+
+h1, h2, h3, h4, h5 {
+  font-family: var(--font-archivo-black), "Archivo Black", "Archivo", system-ui, sans-serif;
+  letter-spacing: -0.02em;
+}
+
+/* ─── Keyframes ───────────────────────────────────────────────────────────── */
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+
+@keyframes wave {
+  0%, 100% { transform: scaleY(0.4); }
+  50%      { transform: scaleY(1.1); }
+}
+
+@keyframes pulse-ring {
+  0%   { transform: scale(0.8); opacity: 0.7; }
+  100% { transform: scale(1.6); opacity: 0; }
+}
+
+@keyframes t2q-aurora-shift {
+  0%   { transform: translate3d(0, 0, 0) scale(1); opacity: 0.85; }
+  50%  { transform: translate3d(2%, -1.5%, 0) scale(1.05); opacity: 1; }
+  100% { transform: translate3d(-2%, 1.5%, 0) scale(0.98); opacity: 0.9; }
+}
+
+@keyframes t2q-blob {
+  0%, 100% { transform: translate3d(0,0,0) scale(1); }
+  33%      { transform: translate3d(30px,-20px,0) scale(1.08); }
+  66%      { transform: translate3d(-20px,30px,0) scale(0.94); }
+}
+
+@keyframes t2q-tape {
+  from { background-position: 0 0; }
+  to   { background-position: 500px 0; }
+}
+
+@keyframes t2q-phone-scroll {
+  0%   { transform: translateY(0); }
+  100% { transform: translateY(-50%); }
+}
+
+/* ─── t2q utility classes ─────────────────────────────────────────────────── */
+
+.t2q-grid-bg {
+  background-image:
+    linear-gradient(to right, rgba(255, 95, 21, 0.08) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 95, 21, 0.08) 1px, transparent 1px);
+  background-size: 56px 56px;
+}
+
+.t2q-aurora {
+  background:
+    radial-gradient(60% 50% at 20% 10%, rgba(255, 95, 21, 0.25) 0%, transparent 60%),
+    radial-gradient(50% 45% at 90% 80%, rgba(255, 234, 0, 0.12) 0%, transparent 65%),
+    radial-gradient(60% 60% at 50% 110%, rgba(255, 95, 21, 0.18) 0%, transparent 60%);
+  filter: blur(2px);
+  animation: t2q-aurora-shift 18s ease-in-out infinite alternate;
+}
+
+.animate-blob      { animation: t2q-blob 14s ease-in-out infinite; }
+.animate-blob-slow { animation: t2q-blob 22s ease-in-out infinite reverse; }
+.animate-blob-mid  { animation: t2q-blob 18s ease-in-out infinite; }
+
+.t2q-phone-scroll      { animation: t2q-phone-scroll 32s linear infinite; }
+.t2q-phone-scroll-fast { animation: t2q-phone-scroll 22s linear infinite; }
+
+.t2q-noise {
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 240 240' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.06 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+.t2q-stripes {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    #FFEA00 0,
+    #FFEA00 18px,
+    #0A0A0A 18px,
+    #0A0A0A 36px
+  );
+}
+
+/* Yellow measuring tape — mm / 5mm / cm ticks, hivis yellow base. */
+.t2q-tape-mm {
+  background-color: #FFEA00;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='50' height='12' preserveAspectRatio='none' viewBox='0 0 50 12'%3E%3Cg stroke='%230A0A0A' stroke-linecap='square' fill='none'%3E%3Cline x1='5' y1='0' x2='5' y2='3' stroke-width='0.8'/%3E%3Cline x1='10' y1='0' x2='10' y2='3' stroke-width='0.8'/%3E%3Cline x1='15' y1='0' x2='15' y2='3' stroke-width='0.8'/%3E%3Cline x1='20' y1='0' x2='20' y2='3' stroke-width='0.8'/%3E%3Cline x1='30' y1='0' x2='30' y2='3' stroke-width='0.8'/%3E%3Cline x1='35' y1='0' x2='35' y2='3' stroke-width='0.8'/%3E%3Cline x1='40' y1='0' x2='40' y2='3' stroke-width='0.8'/%3E%3Cline x1='45' y1='0' x2='45' y2='3' stroke-width='0.8'/%3E%3Cline x1='25' y1='0' x2='25' y2='5.5' stroke-width='1'/%3E%3Cline x1='0' y1='0' x2='0' y2='8' stroke-width='1.5'/%3E%3C/g%3E%3C/svg%3E");
+  background-repeat: repeat-x;
+  background-size: 50px 100%;
+}
+
+.t2q-shadow-brutal        { box-shadow: 6px 6px 0 0 #FF5F15; }
+.t2q-shadow-brutal-yellow { box-shadow: 6px 6px 0 0 #FFEA00; }
+
+.t2q-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  height: 3.5rem;
+  padding-left: 1.75rem;
+  padding-right: 1.75rem;
+  font-family: var(--font-archivo-black), "Archivo Black", system-ui, sans-serif;
+  letter-spacing: -0.025em;
+  font-size: 1rem;
+  background: #FF5F15;
+  color: #0E0E0E;
+  border: 2px solid #FF5F15;
+  border-radius: 0.125rem;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background-color 150ms, box-shadow 150ms, transform 150ms, color 150ms;
+}
+@media (min-width: 640px) { .t2q-btn-primary { font-size: 1.125rem; } }
+.t2q-btn-primary:hover {
+  background: #FF7A3D;
+  box-shadow: 4px 4px 0 0 #FFEA00;
+  transform: translate(-2px, -2px);
+}
+
+.t2q-btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  height: 3.5rem;
+  padding-left: 1.75rem;
+  padding-right: 1.75rem;
+  font-family: var(--font-archivo-black), "Archivo Black", system-ui, sans-serif;
+  letter-spacing: -0.025em;
+  font-size: 1rem;
+  background: transparent;
+  color: #ffffff;
+  border: 2px solid #333333;
+  border-radius: 0.125rem;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: border-color 150ms, color 150ms;
+}
+@media (min-width: 640px) { .t2q-btn-ghost { font-size: 1.125rem; } }
+.t2q-btn-ghost:hover {
+  border-color: #ffffff;
+  color: #ffffff;
+}
+
+.t2q-card {
+  background: #1C1C1C;
+  border: 1px solid #333333;
+  border-radius: 0.125rem;
+}
+
+.t2q-section-label {
+  font-family: var(--font-ibm-plex-mono), "IBM Plex Mono", monospace;
+  font-size: 0.75rem;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: #FF5F15;
+}
+
+.t2q-wave-bar {
+  width: 8px;
+  background: linear-gradient(180deg, #FFEA00 0%, #FF5F15 100%);
+  border-radius: 2px;
+  transform-origin: bottom center;
+}
+
+.t2q-stage {
+  perspective: 1200px;
+}
+
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .t2q-aurora,
+  .animate-blob,
+  .animate-blob-slow,
+  .animate-blob-mid,
+  .t2q-phone-scroll,
+  .t2q-phone-scroll-fast {
+    animation: none;
+  }
+}

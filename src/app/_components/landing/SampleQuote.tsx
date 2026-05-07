@@ -1,0 +1,165 @@
+export function SampleQuote() {
+  return (
+    <div id="sample" className="relative">
+      <div
+        aria-hidden="true"
+        className="absolute -inset-6 rounded-[2rem] bg-gradient-to-br from-accent/20 via-accent/5 to-transparent blur-3xl"
+      />
+
+      <div className="relative space-y-3">
+        {/* Top: app shell with input modes + recording */}
+        <div className="rounded-2xl border border-border bg-surface p-5">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-muted">
+              tradies2Quote
+            </span>
+            <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-accent">
+              ● rec
+            </span>
+          </div>
+
+          <p className="mt-3 text-sm font-bold">New Quote</p>
+          <p className="text-xs text-muted">Pick how you want to add it</p>
+
+          <div className="mt-4 grid grid-cols-3 gap-2 text-center">
+            <ModeChip label="Voice memo" tag="FAST" active />
+            <ModeChip label="Snap photos" />
+            <ModeChip label="Type it out" />
+          </div>
+
+          {/* Recording bar */}
+          <div className="mt-4 rounded-lg bg-surface-2 p-3">
+            <div className="flex items-center justify-between">
+              <span className="font-mono text-xs text-muted">00:42</span>
+              <div className="flex items-center gap-1" aria-hidden="true">
+                {[...Array(20)].map((_, i) => (
+                  <span
+                    key={i}
+                    className="wave-bar inline-block w-0.5 rounded-full bg-accent"
+                    style={{
+                      height: `${6 + ((i * 11) % 14)}px`,
+                      animationDelay: `${(i % 6) * 0.1}s`,
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
+            <p className="mt-2 text-xs text-muted-strong">
+              building your quote
+              <span className="caret">_</span>
+            </p>
+          </div>
+        </div>
+
+        {/* The actual quote */}
+        <div className="rounded-2xl border border-border bg-surface p-5 text-sm">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-xs font-bold tracking-tight">STR8 BUILDERS</p>
+              <p className="mt-0.5 text-[11px] text-muted">
+                Builder · Tauranga, NZ · challis685@quote.com
+              </p>
+            </div>
+            <div className="text-right">
+              <p className="text-[10px] font-mono uppercase tracking-[0.18em] text-muted">
+                Quote
+              </p>
+              <p className="text-[11px] font-mono text-foreground">
+                Q-2025-48211
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-4 grid gap-3 text-xs">
+            <div>
+              <p className="text-[10px] font-mono uppercase tracking-[0.18em] text-muted">
+                For
+              </p>
+              <p className="mt-0.5">Sarah Mitchell — 12 Pine Street</p>
+            </div>
+            <div>
+              <p className="text-[10px] font-mono uppercase tracking-[0.18em] text-muted">
+                Job
+              </p>
+              <p className="mt-0.5">Pine deck — 4×6m rear yard</p>
+            </div>
+          </div>
+
+          <ul className="mt-4 divide-y divide-border text-xs">
+            <LineItem label="H4 pine framing 90×45" amount="$480.00" />
+            <LineItem label="Decking boards 140×19" amount="$1,240.00" />
+            <LineItem label="Stainless screws & fixings" amount="$185.00" />
+            <LineItem label="Labour — 2 builders × 3 days" amount="$3,360.00" />
+            <LineItem label="Concrete pad disposal" amount="$220.00" />
+          </ul>
+
+          <div className="mt-4 flex items-end justify-between border-t border-border pt-3">
+            <p className="text-[10px] font-mono uppercase tracking-[0.18em] text-muted">
+              Total (incl GST)
+            </p>
+            <p className="text-lg font-bold text-accent">$6,304.75 NZD</p>
+          </div>
+
+          <div className="mt-5 rounded-lg border border-border bg-surface-2 p-3">
+            <p className="text-[10px] font-mono uppercase tracking-[0.18em] text-muted">
+              Digital sign-off
+            </p>
+            <button
+              type="button"
+              className="mt-2 inline-flex h-9 w-full items-center justify-center rounded-md bg-accent px-3 text-xs font-bold tracking-tight text-accent-foreground"
+            >
+              Accept quote
+            </button>
+            <p className="mt-2 text-[11px] text-muted">
+              One tap, signed and locked in.
+            </p>
+          </div>
+
+          <p className="mt-3 text-center text-[10px] text-muted">
+            Valid 30 days · Generated by tradies2Quote
+          </p>
+        </div>
+
+        <p className="pl-1 text-[10px] font-mono uppercase tracking-[0.2em] text-accent">
+          ← The finished quote
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function ModeChip({
+  label,
+  tag,
+  active = false,
+}: {
+  label: string;
+  tag?: string;
+  active?: boolean;
+}) {
+  return (
+    <div
+      className={`rounded-md border px-2 py-2 text-[10px] font-semibold uppercase tracking-tight ${
+        active
+          ? "border-accent/50 bg-accent/10 text-accent"
+          : "border-border bg-surface-2 text-muted-strong"
+      }`}
+    >
+      <p className="text-[10px]">{label}</p>
+      {tag ? (
+        <p className="mt-1 text-[9px] font-mono tracking-[0.16em] text-accent">
+          {tag}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+function LineItem({ label, amount }: { label: string; amount: string }) {
+  return (
+    <li className="flex items-center justify-between py-2">
+      <span className="text-muted-strong">{label}</span>
+      <span className="font-mono text-foreground">{amount}</span>
+    </li>
+  );
+}
