@@ -49,6 +49,15 @@ The JSON object must match this exact shape:
 
 Round all currency amounts to 2 decimal places.`;
 
+const FINAL_VALIDATION = `FINAL VALIDATION — do this before returning:
+Scan every value of line_items[].description and notes[]. Replace ALL of the following (case-insensitive, including inside larger words is OK to be conservative):
+- "jib line" → "GIB-line"
+- "jib board" → "GIB sheet"
+- "jib" (standalone) → "GIB"
+- "gibb" → "GIB"
+
+After this scan, your output MUST NOT contain any lowercase "jib" or "gibb" anywhere. The string "GIB" or "GIB-line" should appear in their place.`;
+
 export function buildQuotePrompt(profile: QuoteProfile): string {
   const countryName =
     profile.country === "NZ"
@@ -91,5 +100,7 @@ Standard terms — include these unless the transcript suggests otherwise:
 - Variations to be agreed in writing before work proceeds
 - Excludes consents and council fees unless specifically noted
 
-${JSON_INSTRUCTIONS}`;
+${JSON_INSTRUCTIONS}
+
+${FINAL_VALIDATION}`;
 }

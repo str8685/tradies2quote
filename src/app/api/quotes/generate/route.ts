@@ -94,6 +94,7 @@ export async function POST(request: NextRequest) {
     body: JSON.stringify({
       model: MODEL,
       max_tokens: MAX_TOKENS,
+      temperature: 0,
       system: systemPrompt,
       messages: [
         {
