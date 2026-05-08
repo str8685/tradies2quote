@@ -7,6 +7,21 @@ export type QuoteLineItem = {
   unit: string;
   unit_price: number;
   line_total: number;
+  library_id?: string | null;
+  is_ai_estimated?: boolean;
+};
+
+export type LibraryMaterial = {
+  id: string;
+  name: string;
+  unit: string | null;
+  default_unit_price: number | null;
+  supplier: string | null;
+  supplier_url: string | null;
+  notes: string | null;
+  usage_count: number;
+  is_ai_estimated: boolean;
+  last_used_at: string | null;
 };
 
 export type QuoteClient = {

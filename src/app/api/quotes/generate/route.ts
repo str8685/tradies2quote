@@ -2,7 +2,8 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { NZ_DEFAULTS, round2 } from "@/lib/quote-defaults";
 import { buildQuotePrompt } from "@/lib/quote-prompt";
-import type { QuoteData, QuoteProfile } from "@/lib/quote-types";
+import { matchToLibrary } from "@/lib/materials";
+import type { LibraryMaterial, QuoteData, QuoteProfile } from "@/lib/quote-types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -82,7 +83,30 @@ export async function POST(request: NextRequest) {
       }
     : NZ_DEFAULTS;
 
-  const systemPrompt = buildQuotePrompt(profile);
+  const { data: libraryRows } = await supabase
+    .from("materials")
+    .select(
+      "id, name, unit, default_unit_price, supplier, supplier_url, notes, usage_count, is_ai_estimated, last_used_at",
+    )
+    .eq("user_id", user.id)
+    .order("usage_count", { ascending: false })
+    .order("name", { ascending: true });
+
+  const library: LibraryMaterial[] = (libraryRows ?? []).map((r) => ({
+    id: r.id,
+    name: r.name,
+    unit: r.unit,
+    default_unit_price:
+      r.default_unit_price !== null ? Number(r.default_unit_price) : null,
+    supplier: r.supplier,
+    supplier_url: r.supplier_url,
+    notes: r.notes,
+    usage_count: Number(r.usage_count) || 0,
+    is_ai_estimated: !!r.is_ai_estimated,
+    last_used_at: r.last_used_at,
+  }));
+
+  const systemPrompt = buildQuotePrompt(profile, library);
 
   const claudeRes = await fetch(ANTHROPIC_URL, {
     method: "POST",
@@ -162,11 +186,29 @@ export async function POST(request: NextRequest) {
   };
   parsed.terms = typeof parsed.terms === "string" ? parsed.terms : "";
 
+  const usedLibraryIds = new Set<string>();
   let materials_subtotal = 0;
   let labour_subtotal = 0;
   for (const it of parsed.line_items) {
     const qty = Number(it.quantity) || 0;
-    const price = Number(it.unit_price) || 0;
+    let price = Number(it.unit_price) || 0;
+    if (it.type === "material") {
+      const match = matchToLibrary(it.description, library);
+      if (match) {
+        it.library_id = match.id;
+        it.is_ai_estimated = false;
+        if (match.default_unit_price !== null) {
+          price = Number(match.default_unit_price);
+        }
+        usedLibraryIds.add(match.id);
+      } else {
+        it.library_id = null;
+        it.is_ai_estimated = true;
+      }
+    } else {
+      it.library_id = null;
+      it.is_ai_estimated = false;
+    }
     const lt = round2(qty * price);
     it.quantity = qty;
     it.unit_price = price;
@@ -220,6 +262,19 @@ export async function POST(request: NextRequest) {
       { error: "Failed to save quote" },
       { status: 500 },
     );
+  }
+
+  if (usedLibraryIds.size > 0) {
+    const ids = Array.from(usedLibraryIds);
+    const now = new Date().toISOString();
+    for (const matId of ids) {
+      const current = library.find((m) => m.id === matId);
+      const nextCount = (current?.usage_count ?? 0) + 1;
+      await supabase
+        .from("materials")
+        .update({ usage_count: nextCount, last_used_at: now })
+        .eq("id", matId);
+    }
   }
 
   return NextResponse.json({ ok: true });

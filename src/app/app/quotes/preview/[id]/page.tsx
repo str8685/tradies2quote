@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import type { QuoteData } from "@/lib/quote-types";
+import type { LibraryMaterial, QuoteData } from "@/lib/quote-types";
 import { quoteNumber } from "@/lib/quote-defaults";
 import { QuoteGenerator } from "./_components/QuoteGenerator";
 import { QuoteEditor } from "./_components/QuoteEditor";
@@ -36,6 +36,26 @@ export default async function QuotePreviewPage({
 
   const quoteData = (quote.quote_data ?? null) as QuoteData | null;
   const headerNumber = quoteNumber(quote.id, quote.created_at);
+
+  const { data: libraryRows } = await supabase
+    .from("materials")
+    .select(
+      "id, name, unit, default_unit_price, supplier, supplier_url, notes, usage_count, is_ai_estimated, last_used_at",
+    )
+    .eq("user_id", user.id);
+  const library: LibraryMaterial[] = (libraryRows ?? []).map((r) => ({
+    id: r.id,
+    name: r.name,
+    unit: r.unit,
+    default_unit_price:
+      r.default_unit_price !== null ? Number(r.default_unit_price) : null,
+    supplier: r.supplier,
+    supplier_url: r.supplier_url,
+    notes: r.notes,
+    usage_count: Number(r.usage_count) || 0,
+    is_ai_estimated: !!r.is_ai_estimated,
+    last_used_at: r.last_used_at,
+  }));
 
   return (
     <div className="min-h-screen bg-ink-900 text-white">
@@ -73,6 +93,7 @@ export default async function QuotePreviewPage({
             quoteId={quote.id}
             createdAt={quote.created_at}
             initialData={quoteData}
+            library={library}
           />
         ) : (
           <QuoteGenerator id={quote.id} />

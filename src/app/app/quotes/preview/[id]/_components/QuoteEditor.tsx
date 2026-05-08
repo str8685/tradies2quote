@@ -1,7 +1,14 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import { Plus, Trash, FloppyDisk, ArrowRight } from "@phosphor-icons/react/dist/ssr";
+import {
+  ArrowRight,
+  ArrowSquareOut,
+  FloppyDisk,
+  Plus,
+  Sparkle,
+  Trash,
+} from "@phosphor-icons/react/dist/ssr";
 import {
   formatCurrency,
   formatIssueDate,
@@ -10,6 +17,7 @@ import {
   validUntilDate,
 } from "@/lib/quote-defaults";
 import type {
+  LibraryMaterial,
   QuoteData,
   QuoteItemType,
   QuoteLineItem,
@@ -20,13 +28,18 @@ type Props = {
   quoteId: string;
   createdAt: string;
   initialData: QuoteData;
+  library: LibraryMaterial[];
 };
 
 type SaveStatus = "idle" | "saving" | "saved" | "error";
 
-export function QuoteEditor({ quoteId, createdAt, initialData }: Props) {
+export function QuoteEditor({ quoteId, createdAt, initialData, library }: Props) {
   const [client, setClient] = useState(initialData.client);
   const [items, setItems] = useState<QuoteLineItem[]>(initialData.line_items);
+  const libraryById = useMemo(
+    () => new Map(library.map((m) => [m.id, m])),
+    [library],
+  );
   const [terms, setTerms] = useState(initialData.terms);
   const [status, setStatus] = useState<SaveStatus>("idle");
   const [errorMessage, setErrorMessage] = useState<string>("");
@@ -210,6 +223,8 @@ export function QuoteEditor({ quoteId, createdAt, initialData }: Props) {
         accent="brand"
         rows={materialIndices}
         currency={currency}
+        libraryById={libraryById}
+        showBadges
         onUpdate={updateItem}
         onRemove={removeItem}
         onAdd={() => addItem("material")}
@@ -221,6 +236,8 @@ export function QuoteEditor({ quoteId, createdAt, initialData }: Props) {
         accent="ink"
         rows={labourIndices}
         currency={currency}
+        libraryById={libraryById}
+        showBadges={false}
         onUpdate={updateItem}
         onRemove={removeItem}
         onAdd={() => addItem("labour")}
@@ -233,6 +250,8 @@ export function QuoteEditor({ quoteId, createdAt, initialData }: Props) {
           accent="ink"
           rows={otherIndices}
           currency={currency}
+          libraryById={libraryById}
+          showBadges={false}
           onUpdate={updateItem}
           onRemove={removeItem}
           onAdd={() => addItem("other")}
@@ -343,6 +362,8 @@ function ItemsSection({
   accent,
   rows,
   currency,
+  libraryById,
+  showBadges,
   onUpdate,
   onRemove,
   onAdd,
@@ -352,6 +373,8 @@ function ItemsSection({
   accent: "brand" | "ink";
   rows: Array<{ it: QuoteLineItem; i: number }>;
   currency: string;
+  libraryById: Map<string, LibraryMaterial>;
+  showBadges: boolean;
   onUpdate: (idx: number, patch: Partial<QuoteLineItem>) => void;
   onRemove: (idx: number) => void;
   onAdd: () => void;
@@ -385,12 +408,24 @@ function ItemsSection({
         </p>
       ) : (
         <ul className="mt-4 space-y-3">
-          {rows.map(({ it, i }) => (
+          {rows.map(({ it, i }) => {
+            const libMaterial = it.library_id
+              ? libraryById.get(it.library_id)
+              : undefined;
+            return (
             <li
               key={i}
               data-testid={`row-${i}`}
               className="rounded-sm border border-ink-700 bg-ink-900 p-3"
             >
+              {showBadges && (
+                <ItemBadge
+                  isLibrary={!!libMaterial}
+                  isAi={!!it.is_ai_estimated && !libMaterial}
+                  supplierUrl={libMaterial?.supplier_url ?? null}
+                  supplierName={libMaterial?.supplier ?? null}
+                />
+              )}
               <div className="flex items-start gap-2">
                 <input
                   value={it.description}
@@ -430,10 +465,65 @@ function ItemsSection({
                 Line total: <span className="text-white">{formatCurrency(it.line_total, currency)}</span>
               </div>
             </li>
-          ))}
+          );
+          })}
         </ul>
       )}
     </section>
+  );
+}
+
+function ItemBadge({
+  isLibrary,
+  isAi,
+  supplierUrl,
+  supplierName,
+}: {
+  isLibrary: boolean;
+  isAi: boolean;
+  supplierUrl: string | null;
+  supplierName: string | null;
+}) {
+  if (!isLibrary && !isAi) return null;
+  return (
+    <div className="mb-2 flex items-center gap-2">
+      {isLibrary && (
+        <span
+          data-testid="badge-library"
+          className="inline-flex items-center gap-1 rounded-sm bg-brand/15 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-[0.18em] text-brand"
+        >
+          From your library
+        </span>
+      )}
+      {isAi && (
+        <span
+          data-testid="badge-ai"
+          className="inline-flex items-center gap-1 rounded-sm bg-hivis/15 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-[0.18em] text-hivis"
+          title="Price came from an AI estimate — confirm before sending"
+        >
+          <Sparkle size={10} weight="bold" />
+          AI estimate
+        </span>
+      )}
+      {isLibrary && supplierUrl && (
+        <a
+          href={supplierUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          data-testid="supplier-link"
+          aria-label={
+            supplierName
+              ? `Open ${supplierName} product page`
+              : "Open supplier page"
+          }
+          className="inline-flex items-center gap-1 rounded-sm border border-ink-700 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-400 hover:border-brand hover:text-brand"
+          title={supplierName ?? "Supplier"}
+        >
+          <ArrowSquareOut size={10} weight="bold" />
+          {supplierName ?? "Supplier"}
+        </a>
+      )}
+    </div>
   );
 }
 

@@ -1,4 +1,5 @@
-import type { QuoteProfile } from "./quote-types";
+import type { LibraryMaterial, QuoteProfile } from "./quote-types";
+import { formatLibraryForPrompt } from "./materials";
 
 const TRADIE_TERMS = `Common Whisper transcription mistakes — correct them silently when you spot them in the transcript:
 - "jib" / "jib line" / "jib board" / "gibb" → "GIB" or "GIB-line" (NZ plasterboard brand)
@@ -58,7 +59,10 @@ Scan every value of line_items[].description and notes[]. Replace ALL of the fol
 
 After this scan, your output MUST NOT contain any lowercase "jib" or "gibb" anywhere. The string "GIB" or "GIB-line" should appear in their place.`;
 
-export function buildQuotePrompt(profile: QuoteProfile): string {
+export function buildQuotePrompt(
+  profile: QuoteProfile,
+  library: LibraryMaterial[] = [],
+): string {
   const countryName =
     profile.country === "NZ"
       ? "New Zealand"
@@ -72,6 +76,15 @@ export function buildQuotePrompt(profile: QuoteProfile): string {
               ? "Canada"
               : profile.country;
 
+  const libraryBlock = `THE TRADIE'S MATERIALS LIBRARY — use these prices and descriptions whenever a material in the job description matches an entry below:
+
+${formatLibraryForPrompt(library, profile.currency)}
+
+Library priority rules:
+- For each material the tradie describes: if it clearly matches an entry above (same product, even if worded differently), USE the library's exact name as the line_item description and the library's price as unit_price.
+- For materials NOT in the library, generate your best-guess unit_price based on typical ${countryName} retail pricing.
+- Library prices are post-trade-discount but pre-markup; do not double-apply markup.`;
+
   return `You are a senior estimator helping a ${countryName} tradie produce a professional quote from a voice memo or typed description of a job.
 
 The tradie's settings:
@@ -82,6 +95,8 @@ The tradie's settings:
 - Default materials markup: ${profile.default_markup_pct}% (apply ONLY to materials, not to labour)
 
 ${TRADIE_TERMS}
+
+${libraryBlock}
 
 Use ${countryName} spelling and trade vocabulary. Use realistic units (m, m², m³, kg, L, hour, day, each, lot).
 

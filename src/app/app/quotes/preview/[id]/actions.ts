@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { round2 } from "@/lib/quote-defaults";
-import type { QuoteData } from "@/lib/quote-types";
+import type { QuoteData, QuoteLineItem } from "@/lib/quote-types";
 
 type SaveResult = { ok: true } | { error: string };
 
@@ -16,6 +16,19 @@ export async function saveQuoteChanges(
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
+
+  const { data: priorRow } = await supabase
+    .from("quotes")
+    .select("quote_data")
+    .eq("id", id)
+    .single();
+  const prior = (priorRow?.quote_data ?? null) as QuoteData | null;
+  const priorByName = new Map<string, QuoteLineItem>();
+  for (const it of prior?.line_items ?? []) {
+    if (it.type === "material") {
+      priorByName.set(it.description.trim().toLowerCase(), it);
+    }
+  }
 
   let materials_subtotal = 0;
   let labour_subtotal = 0;
@@ -88,5 +101,57 @@ export async function saveQuoteChanges(
     }
   }
 
+  await syncEditedMaterialsToLibrary(supabase, user.id, items, priorByName);
+
   return { ok: true };
+}
+
+async function syncEditedMaterialsToLibrary(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string,
+  newItems: QuoteLineItem[],
+  priorByName: Map<string, QuoteLineItem>,
+) {
+  const candidates = newItems
+    .filter((it) => it.type === "material")
+    .filter((it) => it.description.trim().length > 0)
+    .filter((it) => Number(it.unit_price) > 0)
+    .filter((it) => {
+      const prior = priorByName.get(it.description.trim().toLowerCase());
+      if (!prior) return true;
+      return Number(prior.unit_price) !== Number(it.unit_price);
+    });
+  if (candidates.length === 0) return;
+
+  const { data: existing } = await supabase
+    .from("materials")
+    .select("id, name")
+    .eq("user_id", userId);
+  const existingByName = new Map<string, string>();
+  for (const m of existing ?? []) {
+    existingByName.set(m.name.trim().toLowerCase(), m.id);
+  }
+
+  for (const c of candidates) {
+    const key = c.description.trim().toLowerCase();
+    const matchId = existingByName.get(key);
+    if (matchId) {
+      await supabase
+        .from("materials")
+        .update({
+          default_unit_price: c.unit_price,
+          unit: c.unit || "each",
+          is_ai_estimated: false,
+        })
+        .eq("id", matchId);
+    } else {
+      await supabase.from("materials").insert({
+        user_id: userId,
+        name: c.description.trim(),
+        unit: c.unit || "each",
+        default_unit_price: c.unit_price,
+        is_ai_estimated: false,
+      });
+    }
+  }
 }
