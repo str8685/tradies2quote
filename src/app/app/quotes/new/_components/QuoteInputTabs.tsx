@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useFormStatus } from "react-dom";
+import { createDraftQuote } from "../actions";
 
 type Tab = "voice" | "type";
 type VoiceState = "idle" | "recording" | "processing" | "error";
@@ -440,23 +442,35 @@ function TranscriptReview({
 function ContinueRow({ text, minLength }: { text: string; minLength: number }) {
   const ready = text.trim().length >= minLength;
   return (
-    <div className="mt-6 flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <form
+      action={createDraftQuote}
+      className="mt-6 flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between"
+    >
+      <input type="hidden" name="transcript" value={text} />
       <p className="font-mono text-xs uppercase tracking-[0.2em] text-ink-500">
-        Step 2: generate quote — coming soon
+        {"// step 2: claude builds the quote"}
       </p>
-      <button
-        type="button"
-        data-testid="continue-button"
-        disabled={!ready}
-        title={
-          ready
-            ? "Quote generation lands in the next stage."
-            : "Add a description to continue."
-        }
-        className="t2q-btn-primary disabled:cursor-not-allowed disabled:opacity-40"
-      >
-        Continue →
-      </button>
-    </div>
+      <ContinueButton ready={ready} />
+    </form>
+  );
+}
+
+function ContinueButton({ ready }: { ready: boolean }) {
+  const { pending } = useFormStatus();
+  const disabled = !ready || pending;
+  return (
+    <button
+      type="submit"
+      data-testid="continue-button"
+      disabled={disabled}
+      title={
+        ready
+          ? "Generate a quote from your description."
+          : "Add a description to continue."
+      }
+      className="t2q-btn-primary disabled:cursor-not-allowed disabled:opacity-40"
+    >
+      {pending ? "Saving…" : "Continue →"}
+    </button>
   );
 }
