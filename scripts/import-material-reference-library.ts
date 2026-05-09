@@ -35,7 +35,11 @@
  * `materialsToInsertSql()` helper produces.
  */
 
-import "server-only";
+// NOTE: this file is a CLI tool in `scripts/`, not a runtime module. It is
+// never bundled by Next.js. The `import "server-only"` marker that other
+// `src/lib/*` files use would block tsx execution here without any safety
+// benefit (the script is invoked via `npx tsx`, never imported by client
+// code), so it is intentionally absent.
 import { createHash } from "node:crypto";
 import { readFileSync, realpathSync } from "node:fs";
 import { fileURLToPath } from "node:url";
