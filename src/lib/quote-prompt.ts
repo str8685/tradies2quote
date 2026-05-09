@@ -20,8 +20,9 @@ The JSON object must match this exact shape:
 {
   "client": {
     "name": string,                  // extract from transcript; if not mentioned, use "To be confirmed"
-    "address": string | null,        // from transcript or null if not mentioned
-    "contact": string | null         // email or phone if mentioned, else null
+    "address": string | null,        // site address from transcript or null if not mentioned
+    "email": string | null,          // client email if mentioned (must be a valid email format), else null
+    "phone": string | null           // client phone if mentioned, else null
   },
   "job_summary": string,             // one sentence, plain English
   "line_items": [
@@ -59,10 +60,16 @@ Scan every value of line_items[].description and notes[]. Replace ALL of the fol
 
 After this scan, your output MUST NOT contain any lowercase "jib" or "gibb" anywhere. The string "GIB" or "GIB-line" should appear in their place.`;
 
+export type BuildPromptOptions = {
+  skipTakeoffMaterials?: boolean;
+};
+
 export function buildQuotePrompt(
   profile: QuoteProfile,
   library: LibraryMaterial[] = [],
+  options: BuildPromptOptions = {},
 ): string {
+  const skipTakeoffMaterials = options.skipTakeoffMaterials === true;
   const countryName =
     profile.country === "NZ"
       ? "New Zealand"
@@ -85,6 +92,23 @@ Library priority rules:
 - For materials NOT in the library, generate your best-guess unit_price based on typical ${countryName} retail pricing.
 - Library prices are post-trade-discount but pre-markup; do not double-apply markup.`;
 
+  const takeoffExclusionBlock = skipTakeoffMaterials
+    ? `TAKEOFF MATERIALS ARE BEING CALCULATED SEPARATELY — DO NOT GENERATE THEM:
+A deterministic takeoff calculator will produce all of the following materials and add them to the quote AFTER your response:
+- Framing timber (90x45 SG8 studs, plates, nogs)
+- 10mm GIB Board sheets, GIB screws, GIB adhesive
+- Pink Batts insulation
+- Skirting, architraves
+- Framing nails
+
+For this job, your line_items array MUST NOT include any of those. Generate ONLY:
+- labour line items (one or more), priced at the default labour rate unless the transcript says otherwise
+- non-takeoff materials such as paint, primer, sealants, fasteners that aren't framing nails, sandpaper, dropsheets, sundries, etc.
+- "other" type items if relevant
+
+If you list any of the excluded materials, the calculator will overwrite them — please do not waste tokens on them.`
+    : "";
+
   return `You are a senior estimator helping a ${countryName} tradie produce a professional quote from a voice memo or typed description of a job.
 
 The tradie's settings:
@@ -97,7 +121,7 @@ The tradie's settings:
 ${TRADIE_TERMS}
 
 ${libraryBlock}
-
+${takeoffExclusionBlock ? `\n${takeoffExclusionBlock}\n` : ""}
 Use ${countryName} spelling and trade vocabulary. Use realistic units (m, m², m³, kg, L, hour, day, each, lot).
 
 Building the line items:

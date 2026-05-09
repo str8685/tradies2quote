@@ -3,7 +3,41 @@ import { createClient } from "@/lib/supabase/server";
 import { NZ_DEFAULTS, round2 } from "@/lib/quote-defaults";
 import { buildQuotePrompt } from "@/lib/quote-prompt";
 import { matchToLibrary } from "@/lib/materials";
-import type { LibraryMaterial, QuoteData, QuoteProfile } from "@/lib/quote-types";
+import {
+  calculateMaterialTakeoff,
+  type MaterialTakeoffInput,
+} from "@/lib/materialCalculator";
+import {
+  canRunCalculator,
+  parseTakeoffDescription,
+} from "@/lib/aiTakeoffParser";
+import type {
+  LibraryMaterial,
+  QuoteData,
+  QuoteLineItem,
+  QuoteProfile,
+  TakeoffInputsSnapshot,
+} from "@/lib/quote-types";
+
+const TAKEOFF_MATERIAL_PATTERNS: RegExp[] = [
+  /\bstuds?\b/i,
+  /\bplates?\b/i,
+  /\bnogs?\b/i,
+  /\bgib\b/i,
+  /\bplasterboards?\b/i,
+  /\bpink\s+batts?\b/i,
+  /\bbatts?\b/i,
+  /\binsulation\b/i,
+  /\bskirtings?\b/i,
+  /\barchitraves?\b/i,
+  /\bframing\s+nails?\b/i,
+  /\bframing\s+(?:pine|timber)\b/i,
+  /\b90\s*[x×]\s*45\b/i,
+];
+
+function looksLikeTakeoffMaterial(description: string): boolean {
+  return TAKEOFF_MATERIAL_PATTERNS.some((p) => p.test(description));
+}
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -106,7 +140,12 @@ export async function POST(request: NextRequest) {
     last_used_at: r.last_used_at,
   }));
 
-  const systemPrompt = buildQuotePrompt(profile, library);
+  const parsedTakeoff = parseTakeoffDescription(transcript);
+  const useCalculator = canRunCalculator(parsedTakeoff);
+
+  const systemPrompt = buildQuotePrompt(profile, library, {
+    skipTakeoffMaterials: useCalculator,
+  });
 
   const claudeRes = await fetch(ANTHROPIC_URL, {
     method: "POST",
@@ -187,9 +226,49 @@ export async function POST(request: NextRequest) {
   parsed.terms = typeof parsed.terms === "string" ? parsed.terms : "";
 
   const usedLibraryIds = new Set<string>();
-  let materials_subtotal = 0;
-  let labour_subtotal = 0;
+  const calculatorItems: QuoteLineItem[] = [];
+
+  if (useCalculator) {
+    const calc = calculateMaterialTakeoff(
+      parsedTakeoff.input as MaterialTakeoffInput,
+    );
+    for (const m of calc.materials) {
+      const match = matchToLibrary(m.name, library);
+      const matchedPrice =
+        match && match.default_unit_price !== null
+          ? Number(match.default_unit_price)
+          : 0;
+      if (match) usedLibraryIds.add(match.id);
+      calculatorItems.push({
+        type: "material",
+        description: m.name,
+        quantity: m.quantity,
+        unit: m.unit,
+        unit_price: matchedPrice,
+        line_total: round2(m.quantity * matchedPrice),
+        library_id: match?.id ?? null,
+        is_ai_estimated: false,
+        is_missing_price: !match,
+        is_calculated_takeoff: true,
+        formula: m.formula,
+        price_match_key: m.priceMatchKey,
+      });
+    }
+    if (parsedTakeoff.assumptions.length > 0) {
+      parsed.notes = [...parsedTakeoff.assumptions, ...(parsed.notes ?? [])];
+    }
+    parsed.takeoff_inputs = parsedTakeoff.input as TakeoffInputsSnapshot;
+  }
+
+  const aiItems: QuoteLineItem[] = [];
   for (const it of parsed.line_items) {
+    if (
+      useCalculator &&
+      it.type === "material" &&
+      looksLikeTakeoffMaterial(it.description)
+    ) {
+      continue;
+    }
     const qty = Number(it.quantity) || 0;
     let price = Number(it.unit_price) || 0;
     if (it.type === "material") {
@@ -209,12 +288,19 @@ export async function POST(request: NextRequest) {
       it.library_id = null;
       it.is_ai_estimated = false;
     }
+    it.is_calculated_takeoff = false;
+    it.is_missing_price = false;
     const lt = round2(qty * price);
-    it.quantity = qty;
-    it.unit_price = price;
-    it.line_total = lt;
-    if (it.type === "labour") labour_subtotal += lt;
-    else materials_subtotal += lt;
+    aiItems.push({ ...it, quantity: qty, unit_price: price, line_total: lt });
+  }
+
+  parsed.line_items = [...calculatorItems, ...aiItems];
+
+  let materials_subtotal = 0;
+  let labour_subtotal = 0;
+  for (const it of parsed.line_items) {
+    if (it.type === "labour") labour_subtotal += it.line_total;
+    else materials_subtotal += it.line_total;
   }
   const markup_amount = round2(materials_subtotal * (profile.default_markup_pct / 100));
   const subtotal_before_tax = round2(materials_subtotal + markup_amount + labour_subtotal);
