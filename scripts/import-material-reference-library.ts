@@ -37,7 +37,8 @@
 
 import "server-only";
 import { createHash } from "node:crypto";
-import { readFileSync } from "node:fs";
+import { readFileSync, realpathSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 export const PRODUCTION_PROJECT_REF = "guiovuqccbzlbacaxepd";
@@ -476,4 +477,188 @@ export function assertNotProduction(supabaseUrl: string): void {
 export function readCsvFile(path: string): CsvRow[] {
   const text = readFileSync(path, "utf8");
   return parseCsv(text);
+}
+
+// =============================================================================
+// CLI runner — Stage 4 production cutover (Phase D).
+// =============================================================================
+//
+// SAFETY contract enforced by runImport:
+//   - default_unit_price is always null
+//   - price_source is always 'csv_import'
+//   - attributes.source is always 'kimi_material_library' (SOURCE_TAG)
+//   - attributes.verified is always false
+//   - attributes.is_priced is always false
+//   - assertNotProduction enforces the double gate (T2Q_ALLOW_PROD_IMPORT=1
+//     AND --allow-production) when the URL targets the production project.
+//
+// Dependency injection via `apply` and `csvRows` makes this fully testable
+// without a real Supabase client or the canonical CSV file.
+
+export type RunImportOptions = {
+  supabaseUrl: string | undefined;
+  serviceKey: string | undefined;
+  /** Provide rows directly (test path), OR a CSV path (CLI path). */
+  csvRows?: CsvRow[];
+  csvPath?: string;
+  dryRun: boolean;
+  /** Test seam: bypass the real Supabase upsert. */
+  apply?: (
+    materials: ImportedMaterial[],
+  ) => Promise<{ ok: number; total: number }>;
+  /** Test seam: suppress logs in tests. Defaults to console.log. */
+  log?: (...args: unknown[]) => void;
+};
+
+export type RunImportResult = {
+  summary: ImportSummary;
+  materials: ImportedMaterial[];
+  result?: { ok: number; total: number };
+  dryRun: boolean;
+};
+
+export async function runImport(
+  options: RunImportOptions,
+): Promise<RunImportResult> {
+  const log = options.log ?? console.log;
+
+  if (!options.supabaseUrl) {
+    throw new Error(
+      "NEXT_PUBLIC_SUPABASE_URL is required (set it in env before running).",
+    );
+  }
+  if (!options.serviceKey) {
+    throw new Error(
+      "SUPABASE_SERVICE_ROLE_KEY is required (set it in env before running).",
+    );
+  }
+
+  // Production guard fires FIRST — before any CSV is read or rows are
+  // parsed. Both gates required for production URLs. See assertNotProduction.
+  assertNotProduction(options.supabaseUrl);
+
+  const rows =
+    options.csvRows ??
+    readCsvFile(options.csvPath ?? "Mitre_10_Full_Material_Catalogue.csv");
+  const { materials, summary } = csvToMaterials(rows);
+
+  // Compact, key-free summary. Never logs the service-role key, and never
+  // logs raw CSV row data with prices — only counts and a 5-row example
+  // preview that explicitly shows price-related fields are null/false.
+  log("import summary:", {
+    rowsRead: summary.rowsRead,
+    rowsImportedCandidates: summary.rowsImportedCandidates,
+    duplicatesSkipped: summary.duplicatesSkipped,
+    unsupportedCategorySkipped: summary.unsupportedCategorySkipped,
+    emptyProductSkipped: summary.emptyProductSkipped,
+    dryRun: options.dryRun,
+  });
+  log(
+    "first 5 examples (no prices):",
+    summary.examples.map((m) => ({
+      id: m.id,
+      name: m.name,
+      supplier: m.supplier,
+      price_source: m.price_source,
+      default_unit_price: m.default_unit_price,
+      attributes_summary: {
+        source: (m.attributes as Record<string, unknown>).source,
+        verified: (m.attributes as Record<string, unknown>).verified,
+        is_priced: (m.attributes as Record<string, unknown>).is_priced,
+      },
+    })),
+  );
+
+  if (options.dryRun) {
+    log("DRY RUN — nothing was written.");
+    return { summary, materials, dryRun: true };
+  }
+
+  // Defence-in-depth: refuse to call apply if any row has a price-shaped
+  // value or a wrong source tag. csvRowToMaterial sets these correctly by
+  // construction, so this assert should never fire in the normal flow —
+  // it guards future regressions if anyone edits csvRowToMaterial.
+  for (const m of materials) {
+    if (m.default_unit_price !== null) {
+      throw new Error(
+        `Refusing to write row ${m.id}: default_unit_price is not null`,
+      );
+    }
+    const attrs = m.attributes as Record<string, unknown>;
+    if (attrs.is_priced !== false) {
+      throw new Error(
+        `Refusing to write row ${m.id}: attributes.is_priced is not false`,
+      );
+    }
+    if (attrs.verified !== false) {
+      throw new Error(
+        `Refusing to write row ${m.id}: attributes.verified is not false`,
+      );
+    }
+    if (attrs.source !== SOURCE_TAG) {
+      throw new Error(
+        `Refusing to write row ${m.id}: attributes.source is not '${SOURCE_TAG}'`,
+      );
+    }
+    if (m.price_source !== "csv_import") {
+      throw new Error(
+        `Refusing to write row ${m.id}: price_source is not 'csv_import'`,
+      );
+    }
+    if (m.supplier !== SUPPLIER) {
+      throw new Error(
+        `Refusing to write row ${m.id}: supplier is not '${SUPPLIER}'`,
+      );
+    }
+  }
+
+  let apply = options.apply;
+  if (!apply) {
+    const { createClient } = await import("@supabase/supabase-js");
+    const supabase = createClient(options.supabaseUrl, options.serviceKey, {
+      auth: { persistSession: false },
+    });
+    apply = (mats) => applyImport(supabase, mats, 500);
+  }
+
+  const result = await apply(materials);
+  log("import done:", result);
+  return { summary, materials, result, dryRun: false };
+}
+
+// =============================================================================
+// CLI entry — runs ONLY when this file is the entrypoint (not when imported).
+// =============================================================================
+
+async function main(): Promise<void> {
+  const csvPath =
+    process.argv.slice(2).find((a) => a.endsWith(".csv")) ??
+    "Mitre_10_Full_Material_Catalogue.csv";
+  const dryRun = process.argv.includes("--dry-run");
+
+  await runImport({
+    supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
+    serviceKey: process.env.SUPABASE_SERVICE_ROLE_KEY,
+    csvPath,
+    dryRun,
+  });
+}
+
+function isCliEntry(): boolean {
+  if (!process.argv[1]) return false;
+  try {
+    const thisFile = realpathSync(fileURLToPath(import.meta.url));
+    const entryFile = realpathSync(process.argv[1]);
+    return thisFile === entryFile;
+  } catch {
+    return false;
+  }
+}
+
+if (isCliEntry()) {
+  main().catch((err) => {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error("import failed:", message);
+    process.exit(1);
+  });
 }
