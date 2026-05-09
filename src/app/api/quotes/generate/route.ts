@@ -15,6 +15,10 @@ import {
   materialMatchingEnabledFromEnv,
   safelyEnrichLineItemsWithCatalogue,
 } from "@/lib/materialMatchingPipeline";
+import {
+  complianceReviewEnabledFromEnv,
+  safelyReviewQuote,
+} from "@/lib/compliance";
 import type {
   LibraryMaterial,
   QuoteData,
@@ -314,6 +318,42 @@ export async function POST(request: NextRequest) {
     { enabled: materialMatchingEnabledFromEnv() },
   );
   parsed.line_items = enrichResult.items;
+
+  // Stage 5 — NZ Building Compliance review. Runs after the matcher so
+  // the engine sees the matcher's `material_id` / `price_source` /
+  // `price_confidence` decisions. OFF by default; turning the flag on
+  // (`NZ_COMPLIANCE_REVIEW_ENABLED=true`) enriches each line with
+  // `reason`/`compliance_source_type`/etc. and stashes the rolled-up
+  // review on `parsed.compliance_review` for the dashboard panel.
+  //
+  // Failure handling mirrors the matcher: any throw inside the engine
+  // produces a `status: 'error'` review with the original items
+  // unchanged, so quote generation never breaks because of compliance.
+  // Diagnostics are server-side only; the public-quote RPC strips the
+  // `compliance_review` field by construction.
+  const complianceReview = await safelyReviewQuote(
+    parsed.line_items,
+    { description: transcript },
+    { enabled: complianceReviewEnabledFromEnv() },
+  );
+  // Fold per-item compliance metadata back onto the line items so it's
+  // available to the matcher pipeline output and the saved quote_data.
+  parsed.line_items = complianceReview.items as typeof parsed.line_items;
+  parsed.compliance_review = {
+    status: complianceReview.status,
+    clarifications: complianceReview.clarifications,
+    warnings: complianceReview.warnings,
+    citations: complianceReview.citations,
+    diagnostics: complianceReview.diagnostics,
+  };
+  if (complianceReview.status !== "ok" && complianceReview.status !== "disabled") {
+    console.log("[compliance] review", {
+      status: complianceReview.status,
+      clarifications: complianceReview.clarifications.length,
+      warnings: complianceReview.warnings.length,
+      citations: complianceReview.citations.length,
+    });
+  }
 
   let materials_subtotal = 0;
   let labour_subtotal = 0;

@@ -10,6 +10,38 @@ export type PriceSource =
 
 export type PriceConfidence = "high" | "medium" | "low";
 
+// ---------------------------------------------------------------------------
+// Stage 5 — NZ Building Compliance Knowledge Layer.
+//
+// These types are inlined here (rather than imported from
+// `src/lib/compliance/types.ts`) so that quote-types.ts has no
+// dependency on the compliance module. This keeps the dependency
+// direction one-way: compliance imports QuoteLineItem from this file,
+// not the reverse.
+//
+// The fields are CRITICALLY server-side only — they are deliberately
+// absent from `PublicLineItem`. The exact-6-field test in
+// `materialMatchingPipeline.test.ts` will fail if anyone widens
+// PublicLineItem to leak them, and `compliance/public-quote-stripping.test.ts`
+// asserts the same invariant for the new fields specifically.
+// ---------------------------------------------------------------------------
+
+export type ComplianceConfidence = "high" | "medium" | "low";
+
+/** Provenance of a per-line-item compliance decision. */
+export type ComplianceProvenance =
+  | "rule"
+  | "catalogue"
+  | "user_library"
+  | "ai_estimate"
+  | "missing_context";
+
+/** Citation referencing a row in `compliance/sources.ts`. */
+export type ComplianceCitation = {
+  source_id: string;
+  reason: string;
+};
+
 export type QuoteLineItem = {
   type: QuoteItemType;
   description: string;
@@ -29,6 +61,18 @@ export type QuoteLineItem = {
   price_source?: PriceSource;
   /** Stage 4 — confidence in the price match. */
   price_confidence?: PriceConfidence;
+  /** Stage 5 — human-readable reason this line is on the quote. */
+  reason?: string;
+  /** Stage 5 — confidence in the compliance review for this line. */
+  confidence?: ComplianceConfidence;
+  /** Stage 5 — provenance of the compliance decision. */
+  compliance_source_type?: ComplianceProvenance;
+  /** Stage 5 — internal review notes (NEVER shown on the public quote). */
+  compliance_notes?: string[];
+  /** Stage 5 — confirmations the user must give before this line is safe. */
+  required_confirmations?: string[];
+  /** Stage 5 — citations to the approved-source knowledge base. */
+  citations?: ComplianceCitation[];
 };
 
 export type TakeoffInputsSnapshot = Partial<{
@@ -149,6 +193,19 @@ export type QuoteData = {
   terms: string;
   notes: string[];
   takeoff_inputs?: TakeoffInputsSnapshot;
+  /**
+   * Stage 5 — server-side compliance review payload.
+   *
+   * Stored alongside the quote in the JSONB `quote_data` column so the
+   * dashboard preview / future review panel can read it. NEVER returned
+   * by the public-quote RPC `get_quote_by_token` — that RPC explicitly
+   * projects only the customer-facing fields.
+   *
+   * The shape is `unknown` rather than `ComplianceReview` to avoid a
+   * circular dependency between `quote-types.ts` and
+   * `src/lib/compliance/`. Callers cast on read.
+   */
+  compliance_review?: unknown;
 };
 
 export type QuoteProfile = {
