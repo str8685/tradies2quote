@@ -4,8 +4,10 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import type { LibraryMaterial, QuoteData, QuoteStatus } from "@/lib/quote-types";
 import { quoteNumber } from "@/lib/quote-defaults";
+import type { ComplianceLineItem, ComplianceReview } from "@/lib/compliance";
 import { QuoteGenerator } from "./_components/QuoteGenerator";
 import { QuoteEditor } from "./_components/QuoteEditor";
+import { CompliancePanel } from "./_components/CompliancePanel";
 
 export const metadata: Metadata = {
   title: "Quote preview",
@@ -91,15 +93,35 @@ export default async function QuotePreviewPage({
         </div>
 
         {quoteData ? (
-          <QuoteEditor
-            quoteId={quote.id}
-            createdAt={quote.created_at}
-            initialData={quoteData}
-            library={library}
-            quoteStatus={(quote.status ?? "draft") as QuoteStatus}
-            publicToken={quote.public_token ?? null}
-            hasPdf={quote.pdf_path !== null && quote.pdf_path !== undefined}
-          />
+          <>
+            {/* Compliance review panel — renders nothing when the
+                engine was off (production today) or the quote was
+                generated before Stage 5 landed. */}
+            {(() => {
+              const review = (quoteData.compliance_review ?? null) as
+                | ComplianceReview
+                | null;
+              if (!review) return null;
+              return (
+                <div className="mb-6">
+                  <CompliancePanel
+                    quoteId={quote.id}
+                    review={review}
+                    items={quoteData.line_items as ComplianceLineItem[]}
+                  />
+                </div>
+              );
+            })()}
+            <QuoteEditor
+              quoteId={quote.id}
+              createdAt={quote.created_at}
+              initialData={quoteData}
+              library={library}
+              quoteStatus={(quote.status ?? "draft") as QuoteStatus}
+              publicToken={quote.public_token ?? null}
+              hasPdf={quote.pdf_path !== null && quote.pdf_path !== undefined}
+            />
+          </>
         ) : (
           <QuoteGenerator id={quote.id} />
         )}
