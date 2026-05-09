@@ -12,6 +12,11 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Don't lint sibling worktree checkouts or Vercel CLI artifacts —
+    // they contain duplicate copies of the codebase and bundled output.
+    ".claude/**",
+    ".vercel/**",
+    "**/.next/**",
   ]),
 ]);
 
