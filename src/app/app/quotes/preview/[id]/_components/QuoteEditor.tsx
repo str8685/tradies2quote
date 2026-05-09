@@ -2,8 +2,8 @@
 
 import { useMemo, useState, useTransition } from "react";
 import {
-  ArrowRight,
   ArrowSquareOut,
+  Calculator,
   FloppyDisk,
   Plus,
   Sparkle,
@@ -21,20 +21,50 @@ import type {
   QuoteData,
   QuoteItemType,
   QuoteLineItem,
+  QuoteStatus,
 } from "@/lib/quote-types";
+import { matchToLibrary } from "@/lib/materials";
+import type { MaterialTakeoffResult } from "@/lib/materialCalculator";
 import { saveQuoteChanges } from "../actions";
+import { TakeoffPanel } from "./TakeoffPanel";
+import { SendQuoteButton } from "./SendQuoteButton";
 
 type Props = {
   quoteId: string;
   createdAt: string;
   initialData: QuoteData;
   library: LibraryMaterial[];
+  quoteStatus: QuoteStatus;
+  publicToken: string | null;
+  hasPdf: boolean;
 };
 
 type SaveStatus = "idle" | "saving" | "saved" | "error";
 
-export function QuoteEditor({ quoteId, createdAt, initialData, library }: Props) {
-  const [client, setClient] = useState(initialData.client);
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function migrateLegacyContact(c: QuoteData["client"]): QuoteData["client"] {
+  if (c.email || c.phone || !c.contact) return c;
+  const legacy = c.contact.trim();
+  if (EMAIL_RE.test(legacy)) {
+    return { ...c, email: legacy };
+  }
+  return { ...c, phone: legacy };
+}
+
+export function QuoteEditor({
+  quoteId,
+  createdAt,
+  initialData,
+  library,
+  quoteStatus,
+  publicToken,
+  hasPdf,
+}: Props) {
+  const [client, setClient] = useState(() =>
+    migrateLegacyContact(initialData.client),
+  );
+  const isAccepted = quoteStatus === "accepted";
   const [items, setItems] = useState<QuoteLineItem[]>(initialData.line_items);
   const libraryById = useMemo(
     () => new Map(library.map((m) => [m.id, m])),
@@ -102,10 +132,36 @@ export function QuoteEditor({ quoteId, createdAt, initialData, library }: Props)
     setItems((prev) => [...prev, blank]);
   }
 
-  function handleSave() {
-    setStatus("saving");
-    setErrorMessage("");
-    const next: QuoteData = {
+  function handleTakeoffResult(result: MaterialTakeoffResult) {
+    const newMaterials: QuoteLineItem[] = result.materials.map((m) => {
+      const match = matchToLibrary(m.name, library);
+      const unit_price =
+        match && match.default_unit_price !== null
+          ? Number(match.default_unit_price)
+          : 0;
+      return {
+        type: "material",
+        description: m.name,
+        quantity: m.quantity,
+        unit: m.unit,
+        unit_price,
+        line_total: round2(m.quantity * unit_price),
+        library_id: match?.id ?? null,
+        is_ai_estimated: false,
+        is_missing_price: !match,
+        is_calculated_takeoff: true,
+        formula: m.formula,
+        price_match_key: m.priceMatchKey,
+      };
+    });
+    setItems((prev) => [
+      ...newMaterials,
+      ...prev.filter((it) => it.type !== "material"),
+    ]);
+  }
+
+  function buildCurrentQuoteData(): QuoteData {
+    return {
       ...initialData,
       client,
       line_items: items,
@@ -116,8 +172,13 @@ export function QuoteEditor({ quoteId, createdAt, initialData, library }: Props)
       tax_label: taxLabel,
       currency,
     };
+  }
+
+  function handleSave() {
+    setStatus("saving");
+    setErrorMessage("");
     startTransition(async () => {
-      const result = await saveQuoteChanges(quoteId, next);
+      const result = await saveQuoteChanges(quoteId, buildCurrentQuoteData());
       if ("error" in result) {
         setStatus("error");
         setErrorMessage(result.error);
@@ -126,6 +187,11 @@ export function QuoteEditor({ quoteId, createdAt, initialData, library }: Props)
       setStatus("saved");
       setTimeout(() => setStatus("idle"), 2000);
     });
+  }
+
+  async function saveBeforeSend(): Promise<boolean> {
+    const result = await saveQuoteChanges(quoteId, buildCurrentQuoteData());
+    return !("error" in result);
   }
 
   const materialIndices = items
@@ -159,8 +225,9 @@ export function QuoteEditor({ quoteId, createdAt, initialData, library }: Props)
                 setClient((c) => ({ ...c, name: e.target.value }))
               }
               placeholder="Client name"
+              disabled={isAccepted}
               className={[
-                "mt-2 block w-full rounded-sm border bg-ink-900 px-3 py-2 font-display text-xl uppercase tracking-tight outline-none focus:border-brand",
+                "mt-2 block w-full rounded-sm border bg-ink-900 px-3 py-2 font-display text-xl uppercase tracking-tight outline-none focus:border-brand disabled:cursor-not-allowed disabled:opacity-60",
                 clientPlaceholder ? "border-hivis text-hivis" : "border-ink-600 text-white",
               ].join(" ")}
             />
@@ -172,11 +239,33 @@ export function QuoteEditor({ quoteId, createdAt, initialData, library }: Props)
               }
               rows={2}
               placeholder="Site address"
-              className="mt-2 block w-full resize-none rounded-sm border border-ink-600 bg-ink-900 px-3 py-2 text-sm text-white placeholder:text-ink-500 outline-none focus:border-brand"
+              disabled={isAccepted}
+              className="mt-2 block w-full resize-none rounded-sm border border-ink-600 bg-ink-900 px-3 py-2 text-sm text-white placeholder:text-ink-500 outline-none focus:border-brand disabled:cursor-not-allowed disabled:opacity-60"
             />
-            {client.contact && (
-              <p className="mt-2 text-xs text-ink-400">{client.contact}</p>
-            )}
+            <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <input
+                data-testid="quote-client-email"
+                type="email"
+                value={client.email ?? ""}
+                onChange={(e) =>
+                  setClient((c) => ({ ...c, email: e.target.value || null }))
+                }
+                placeholder="Client email"
+                disabled={isAccepted}
+                className="block w-full rounded-sm border border-ink-600 bg-ink-900 px-3 py-2 text-sm text-white placeholder:text-ink-500 outline-none focus:border-brand disabled:cursor-not-allowed disabled:opacity-60"
+              />
+              <input
+                data-testid="quote-client-phone"
+                type="tel"
+                value={client.phone ?? ""}
+                onChange={(e) =>
+                  setClient((c) => ({ ...c, phone: e.target.value || null }))
+                }
+                placeholder="Client phone"
+                disabled={isAccepted}
+                className="block w-full rounded-sm border border-ink-600 bg-ink-900 px-3 py-2 text-sm text-white placeholder:text-ink-500 outline-none focus:border-brand disabled:cursor-not-allowed disabled:opacity-60"
+              />
+            </div>
             {clientPlaceholder && (
               <p className="mt-2 font-mono text-xs uppercase tracking-[0.2em] text-hivis">
                 {"// add the client name before sending"}
@@ -218,6 +307,12 @@ export function QuoteEditor({ quoteId, createdAt, initialData, library }: Props)
         </section>
       )}
 
+      <TakeoffPanel
+        onRecalculate={handleTakeoffResult}
+        initialInputs={initialData.takeoff_inputs}
+        isAccepted={isAccepted}
+      />
+
       <ItemsSection
         title="Materials"
         accent="brand"
@@ -229,6 +324,7 @@ export function QuoteEditor({ quoteId, createdAt, initialData, library }: Props)
         onRemove={removeItem}
         onAdd={() => addItem("material")}
         addLabel="Add material"
+        disabled={isAccepted}
       />
 
       <ItemsSection
@@ -242,6 +338,7 @@ export function QuoteEditor({ quoteId, createdAt, initialData, library }: Props)
         onRemove={removeItem}
         onAdd={() => addItem("labour")}
         addLabel="Add labour"
+        disabled={isAccepted}
       />
 
       {otherIndices.length > 0 && (
@@ -256,6 +353,7 @@ export function QuoteEditor({ quoteId, createdAt, initialData, library }: Props)
           onRemove={removeItem}
           onAdd={() => addItem("other")}
           addLabel="Add line"
+          disabled={isAccepted}
         />
       )}
 
@@ -298,11 +396,20 @@ export function QuoteEditor({ quoteId, createdAt, initialData, library }: Props)
           value={terms}
           onChange={(e) => setTerms(e.target.value)}
           rows={6}
-          className="mt-3 block w-full resize-y rounded-sm border border-ink-600 bg-ink-900 px-3 py-2 text-sm text-ink-200 outline-none focus:border-brand"
+          disabled={isAccepted}
+          className="mt-3 block w-full resize-y rounded-sm border border-ink-600 bg-ink-900 px-3 py-2 text-sm text-ink-200 outline-none focus:border-brand disabled:cursor-not-allowed disabled:opacity-60"
         />
       </section>
 
-      <div className="flex flex-col-reverse items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <SendQuoteButton
+        quoteId={quoteId}
+        status={quoteStatus}
+        publicToken={publicToken}
+        hasPdf={hasPdf}
+        onSaveBeforeSend={saveBeforeSend}
+      />
+
+      <div className="flex flex-col-reverse items-stretch gap-3 border-t border-ink-700 pt-4 sm:flex-row sm:items-center sm:justify-between">
         <div
           data-testid="save-status"
           aria-live="polite"
@@ -314,31 +421,24 @@ export function QuoteEditor({ quoteId, createdAt, initialData, library }: Props)
             <span className="text-red-400">{errorMessage || "Save failed"}</span>
           )}
           {status === "idle" && (
-            <span className="text-ink-500">{"// edits are not saved until you click save"}</span>
+            <span className="text-ink-500">
+              {isAccepted
+                ? "// quote is accepted — edits are read-only"
+                : "// edits are not saved until you click save"}
+            </span>
           )}
         </div>
-        <div className="flex gap-3">
-          <button
-            type="button"
-            data-testid="save-changes"
-            onClick={handleSave}
-            disabled={isPending}
-            className="t2q-btn-ghost disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            <FloppyDisk size={18} weight="bold" />
-            {isPending ? "Saving…" : "Save changes"}
-          </button>
-          <button
-            type="button"
-            data-testid="next-step"
-            disabled
-            title="Send to client lands in Stage 3."
-            className="t2q-btn-primary disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            Looks good
-            <ArrowRight size={18} weight="bold" />
-          </button>
-        </div>
+        <button
+          type="button"
+          data-testid="save-changes"
+          onClick={handleSave}
+          disabled={isPending || isAccepted}
+          className="t2q-btn-ghost disabled:cursor-not-allowed disabled:opacity-50"
+          title={isAccepted ? "Quote already accepted." : undefined}
+        >
+          <FloppyDisk size={18} weight="bold" />
+          {isPending ? "Saving…" : "Save changes"}
+        </button>
       </div>
     </div>
   );
@@ -368,6 +468,7 @@ function ItemsSection({
   onRemove,
   onAdd,
   addLabel,
+  disabled,
 }: {
   title: string;
   accent: "brand" | "ink";
@@ -379,6 +480,7 @@ function ItemsSection({
   onRemove: (idx: number) => void;
   onAdd: () => void;
   addLabel: string;
+  disabled?: boolean;
 }) {
   return (
     <section
@@ -395,7 +497,9 @@ function ItemsSection({
           type="button"
           data-testid={`add-${title.toLowerCase()}`}
           onClick={onAdd}
-          className="inline-flex items-center gap-1.5 font-mono text-xs uppercase tracking-[0.2em] text-ink-300 hover:text-white"
+          disabled={disabled}
+          title={disabled ? "Quote already accepted." : undefined}
+          className="inline-flex items-center gap-1.5 font-mono text-xs uppercase tracking-[0.2em] text-ink-300 hover:text-white disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:text-ink-300"
         >
           <Plus size={14} weight="bold" />
           {addLabel}
@@ -420,8 +524,10 @@ function ItemsSection({
             >
               {showBadges && (
                 <ItemBadge
+                  isCalculatedTakeoff={!!it.is_calculated_takeoff}
                   isLibrary={!!libMaterial}
-                  isAi={!!it.is_ai_estimated && !libMaterial}
+                  isAi={!!it.is_ai_estimated && !libMaterial && !it.is_missing_price}
+                  isMissingPrice={!!it.is_missing_price}
                   supplierUrl={libMaterial?.supplier_url ?? null}
                   supplierName={libMaterial?.supplier ?? null}
                 />
@@ -433,13 +539,16 @@ function ItemsSection({
                     onUpdate(i, { description: e.target.value })
                   }
                   placeholder="Description"
-                  className="flex-1 rounded-sm border border-ink-700 bg-ink-800 px-2 py-1.5 text-sm text-white placeholder:text-ink-500 outline-none focus:border-brand"
+                  disabled={disabled}
+                  className="flex-1 rounded-sm border border-ink-700 bg-ink-800 px-2 py-1.5 text-sm text-white placeholder:text-ink-500 outline-none focus:border-brand disabled:cursor-not-allowed disabled:opacity-60"
                 />
                 <button
                   type="button"
                   aria-label="Remove line"
                   onClick={() => onRemove(i)}
-                  className="grid h-9 w-9 shrink-0 place-items-center rounded-sm border border-ink-700 text-ink-400 hover:border-red-500 hover:text-red-400"
+                  disabled={disabled}
+                  title={disabled ? "Quote already accepted." : undefined}
+                  className="grid h-9 w-9 shrink-0 place-items-center rounded-sm border border-ink-700 text-ink-400 hover:border-red-500 hover:text-red-400 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-ink-700 disabled:hover:text-ink-400"
                 >
                   <Trash size={16} weight="bold" />
                 </button>
@@ -449,21 +558,33 @@ function ItemsSection({
                   label="Qty"
                   value={it.quantity}
                   onChange={(v) => onUpdate(i, { quantity: v })}
+                  disabled={disabled}
                 />
                 <TextField
                   label="Unit"
                   value={it.unit}
                   onChange={(v) => onUpdate(i, { unit: v })}
+                  disabled={disabled}
                 />
                 <NumberField
                   label="Unit price"
                   value={it.unit_price}
                   onChange={(v) => onUpdate(i, { unit_price: v })}
+                  disabled={disabled}
                 />
               </div>
               <div className="mt-2 text-right font-mono text-xs uppercase tracking-[0.2em] text-ink-300">
                 Line total: <span className="text-white">{formatCurrency(it.line_total, currency)}</span>
               </div>
+              {it.formula && (
+                <p
+                  data-testid="line-formula"
+                  className="mt-1 font-mono text-[10px] text-ink-500"
+                  title={it.price_match_key ?? undefined}
+                >
+                  {`// ${it.formula}`}
+                </p>
+              )}
             </li>
           );
           })}
@@ -474,20 +595,36 @@ function ItemsSection({
 }
 
 function ItemBadge({
+  isCalculatedTakeoff,
   isLibrary,
   isAi,
+  isMissingPrice,
   supplierUrl,
   supplierName,
 }: {
+  isCalculatedTakeoff: boolean;
   isLibrary: boolean;
   isAi: boolean;
+  isMissingPrice: boolean;
   supplierUrl: string | null;
   supplierName: string | null;
 }) {
-  if (!isLibrary && !isAi) return null;
+  if (!isCalculatedTakeoff && !isLibrary && !isAi && !isMissingPrice) {
+    return null;
+  }
   return (
-    <div className="mb-2 flex items-center gap-2">
-      {isLibrary && (
+    <div className="mb-2 flex flex-wrap items-center gap-2">
+      {isCalculatedTakeoff && (
+        <span
+          data-testid="badge-calculated"
+          className="inline-flex items-center gap-1 rounded-sm bg-blue-500/15 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-[0.18em] text-blue-300"
+          title="Quantity computed by the takeoff calculator from your assumptions"
+        >
+          <Calculator size={10} weight="bold" />
+          Calculated takeoff
+        </span>
+      )}
+      {!isCalculatedTakeoff && isLibrary && (
         <span
           data-testid="badge-library"
           className="inline-flex items-center gap-1 rounded-sm bg-brand/15 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-[0.18em] text-brand"
@@ -495,7 +632,7 @@ function ItemBadge({
           From your library
         </span>
       )}
-      {isAi && (
+      {!isCalculatedTakeoff && isAi && (
         <span
           data-testid="badge-ai"
           className="inline-flex items-center gap-1 rounded-sm bg-hivis/15 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-[0.18em] text-hivis"
@@ -503,6 +640,15 @@ function ItemBadge({
         >
           <Sparkle size={10} weight="bold" />
           AI estimate
+        </span>
+      )}
+      {isMissingPrice && (
+        <span
+          data-testid="badge-missing-price"
+          className="inline-flex items-center gap-1 rounded-sm border border-red-500/40 bg-red-500/10 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-[0.18em] text-red-300"
+          title="No matching item in your materials library — set a unit price or add this material to your library"
+        >
+          Missing price
         </span>
       )}
       {isLibrary && supplierUrl && (
@@ -531,10 +677,12 @@ function TextField({
   label,
   value,
   onChange,
+  disabled,
 }: {
   label: string;
   value: string;
   onChange: (v: string) => void;
+  disabled?: boolean;
 }) {
   return (
     <label className="block">
@@ -544,7 +692,8 @@ function TextField({
       <input
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="mt-1 block w-full rounded-sm border border-ink-700 bg-ink-800 px-2 py-1.5 text-sm text-white outline-none focus:border-brand"
+        disabled={disabled}
+        className="mt-1 block w-full rounded-sm border border-ink-700 bg-ink-800 px-2 py-1.5 text-sm text-white outline-none focus:border-brand disabled:cursor-not-allowed disabled:opacity-60"
       />
     </label>
   );
@@ -554,10 +703,12 @@ function NumberField({
   label,
   value,
   onChange,
+  disabled,
 }: {
   label: string;
   value: number;
   onChange: (v: number) => void;
+  disabled?: boolean;
 }) {
   return (
     <label className="block">
@@ -574,7 +725,8 @@ function NumberField({
           const v = Number(e.target.value);
           onChange(Number.isFinite(v) ? v : 0);
         }}
-        className="mt-1 block w-full rounded-sm border border-ink-700 bg-ink-800 px-2 py-1.5 text-sm tabular-nums text-white outline-none focus:border-brand"
+        disabled={disabled}
+        className="mt-1 block w-full rounded-sm border border-ink-700 bg-ink-800 px-2 py-1.5 text-sm tabular-nums text-white outline-none focus:border-brand disabled:cursor-not-allowed disabled:opacity-60"
       />
     </label>
   );

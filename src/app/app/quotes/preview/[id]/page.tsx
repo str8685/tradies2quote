@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import type { LibraryMaterial, QuoteData } from "@/lib/quote-types";
+import type { LibraryMaterial, QuoteData, QuoteStatus } from "@/lib/quote-types";
 import { quoteNumber } from "@/lib/quote-defaults";
 import { QuoteGenerator } from "./_components/QuoteGenerator";
 import { QuoteEditor } from "./_components/QuoteEditor";
@@ -28,7 +28,9 @@ export default async function QuotePreviewPage({
 
   const { data: quote, error } = await supabase
     .from("quotes")
-    .select("id, voice_transcript, quote_data, created_at, status")
+    .select(
+      "id, voice_transcript, quote_data, created_at, status, public_token, pdf_path, sent_at, viewed_at, accepted_at",
+    )
     .eq("id", id)
     .single();
 
@@ -94,6 +96,9 @@ export default async function QuotePreviewPage({
             createdAt={quote.created_at}
             initialData={quoteData}
             library={library}
+            quoteStatus={(quote.status ?? "draft") as QuoteStatus}
+            publicToken={quote.public_token ?? null}
+            hasPdf={quote.pdf_path !== null && quote.pdf_path !== undefined}
           />
         ) : (
           <QuoteGenerator id={quote.id} />

@@ -19,9 +19,12 @@ export async function saveQuoteChanges(
 
   const { data: priorRow } = await supabase
     .from("quotes")
-    .select("quote_data")
+    .select("quote_data, status")
     .eq("id", id)
     .single();
+  if (priorRow?.status === "accepted") {
+    return { error: "Quote already accepted — edits are locked." };
+  }
   const prior = (priorRow?.quote_data ?? null) as QuoteData | null;
   const priorByName = new Map<string, QuoteLineItem>();
   for (const it of prior?.line_items ?? []) {
