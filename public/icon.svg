@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  tradies2Quote PWA icon.
+  - 512x512 viewBox (works at any rendered size).
+  - Full-bleed dark ink background so the icon is safe under maskable masks
+    (Android adaptive icons, iOS rounded-rect, etc.).
+  - "T" and "Q" white, "2" in brand orange (#FF5F15) — matches the wordmark
+    in the dashboard header.
+  - Wordmark sized to fit within the inner 80% safe zone (~410x410), so
+    aggressive maskable crops don't clip the text.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="tradies2Quote">
+  <rect width="512" height="512" fill="#0A0A0A"/>
+  <text x="256" y="318"
+        text-anchor="middle"
+        font-family="'Archivo Black', 'Helvetica Neue', Arial, sans-serif"
+        font-weight="900"
+        font-size="160"
+        letter-spacing="-4"
+        fill="#FFFFFF">T<tspan fill="#FF5F15">2</tspan>Q</text>
+</svg>

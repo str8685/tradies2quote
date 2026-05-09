@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Apple touch icon for tradies2Quote.
+  - 180x180 viewBox (Apple's preferred home-screen icon size).
+  - iOS auto-clips to a rounded square; we fill the entire square with the
+    dark ink background so there's no transparency bleed.
+  - Same wordmark composition as /icon.svg but tightened for the smaller
+    canvas. iOS doesn't apply maskable safe-zone semantics here, so the
+    text can sit closer to the edges.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180" width="180" height="180" role="img" aria-label="tradies2Quote">
+  <rect width="180" height="180" fill="#0A0A0A"/>
+  <text x="90" y="118"
+        text-anchor="middle"
+        font-family="'Archivo Black', 'Helvetica Neue', Arial, sans-serif"
+        font-weight="900"
+        font-size="64"
+        letter-spacing="-1.5"
+        fill="#FFFFFF">T<tspan fill="#FF5F15">2</tspan>Q</text>
+</svg>

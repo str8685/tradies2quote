@@ -74,6 +74,29 @@ export const metadata: Metadata = {
     },
   },
   category: "business",
+  // PWA — `app/manifest.ts` is auto-served at `/manifest.webmanifest` and the
+  // <link rel="manifest"> is auto-injected by Next 16; we just declare icon
+  // links and iOS-specific meta tags here.
+  icons: {
+    icon: [{ url: "/icon.svg", type: "image/svg+xml" }],
+    apple: [{ url: "/apple-icon.svg", type: "image/svg+xml" }],
+    shortcut: [{ url: "/icon.svg", type: "image/svg+xml" }],
+  },
+  appleWebApp: {
+    // Tells iOS this site can run as a standalone home-screen app.
+    capable: true,
+    // Short title shown under the icon on iOS.
+    title: "T2Q",
+    // "black" puts an opaque black status bar above the app — visually
+    // continuous with the bg-ink-950 dashboard header, no safe-area
+    // padding required. Picking "black-translucent" would push content
+    // behind the notch and would need a layout-level top inset.
+    statusBarStyle: "black",
+  },
+  other: {
+    // Newer cross-platform equivalent of apple-mobile-web-app-capable.
+    "mobile-web-app-capable": "yes",
+  },
 };
 
 export const viewport: Viewport = {

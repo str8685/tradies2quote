@@ -9,6 +9,7 @@ import {
   quoteNumber,
 } from "@/lib/quote-defaults";
 import type { QuoteData, QuoteStatus } from "@/lib/quote-types";
+import { InstallAppButton } from "@/app/_components/InstallAppButton";
 import { signOutAction } from "./actions";
 
 export const metadata: Metadata = {
@@ -60,14 +61,19 @@ export default async function DashboardPage() {
           <span className="font-display text-lg uppercase tracking-tight">
             tradies<span className="text-brand">2</span>Quote
           </span>
-          <form action={signOutAction}>
-            <button
-              type="submit"
-              className="font-mono text-xs uppercase tracking-[0.2em] text-ink-300 hover:text-white"
-            >
-              Sign out
-            </button>
-          </form>
+          <div className="flex items-center gap-4">
+            {/* Renders nothing when the app is already installed or the
+                browser can't install — see InstallAppButton.tsx. */}
+            <InstallAppButton />
+            <form action={signOutAction}>
+              <button
+                type="submit"
+                className="font-mono text-xs uppercase tracking-[0.2em] text-ink-300 hover:text-white"
+              >
+                Sign out
+              </button>
+            </form>
+          </div>
         </div>
       </header>
 
