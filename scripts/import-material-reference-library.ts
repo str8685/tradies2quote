@@ -40,7 +40,7 @@ import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-const PRODUCTION_PROJECT_REF = "guiovuqccbzlbacaxepd";
+export const PRODUCTION_PROJECT_REF = "guiovuqccbzlbacaxepd";
 const SUPPLIER = "Mitre 10";
 const SOURCE_TAG = "kimi_material_library";
 
@@ -458,10 +458,13 @@ export async function applyImport(
 // =============================================================================
 
 export function assertNotProduction(supabaseUrl: string): void {
-  if (supabaseUrl.includes(PRODUCTION_PROJECT_REF)) {
+  const isProductionUrl = supabaseUrl.includes(PRODUCTION_PROJECT_REF);
+  const hasAllowFlag = process.argv.includes("--allow-production");
+  const hasAllowEnv = process.env.T2Q_ALLOW_PROD_IMPORT === "1";
+
+  if (isProductionUrl && !(hasAllowFlag && hasAllowEnv)) {
     throw new Error(
-      `Refusing to import into the production project (${PRODUCTION_PROJECT_REF}). ` +
-        `Point NEXT_PUBLIC_SUPABASE_URL at the Supabase dev branch.`,
+      "Production import blocked. Set T2Q_ALLOW_PROD_IMPORT=1 and pass --allow-production.",
     );
   }
 }

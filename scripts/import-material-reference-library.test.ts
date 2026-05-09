@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import {
   parseCsv,
   parseProductAttributes,
@@ -8,6 +8,7 @@ import {
   materialsToInsertSql,
   assertNotProduction,
   applyImport,
+  PRODUCTION_PROJECT_REF,
   type CsvRow,
 } from "./import-material-reference-library";
 
@@ -307,13 +308,66 @@ describe("materialsToInsertSql — never produces price values", () => {
   });
 });
 
-describe("assertNotProduction — production guard", () => {
-  it("throws if URL contains the production project ref", () => {
-    expect(() => assertNotProduction("https://guiovuqccbzlbacaxepd.supabase.co"))
-      .toThrow(/Refusing to import into the production project/);
+describe("assertNotProduction — production-guard double-gate", () => {
+  const PROD_URL = "https://guiovuqccbzlbacaxepd.supabase.co";
+  const DEV_URL = "https://wkspwsorlgwkuwjajsce.supabase.co";
+  let savedArgv: string[];
+
+  beforeEach(() => {
+    savedArgv = [...process.argv];
+    process.argv = process.argv.filter((a) => a !== "--allow-production");
+    delete process.env.T2Q_ALLOW_PROD_IMPORT;
   });
-  it("allows non-production URLs", () => {
-    expect(() => assertNotProduction("https://wkspwsorlgwkuwjajsce.supabase.co")).not.toThrow();
+
+  afterEach(() => {
+    process.argv = savedArgv;
+    delete process.env.T2Q_ALLOW_PROD_IMPORT;
+  });
+
+  it("BLOCKS: production URL + no flag + no env", () => {
+    expect(() => assertNotProduction(PROD_URL)).toThrow(
+      /Production import blocked/,
+    );
+  });
+
+  it("BLOCKS: production URL + flag only (no env)", () => {
+    process.argv.push("--allow-production");
+    expect(() => assertNotProduction(PROD_URL)).toThrow(
+      /Production import blocked/,
+    );
+  });
+
+  it("BLOCKS: production URL + env only (no flag)", () => {
+    process.env.T2Q_ALLOW_PROD_IMPORT = "1";
+    expect(() => assertNotProduction(PROD_URL)).toThrow(
+      /Production import blocked/,
+    );
+  });
+
+  it("ALLOWS: production URL + flag + env (both gates present)", () => {
+    process.argv.push("--allow-production");
+    process.env.T2Q_ALLOW_PROD_IMPORT = "1";
+    expect(() => assertNotProduction(PROD_URL)).not.toThrow();
+  });
+
+  it("ALLOWS: dev URL + no flag + no env", () => {
+    expect(() => assertNotProduction(DEV_URL)).not.toThrow();
+  });
+
+  it("PRODUCTION_PROJECT_REF is hardcoded to the real prod ref; near-miss URLs do not pass as production", () => {
+    // Snapshot guard: editing the constant by mistake fails this loudly.
+    expect(PRODUCTION_PROJECT_REF).toBe("guiovuqccbzlbacaxepd");
+
+    // Real prod URL with no gates still throws.
+    expect(() => assertNotProduction(PROD_URL)).toThrow(
+      /Production import blocked/,
+    );
+
+    // Near-miss URL (last char 'e' instead of 'd') is NOT detected as
+    // production — the substring check is exact, not fuzzy.
+    expect(() =>
+      assertNotProduction("https://guiovuqccbzlbacaxepe.supabase.co"),
+    ).not.toThrow();
   });
 });
 
