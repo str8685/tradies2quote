@@ -206,6 +206,16 @@ export type QuoteData = {
    * `src/lib/compliance/`. Callers cast on read.
    */
   compliance_review?: unknown;
+  /**
+   * Stage 6 — server-side transcript layers (raw / cleaned / summary /
+   * corrections / clarifications / confidence).
+   *
+   * Same privacy contract as `compliance_review`: stored in JSONB,
+   * never returned by `get_quote_by_token`, never reachable from the
+   * public quote page. Type is `unknown` to avoid a circular import
+   * with `src/lib/transcriptCleanup.ts`. Callers cast on read.
+   */
+  transcript?: unknown;
 };
 
 export type QuoteProfile = {

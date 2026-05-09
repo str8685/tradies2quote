@@ -8,6 +8,10 @@ import type { ComplianceLineItem, ComplianceReview } from "@/lib/compliance";
 import { QuoteGenerator } from "./_components/QuoteGenerator";
 import { QuoteEditor } from "./_components/QuoteEditor";
 import { CompliancePanel } from "./_components/CompliancePanel";
+import {
+  TranscriptPanel,
+  type TranscriptPanelData,
+} from "./_components/TranscriptPanel";
 
 export const metadata: Metadata = {
   title: "Quote preview",
@@ -94,6 +98,22 @@ export default async function QuotePreviewPage({
 
         {quoteData ? (
           <>
+            {/* Stage 6 — transcript panel (raw / cleaned / summary).
+                Renders only when the generator wrote a transcript object
+                onto quote_data (i.e. Stage 6 onwards). Quotes from
+                before this commit have `transcript === undefined` and
+                the panel renders nothing. */}
+            {(() => {
+              const t = (quoteData.transcript ?? null) as
+                | TranscriptPanelData
+                | null;
+              if (!t) return null;
+              return (
+                <div className="mb-6">
+                  <TranscriptPanel quoteId={quote.id} transcript={t} />
+                </div>
+              );
+            })()}
             {/* Compliance review panel — renders nothing when the
                 engine was off (production today) or the quote was
                 generated before Stage 5 landed. */}

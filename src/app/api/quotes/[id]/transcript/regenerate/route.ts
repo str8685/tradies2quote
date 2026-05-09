@@ -1,0 +1,98 @@
+import { NextResponse, type NextRequest } from "next/server";
+import { createClient } from "@/lib/supabase/server";
+
+/**
+ * Regenerate a quote from an edited cleaned transcript.
+ *
+ *   POST /api/quotes/[id]/transcript/regenerate
+ *     body: { cleanedTranscript: string }
+ *
+ * Behaviour:
+ *
+ *   1. Update `voice_transcript` with the edited text — that becomes
+ *      the new authoritative input for Claude.
+ *   2. Clear `quote_data` to null so the existing 409-on-existing-quote_
+ *      data check in /api/quotes/generate doesn't block us.
+ *   3. Return `{ ok: true }`.
+ *
+ * The client then refreshes /app/quotes/preview/[id]. Because
+ * `quote_data` is now null, the preview page renders `QuoteGenerator`,
+ * which auto-POSTs to /api/quotes/generate. The new transcript drives a
+ * fresh quote — including a fresh `transcript.raw`, `transcript.cleaned`,
+ * compliance review, and material match — so all post-edit state stays
+ * coherent.
+ *
+ * Privacy: voice_transcript is the same column the original transcribe
+ * route writes to. The public RPC does not return it. The post-regen
+ * transcript object is built by /api/quotes/generate and lives inside
+ * quote_data — same privacy contract as before.
+ */
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+type Params = { id: string };
+
+export async function POST(
+  request: NextRequest,
+  { params }: { params: Promise<Params> },
+) {
+  const { id } = await params;
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  let body: { cleanedTranscript?: unknown };
+  try {
+    body = (await request.json()) as { cleanedTranscript?: unknown };
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+  }
+
+  const cleaned = body.cleanedTranscript;
+  if (typeof cleaned !== "string" || cleaned.trim().length === 0) {
+    return NextResponse.json(
+      { error: "cleanedTranscript must be a non-empty string" },
+      { status: 400 },
+    );
+  }
+
+  // Defence-in-depth: confirm the quote belongs to this user before
+  // mutating. RLS handles this too, but spell it out for clarity.
+  const { data: quote, error } = await supabase
+    .from("quotes")
+    .select("id, user_id")
+    .eq("id", id)
+    .single();
+  if (error || !quote) {
+    return NextResponse.json({ error: "Quote not found" }, { status: 404 });
+  }
+  if (quote.user_id !== user.id) {
+    return NextResponse.json({ error: "Quote not found" }, { status: 404 });
+  }
+
+  const { error: uErr } = await supabase
+    .from("quotes")
+    .update({
+      voice_transcript: cleaned,
+      // Clearing quote_data triggers the QuoteGenerator on the client
+      // to fire /api/quotes/generate against the new transcript.
+      quote_data: null,
+      total_amount: null,
+    })
+    .eq("id", quote.id);
+  if (uErr) {
+    console.error("[transcript] regenerate prep update failed", uErr);
+    return NextResponse.json(
+      { error: "Failed to clear existing quote for regeneration" },
+      { status: 500 },
+    );
+  }
+
+  return NextResponse.json({ ok: true });
+}

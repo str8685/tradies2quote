@@ -19,6 +19,7 @@ import {
   complianceReviewEnabledFromEnv,
   safelyReviewQuote,
 } from "@/lib/compliance";
+import { cleanTranscript } from "@/lib/transcriptCleanup";
 import type {
   LibraryMaterial,
   QuoteData,
@@ -352,6 +353,39 @@ export async function POST(request: NextRequest) {
       clarifications: complianceReview.clarifications.length,
       warnings: complianceReview.warnings.length,
       citations: complianceReview.citations.length,
+    });
+  }
+
+  // Stage 6 — transcript cleanup. Runs AFTER the matcher + compliance so
+  // the cleaned transcript and summary reflect what the engine actually
+  // saw. Failure modes: cleanTranscript() never throws — it returns a
+  // CleanedTranscript with `fallback: 'summary_failed'` if the LLM call
+  // errors, and the deterministic regex pass still applies. The route
+  // therefore always has SOMETHING to persist into quote_data.transcript.
+  //
+  // The transcript field is server-side only — `get_quote_by_token`
+  // does not project it (PublicQuotePayload has no transcript field) and
+  // the runtime test in `src/lib/transcriptCleanup.public.test.ts`
+  // confirms the projection.
+  const cleaned = await cleanTranscript(transcript, {
+    apiKey,
+  });
+  parsed.transcript = {
+    raw: transcript,
+    cleaned: cleaned.cleanedTranscript,
+    summary: cleaned.summary,
+    corrections: cleaned.corrections,
+    clarification_questions: cleaned.clarificationQuestions,
+    confidence: cleaned.confidence,
+    fallback: cleaned.fallback,
+    fallbackReason: cleaned.fallbackReason,
+  };
+  if (cleaned.fallback) {
+    console.log("[transcript] fallback", {
+      fallback: cleaned.fallback,
+      reason: cleaned.fallbackReason,
+      corrections: cleaned.corrections.length,
+      clarifications: cleaned.clarificationQuestions.length,
     });
   }
 
