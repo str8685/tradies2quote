@@ -45,13 +45,17 @@ const THICKNESS_RE = /\b(\d{1,3})\s*mm\b/i;
 
 /**
  * Spoken-number → digit substitutions, applied as a preprocess pass before
- * the structured regexes run. "h four post" → "h4 post" so TREATMENT_RE picks
- * it up. We deliberately do NOT cover compound treatments like "h three
- * point two" — too ambiguous from voice transcripts; the tradie should say
- * "H3.2" or "H 3 point 2" which is rare. Sticking to the safe whole-number
- * cases keeps the rule simple.
+ * the structured regexes run. The compound forms ("h three point two") MUST
+ * be checked BEFORE the simple forms ("h three"), otherwise the simple
+ * pattern eats the leading "h three" and leaves "point two" stranded.
  */
 const SPOKEN_TREATMENT_NUMBERS: Array<[RegExp, string]> = [
+  // Compound H-class: "h one point two", "h three point two", etc.
+  [/\bh\s+one\s+point\s+two\b/i, "h1.2"],
+  [/\bh\s+three\s+point\s+two\b/i, "h3.2"],
+  [/\bh\s+four\s+point\s+two\b/i, "h4.2"],
+  [/\bh\s+five\s+point\s+two\b/i, "h5.2"],
+  // Whole-number H-class — must come AFTER the compound forms above.
   [/\bh\s+one\b/i, "h1"],
   [/\bh\s+two\b/i, "h2"],
   [/\bh\s+three\b/i, "h3"],

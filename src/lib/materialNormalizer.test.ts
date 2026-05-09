@@ -197,6 +197,32 @@ describe("normalizeMaterialQuery — spoken treatment numbers (Stage 4.3)", () =
   it("preserves H3.2 written numerically (not affected by spoken expansion)", () => {
     expect(normalizeMaterialQuery("H3.2 deck joist").treatmentClass).toBe("H3.2");
   });
+
+  it('"h one point two" → treatmentClass H1.2', () => {
+    const r = normalizeMaterialQuery("h one point two stud 90x45");
+    expect(r.treatmentClass).toBe("H1.2");
+    expect(r.size).toBe("90x45");
+  });
+
+  it('"h three point two" → treatmentClass H3.2 (not H3)', () => {
+    const r = normalizeMaterialQuery("h three point two joist 240x45");
+    expect(r.treatmentClass).toBe("H3.2");
+    expect(r.treatmentClass).not.toBe("H3");
+  });
+
+  it('"h four point two" → treatmentClass H4.2', () => {
+    expect(
+      normalizeMaterialQuery("h four point two pergola post").treatmentClass,
+    ).toBe("H4.2");
+  });
+
+  it("compound form is not greedily replaced by simple form", () => {
+    // Bug guard: simple "h three" rule must not run before compound rule
+    // and turn "h three point two" into "h3 point two".
+    const r = normalizeMaterialQuery("h three point two");
+    expect(r.normalized).toContain("h3.2");
+    expect(r.normalized).not.toContain("h3 point");
+  });
 });
 
 describe("normalizeMaterialQuery — edge cases", () => {
