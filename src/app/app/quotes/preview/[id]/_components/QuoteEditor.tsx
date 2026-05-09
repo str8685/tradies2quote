@@ -73,6 +73,7 @@ export function QuoteEditor({
   const [terms, setTerms] = useState(initialData.terms);
   const [status, setStatus] = useState<SaveStatus>("idle");
   const [errorMessage, setErrorMessage] = useState<string>("");
+  const [materialsLearned, setMaterialsLearned] = useState<number>(0);
   const [isPending, startTransition] = useTransition();
 
   const markupPct = initialData.markup_pct;
@@ -177,6 +178,7 @@ export function QuoteEditor({
   function handleSave() {
     setStatus("saving");
     setErrorMessage("");
+    setMaterialsLearned(0);
     startTransition(async () => {
       const result = await saveQuoteChanges(quoteId, buildCurrentQuoteData());
       if ("error" in result) {
@@ -185,7 +187,11 @@ export function QuoteEditor({
         return;
       }
       setStatus("saved");
-      setTimeout(() => setStatus("idle"), 2000);
+      setMaterialsLearned(result.materialsLearned ?? 0);
+      setTimeout(() => {
+        setStatus("idle");
+        setMaterialsLearned(0);
+      }, 2500);
     });
   }
 
@@ -416,7 +422,13 @@ export function QuoteEditor({
           className="font-mono text-xs uppercase tracking-[0.2em]"
         >
           {status === "saving" && <span className="text-ink-400">Saving…</span>}
-          {status === "saved" && <span className="text-brand">{"// saved"}</span>}
+          {status === "saved" && (
+            <span className="text-brand">
+              {materialsLearned > 0
+                ? `// saved · ${materialsLearned} material${materialsLearned === 1 ? "" : "s"} added to your library`
+                : "// saved"}
+            </span>
+          )}
           {status === "error" && (
             <span className="text-red-400">{errorMessage || "Save failed"}</span>
           )}
