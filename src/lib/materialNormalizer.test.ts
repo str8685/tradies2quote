@@ -225,6 +225,45 @@ describe("normalizeMaterialQuery — spoken treatment numbers (Stage 4.3)", () =
   });
 });
 
+describe("normalizeMaterialQuery — compact NZ-trade forms (Phase 4.9)", () => {
+  it('"h12 stud" → treatmentClass H1.2', () => {
+    const r = normalizeMaterialQuery("h12 stud 90x45");
+    expect(r.treatmentClass).toBe("H1.2");
+    expect(r.size).toBe("90x45");
+  });
+
+  it('"h32 joist" → treatmentClass H3.2 (NOT H3)', () => {
+    const r = normalizeMaterialQuery("h32 joist 140x45");
+    expect(r.treatmentClass).toBe("H3.2");
+    expect(r.treatmentClass).not.toBe("H3");
+  });
+
+  it('"H32 deck joist" preserves H3.2 in normalized form', () => {
+    const r = normalizeMaterialQuery("H32 deck joist");
+    expect(r.normalized).toContain("h3.2");
+    expect(r.normalized).not.toContain("h32 ");
+  });
+
+  it('compact h31, h42, h52 also map to decimal forms', () => {
+    expect(normalizeMaterialQuery("h31 fence rail").treatmentClass).toBe("H3.1");
+    expect(normalizeMaterialQuery("h42 pergola post").treatmentClass).toBe("H4.2");
+    expect(normalizeMaterialQuery("h52 retaining timber").treatmentClass).toBe("H5.2");
+  });
+
+  it('compact form does NOT collide with H3 (different lookup target)', () => {
+    expect(normalizeMaterialQuery("h3 paling").treatmentClass).toBe("H3");
+    expect(normalizeMaterialQuery("h32 paling").treatmentClass).toBe("H3.2");
+    expect(normalizeMaterialQuery("h3 paling").treatmentClass).not.toBe(
+      normalizeMaterialQuery("h32 paling").treatmentClass,
+    );
+  });
+
+  it('"h three point one" → H3.1 (compound spoken)', () => {
+    const r = normalizeMaterialQuery("h three point one fencing");
+    expect(r.treatmentClass).toBe("H3.1");
+  });
+});
+
 describe("normalizeMaterialQuery — edge cases", () => {
   it("empty string returns null fields and unknown category", () => {
     const r = normalizeMaterialQuery("");

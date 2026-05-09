@@ -70,6 +70,12 @@ export async function matchMaterial(
     category,
     brand,
     supplier: input.supplier ?? null,
+    // Phase 4.9 — when the description names an H-class, hard-filter the
+    // catalogue to that class. This stops trigram similarity from picking
+    // an H1.2 framing row when the tradie clearly said H3 (the V9 collapse).
+    // null when the description doesn't name a class — fuzzy matching
+    // keeps working unchanged for non-treatment-class queries.
+    treatmentClass: normalized.treatmentClass,
     limit: 5,
   });
 

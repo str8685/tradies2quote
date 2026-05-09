@@ -39,6 +39,9 @@ export type NormalizedMaterialQuery = {
   categoryHint: MaterialCategoryHint;
 };
 
+// Treatment regex matches ANY of: "h1", "h1.2", "h3.1", "h3.2", "h4", "h5".
+// The compact preprocessing pass above turns "h12" → "h1.2" before this
+// regex runs, so this single pattern covers all canonical and compact forms.
 const TREATMENT_RE = /\bh(\d(?:\.\d)?)\b/i;
 const SIZE_BY_RE = /\b(\d{2,4})\s*(?:x|by|×|\*)\s*(\d{2,4})\b/i;
 const THICKNESS_RE = /\b(\d{1,3})\s*mm\b/i;
@@ -48,14 +51,26 @@ const THICKNESS_RE = /\b(\d{1,3})\s*mm\b/i;
  * the structured regexes run. The compound forms ("h three point two") MUST
  * be checked BEFORE the simple forms ("h three"), otherwise the simple
  * pattern eats the leading "h three" and leaves "point two" stranded.
+ *
+ * Compact NZ-trade forms (h12 / h32 / h42 / h52) map to their decimal
+ * equivalents (H1.2 / H3.2 / H4.2 / H5.2). Tradies often type "h12 stud"
+ * or "h32 joist" — both must end up classified the same as "H1.2" / "H3.2".
  */
 const SPOKEN_TREATMENT_NUMBERS: Array<[RegExp, string]> = [
   // Compound H-class: "h one point two", "h three point two", etc.
   [/\bh\s+one\s+point\s+two\b/i, "h1.2"],
+  [/\bh\s+three\s+point\s+one\b/i, "h3.1"],
   [/\bh\s+three\s+point\s+two\b/i, "h3.2"],
   [/\bh\s+four\s+point\s+two\b/i, "h4.2"],
   [/\bh\s+five\s+point\s+two\b/i, "h5.2"],
-  // Whole-number H-class — must come AFTER the compound forms above.
+  // Compact NZ-trade forms — checked before whole-number form so "h12"
+  // doesn't get stripped to "h1" by the looser "h\s+one" rule.
+  [/\bh12\b/i, "h1.2"],
+  [/\bh31\b/i, "h3.1"],
+  [/\bh32\b/i, "h3.2"],
+  [/\bh42\b/i, "h4.2"],
+  [/\bh52\b/i, "h5.2"],
+  // Whole-number H-class — must come AFTER the compound + compact forms.
   [/\bh\s+one\b/i, "h1"],
   [/\bh\s+two\b/i, "h2"],
   [/\bh\s+three\b/i, "h3"],

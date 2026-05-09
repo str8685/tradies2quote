@@ -45,6 +45,16 @@ export type MaterialSearchOptions = {
   /** Server-side cap is 100 (see search_materials migration). Default 25. */
   limit?: number;
   /**
+   * Stage 4.9 — H-class hard filter. When set, ONLY rows whose
+   * attributes->>'treatment_class' equals this value are returned.
+   * Pass values like 'H1.2' / 'H3' / 'H3.2' / 'H4' / 'H5' (case-sensitive,
+   * matches catalogue convention). The matcher fills this in from the
+   * normalizer's `treatmentClass` field whenever the description names an
+   * H-class — preventing the V9 collapse where trigram similarity could
+   * pick H1.2 framing rows over an H3 framing query.
+   */
+  treatmentClass?: string | null;
+  /**
    * When true, query as service role. This bypasses RLS — use ONLY for
    * trusted server jobs (catalogue seeding, scheduled rebuilds). Default
    * false: query runs under the calling user's session.
@@ -69,6 +79,7 @@ export async function searchMaterials(
     p_brand: opts.brand ?? null,
     p_supplier: opts.supplier ?? null,
     p_limit: opts.limit ?? 25,
+    p_treatment_class: opts.treatmentClass ?? null,
   } as never);
 
   if (error) {

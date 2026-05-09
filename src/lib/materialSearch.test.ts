@@ -52,7 +52,7 @@ describe("searchMaterials", () => {
     expect(rpc).not.toHaveBeenCalled();
   });
 
-  it("calls the RPC with all six parameters using safe defaults", async () => {
+  it("calls the RPC with all seven parameters using safe defaults", async () => {
     const rpc = vi.fn().mockResolvedValue({ data: [], error: null });
     mockUserClient(rpc);
 
@@ -65,10 +65,11 @@ describe("searchMaterials", () => {
       p_brand: null,
       p_supplier: null,
       p_limit: 25,
+      p_treatment_class: null,
     });
   });
 
-  it("passes through category, brand, supplier, limit when supplied", async () => {
+  it("passes through category, brand, supplier, limit, treatmentClass when supplied", async () => {
     const rpc = vi.fn().mockResolvedValue({ data: [], error: null });
     mockUserClient(rpc);
 
@@ -78,6 +79,7 @@ describe("searchMaterials", () => {
       brand: "GIB",
       supplier: "PlaceMakers",
       limit: 10,
+      treatmentClass: "H3.2",
     });
 
     expect(rpc).toHaveBeenCalledWith("search_materials", {
@@ -87,7 +89,18 @@ describe("searchMaterials", () => {
       p_brand: "GIB",
       p_supplier: "PlaceMakers",
       p_limit: 10,
+      p_treatment_class: "H3.2",
     });
+  });
+
+  it("Phase 4.9 — passes treatmentClass=null when omitted (no hard filter)", async () => {
+    const rpc = vi.fn().mockResolvedValue({ data: [], error: null });
+    mockUserClient(rpc);
+
+    await searchMaterials({ query: "framing pine" });
+
+    const call = rpc.mock.calls[0][1] as Record<string, unknown>;
+    expect(call.p_treatment_class).toBeNull();
   });
 
   it("returns typed hits", async () => {

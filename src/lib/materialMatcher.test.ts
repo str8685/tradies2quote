@@ -261,6 +261,103 @@ describe("matchMaterial — missing_price (never invent prices)", () => {
   });
 });
 
+describe("matchMaterial — Phase 4.9 H-class hard filter passthrough", () => {
+  it('"h3 framing 90x45" passes treatmentClass=H3 to search_materials', async () => {
+    mockHits([]);
+    await matchMaterial({ description: "h3 framing 90x45" });
+    expect(lastSearchArgs()).toMatchObject({
+      treatmentClass: "H3",
+      category: "timber",
+    });
+  });
+
+  it('"h3.2 140x45 joist" passes treatmentClass=H3.2', async () => {
+    mockHits([]);
+    await matchMaterial({ description: "H3.2 140x45 deck joist" });
+    expect(lastSearchArgs()).toMatchObject({ treatmentClass: "H3.2" });
+  });
+
+  it('"h4 post 100x100" passes treatmentClass=H4', async () => {
+    mockHits([]);
+    await matchMaterial({ description: "H4 post 100x100" });
+    expect(lastSearchArgs()).toMatchObject({ treatmentClass: "H4" });
+  });
+
+  it('"h5 pile 200x200" passes treatmentClass=H5', async () => {
+    mockHits([]);
+    await matchMaterial({ description: "H5 pile 200x200" });
+    expect(lastSearchArgs()).toMatchObject({ treatmentClass: "H5" });
+  });
+
+  it('"h1.2 framing 90x45" passes treatmentClass=H1.2', async () => {
+    mockHits([]);
+    await matchMaterial({ description: "H1.2 framing 90x45" });
+    expect(lastSearchArgs()).toMatchObject({ treatmentClass: "H1.2" });
+  });
+
+  it('spoken "h three" → treatmentClass H3', async () => {
+    mockHits([]);
+    await matchMaterial({ description: "h three framing 90x45" });
+    expect(lastSearchArgs()).toMatchObject({ treatmentClass: "H3" });
+  });
+
+  it('spoken "h three point two" → treatmentClass H3.2 (compound expansion)', async () => {
+    mockHits([]);
+    await matchMaterial({ description: "h three point two joist 140x45" });
+    expect(lastSearchArgs()).toMatchObject({ treatmentClass: "H3.2" });
+  });
+
+  it('spoken "h four" → treatmentClass H4', async () => {
+    mockHits([]);
+    await matchMaterial({ description: "h four post 100x100" });
+    expect(lastSearchArgs()).toMatchObject({ treatmentClass: "H4" });
+  });
+
+  it('spoken "h five" → treatmentClass H5', async () => {
+    mockHits([]);
+    await matchMaterial({ description: "h five pile" });
+    expect(lastSearchArgs()).toMatchObject({ treatmentClass: "H5" });
+  });
+
+  it('compact "h32" → treatmentClass H3.2 (NOT H3)', async () => {
+    mockHits([]);
+    await matchMaterial({ description: "h32 joist 140x45" });
+    expect(lastSearchArgs()).toMatchObject({ treatmentClass: "H3.2" });
+  });
+
+  it('compact "h12" → treatmentClass H1.2 (NOT H1)', async () => {
+    mockHits([]);
+    await matchMaterial({ description: "h12 stud 90x45" });
+    expect(lastSearchArgs()).toMatchObject({ treatmentClass: "H1.2" });
+  });
+
+  it("description without H-class → treatmentClass=null (no hard filter)", async () => {
+    mockHits([]);
+    await matchMaterial({ description: "GIB Aqualine 13mm" });
+    const args = lastSearchArgs();
+    expect(args.treatmentClass ?? null).toBeNull();
+  });
+
+  it("battens still does not match Pink Batts (Phase 4.9 regression check)", async () => {
+    mockHits([]);
+    await matchMaterial({ description: "H3.2 50x50 battens" });
+    const args = lastSearchArgs();
+    expect(args.category).toBe("timber");
+    expect(args.brand).not.toBe("Pink Batts");
+    expect(args.treatmentClass).toBe("H3.2");
+  });
+
+  it("GIB Aqualine still distinct from GIB Standard (Phase 4.9 regression check)", async () => {
+    mockHits([]);
+    await matchMaterial({ description: "GIB Aqualine 13mm sheet" });
+    const args = lastSearchArgs();
+    expect(args.category).toBe("plasterboard");
+    expect(args.brand).toBe("GIB");
+    // No treatment class on GIB; the catalogue distinguishes via attributes.product_type.
+    expect(args.treatmentClass ?? null).toBeNull();
+  });
+});
+
 describe("matchMaterial — exposed return shape (public-payload safety)", () => {
   /**
    * Phase 4.2 does NOT change the public quote payload. The
