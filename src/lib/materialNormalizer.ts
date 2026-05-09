@@ -44,6 +44,22 @@ const SIZE_BY_RE = /\b(\d{2,4})\s*(?:x|by|×|\*)\s*(\d{2,4})\b/i;
 const THICKNESS_RE = /\b(\d{1,3})\s*mm\b/i;
 
 /**
+ * Spoken-number → digit substitutions, applied as a preprocess pass before
+ * the structured regexes run. "h four post" → "h4 post" so TREATMENT_RE picks
+ * it up. We deliberately do NOT cover compound treatments like "h three
+ * point two" — too ambiguous from voice transcripts; the tradie should say
+ * "H3.2" or "H 3 point 2" which is rare. Sticking to the safe whole-number
+ * cases keeps the rule simple.
+ */
+const SPOKEN_TREATMENT_NUMBERS: Array<[RegExp, string]> = [
+  [/\bh\s+one\b/i, "h1"],
+  [/\bh\s+two\b/i, "h2"],
+  [/\bh\s+three\b/i, "h3"],
+  [/\bh\s+four\b/i, "h4"],
+  [/\bh\s+five\b/i, "h5"],
+];
+
+/**
  * Order matters — earlier entries win. Pink Batts must come before any
  * generic "batt(en)" timber rule, and "GIB Aqualine" must be checked before
  * the bare "GIB" so the trade-name detector sees it first.
@@ -98,7 +114,12 @@ const CATEGORY_HINTS: Array<[RegExp, MaterialCategoryHint]> = [
 
 export function normalizeMaterialQuery(input: string): NormalizedMaterialQuery {
   const raw = input ?? "";
-  const lower = raw.toLowerCase().trim();
+  let lower = raw.toLowerCase().trim();
+
+  // Preprocess: substitute spoken treatment numbers BEFORE feature extraction.
+  for (const [re, replacement] of SPOKEN_TREATMENT_NUMBERS) {
+    lower = lower.replace(re, replacement);
+  }
 
   // Treatment class — preserve precise grade. H1.2 ≠ H3.2 ≠ H4 ≠ H5.
   const tMatch = lower.match(TREATMENT_RE);

@@ -1,5 +1,15 @@
 export type QuoteItemType = "material" | "labour" | "other";
 
+export type PriceSource =
+  | "user_library"
+  | "catalogue_seed"
+  | "csv_import"
+  | "supplier_import"
+  | "missing_price"
+  | "ai_estimate";
+
+export type PriceConfidence = "high" | "medium" | "low";
+
 export type QuoteLineItem = {
   type: QuoteItemType;
   description: string;
@@ -8,11 +18,17 @@ export type QuoteLineItem = {
   unit_price: number;
   line_total: number;
   library_id?: string | null;
+  /** Stage 4 catalogue row ID (mirrors library_id when both are set). */
+  material_id?: string | null;
   is_ai_estimated?: boolean;
   is_missing_price?: boolean;
   is_calculated_takeoff?: boolean;
   formula?: string;
   price_match_key?: string;
+  /** Stage 4 — where the unit_price came from. */
+  price_source?: PriceSource;
+  /** Stage 4 — confidence in the price match. */
+  price_confidence?: PriceConfidence;
 };
 
 export type TakeoffInputsSnapshot = Partial<{

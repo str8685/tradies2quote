@@ -171,6 +171,34 @@ describe("normalizeMaterialQuery — category hints", () => {
   });
 });
 
+describe("normalizeMaterialQuery — spoken treatment numbers (Stage 4.3)", () => {
+  it('"h four post" → treatmentClass H4', () => {
+    const r = normalizeMaterialQuery("h four post 100x100");
+    expect(r.treatmentClass).toBe("H4");
+    expect(r.size).toBe("100x100");
+    expect(r.categoryHint).toBe("timber");
+  });
+
+  it('"h five pile" → treatmentClass H5', () => {
+    const r = normalizeMaterialQuery("h five pile 200x200");
+    expect(r.treatmentClass).toBe("H5");
+  });
+
+  it('"h three joist" → treatmentClass H3', () => {
+    const r = normalizeMaterialQuery("h three joist");
+    expect(r.treatmentClass).toBe("H3");
+  });
+
+  it("does not trigger on unrelated 'four'/'five'", () => {
+    expect(normalizeMaterialQuery("four sheets of GIB").treatmentClass).toBeNull();
+    expect(normalizeMaterialQuery("five posts").treatmentClass).toBeNull();
+  });
+
+  it("preserves H3.2 written numerically (not affected by spoken expansion)", () => {
+    expect(normalizeMaterialQuery("H3.2 deck joist").treatmentClass).toBe("H3.2");
+  });
+});
+
 describe("normalizeMaterialQuery — edge cases", () => {
   it("empty string returns null fields and unknown category", () => {
     const r = normalizeMaterialQuery("");

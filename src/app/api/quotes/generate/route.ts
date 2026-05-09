@@ -11,6 +11,10 @@ import {
   canRunCalculator,
   parseTakeoffDescription,
 } from "@/lib/aiTakeoffParser";
+import {
+  enrichLineItemsWithCatalogue,
+  materialMatchingEnabledFromEnv,
+} from "@/lib/materialMatchingPipeline";
 import type {
   LibraryMaterial,
   QuoteData,
@@ -295,6 +299,16 @@ export async function POST(request: NextRequest) {
   }
 
   parsed.line_items = [...calculatorItems, ...aiItems];
+
+  // Stage 4.3 — feature-flagged material catalogue enrichment.
+  // OFF by default (production). When MATERIAL_MATCHING_ENABLED='true' is
+  // set (currently only in the worktree's .env.development.local pointed at
+  // the Supabase dev branch), each material line is run through
+  // search_materials and tagged with material_id / price_source /
+  // price_confidence / is_missing_price. Non-material lines pass through.
+  parsed.line_items = await enrichLineItemsWithCatalogue(parsed.line_items, {
+    enabled: materialMatchingEnabledFromEnv(),
+  });
 
   let materials_subtotal = 0;
   let labour_subtotal = 0;
