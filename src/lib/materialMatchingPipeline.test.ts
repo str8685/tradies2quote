@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import {
   enrichLineItemsWithCatalogue,
   materialMatchingEnabledFromEnv,
+  safelyEnrichLineItemsWithCatalogue,
 } from "./materialMatchingPipeline";
 import type { QuoteLineItem, PublicLineItem } from "./quote-types";
 import type { MaterialMatch } from "./materialMatcher";
@@ -458,6 +459,300 @@ describe("materialMatchingEnabledFromEnv", () => {
   it("returns true only when env var is exactly 'true'", () => {
     process.env.MATERIAL_MATCHING_ENABLED = "true";
     expect(materialMatchingEnabledFromEnv()).toBe(true);
+  });
+});
+
+describe("safelyEnrichLineItemsWithCatalogue — feature flag behaviour", () => {
+  it("flag missing (env unset) → identity passthrough, diagnostics.fallback='disabled'", async () => {
+    const items = [baseItem({ description: "H4 post", unit_price: 18.5 })];
+    const result = await safelyEnrichLineItemsWithCatalogue(items, {
+      enabled: false,
+    });
+    expect(result.items).toBe(items); // same reference, no copy
+    expect(result.diagnostics.enabled).toBe(false);
+    expect(result.diagnostics.fallback).toBe("disabled");
+    expect(result.diagnostics.materialLines).toBe(1);
+  });
+
+  it("flag false → identity passthrough", async () => {
+    const items = [baseItem({ description: "x", quantity: 2, line_total: 20 })];
+    const result = await safelyEnrichLineItemsWithCatalogue(items, {
+      enabled: false,
+    });
+    expect(result.items).toEqual(items);
+    expect(result.diagnostics.fallback).toBe("disabled");
+  });
+
+  it("flag true → matcher runs, items enriched, diagnostics carries counts", async () => {
+    const matcher = vi.fn().mockResolvedValue(
+      matchedResult(
+        sampleHit({ id: "x", price: 4.5, match_score: 0.9 }),
+      ),
+    );
+    const items = [
+      baseItem({ description: "h1.2 90x45", quantity: 10, unit_price: 5 }),
+    ];
+    const result = await safelyEnrichLineItemsWithCatalogue(items, {
+      enabled: true,
+      matcher,
+    });
+    expect(result.diagnostics).toMatchObject({
+      enabled: true,
+      fallback: null,
+      totalLines: 1,
+      materialLines: 1,
+      matched: 1,
+      missingPrice: 0,
+    });
+    expect(result.items[0].material_id).toBe("x");
+    expect(result.items[0].unit_price).toBe(4.5);
+  });
+});
+
+describe("safelyEnrichLineItemsWithCatalogue — failure modes (always succeed)", () => {
+  let warnSpy: ReturnType<typeof vi.spyOn>;
+  let logSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+  });
+  afterEach(() => {
+    warnSpy.mockRestore();
+    logSpy.mockRestore();
+  });
+
+  const originalItems: QuoteLineItem[] = [
+    baseItem({
+      description: "H1.2 90x45",
+      quantity: 10,
+      unit_price: 5,
+      line_total: 50,
+    }),
+    baseItem({
+      description: "GIB Aqualine 13mm",
+      quantity: 12,
+      unit_price: 80,
+      line_total: 960,
+    }),
+    {
+      type: "labour",
+      description: "Builder",
+      quantity: 8,
+      unit: "h",
+      unit_price: 75,
+      line_total: 600,
+    },
+  ];
+
+  it("matcher throws (RPC error) → original items returned, fallback='error'", async () => {
+    const matcher = vi
+      .fn()
+      .mockRejectedValue(new Error("searchMaterials RPC failed: permission denied"));
+    const result = await safelyEnrichLineItemsWithCatalogue(originalItems, {
+      enabled: true,
+      matcher,
+    });
+    expect(result.items).toBe(originalItems); // unchanged reference
+    expect(result.diagnostics.fallback).toBe("error");
+    expect(result.diagnostics.fallbackReason).toMatch(/permission denied/);
+    expect(warnSpy).toHaveBeenCalledWith(
+      "[material-matching] fallback",
+      expect.objectContaining({ reason: "error" }),
+    );
+  });
+
+  it("missing Supabase env (matcher throws 'NEXT_PUBLIC_SUPABASE_URL not set') → original items, fallback='error'", async () => {
+    const matcher = vi
+      .fn()
+      .mockRejectedValue(
+        new Error("NEXT_PUBLIC_SUPABASE_URL is not set."),
+      );
+    const result = await safelyEnrichLineItemsWithCatalogue(originalItems, {
+      enabled: true,
+      matcher,
+    });
+    expect(result.items).toEqual(originalItems);
+    expect(result.diagnostics.fallback).toBe("error");
+    expect(result.diagnostics.fallbackReason).toMatch(/SUPABASE_URL/);
+  });
+
+  it("RPC permission denied → original items, fallback='error'", async () => {
+    const matcher = vi
+      .fn()
+      .mockRejectedValue(
+        new Error("searchMaterials RPC failed: permission denied for function search_materials"),
+      );
+    const result = await safelyEnrichLineItemsWithCatalogue(originalItems, {
+      enabled: true,
+      matcher,
+    });
+    expect(result.items).toEqual(originalItems);
+    expect(result.diagnostics.fallback).toBe("error");
+  });
+
+  it("RPC-missing (function does not exist) → original items, fallback='error'", async () => {
+    const matcher = vi
+      .fn()
+      .mockRejectedValue(
+        new Error("function public.search_materials does not exist"),
+      );
+    const result = await safelyEnrichLineItemsWithCatalogue(originalItems, {
+      enabled: true,
+      matcher,
+    });
+    expect(result.items).toEqual(originalItems);
+    expect(result.diagnostics.fallback).toBe("error");
+  });
+
+  it("network error → original items, fallback='error'", async () => {
+    const matcher = vi
+      .fn()
+      .mockRejectedValue(new Error("fetch failed: ECONNREFUSED"));
+    const result = await safelyEnrichLineItemsWithCatalogue(originalItems, {
+      enabled: true,
+      matcher,
+    });
+    expect(result.items).toEqual(originalItems);
+    expect(result.diagnostics.fallback).toBe("error");
+  });
+
+  it("timeout fires before matcher resolves → original items, fallback='timeout'", async () => {
+    // Matcher never resolves on its own.
+    const matcher = vi.fn().mockImplementation(
+      () => new Promise(() => {}),
+    );
+    const result = await safelyEnrichLineItemsWithCatalogue(originalItems, {
+      enabled: true,
+      matcher,
+      timeoutMs: 30,
+    });
+    expect(result.items).toEqual(originalItems);
+    expect(result.diagnostics.fallback).toBe("timeout");
+    expect(result.diagnostics.fallbackReason).toBe("material_matching_timeout");
+    expect(warnSpy).toHaveBeenCalledWith(
+      "[material-matching] fallback",
+      expect.objectContaining({ reason: "timeout" }),
+    );
+  });
+
+  it("malformed RPC result (matcher returns non-array internally) — wrapper still returns originals", async () => {
+    // Simulate the rare case where the inner enrichment somehow yields a
+    // non-array. We do this by stubbing the matcher to throw a typed error
+    // mimicking a malformed response from the RPC layer.
+    const matcher = vi
+      .fn()
+      .mockRejectedValue(new Error("malformed_rpc_response: data is not iterable"));
+    const result = await safelyEnrichLineItemsWithCatalogue(originalItems, {
+      enabled: true,
+      matcher,
+    });
+    expect(result.items).toEqual(originalItems);
+    expect(result.diagnostics.fallback).toBe("error");
+  });
+
+  it("empty catalogue (matcher returns missing_price for every line) → quote still succeeds with missing_price flags, NOT a hard fallback", async () => {
+    const matcher = vi.fn().mockResolvedValue(missingResult("no_match"));
+    const result = await safelyEnrichLineItemsWithCatalogue(originalItems, {
+      enabled: true,
+      matcher,
+    });
+    // No fallback: this is normal "no matches" behaviour, items are still
+    // enriched (with missing_price flags), totals still meaningful.
+    expect(result.diagnostics.fallback).toBeNull();
+    expect(result.diagnostics.matched).toBe(0);
+    expect(result.diagnostics.missingPrice).toBe(2); // 2 material lines, 1 labour
+    // Material lines tagged is_missing_price=true; labour line untouched.
+    const materialLines = result.items.filter((i) => i.type === "material");
+    expect(materialLines.every((i) => i.is_missing_price === true)).toBe(true);
+    const labourLine = result.items.find((i) => i.type === "labour");
+    expect(labourLine?.unit_price).toBe(75); // unchanged
+  });
+
+  it("full matcher failure preserves the original totals (no line gets price overwritten or marked missing)", async () => {
+    const matcher = vi
+      .fn()
+      .mockRejectedValue(new Error("entire pipeline blew up"));
+    const result = await safelyEnrichLineItemsWithCatalogue(originalItems, {
+      enabled: true,
+      matcher,
+    });
+    // Every line item is byte-identical to what we passed in.
+    for (let i = 0; i < originalItems.length; i++) {
+      expect(result.items[i]).toBe(originalItems[i]); // same reference
+    }
+    // No line got is_missing_price = true.
+    expect(result.items.every((i) => !i.is_missing_price)).toBe(true);
+    // Sum of line_totals matches the input.
+    const inputTotal = originalItems.reduce((s, i) => s + i.line_total, 0);
+    const outputTotal = result.items.reduce((s, i) => s + i.line_total, 0);
+    expect(outputTotal).toBe(inputTotal);
+  });
+
+  it("readTimeoutMs falls back to env var when option omitted", async () => {
+    const original = process.env.MATERIAL_MATCHING_TIMEOUT_MS;
+    try {
+      process.env.MATERIAL_MATCHING_TIMEOUT_MS = "25";
+      const matcher = vi.fn().mockImplementation(() => new Promise(() => {}));
+      const result = await safelyEnrichLineItemsWithCatalogue(originalItems, {
+        enabled: true,
+        matcher,
+        // no explicit timeoutMs → reads env
+      });
+      expect(result.diagnostics.fallback).toBe("timeout");
+    } finally {
+      if (original === undefined) delete process.env.MATERIAL_MATCHING_TIMEOUT_MS;
+      else process.env.MATERIAL_MATCHING_TIMEOUT_MS = original;
+    }
+  });
+
+  it("invalid timeout env value (e.g. NaN) falls back to default 8000ms (matcher resolves under default)", async () => {
+    const original = process.env.MATERIAL_MATCHING_TIMEOUT_MS;
+    try {
+      process.env.MATERIAL_MATCHING_TIMEOUT_MS = "not-a-number";
+      const matcher = vi.fn().mockResolvedValue(
+        matchedResult(sampleHit({ price: 1 })),
+      );
+      const result = await safelyEnrichLineItemsWithCatalogue(originalItems, {
+        enabled: true,
+        matcher,
+      });
+      expect(result.diagnostics.fallback).toBeNull();
+    } finally {
+      if (original === undefined) delete process.env.MATERIAL_MATCHING_TIMEOUT_MS;
+      else process.env.MATERIAL_MATCHING_TIMEOUT_MS = original;
+    }
+  });
+});
+
+describe("safelyEnrichLineItemsWithCatalogue — diagnostics never expose internals to clients", () => {
+  it("diagnostics object is server-side only — public quote uses PublicLineItem, which has no diagnostics fields", () => {
+    type ExpectedKeys =
+      | "type"
+      | "description"
+      | "quantity"
+      | "unit"
+      | "unit_price"
+      | "line_total";
+    type _AssertNoDiagnosticsLeak = keyof PublicLineItem extends ExpectedKeys
+      ? true
+      : false;
+    const _check: _AssertNoDiagnosticsLeak = true;
+    void _check;
+    // Runtime assertion: a sample PublicLineItem has no diagnostic fields.
+    const sample: PublicLineItem = {
+      type: "material",
+      description: "x",
+      quantity: 1,
+      unit: "each",
+      unit_price: 1,
+      line_total: 1,
+    };
+    expect(Object.keys(sample)).not.toContain("material_id");
+    expect(Object.keys(sample)).not.toContain("price_source");
+    expect(Object.keys(sample)).not.toContain("price_confidence");
+    expect(Object.keys(sample)).not.toContain("is_missing_price");
+    expect(Object.keys(sample)).not.toContain("price_match_key");
   });
 });
 

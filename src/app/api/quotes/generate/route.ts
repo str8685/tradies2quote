@@ -12,8 +12,8 @@ import {
   parseTakeoffDescription,
 } from "@/lib/aiTakeoffParser";
 import {
-  enrichLineItemsWithCatalogue,
   materialMatchingEnabledFromEnv,
+  safelyEnrichLineItemsWithCatalogue,
 } from "@/lib/materialMatchingPipeline";
 import type {
   LibraryMaterial,
@@ -300,15 +300,20 @@ export async function POST(request: NextRequest) {
 
   parsed.line_items = [...calculatorItems, ...aiItems];
 
-  // Stage 4.3 — feature-flagged material catalogue enrichment.
-  // OFF by default (production). When MATERIAL_MATCHING_ENABLED='true' is
-  // set (currently only in the worktree's .env.development.local pointed at
-  // the Supabase dev branch), each material line is run through
-  // search_materials and tagged with material_id / price_source /
-  // price_confidence / is_missing_price. Non-material lines pass through.
-  parsed.line_items = await enrichLineItemsWithCatalogue(parsed.line_items, {
-    enabled: materialMatchingEnabledFromEnv(),
-  });
+  // Stage 4.3/4.4 — feature-flagged material catalogue enrichment with safe
+  // fallback. OFF by default (production): identity passthrough. When
+  // MATERIAL_MATCHING_ENABLED='true' is set, the matcher runs against the
+  // search_materials RPC. ANY failure (RPC missing, permission denied,
+  // network error, timeout, malformed response, missing env, etc.) falls
+  // back to the original AI line items unchanged so that quote generation
+  // always succeeds whenever Stage 3 generation would have succeeded.
+  // Diagnostics are server-side only (console.log/warn → Vercel Functions
+  // logs); never returned to the client or surfaced in the public quote.
+  const enrichResult = await safelyEnrichLineItemsWithCatalogue(
+    parsed.line_items,
+    { enabled: materialMatchingEnabledFromEnv() },
+  );
+  parsed.line_items = enrichResult.items;
 
   let materials_subtotal = 0;
   let labour_subtotal = 0;

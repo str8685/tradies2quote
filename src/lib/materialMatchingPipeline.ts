@@ -113,3 +113,163 @@ export async function enrichLineItemsWithCatalogue(
 export function materialMatchingEnabledFromEnv(): boolean {
   return process.env.MATERIAL_MATCHING_ENABLED === "true";
 }
+
+// =============================================================================
+// Stage 4.4 — Safe wrapper
+// =============================================================================
+//
+// Core invariant: quote generation must always succeed if the original Stage 3
+// AI quote generation succeeds. Material matching is a best-effort enrichment
+// layer; any failure (RPC missing, permission denied, timeout, malformed
+// response, missing env, unreachable Supabase, etc.) falls back to the
+// original AI line items unchanged. Failures are logged server-side only.
+//
+// Diagnostics never reach the customer-facing surfaces (PDF, email,
+// public quote page). They go to console.warn / console.log for Vercel
+// Functions logs and developer triage.
+
+const DEFAULT_TIMEOUT_MS = 8000;
+const TIMEOUT_ERROR_MESSAGE = "material_matching_timeout";
+
+export type EnrichmentFallbackReason = "disabled" | "error" | "timeout";
+
+export type EnrichmentDiagnostics = {
+  enabled: boolean;
+  fallback: EnrichmentFallbackReason | null;
+  fallbackReason?: string;
+  totalLines: number;
+  materialLines: number;
+  matched?: number;
+  missingPrice?: number;
+};
+
+export type SafeEnrichmentResult = {
+  items: QuoteLineItem[];
+  diagnostics: EnrichmentDiagnostics;
+};
+
+export type SafeEnrichmentOptions = EnrichmentOptions & {
+  /** Override default timeout (ms). Falls back to MATERIAL_MATCHING_TIMEOUT_MS env. */
+  timeoutMs?: number;
+};
+
+function readTimeoutMs(override?: number): number {
+  if (typeof override === "number" && override > 0) return override;
+  const fromEnv = Number(process.env.MATERIAL_MATCHING_TIMEOUT_MS);
+  return Number.isFinite(fromEnv) && fromEnv > 0 ? fromEnv : DEFAULT_TIMEOUT_MS;
+}
+
+function countMaterialLines(items: QuoteLineItem[]): number {
+  return items.filter((i) => i.type === "material").length;
+}
+
+/**
+ * Safe wrapper. Always returns a usable `items` array. Never throws.
+ *
+ *   enabled = false (default for production):
+ *     identity passthrough; diagnostics.fallback = 'disabled'.
+ *
+ *   enabled = true, matcher succeeds:
+ *     enriched items returned; diagnostics carries matched/missing counts.
+ *
+ *   enabled = true, matcher throws, times out, or misbehaves:
+ *     ORIGINAL items returned unchanged; diagnostics.fallback set to
+ *     'error' or 'timeout'; a server-side warn line is logged.
+ */
+export async function safelyEnrichLineItemsWithCatalogue(
+  items: QuoteLineItem[],
+  options: SafeEnrichmentOptions,
+): Promise<SafeEnrichmentResult> {
+  const totalLines = items.length;
+  const materialLines = countMaterialLines(items);
+
+  if (!options.enabled) {
+    return {
+      items,
+      diagnostics: {
+        enabled: false,
+        fallback: "disabled",
+        totalLines,
+        materialLines,
+      },
+    };
+  }
+
+  const timeoutMs = readTimeoutMs(options.timeoutMs);
+
+  let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timeoutHandle = setTimeout(() => {
+      reject(new Error(TIMEOUT_ERROR_MESSAGE));
+    }, timeoutMs);
+  });
+
+  try {
+    const enriched = await Promise.race([
+      enrichLineItemsWithCatalogue(items, options),
+      timeoutPromise,
+    ]);
+
+    if (timeoutHandle) clearTimeout(timeoutHandle);
+
+    // Validate shape — any deviation is treated as a malformed response and
+    // falls back. Belt-and-braces around the matcher's own typing.
+    if (!Array.isArray(enriched)) {
+      throw new Error("malformed_enrichment_result");
+    }
+
+    const matched = enriched.filter(
+      (i) =>
+        i.type === "material" && !i.is_missing_price && Boolean(i.material_id),
+    ).length;
+    const missingPrice = enriched.filter(
+      (i) => i.type === "material" && i.is_missing_price,
+    ).length;
+
+    // Server-side diagnostic only. Not in any client-facing payload.
+    console.log("[material-matching] enriched", {
+      enabled: true,
+      total_lines: totalLines,
+      material_lines: materialLines,
+      matched,
+      missing_price: missingPrice,
+    });
+
+    return {
+      items: enriched,
+      diagnostics: {
+        enabled: true,
+        fallback: null,
+        totalLines,
+        materialLines,
+        matched,
+        missingPrice,
+      },
+    };
+  } catch (err) {
+    if (timeoutHandle) clearTimeout(timeoutHandle);
+
+    const message = err instanceof Error ? err.message : String(err);
+    const fallback: EnrichmentFallbackReason =
+      message === TIMEOUT_ERROR_MESSAGE ? "timeout" : "error";
+
+    console.warn("[material-matching] fallback", {
+      enabled: true,
+      reason: fallback,
+      message,
+      total_lines: totalLines,
+      material_lines: materialLines,
+    });
+
+    return {
+      items, // ← original items unchanged. Stage 3 invariant preserved.
+      diagnostics: {
+        enabled: true,
+        fallback,
+        fallbackReason: message,
+        totalLines,
+        materialLines,
+      },
+    };
+  }
+}
