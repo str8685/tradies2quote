@@ -62,6 +62,20 @@ export default async function DashboardPage() {
             tradies<span className="text-brand">2</span>Quote
           </span>
           <div className="flex items-center gap-4">
+            <Link
+              href="/app/clients"
+              data-testid="dashboard-nav-clients"
+              className="font-mono text-xs uppercase tracking-[0.2em] text-ink-300 hover:text-white"
+            >
+              Clients
+            </Link>
+            <Link
+              href="/app/settings"
+              data-testid="dashboard-nav-settings"
+              className="font-mono text-xs uppercase tracking-[0.2em] text-ink-300 hover:text-white"
+            >
+              Settings
+            </Link>
             {/* Renders nothing when the app is already installed or the
                 browser can't install — see InstallAppButton.tsx. */}
             <InstallAppButton />
