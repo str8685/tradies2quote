@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState, useEffect, useState } from "react";
 import { useFormStatus } from "react-dom";
 import {
@@ -12,18 +13,26 @@ import { supplierFromUrl } from "../_lib/supplier-from-url";
 /**
  * Client-side capture form for /app/materials/capture.
  *
- * Owns:
- *   - URL paste box (the "iPhone / no-PWA" fallback) — auto-detects the
- *     supplier from the hostname when a URL arrives.
- *   - Name / unit / displayed price.
- *   - "Price includes GST (15%)" toggle. Default ON because most NZ supplier
- *     storefronts show GST-inclusive prices. When ticked, divides by 1.15
- *     before submit so the row stored on `materials.default_unit_price`
- *     stays ex-GST (matching how the rest of the codebase treats prices).
- *   - Confirmation modal that previews the row before save.
+ * Three visual sections, top to bottom:
  *
- * Submit goes through the existing `createMaterial` server action — no new
- * write path, no API route, no new dependency.
+ *   A. Supplier product   — URL, supplier badge, product name
+ *   B. Price details      — unit, displayed price, GST toggle, ex-GST preview, notes
+ *   C. Review and save    — confirm modal with the final values
+ *
+ * Behaviour:
+ *   - Auto-detects supplier from the URL hostname (until the user types
+ *     in the supplier field manually, then we stop overwriting it).
+ *   - "Price includes GST, save ex-GST" toggle (default ON because most
+ *     NZ supplier storefronts display GST-inclusive). When ticked, the
+ *     value sent to `default_unit_price` is `displayed / 1.15`, so the
+ *     row stored stays ex-GST (matching how the rest of the codebase
+ *     treats prices — quote-level GST is added later via NZ_DEFAULTS).
+ *   - Submit goes through the existing `createMaterial` server action,
+ *     which redirects back to /app/materials on success. The Materials
+ *     page detects the referer and shows the "Material added — capture
+ *     another?" success banner.
+ *
+ * No new write paths, no API route, no new dependency, no scraping.
  */
 
 const NOTES_DEFAULT = "Captured manually. Confirm price with supplier.";
@@ -63,19 +72,19 @@ export function CaptureForm({
   const [supplier, setSupplier] = useState(initialSupplier);
   const [notes, setNotes] = useState(NOTES_DEFAULT);
   const [confirming, setConfirming] = useState(false);
-  // Tracks whether the user has typed in the supplier field — once they do,
-  // we stop overwriting it with hostname-derived auto-detection.
+  // Once the user types in the supplier field, stop auto-overwriting it
+  // from the URL hostname.
   const [supplierEdited, setSupplierEdited] = useState(false);
 
-  // When the URL changes (and the user hasn't manually overridden the
-  // supplier), re-derive the supplier from the new hostname.
+  // Re-derive supplier from URL hostname whenever URL changes, unless the
+  // user has manually set it.
   useEffect(() => {
     if (supplierEdited) return;
     const detected = supplierFromUrl(url);
     if (detected) setSupplier(detected);
   }, [url, supplierEdited]);
 
-  // GST math (client-side preview + save value).
+  // GST math for save value + the inline preview.
   const priceNum = Number(displayPrice);
   const isValidPrice = Number.isFinite(priceNum) && priceNum >= 0;
   const finalPrice = isValidPrice
@@ -87,6 +96,10 @@ export function CaptureForm({
   const canConfirm =
     name.trim().length > 0 && unit.trim().length > 0 && finalPrice !== null;
 
+  const detectedSupplier = supplierFromUrl(url);
+  const supplierBadgeLabel = detectedSupplier ?? "Other supplier";
+  const isKnownSupplier = detectedSupplier !== null;
+
   const [state, formAction] = useActionState<ActionResult, FormData>(
     createMaterial,
     ACTION_INITIAL,
@@ -94,7 +107,7 @@ export function CaptureForm({
   const errorMessage = state && "error" in state ? state.error : null;
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       {isPasteFallback && (
         <div
           data-testid="capture-paste-hint"
@@ -105,8 +118,9 @@ export function CaptureForm({
           </strong>
           <p className="mt-1 text-ink-100">
             Paste the supplier product URL below — works on iPhone and any
-            browser without the share sheet. After install, tap Share in your
-            supplier app and pick Tradies2Quote to skip this step.
+            browser without the share sheet. Once you install Tradies2Quote,
+            tap Share in your supplier app and pick Tradies2Quote to skip
+            this step.
           </p>
         </div>
       )}
@@ -121,125 +135,188 @@ export function CaptureForm({
         </div>
       )}
 
-      <Field label="Product URL" hint="From the supplier's product page.">
-        <input
-          type="url"
-          value={url}
-          onChange={(e) => setUrl(e.target.value)}
-          placeholder="https://www.mitre10.co.nz/shop/…"
-          data-testid="capture-url"
-          className="block w-full h-11 px-3 bg-ink-900 border border-ink-600 text-white placeholder:text-ink-500 outline-none focus:border-brand rounded-sm"
-        />
-      </Field>
+      {/* ──────────────────────────────────────────────────────────────────
+          A. Supplier product — URL, supplier badge, name
+          ──────────────────────────────────────────────────────────── */}
+      <Section
+        eyebrow="// step a"
+        title="Supplier product"
+        testId="capture-section-supplier"
+      >
+        <Field label="Product URL" hint="From the supplier's product page.">
+          <input
+            type="url"
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+            placeholder="https://www.mitre10.co.nz/shop/…"
+            data-testid="capture-url"
+            autoComplete="off"
+            className="block w-full h-11 rounded-sm border border-ink-600 bg-ink-900 px-3 text-white placeholder:text-ink-500 outline-none focus:border-brand"
+          />
+        </Field>
 
-      <Field label="Supplier">
-        <input
-          type="text"
-          value={supplier}
-          onChange={(e) => {
-            setSupplier(e.target.value);
-            setSupplierEdited(true);
-          }}
-          placeholder="Mitre 10, Bunnings, ITM, PlaceMakers…"
-          data-testid="capture-supplier"
-          className="block w-full h-11 px-3 bg-ink-900 border border-ink-600 text-white placeholder:text-ink-500 outline-none focus:border-brand rounded-sm"
-        />
-      </Field>
+        {url.trim().length > 0 && (
+          <div
+            data-testid="capture-supplier-badge"
+            className={[
+              "inline-flex items-center gap-2 rounded-sm border px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.25em]",
+              isKnownSupplier
+                ? "border-brand/40 bg-brand/10 text-brand"
+                : "border-ink-600 bg-ink-800 text-ink-300",
+            ].join(" ")}
+          >
+            <span
+              aria-hidden="true"
+              className={[
+                "h-1.5 w-1.5 rounded-full",
+                isKnownSupplier ? "bg-brand" : "bg-ink-400",
+              ].join(" ")}
+            />
+            {supplierBadgeLabel}
+          </div>
+        )}
 
-      <Field label="Product name" required>
-        <input
-          type="text"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="e.g. GIB Standard 10mm 2400x1200"
-          data-testid="capture-name"
-          required
-          className="block w-full h-11 px-3 bg-ink-900 border border-ink-600 text-white placeholder:text-ink-500 outline-none focus:border-brand rounded-sm"
-        />
-      </Field>
-
-      <div className="grid grid-cols-2 gap-3">
-        <Field label="Unit" required>
+        <Field label="Supplier" hint="Edit if the auto-detected name is wrong.">
           <input
             type="text"
-            list="capture-unit-suggestions"
-            value={unit}
-            onChange={(e) => setUnit(e.target.value)}
-            data-testid="capture-unit"
-            required
-            className="block w-full h-11 px-3 bg-ink-900 border border-ink-600 text-white placeholder:text-ink-500 outline-none focus:border-brand rounded-sm"
+            value={supplier}
+            onChange={(e) => {
+              setSupplier(e.target.value);
+              setSupplierEdited(true);
+            }}
+            placeholder="Mitre 10, Bunnings, ITM, PlaceMakers…"
+            data-testid="capture-supplier"
+            autoComplete="off"
+            className="block w-full h-11 rounded-sm border border-ink-600 bg-ink-900 px-3 text-white placeholder:text-ink-500 outline-none focus:border-brand"
           />
-          <datalist id="capture-unit-suggestions">
-            {UNIT_SUGGESTIONS.map((u) => (
-              <option key={u} value={u} />
-            ))}
-          </datalist>
         </Field>
-        <Field label="Displayed price" required>
+
+        <Field label="Product name" required>
           <input
-            type="number"
-            inputMode="decimal"
-            step="0.01"
-            min="0"
-            value={displayPrice}
-            onChange={(e) => setDisplayPrice(e.target.value)}
-            placeholder="0.00"
-            data-testid="capture-price"
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="e.g. GIB Standard 10mm 2400x1200"
+            data-testid="capture-name"
             required
-            className="block w-full h-11 px-3 bg-ink-900 border border-ink-600 text-white placeholder:text-ink-500 outline-none focus:border-brand rounded-sm"
+            className="block w-full h-11 rounded-sm border border-ink-600 bg-ink-900 px-3 text-white placeholder:text-ink-500 outline-none focus:border-brand"
           />
         </Field>
-      </div>
+      </Section>
 
-      <label className="flex items-start gap-3 text-sm text-ink-200 cursor-pointer">
-        <input
-          type="checkbox"
-          checked={incGst}
-          onChange={(e) => setIncGst(e.target.checked)}
-          data-testid="capture-inc-gst"
-          className="mt-0.5 h-4 w-4 accent-brand"
-        />
-        <span>
-          <span className="font-medium">Price includes GST (15%)</span>
-          <span className="block text-xs text-ink-400 mt-0.5">
-            Most NZ supplier sites display GST-inclusive prices. Untick if your
-            supplier shows ex-GST.
-          </span>
-        </span>
-      </label>
-
-      {isValidPrice && (
-        <div
-          data-testid="capture-price-preview"
-          className="rounded-sm border border-ink-700 bg-ink-800/60 p-3 font-mono text-xs text-ink-200"
-        >
-          {incGst
-            ? `// $${priceNum.toFixed(2)} inc GST → $${finalPrice!.toFixed(2)} ex GST (saved)`
-            : `// $${priceNum.toFixed(2)} ex GST (saved as-is)`}
+      {/* ──────────────────────────────────────────────────────────────────
+          B. Price details — unit, price, GST toggle, ex-GST preview, notes
+          ──────────────────────────────────────────────────────────── */}
+      <Section
+        eyebrow="// step b"
+        title="Price details"
+        testId="capture-section-price"
+      >
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <Field label="Unit" required>
+            <input
+              type="text"
+              list="capture-unit-suggestions"
+              value={unit}
+              onChange={(e) => setUnit(e.target.value)}
+              data-testid="capture-unit"
+              required
+              className="block w-full h-11 rounded-sm border border-ink-600 bg-ink-900 px-3 text-white placeholder:text-ink-500 outline-none focus:border-brand"
+            />
+            <datalist id="capture-unit-suggestions">
+              {UNIT_SUGGESTIONS.map((u) => (
+                <option key={u} value={u} />
+              ))}
+            </datalist>
+          </Field>
+          <Field label="Displayed price" required>
+            <input
+              type="number"
+              inputMode="decimal"
+              step="0.01"
+              min="0"
+              value={displayPrice}
+              onChange={(e) => setDisplayPrice(e.target.value)}
+              placeholder="0.00"
+              data-testid="capture-price"
+              required
+              className="block w-full h-11 rounded-sm border border-ink-600 bg-ink-900 px-3 text-white placeholder:text-ink-500 outline-none focus:border-brand"
+            />
+          </Field>
         </div>
-      )}
 
-      <Field label="Notes" hint="Hidden from clients.">
-        <textarea
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-          rows={2}
-          data-testid="capture-notes"
-          className="block w-full px-3 py-2 bg-ink-900 border border-ink-600 text-white placeholder:text-ink-500 outline-none focus:border-brand rounded-sm"
-        />
-      </Field>
+        <label className="flex items-start gap-3 cursor-pointer text-sm text-ink-200">
+          <input
+            type="checkbox"
+            checked={incGst}
+            onChange={(e) => setIncGst(e.target.checked)}
+            data-testid="capture-inc-gst"
+            className="mt-0.5 h-4 w-4 accent-brand"
+          />
+          <span>
+            <span className="font-medium">
+              Price includes GST, save ex-GST
+            </span>
+            <span className="block text-xs text-ink-400 mt-0.5">
+              Most NZ supplier sites display GST-inclusive prices. Untick if
+              your supplier shows ex-GST.
+            </span>
+          </span>
+        </label>
 
-      <div className="flex flex-col-reverse gap-3 pt-2 sm:flex-row sm:justify-end">
-        <button
-          type="button"
-          onClick={() => setConfirming(true)}
-          disabled={!canConfirm}
-          data-testid="capture-review"
-          className="t2q-btn-primary h-11 px-5 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          Review and save →
-        </button>
-      </div>
+        {isValidPrice && (
+          <div
+            data-testid="capture-price-preview"
+            className="rounded-sm border border-ink-700 bg-ink-800/60 p-3 font-mono text-xs text-ink-200"
+          >
+            {incGst
+              ? `// $${priceNum.toFixed(2)} inc GST → $${finalPrice!.toFixed(2)} ex GST (saved)`
+              : `// $${priceNum.toFixed(2)} ex GST (saved as-is)`}
+          </div>
+        )}
+
+        <Field label="Notes" hint="Hidden from clients.">
+          <textarea
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            rows={2}
+            data-testid="capture-notes"
+            className="block w-full rounded-sm border border-ink-600 bg-ink-900 px-3 py-2 text-white placeholder:text-ink-500 outline-none focus:border-brand"
+          />
+        </Field>
+      </Section>
+
+      {/* ──────────────────────────────────────────────────────────────────
+          C. Review and save
+          ──────────────────────────────────────────────────────────── */}
+      <Section
+        eyebrow="// step c"
+        title="Review and save"
+        testId="capture-section-review"
+      >
+        <p className="text-sm text-ink-300">
+          Open the review modal to double-check the values and save. Cancel
+          anytime — nothing is written until you confirm.
+        </p>
+        <div className="mt-2 flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <Link
+            href="/app/materials"
+            data-testid="capture-cancel"
+            className="inline-flex h-11 items-center justify-center rounded-sm border border-ink-700 bg-ink-800 px-5 font-mono text-xs uppercase tracking-[0.2em] text-ink-300 transition-colors hover:border-ink-500 hover:text-white"
+          >
+            ← Cancel
+          </Link>
+          <button
+            type="button"
+            onClick={() => setConfirming(true)}
+            disabled={!canConfirm}
+            data-testid="capture-review"
+            className="t2q-btn-primary h-11 px-5 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Review and save →
+          </button>
+        </div>
+      </Section>
 
       {confirming && (
         <div
@@ -303,7 +380,7 @@ export function CaptureForm({
                 type="button"
                 onClick={() => setConfirming(false)}
                 data-testid="capture-confirm-edit"
-                className="h-10 px-4 text-sm font-mono uppercase tracking-[0.2em] text-ink-300 hover:text-white"
+                className="h-11 px-4 text-sm font-mono uppercase tracking-[0.2em] text-ink-300 hover:text-white"
               >
                 Edit
               </button>
@@ -323,10 +400,39 @@ function SaveButton() {
       type="submit"
       disabled={pending}
       data-testid="capture-confirm-save"
-      className="t2q-btn-primary h-10 px-5 disabled:cursor-not-allowed disabled:opacity-60"
+      className="t2q-btn-primary h-11 px-5 disabled:cursor-not-allowed disabled:opacity-60"
     >
       {pending ? "Saving…" : "Add to materials"}
     </button>
+  );
+}
+
+function Section({
+  eyebrow,
+  title,
+  testId,
+  children,
+}: {
+  eyebrow: string;
+  title: string;
+  testId?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section
+      data-testid={testId}
+      className="t2q-card space-y-4 p-5 sm:space-y-5 sm:p-6"
+    >
+      <header>
+        <div className="font-mono text-[10px] uppercase tracking-[0.25em] text-brand">
+          {eyebrow}
+        </div>
+        <h2 className="mt-1 font-display text-base uppercase tracking-tight text-white sm:text-lg">
+          {title}
+        </h2>
+      </header>
+      {children}
+    </section>
   );
 }
 

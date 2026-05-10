@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Plus, Upload } from "@phosphor-icons/react/dist/ssr";
+import { CheckCircle, Plus, Upload } from "@phosphor-icons/react/dist/ssr";
 import { createClient } from "@/lib/supabase/server";
 import { NZ_DEFAULTS } from "@/lib/quote-defaults";
 import type { LibraryMaterial } from "@/lib/quote-types";
@@ -78,6 +79,8 @@ export default async function MaterialsPage() {
           </p>
         </div>
 
+        <CaptureSuccessBanner />
+
         <section
           data-testid="materials-capture-nudge"
           className="mt-6 rounded-sm border border-ink-700 bg-ink-800/60 p-4 sm:p-5"
@@ -90,12 +93,14 @@ export default async function MaterialsPage() {
             id="materials-capture-nudge-title"
             className="mt-2 font-display text-lg uppercase tracking-tight text-white sm:text-xl"
           >
-            Add a supplier product in seconds.
+            Supplier capture.
           </h2>
           <p className="mt-2 text-sm text-ink-300">
-            Install Tradies2Quote to share products from supplier websites
-            into your materials list. Or paste a Mitre 10, Bunnings, ITM, or
-            PlaceMakers URL — same result.
+            Share or paste supplier products into your materials list.
+          </p>
+          <p className="mt-1 text-xs text-ink-400">
+            Android PWA users can share supplier pages into Tradies2Quote.
+            iPhone users can paste the product URL.
           </p>
           <div className="mt-4">
             <Link
@@ -104,7 +109,7 @@ export default async function MaterialsPage() {
               className="t2q-btn-primary inline-flex h-11 px-5"
             >
               <Plus size={18} weight="bold" />
-              Capture from supplier
+              Capture supplier product
             </Link>
           </div>
         </section>
@@ -140,6 +145,64 @@ export default async function MaterialsPage() {
 
         <MaterialsList materials={materials} currency={currency} />
       </main>
+    </div>
+  );
+}
+
+/**
+ * Server component shown only when the user just landed back on
+ * /app/materials from the supplier-capture flow. Detects the immediate
+ * referrer; if it ends with /app/materials/capture, the new material has
+ * just been saved and we show a green success banner with a "Capture
+ * another" link. On any subsequent visit (refresh, navigation from
+ * elsewhere) the banner disappears — referer changes / clears.
+ *
+ * No new state, no cookies, no DB read. Pure server-rendered banner
+ * that re-uses information the request already carries.
+ */
+async function CaptureSuccessBanner() {
+  const h = await headers();
+  const referer = h.get("referer") ?? "";
+  let cameFromCapture = false;
+  try {
+    const path = new URL(referer).pathname;
+    cameFromCapture = path === "/app/materials/capture";
+  } catch {
+    // Malformed or missing referer — banner stays hidden.
+  }
+  if (!cameFromCapture) return null;
+
+  return (
+    <div
+      role="status"
+      data-testid="materials-capture-success"
+      className="mt-6 flex flex-col gap-3 rounded-sm border border-brand/40 bg-brand/10 p-4 sm:flex-row sm:items-center sm:justify-between"
+    >
+      <div className="flex items-start gap-3">
+        <CheckCircle
+          size={22}
+          weight="fill"
+          className="text-brand mt-0.5 shrink-0"
+          aria-hidden="true"
+        />
+        <div>
+          <p className="font-display text-sm uppercase tracking-tight text-white">
+            Material added.
+          </p>
+          <p className="mt-0.5 text-xs text-ink-300">
+            Your library now has one more item. Quotes will use it instead of
+            an AI estimate.
+          </p>
+        </div>
+      </div>
+      <Link
+        href="/app/materials/capture"
+        data-testid="materials-capture-success-again"
+        className="inline-flex h-9 items-center gap-2 self-start rounded-sm border border-brand bg-transparent px-3 font-mono text-[10px] uppercase tracking-[0.25em] text-brand transition-colors hover:bg-brand hover:text-ink-900 sm:self-auto"
+      >
+        <Plus size={14} weight="bold" />
+        Capture another
+      </Link>
     </div>
   );
 }
