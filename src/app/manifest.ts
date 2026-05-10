@@ -54,5 +54,23 @@ export default function manifest(): MetadataRoute.Manifest {
         purpose: "maskable",
       },
     ],
+    // Web Share Target — registers Tradies2Quote as a target in the OS
+    // share sheet (Android Chrome, desktop Chrome PWA installs). The OS
+    // hands the page `?title=&text=&url=` query params, which the
+    // /app/materials/capture page reads and prefills into the capture form.
+    // Method GET is intentional: no service-worker mediation needed,
+    // no file/multipart handling. iOS Safari does NOT implement this part
+    // of the spec — that's why the capture page also has a paste-URL
+    // fallback for iPhone users.
+    share_target: {
+      action: "/app/materials/capture",
+      method: "GET",
+      enctype: "application/x-www-form-urlencoded",
+      params: {
+        title: "title",
+        text: "text",
+        url: "url",
+      },
+    },
   };
 }

@@ -78,6 +78,37 @@ export default async function MaterialsPage() {
           </p>
         </div>
 
+        <section
+          data-testid="materials-capture-nudge"
+          className="mt-6 rounded-sm border border-ink-700 bg-ink-800/60 p-4 sm:p-5"
+          aria-labelledby="materials-capture-nudge-title"
+        >
+          <div className="font-mono text-[10px] uppercase tracking-[0.25em] text-brand">
+            {"// supplier capture"}
+          </div>
+          <h2
+            id="materials-capture-nudge-title"
+            className="mt-2 font-display text-lg uppercase tracking-tight text-white sm:text-xl"
+          >
+            Add a supplier product in seconds.
+          </h2>
+          <p className="mt-2 text-sm text-ink-300">
+            Install Tradies2Quote to share products from supplier websites
+            into your materials list. Or paste a Mitre 10, Bunnings, ITM, or
+            PlaceMakers URL — same result.
+          </p>
+          <div className="mt-4">
+            <Link
+              href="/app/materials/capture"
+              data-testid="materials-capture-link"
+              className="t2q-btn-primary inline-flex h-11 px-5"
+            >
+              <Plus size={18} weight="bold" />
+              Capture from supplier
+            </Link>
+          </div>
+        </section>
+
         <SupplierShortcuts />
 
         <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
