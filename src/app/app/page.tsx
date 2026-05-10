@@ -9,8 +9,7 @@ import {
   quoteNumber,
 } from "@/lib/quote-defaults";
 import type { QuoteData, QuoteStatus } from "@/lib/quote-types";
-import { InstallAppButton } from "@/app/_components/InstallAppButton";
-import { signOutAction } from "./actions";
+import { AppHeader } from "./_components/AppHeader";
 
 export const metadata: Metadata = {
   title: "Dashboard",
@@ -56,40 +55,7 @@ export default async function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-ink-900 text-white">
-      <header className="border-b border-ink-700 bg-ink-950">
-        <div className="mx-auto flex h-14 max-w-3xl items-center justify-between px-4 sm:px-6">
-          <span className="font-display text-lg uppercase tracking-tight">
-            tradies<span className="text-brand">2</span>Quote
-          </span>
-          <div className="flex items-center gap-4">
-            <Link
-              href="/app/clients"
-              data-testid="dashboard-nav-clients"
-              className="font-mono text-xs uppercase tracking-[0.2em] text-ink-300 hover:text-white"
-            >
-              Clients
-            </Link>
-            <Link
-              href="/app/settings"
-              data-testid="dashboard-nav-settings"
-              className="font-mono text-xs uppercase tracking-[0.2em] text-ink-300 hover:text-white"
-            >
-              Settings
-            </Link>
-            {/* Renders nothing when the app is already installed or the
-                browser can't install — see InstallAppButton.tsx. */}
-            <InstallAppButton />
-            <form action={signOutAction}>
-              <button
-                type="submit"
-                className="font-mono text-xs uppercase tracking-[0.2em] text-ink-300 hover:text-white"
-              >
-                Sign out
-              </button>
-            </form>
-          </div>
-        </div>
-      </header>
+      <AppHeader />
 
       <main className="mx-auto max-w-3xl px-4 py-10 sm:px-6 sm:py-14">
         <div className="mb-6">

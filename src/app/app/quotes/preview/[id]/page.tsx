@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import type { LibraryMaterial, QuoteData, QuoteStatus } from "@/lib/quote-types";
 import { quoteNumber } from "@/lib/quote-defaults";
 import type { ComplianceLineItem, ComplianceReview } from "@/lib/compliance";
+import { AppHeader } from "../../../_components/AppHeader";
 import { QuoteGenerator } from "./_components/QuoteGenerator";
 import { QuoteEditor } from "./_components/QuoteEditor";
 import { CompliancePanel } from "./_components/CompliancePanel";
@@ -67,25 +67,12 @@ export default async function QuotePreviewPage({
 
   return (
     <div className="min-h-screen bg-ink-900 text-white">
-      <header className="border-b border-ink-700 bg-ink-950">
-        <div className="mx-auto flex h-14 max-w-3xl items-center justify-between px-4 sm:px-6">
-          <Link
-            href="/app"
-            data-testid="preview-back"
-            className="font-mono text-xs uppercase tracking-[0.2em] text-ink-300 hover:text-white"
-          >
-            ← Dashboard
-          </Link>
-          <span
-            data-testid="preview-quote-number"
-            className="font-mono text-xs uppercase tracking-[0.2em] text-ink-400"
-          >
-            {headerNumber}
-          </span>
-        </div>
-      </header>
+      <AppHeader context={headerNumber} />
 
-      <main className="mx-auto max-w-3xl px-4 py-10 sm:px-6 sm:py-14">
+      <main
+        data-preview-quote-number={headerNumber}
+        className="mx-auto max-w-3xl px-4 py-10 sm:px-6 sm:py-14"
+      >
         <div className="mb-8">
           <div className="t2q-section-label mb-3">{"// step 2 of 3"}</div>
           <h1 className="font-display text-3xl uppercase tracking-tight sm:text-4xl">

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { AppHeader } from "../../_components/AppHeader";
 import { QuoteInputTabs } from "./_components/QuoteInputTabs";
 
 export const metadata: Metadata = {
@@ -20,20 +20,7 @@ export default async function NewQuotePage() {
 
   return (
     <div className="min-h-screen bg-ink-900 text-white">
-      <header className="border-b border-ink-700 bg-ink-950">
-        <div className="mx-auto flex h-14 max-w-3xl items-center justify-between px-4 sm:px-6">
-          <Link
-            href="/app"
-            data-testid="new-quote-back"
-            className="font-mono text-xs uppercase tracking-[0.2em] text-ink-300 hover:text-white"
-          >
-            ← Dashboard
-          </Link>
-          <span className="font-mono text-xs uppercase tracking-[0.2em] text-ink-400">
-            New quote
-          </span>
-        </div>
-      </header>
+      <AppHeader context="New quote" />
 
       <main className="mx-auto max-w-3xl px-4 py-10 sm:px-6 sm:py-14">
         <div className="mb-8">

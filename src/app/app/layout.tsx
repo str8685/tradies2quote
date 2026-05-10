@@ -15,10 +15,16 @@ import { SideMeasureTape } from "../_components/app/SideMeasureTape";
  * component (`await supabase.auth.getUser()` → `redirect("/login")`).
  *
  * The grid kicks in at `lg`. Below `lg`, the wrapper is a plain block
- * `<div>` and `children` render full-width as before. The 24px
- * tape-rail column is fixed-width; `min-w-0` on the content column
- * prevents children with intrinsic min-content from overflowing the
- * second grid track.
+ * `<div>` and `children` render full-width as before.
+ *
+ * Wave 9.1 — added a mirror 24px spacer column on the right so the
+ * tape rail no longer pushes the centered content track 12px off the
+ * visual midline. Without the spacer the grid was `24px_1fr`, which
+ * meant `mx-auto` inside the content track centered around (viewport−24)/2,
+ * not viewport/2. With `24px_1fr_24px`, the content track is symmetric.
+ *
+ * `min-w-0` on the content column prevents children with intrinsic
+ * min-content from overflowing the middle grid track.
  */
 export default function AppLayout({
   children,
@@ -26,9 +32,10 @@ export default function AppLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen lg:grid lg:grid-cols-[24px_1fr]">
+    <div className="min-h-screen lg:grid lg:grid-cols-[24px_1fr_24px]">
       <SideMeasureTape />
       <div className="min-w-0">{children}</div>
+      <div aria-hidden="true" className="hidden lg:block" />
     </div>
   );
 }

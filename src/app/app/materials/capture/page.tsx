@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { AppHeader } from "../../_components/AppHeader";
 import { CaptureForm } from "./_components/CaptureForm";
 import { cleanSharedTitle, supplierFromUrl } from "./_lib/supplier-from-url";
 
@@ -63,22 +63,9 @@ export default async function CapturePage({
 
   return (
     <div className="min-h-screen bg-ink-900 text-white">
-      <header className="border-b border-ink-700 bg-ink-950">
-        <div className="mx-auto flex h-14 w-full max-w-[720px] items-center justify-between gap-4 px-4 sm:px-6">
-          <Link
-            href="/app/materials"
-            data-testid="capture-back"
-            className="font-mono text-xs uppercase tracking-[0.2em] text-ink-300 hover:text-white"
-          >
-            ← Materials
-          </Link>
-          <span className="font-mono text-xs uppercase tracking-[0.2em] text-ink-400">
-            Supplier capture
-          </span>
-        </div>
-      </header>
+      <AppHeader context="Materials · Capture" />
 
-      <main className="mx-auto w-full max-w-[720px] px-4 py-8 sm:px-6 sm:py-14">
+      <main className="mx-auto w-full max-w-3xl px-4 py-10 sm:px-6 sm:py-14">
         <div className="mb-8">
           <div className="t2q-section-label mb-3">{"// from your supplier"}</div>
           <h1 className="font-display text-3xl uppercase tracking-tight sm:text-4xl">

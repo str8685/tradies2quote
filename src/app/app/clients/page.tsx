@@ -7,6 +7,7 @@ import {
   Plus,
   UsersThree,
 } from "@phosphor-icons/react/dist/ssr";
+import { AppHeader } from "../_components/AppHeader";
 
 export const metadata: Metadata = {
   title: "Clients",
@@ -36,31 +37,16 @@ export default async function ClientsPage() {
   if (!user) redirect("/login");
 
   return (
-    <div className="relative min-h-screen text-white">
-      <div className="pointer-events-none absolute inset-0 t2q-grid-bg opacity-20" />
+    <div className="min-h-screen bg-ink-900 text-white">
+      <AppHeader context="Clients" />
 
-      <header className="relative z-10 border-b border-ink-700 bg-ink-950">
-        <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-4 sm:px-6">
-          <Link
-            href="/app"
-            data-testid="clients-back"
-            className="font-mono text-xs uppercase tracking-[0.2em] text-ink-300 hover:text-white"
-          >
-            ← Dashboard
-          </Link>
-          <span className="font-mono text-xs uppercase tracking-[0.2em] text-ink-400">
-            Clients
-          </span>
-        </div>
-      </header>
-
-      <div className="relative mx-auto max-w-5xl px-4 py-10 sm:px-6 sm:py-14">
+      <main className="mx-auto max-w-3xl px-4 py-10 sm:px-6 sm:py-14">
         <div className="mb-8">
           <div className="t2q-section-label mb-3">{"// your client list"}</div>
-          <h1 className="font-display text-4xl uppercase tracking-tighter leading-[0.95] sm:text-5xl">
+          <h1 className="font-display text-3xl uppercase tracking-tight sm:text-4xl">
             Clients.
           </h1>
-          <p className="mt-3 text-base leading-relaxed text-ink-300 sm:text-lg">
+          <p className="mt-3 text-sm text-ink-300 sm:text-base">
             Everyone you&apos;ve quoted, billed, or chased. Your address book
             lives here once your first quote goes out.
           </p>
@@ -118,7 +104,7 @@ export default async function ClientsPage() {
             Start your first quote
           </Link>
         </div>
-      </div>
+      </main>
     </div>
   );
 }

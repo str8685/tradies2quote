@@ -6,6 +6,7 @@ import { CheckCircle, Plus, Upload } from "@phosphor-icons/react/dist/ssr";
 import { createClient } from "@/lib/supabase/server";
 import { NZ_DEFAULTS } from "@/lib/quote-defaults";
 import type { LibraryMaterial } from "@/lib/quote-types";
+import { AppHeader } from "../_components/AppHeader";
 import { SupplierShortcuts } from "./_components/SupplierShortcuts";
 import { MaterialsList } from "./_components/MaterialsList";
 
@@ -53,20 +54,7 @@ export default async function MaterialsPage() {
 
   return (
     <div className="min-h-screen bg-ink-900 text-white">
-      <header className="border-b border-ink-700 bg-ink-950">
-        <div className="mx-auto flex h-14 max-w-3xl items-center justify-between px-4 sm:px-6">
-          <Link
-            href="/app"
-            data-testid="materials-back"
-            className="font-mono text-xs uppercase tracking-[0.2em] text-ink-300 hover:text-white"
-          >
-            ← Dashboard
-          </Link>
-          <span className="font-mono text-xs uppercase tracking-[0.2em] text-ink-400">
-            Materials
-          </span>
-        </div>
-      </header>
+      <AppHeader context="Materials" />
 
       <main className="mx-auto max-w-3xl px-4 py-10 sm:px-6 sm:py-14">
         <div className="mb-4">
