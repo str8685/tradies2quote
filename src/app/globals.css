@@ -376,3 +376,107 @@ h1, h2, h3, h4, h5 {
     animation: none;
   }
 }
+
+/* =========================================================================
+   LIGHT THEME — "site-safe" mode for bright sunlight + older eyes.
+   Opt-in: every rule is scoped to the `[data-theme="light"]` selector
+   on the root <html>. With no attribute (or `data-theme="dark"`), every
+   rule below is inert — the default dark design renders exactly as it
+   did before this block existed.
+   Activated by `ThemeToggle` writing `dataset.theme = "light"` on the
+   root <html>. See src/app/_components/landing/ThemeToggle.tsx.
+   ========================================================================= */
+[data-theme="light"] {
+  color-scheme: light;
+}
+[data-theme="light"] body {
+  background: #F5F4EE;
+  color: #0A0A0A;
+}
+
+/* Surfaces */
+[data-theme="light"] .bg-ink-950 { background-color: #EEEDE6 !important; }
+[data-theme="light"] .bg-ink-900 { background-color: #F5F4EE !important; }
+[data-theme="light"] .bg-ink-800 { background-color: #FFFFFF !important; }
+[data-theme="light"] .bg-ink-700 { background-color: #F0EFE9 !important; }
+[data-theme="light"] .bg-ink-600 { background-color: #E0DFD7 !important; }
+
+/* Translucent surfaces */
+[data-theme="light"] .bg-ink-800\/70 { background-color: rgba(255,255,255,0.92) !important; }
+[data-theme="light"] .bg-ink-800\/60 { background-color: rgba(255,255,255,0.85) !important; }
+[data-theme="light"] .bg-ink-900\/95 { background-color: rgba(245,244,238,0.96) !important; }
+[data-theme="light"] .bg-ink-950\/95 { background-color: rgba(238,237,230,0.96) !important; }
+
+/* Borders */
+[data-theme="light"] .border-ink-600 { border-color: #C9C8C0 !important; }
+[data-theme="light"] .border-ink-700 { border-color: #D8D7CE !important; }
+
+/* Text */
+[data-theme="light"] .text-white   { color: #0A0A0A !important; }
+[data-theme="light"] .text-ink-100 { color: #1F1F1F !important; }
+[data-theme="light"] .text-ink-200 { color: #2A2A2A !important; }
+[data-theme="light"] .text-ink-300 { color: #444444 !important; }
+[data-theme="light"] .text-ink-400 { color: #5C5C5C !important; }
+[data-theme="light"] .text-ink-500 { color: #6E6E6E !important; }
+
+[data-theme="light"] h1,
+[data-theme="light"] h2,
+[data-theme="light"] h3 { color: #0A0A0A; }
+[data-theme="light"] ::selection { background: #FF5F15; color: #FFFFFF; }
+
+/* Grid lines stay visible on cream */
+[data-theme="light"] .t2q-grid-bg {
+  background-image:
+    linear-gradient(to right, rgba(255,95,21,0.10) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255,95,21,0.10) 1px, transparent 1px);
+}
+
+/* Aurora muted on light so it doesn't muddy the page */
+[data-theme="light"] .t2q-aurora { opacity: 0.55; }
+
+/* Cursor spotlight more subtle on cream */
+[data-theme="light"] [data-testid="cursor-spotlight"] {
+  mix-blend-mode: multiply !important;
+  opacity: 0.6;
+}
+
+/* Glass card flips to white-tinted */
+[data-theme="light"] .t2q-glass-card {
+  background: rgba(255, 255, 255, 0.78) !important;
+  border-color: rgba(10, 10, 10, 0.12) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.6),
+    0 18px 36px -16px rgba(10, 10, 10, 0.18);
+}
+
+/* Cards + buttons */
+[data-theme="light"] .t2q-card {
+  background-color: #FFFFFF !important;
+  border-color: #C9C8C0 !important;
+}
+[data-theme="light"] .t2q-shadow-brutal        { box-shadow: 5px 5px 0 0 #FF5F15; }
+[data-theme="light"] .t2q-shadow-brutal-yellow { box-shadow: 5px 5px 0 0 #FFEA00; }
+[data-theme="light"] .t2q-btn-ghost {
+  border-color: #0A0A0A !important;
+  color: #0A0A0A !important;
+}
+[data-theme="light"] .t2q-btn-ghost:hover {
+  background: #0A0A0A !important;
+  color: #FFFFFF !important;
+}
+
+/* Live ticker card flips to white */
+[data-theme="light"] [data-testid="live-ticker"] > div > div {
+  background-color: #FFFFFF !important;
+  border-color: #C9C8C0 !important;
+}
+
+/* Footer dark block flips to inverted card */
+[data-theme="light"] footer { background-color: #EEEDE6 !important; }
+
+/* Theme toggle adapts to light bg */
+[data-theme="light"] [data-testid="theme-toggle"] {
+  background-color: #FFFFFF !important;
+  border-color: #C9C8C0 !important;
+  color: #0A0A0A !important;
+}
