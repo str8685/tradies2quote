@@ -1,4 +1,5 @@
 import { SideMeasureTape } from "../_components/app/SideMeasureTape";
+import { MobileBottomNav } from "./_components/MobileBottomNav";
 
 /**
  * Visual layout for /app/* routes.
@@ -6,7 +7,8 @@ import { SideMeasureTape } from "../_components/app/SideMeasureTape";
  * Adds a thin decorative measuring-tape rail on the far-left edge at
  * desktop breakpoints (≥lg). Mobile stays unchanged — `SideMeasureTape`
  * is `hidden lg:block`, so it consumes no space and renders no element
- * on small screens.
+ * on small screens. The rail is also `pointer-events: none` via globals.css
+ * so it can never block clicks even if its painting changes.
  *
  * Strictly visual. This layout does NOT call `supabase.auth.getUser()`,
  * does NOT redirect, does NOT fetch data. Auth gating is unchanged and
@@ -14,17 +16,14 @@ import { SideMeasureTape } from "../_components/app/SideMeasureTape";
  * as defense-in-depth at the top of each `/app/*` page's server
  * component (`await supabase.auth.getUser()` → `redirect("/login")`).
  *
- * The grid kicks in at `lg`. Below `lg`, the wrapper is a plain block
- * `<div>` and `children` render full-width as before.
+ * Wave 9.1 — grid balanced (`24px_1fr_24px`) so the tape rail no longer
+ * pushed centered content 12 px off the visual midline.
  *
- * Wave 9.1 — added a mirror 24px spacer column on the right so the
- * tape rail no longer pushes the centered content track 12px off the
- * visual midline. Without the spacer the grid was `24px_1fr`, which
- * meant `mx-auto` inside the content track centered around (viewport−24)/2,
- * not viewport/2. With `24px_1fr_24px`, the content track is symmetric.
- *
- * `min-w-0` on the content column prevents children with intrinsic
- * min-content from overflowing the middle grid track.
+ * Wave 10 — sticky bottom nav for mobile (`<MobileBottomNav />`) and
+ * `pb-[88px] sm:pb-0` on the content track so the nav never covers the
+ * last page row. The app grid background (`.t2q-app-grid-bg`) is applied
+ * here too so every /app/* page sits on the same subtle surface,
+ * matching the landing's visual rhythm.
  */
 export default function AppLayout({
   children,
@@ -32,10 +31,11 @@ export default function AppLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen lg:grid lg:grid-cols-[24px_1fr_24px]">
+    <div className="t2q-app-grid-bg min-h-screen lg:grid lg:grid-cols-[24px_1fr_24px]">
       <SideMeasureTape />
-      <div className="min-w-0">{children}</div>
+      <div className="min-w-0 pb-[88px] sm:pb-0">{children}</div>
       <div aria-hidden="true" className="hidden lg:block" />
+      <MobileBottomNav />
     </div>
   );
 }

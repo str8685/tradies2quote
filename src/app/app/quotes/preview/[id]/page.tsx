@@ -66,7 +66,7 @@ export default async function QuotePreviewPage({
   }));
 
   return (
-    <div className="min-h-screen bg-ink-900 text-white">
+    <div className="min-h-screen text-white">
       <AppHeader context={headerNumber} />
 
       <main

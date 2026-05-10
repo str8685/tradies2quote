@@ -1,0 +1,90 @@
+import type { Metadata } from "next";
+import { redirect } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
+import { quoteNumber } from "@/lib/quote-defaults";
+import type { QuoteData, QuoteStatus } from "@/lib/quote-types";
+import { AppHeader } from "../_components/AppHeader";
+import {
+  QuotesListClient,
+  type QuoteListRow,
+} from "../_components/QuotesListClient";
+
+export const metadata: Metadata = {
+  title: "Quotes",
+};
+
+export const dynamic = "force-dynamic";
+
+/**
+ * /app/quotes — full quote-management hub.
+ *
+ * Loads up to 100 of the user's most recent quotes (excluding those soft-
+ * deleted), passes them to the `<QuotesListClient />` which handles
+ * search, status-filter tabs, archive/restore/delete actions, and
+ * Load-more pagination client-side.
+ *
+ * Why server-side filter on `deleted_at` only and not on `archived_at`:
+ * the Archived filter tab needs to fetch archived rows too. Excluding
+ * deleted rows server-side keeps malicious / abandoned data out of the
+ * client; partitioning Active vs Archived stays client-side so the user
+ * doesn't have to refetch when toggling tabs.
+ */
+const PAGE_FETCH_LIMIT = 100;
+
+export default async function QuotesPage() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const { data: rows } = await supabase
+    .from("quotes")
+    .select(
+      "id, status, total_amount, currency, quote_data, created_at, archived_at",
+    )
+    .eq("user_id", user.id)
+    .is("deleted_at", null)
+    .order("created_at", { ascending: false })
+    .limit(PAGE_FETCH_LIMIT);
+
+  const list: QuoteListRow[] = (rows ?? []).map((q) => {
+    const qd = q.quote_data as QuoteData | null;
+    const jobSummary =
+      (qd?.job_summary as string | undefined) ??
+      (qd?.line_items?.[0]?.description as string | undefined) ??
+      "";
+    return {
+      id: q.id,
+      status: (q.status ?? "draft") as QuoteStatus,
+      total: Number(q.total_amount) || 0,
+      currency: (q.currency as string) ?? "NZD",
+      clientName: qd?.client?.name ?? "—",
+      jobSummary,
+      number: quoteNumber(q.id, q.created_at),
+      created_at: q.created_at,
+      archived_at: q.archived_at,
+    };
+  });
+
+  return (
+    <div className="min-h-screen text-white">
+      <AppHeader context="Quotes" />
+
+      <main className="mx-auto max-w-3xl px-4 py-10 sm:px-6 sm:py-14">
+        <div className="mb-8">
+          <div className="t2q-section-label mb-3">{"// your quote library"}</div>
+          <h1 className="font-display text-3xl uppercase tracking-tight sm:text-4xl">
+            Quotes.
+          </h1>
+          <p className="mt-3 text-sm text-ink-300 sm:text-base">
+            Search, filter, archive — everything you&apos;ve quoted, billed, or
+            chased lives here.
+          </p>
+        </div>
+
+        <QuotesListClient rows={list} isHub />
+      </main>
+    </div>
+  );
+}

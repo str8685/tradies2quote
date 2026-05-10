@@ -37,7 +37,7 @@ export default async function ClientsPage() {
   if (!user) redirect("/login");
 
   return (
-    <div className="min-h-screen bg-ink-900 text-white">
+    <div className="min-h-screen text-white">
       <AppHeader context="Clients" />
 
       <main className="mx-auto max-w-3xl px-4 py-10 sm:px-6 sm:py-14">
@@ -81,7 +81,7 @@ export default async function ClientsPage() {
 
         <div
           data-testid="clients-empty-state"
-          className="mt-10 rounded-sm border border-dashed border-ink-700 bg-ink-800/60 px-8 py-16 text-center"
+          className="t2q-premium-card-static mt-10 px-8 py-16 text-center"
         >
           <UsersThree
             size={48}

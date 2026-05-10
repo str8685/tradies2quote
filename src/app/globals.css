@@ -480,3 +480,279 @@ h1, h2, h3, h4, h5 {
   border-color: #C9C8C0 !important;
   color: #0A0A0A !important;
 }
+
+/* =========================================================================
+   WAVE 10 — App-shell utilities and light-mode readability fixes.
+   All new utilities live below this banner. Dark-mode defaults are
+   designed first; every rule that needs adjusting for light mode has a
+   paired `[data-theme="light"]` override later in the same section.
+   ========================================================================= */
+
+/* ─── App grid background ─────────────────────────────────────────────────
+   Softer cousin of `.t2q-grid-bg`. Used as the canvas behind /app/* so the
+   logged-in app feels like the same visual system as the landing without
+   being as loud as the marketing page's grid. */
+.t2q-app-grid-bg {
+  background-color: #0F0F0F;
+  background-image:
+    linear-gradient(to right,  rgba(255, 95, 21, 0.045) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 95, 21, 0.045) 1px, transparent 1px);
+  background-size: 64px 64px, 64px 64px;
+}
+[data-theme="light"] .t2q-app-grid-bg {
+  background-color: #F5F4EE;
+  background-image:
+    linear-gradient(to right,  rgba(255, 95, 21, 0.07) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 95, 21, 0.07) 1px, transparent 1px);
+}
+
+/* ─── Premium card ───────────────────────────────────────────────────────
+   Drop-in replacement for the plain `rounded-sm border border-ink-700
+   bg-ink-800` pattern used across /app/*. Adds:
+     - a subtle inner highlight along the top edge
+     - a layered shadow for depth
+     - a 1px gradient border at brand-orange + cream on hover
+     - hover-only translate (no JS, GPU-cheap)
+   Designed to feel premium without looking decorative — uses the existing
+   ink + brand tokens, same border-radius as the rest of the app. */
+.t2q-premium-card {
+  position: relative;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.025) 0%, rgba(255, 255, 255, 0) 50%),
+    #1A1A1A;
+  border: 1px solid #2B2B2B;
+  border-radius: 0.125rem;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 1px 0 rgba(255, 255, 255, 0.02),
+    0 10px 24px -16px rgba(0, 0, 0, 0.5);
+  transition: border-color 180ms ease, box-shadow 240ms ease, transform 220ms ease;
+}
+.t2q-premium-card:hover {
+  border-color: rgba(255, 95, 21, 0.32);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.07),
+    0 1px 0 rgba(255, 255, 255, 0.03),
+    0 18px 36px -18px rgba(255, 95, 21, 0.22),
+    0 24px 48px -24px rgba(0, 0, 0, 0.55);
+  transform: translateY(-1px);
+}
+@media (prefers-reduced-motion: reduce) {
+  .t2q-premium-card { transition: none; }
+  .t2q-premium-card:hover { transform: none; }
+}
+[data-theme="light"] .t2q-premium-card {
+  background:
+    linear-gradient(180deg, #FFFFFF 0%, #FCFBF6 100%);
+  border-color: #D8D7CE;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.85),
+    0 1px 0 rgba(10, 10, 10, 0.02),
+    0 10px 24px -16px rgba(10, 10, 10, 0.10);
+}
+[data-theme="light"] .t2q-premium-card:hover {
+  border-color: rgba(255, 95, 21, 0.45);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    0 1px 0 rgba(10, 10, 10, 0.03),
+    0 18px 36px -18px rgba(255, 95, 21, 0.28),
+    0 24px 48px -24px rgba(10, 10, 10, 0.16);
+}
+
+/* ─── Static premium card (no hover lift) ────────────────────────────────
+   Same surface as `.t2q-premium-card` but no transform on hover. Use this
+   for non-clickable sections (settings groups, totals card, etc.) where
+   the lift feels wrong. */
+.t2q-premium-card-static {
+  position: relative;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.025) 0%, rgba(255, 255, 255, 0) 50%),
+    #1A1A1A;
+  border: 1px solid #2B2B2B;
+  border-radius: 0.125rem;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 1px 0 rgba(255, 255, 255, 0.02),
+    0 10px 24px -16px rgba(0, 0, 0, 0.5);
+}
+[data-theme="light"] .t2q-premium-card-static {
+  background:
+    linear-gradient(180deg, #FFFFFF 0%, #FCFBF6 100%);
+  border-color: #D8D7CE;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.85),
+    0 1px 0 rgba(10, 10, 10, 0.02),
+    0 10px 24px -16px rgba(10, 10, 10, 0.10);
+}
+
+/* ─── Nav tabs ───────────────────────────────────────────────────────────
+   Used by AppHeader (desktop) and MobileBottomNav (mobile). The active
+   indicator pivots on `aria-current="page"` which Next's <Link> sets when
+   we mirror the matched route. */
+.t2q-nav-tab {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0 0.875rem;
+  height: 44px;
+  border-radius: 0.125rem;
+  font-family: var(--font-archivo-black), "Archivo Black", system-ui, sans-serif;
+  font-size: 0.8125rem;
+  letter-spacing: -0.01em;
+  text-transform: uppercase;
+  color: #A8A8A8;
+  border: 1px solid transparent;
+  transition: color 150ms ease, background-color 150ms ease, border-color 150ms ease;
+}
+.t2q-nav-tab:hover {
+  color: #FFFFFF;
+  background-color: rgba(255, 255, 255, 0.04);
+}
+.t2q-nav-tab[aria-current="page"] {
+  color: #FFFFFF;
+  background-color: rgba(255, 95, 21, 0.12);
+  border-color: rgba(255, 95, 21, 0.35);
+}
+.t2q-nav-tab[aria-current="page"]::after {
+  content: "";
+  position: absolute;
+  left: 0.875rem;
+  right: 0.875rem;
+  bottom: -1px;
+  height: 2px;
+  background: #FF5F15;
+  border-radius: 1px;
+}
+[data-theme="light"] .t2q-nav-tab { color: #5C5C5C; }
+[data-theme="light"] .t2q-nav-tab:hover {
+  color: #0A0A0A;
+  background-color: rgba(10, 10, 10, 0.04);
+}
+[data-theme="light"] .t2q-nav-tab[aria-current="page"] {
+  color: #0A0A0A;
+  background-color: rgba(255, 95, 21, 0.10);
+  border-color: rgba(255, 95, 21, 0.40);
+}
+
+/* ─── Mobile bottom-nav tile ─────────────────────────────────────────────
+   Used only inside <MobileBottomNav>. Stacked icon over label. Active state
+   matches the desktop tab — same brand-orange affordance, vertical bar
+   indicator on top so it reads cleanly when pinned to the screen bottom. */
+.t2q-bottomnav-tile {
+  position: relative;
+  display: inline-flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.125rem;
+  min-height: 60px;
+  padding: 0.25rem 0.5rem;
+  font-family: var(--font-ibm-plex-mono), "IBM Plex Mono", monospace;
+  font-size: 0.6875rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #A8A8A8;
+  transition: color 150ms ease;
+}
+.t2q-bottomnav-tile:hover { color: #FFFFFF; }
+.t2q-bottomnav-tile[aria-current="page"] {
+  color: #FF5F15;
+}
+.t2q-bottomnav-tile[aria-current="page"]::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 22%;
+  right: 22%;
+  height: 2px;
+  background: #FF5F15;
+  border-radius: 0 0 1px 1px;
+}
+[data-theme="light"] .t2q-bottomnav-tile { color: #5C5C5C; }
+[data-theme="light"] .t2q-bottomnav-tile:hover { color: #0A0A0A; }
+[data-theme="light"] .t2q-bottomnav-tile[aria-current="page"] { color: #C04A0A; }
+
+/* ─── Mobile bottom-nav bar ─────────────────────────────────────────────
+   The container itself. Pinned to viewport bottom on mobile, hidden on
+   desktop. `pb` value swallows iOS home-indicator safe area. */
+.t2q-bottomnav-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: stretch;
+  background: rgba(10, 10, 10, 0.92);
+  border-top: 1px solid #1F1F1F;
+  backdrop-filter: blur(12px) saturate(140%);
+  -webkit-backdrop-filter: blur(12px) saturate(140%);
+  padding-bottom: env(safe-area-inset-bottom, 0);
+  z-index: 40;
+}
+[data-theme="light"] .t2q-bottomnav-bar {
+  background: rgba(255, 255, 255, 0.92) !important;
+  border-top-color: #D8D7CE !important;
+}
+
+/* =========================================================================
+   WAVE 10 — Light-mode readability fixes for the in-app surfaces.
+   Targets the specific Tailwind utility classes the /app/* pages use
+   today, so existing markup gets readable contrast without touching
+   any JSX.
+   ========================================================================= */
+
+/* Hi-vis yellow text on cream backgrounds becomes a darker amber so it
+   stays readable. Dark mode still gets the hi-vis. */
+[data-theme="light"] .text-hivis { color: #8A6D00 !important; }
+
+/* Hi-vis bordered + tinted boxes (used as warning/attention surfaces) get
+   a darker amber pair on light mode. */
+[data-theme="light"] .border-hivis { border-color: #B98D00 !important; }
+[data-theme="light"] .border-hivis\/40 { border-color: rgba(185, 141, 0, 0.55) !important; }
+[data-theme="light"] .bg-hivis\/10 { background-color: rgba(185, 141, 0, 0.12) !important; }
+[data-theme="light"] .bg-hivis\/20 { background-color: rgba(185, 141, 0, 0.20) !important; }
+
+/* Brand-tinted attention surfaces (e.g. accepted-quote pill, success
+   banners) need a slightly stronger orange wash on cream so they don't
+   wash out into the page. */
+[data-theme="light"] .bg-brand\/10 { background-color: rgba(255, 95, 21, 0.12) !important; }
+[data-theme="light"] .bg-brand\/20 { background-color: rgba(255, 95, 21, 0.18) !important; }
+[data-theme="light"] .border-brand\/40 { border-color: rgba(255, 95, 21, 0.55) !important; }
+
+/* Status pills on the quote dashboard. The blue (sent), yellow (viewed),
+   orange (accepted), red (declined) colour bands all need darker text on
+   light mode. */
+[data-theme="light"] .text-blue-300 { color: #1D4ED8 !important; }
+[data-theme="light"] .text-red-300  { color: #B91C1C !important; }
+[data-theme="light"] .text-emerald-300 { color: #047857 !important; }
+[data-theme="light"] .border-blue-500\/40 { border-color: rgba(29, 78, 216, 0.55) !important; }
+[data-theme="light"] .border-red-500\/40 { border-color: rgba(185, 28, 28, 0.55) !important; }
+[data-theme="light"] .bg-blue-500\/10 { background-color: rgba(29, 78, 216, 0.10) !important; }
+[data-theme="light"] .bg-red-500\/10 { background-color: rgba(185, 28, 28, 0.10) !important; }
+
+/* `bg-ink-800/40` and `bg-ink-800/30` are used for transcript / review
+   sub-cards inside the quote preview. On light they must be visibly
+   different from the surrounding white card — give them a faint tint. */
+[data-theme="light"] .bg-ink-800\/40 { background-color: rgba(10, 10, 10, 0.04) !important; }
+[data-theme="light"] .bg-ink-800\/30 { background-color: rgba(10, 10, 10, 0.03) !important; }
+
+/* Inputs need explicit dark text on white background in light mode —
+   without this they inherit `text-white` and become invisible. */
+[data-theme="light"] input,
+[data-theme="light"] textarea,
+[data-theme="light"] select {
+  color: #0A0A0A !important;
+}
+[data-theme="light"] input::placeholder,
+[data-theme="light"] textarea::placeholder {
+  color: #8C8C8C !important;
+}
+
+/* Tape rail is decorative and must never block clicks. The animation /
+   painting is fine; this just hard-asserts the no-interaction rule in
+   case future CSS changes the pointer-events. */
+[data-testid="side-measure-tape"] {
+  pointer-events: none;
+}

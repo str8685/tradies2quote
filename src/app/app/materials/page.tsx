@@ -53,7 +53,7 @@ export default async function MaterialsPage() {
   }));
 
   return (
-    <div className="min-h-screen bg-ink-900 text-white">
+    <div className="min-h-screen text-white">
       <AppHeader context="Materials" />
 
       <main className="mx-auto max-w-3xl px-4 py-10 sm:px-6 sm:py-14">
@@ -71,7 +71,7 @@ export default async function MaterialsPage() {
 
         <section
           data-testid="materials-capture-nudge"
-          className="mt-6 rounded-sm border border-ink-700 bg-ink-800/60 p-4 sm:p-5"
+          className="t2q-premium-card-static mt-6 p-4 sm:p-5"
           aria-labelledby="materials-capture-nudge-title"
         >
           <div className="font-mono text-[10px] uppercase tracking-[0.25em] text-brand">

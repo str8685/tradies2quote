@@ -19,7 +19,7 @@ export default async function NewQuotePage() {
   }
 
   return (
-    <div className="min-h-screen bg-ink-900 text-white">
+    <div className="min-h-screen text-white">
       <AppHeader context="New quote" />
 
       <main className="mx-auto max-w-3xl px-4 py-10 sm:px-6 sm:py-14">

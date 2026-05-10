@@ -62,7 +62,7 @@ export default async function CapturePage({
   const isPasteFallback = !sharedUrl;
 
   return (
-    <div className="min-h-screen bg-ink-900 text-white">
+    <div className="min-h-screen text-white">
       <AppHeader context="Materials · Capture" />
 
       <main className="mx-auto w-full max-w-3xl px-4 py-10 sm:px-6 sm:py-14">
