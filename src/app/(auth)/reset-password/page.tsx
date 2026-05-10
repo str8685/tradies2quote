@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { resetPasswordAction } from "./actions";
@@ -7,6 +8,7 @@ import {
   FormField,
   SubmitButton,
 } from "../_components/AuthCard";
+import { Logo } from "../../_components/landing/Logo";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = {
@@ -34,27 +36,44 @@ export default async function ResetPasswordPage({
   }
 
   return (
-    <AuthCard
-      title="Set a new password"
-      subtitle="Choose a strong password you don't use elsewhere."
-    >
-      <form action={resetPasswordAction} className="space-y-4">
-        <FormError message={error} />
-        <FormField
-          label="New password"
-          name="password"
-          type="password"
-          autoComplete="new-password"
-        />
-        <FormField
-          label="Confirm password"
-          name="confirm"
-          type="password"
-          autoComplete="new-password"
-        />
-        <p className="text-xs text-muted">At least 8 characters.</p>
-        <SubmitButton>Update password</SubmitButton>
-      </form>
-    </AuthCard>
+    <div className="relative min-h-screen flex flex-col bg-ink-900 text-white overflow-hidden">
+      <div className="pointer-events-none absolute inset-0 t2q-grid-bg opacity-30" />
+      <div className="pointer-events-none absolute -top-40 -right-40 w-[480px] h-[480px] rounded-full bg-brand/20 blur-3xl animate-blob" />
+
+      <header className="relative z-10 border-b border-ink-600">
+        <div className="mx-auto flex h-16 max-w-6xl items-center px-6">
+          <Link href="/" aria-label="tradies2Quote home">
+            <Logo size={28} />
+          </Link>
+        </div>
+      </header>
+
+      <main className="relative z-10 flex flex-1 items-center justify-center px-4 py-12">
+        <div className="w-full max-w-md">
+          <AuthCard
+            title="Set a new password"
+            subtitle="Choose a strong password you don't use elsewhere."
+          >
+            <form action={resetPasswordAction} className="space-y-4">
+              <FormError message={error} />
+              <FormField
+                label="New password"
+                name="password"
+                type="password"
+                autoComplete="new-password"
+              />
+              <FormField
+                label="Confirm password"
+                name="confirm"
+                type="password"
+                autoComplete="new-password"
+              />
+              <p className="text-xs text-ink-400">At least 8 characters.</p>
+              <SubmitButton>Update password</SubmitButton>
+            </form>
+          </AuthCard>
+        </div>
+      </main>
+    </div>
   );
 }

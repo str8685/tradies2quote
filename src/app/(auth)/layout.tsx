@@ -1,25 +1,19 @@
-import Link from "next/link";
-
+/**
+ * Auth route-group layout. Pass-through — each page (`/login`, `/signup`,
+ * `/forgot-password`, `/reset-password`) owns its own visual chrome.
+ *
+ * The earlier version of this file rendered a header + `max-w-md` shell
+ * using semantic tokens (`bg-surface`, `border-border`, …) that aren't
+ * declared in our Tailwind v4 `@theme` block, so the header rendered
+ * unstyled in production. The split-screen login/signup shells are
+ * full-bleed; the simpler forgot/reset-password pages center themselves
+ * via the wrapper they already render. Centralising chrome here would
+ * fight both layouts.
+ */
 export default function AuthLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  return (
-    <div className="flex min-h-screen flex-col">
-      <header className="border-b border-border bg-surface/60 backdrop-blur">
-        <div className="mx-auto flex h-16 max-w-6xl items-center px-4 sm:px-6">
-          <Link
-            href="/"
-            className="font-semibold tracking-tight"
-          >
-            tradies2Quote
-          </Link>
-        </div>
-      </header>
-      <main className="flex flex-1 items-center justify-center px-4 py-12 sm:py-16">
-        <div className="w-full max-w-md">{children}</div>
-      </main>
-    </div>
-  );
+  return <>{children}</>;
 }
