@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { SignOut } from "@phosphor-icons/react/dist/ssr";
 import { createClient } from "@/lib/supabase/server";
@@ -55,6 +56,21 @@ export default async function SettingsPage() {
   return (
     <div className="relative min-h-screen text-white">
       <div className="pointer-events-none absolute inset-0 t2q-grid-bg opacity-20" />
+
+      <header className="relative z-10 border-b border-ink-700 bg-ink-950">
+        <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-4 sm:px-6">
+          <Link
+            href="/app"
+            data-testid="settings-back"
+            className="font-mono text-xs uppercase tracking-[0.2em] text-ink-300 hover:text-white"
+          >
+            ← Dashboard
+          </Link>
+          <span className="font-mono text-xs uppercase tracking-[0.2em] text-ink-400">
+            Settings
+          </span>
+        </div>
+      </header>
 
       <div className="relative mx-auto max-w-5xl px-4 py-10 sm:px-6 sm:py-14">
         <div className="mb-10">

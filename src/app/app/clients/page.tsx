@@ -39,6 +39,21 @@ export default async function ClientsPage() {
     <div className="relative min-h-screen text-white">
       <div className="pointer-events-none absolute inset-0 t2q-grid-bg opacity-20" />
 
+      <header className="relative z-10 border-b border-ink-700 bg-ink-950">
+        <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-4 sm:px-6">
+          <Link
+            href="/app"
+            data-testid="clients-back"
+            className="font-mono text-xs uppercase tracking-[0.2em] text-ink-300 hover:text-white"
+          >
+            ← Dashboard
+          </Link>
+          <span className="font-mono text-xs uppercase tracking-[0.2em] text-ink-400">
+            Clients
+          </span>
+        </div>
+      </header>
+
       <div className="relative mx-auto max-w-5xl px-4 py-10 sm:px-6 sm:py-14">
         <div className="mb-8">
           <div className="t2q-section-label mb-3">{"// your client list"}</div>
