@@ -2,8 +2,10 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { List, X, Microphone } from "@phosphor-icons/react";
+import { List, X } from "@phosphor-icons/react";
 import { ThemeToggle } from "./ThemeToggle";
+import { Logo } from "./Logo";
+import InstallPWAButton from "./InstallPWAButton";
 
 const LINKS = [
   { href: "#how", label: "How it works" },
@@ -33,14 +35,10 @@ export function Header() {
         <Link
           href="/"
           data-testid="nav-logo"
-          className="flex items-center gap-2.5 group"
+          className="group"
+          aria-label="tradies2Quote home"
         >
-          <div className="w-8 h-8 bg-brand grid place-items-center rounded-sm border-2 border-brand-700 group-hover:bg-hivis group-hover:text-ink-900 transition-colors">
-            <Microphone size={16} weight="bold" className="text-ink-900" />
-          </div>
-          <span className="font-display text-lg uppercase tracking-tight">
-            tradies<span className="text-brand">2</span>Quote
-          </span>
+          <Logo size={34} />
         </Link>
 
         <nav className="hidden md:flex items-center gap-8" data-testid="nav-primary">
@@ -57,6 +55,7 @@ export function Header() {
         </nav>
 
         <div className="hidden md:flex items-center gap-3">
+          <InstallPWAButton variant="nav" />
           <ThemeToggle />
           <Link
             href="/login"
@@ -119,6 +118,9 @@ export function Header() {
               >
                 Start free
               </Link>
+            </div>
+            <div className="pt-2">
+              <InstallPWAButton variant="nav" className="w-full justify-center" />
             </div>
           </div>
         </div>

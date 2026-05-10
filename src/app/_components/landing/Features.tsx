@@ -1,3 +1,5 @@
+"use client";
+
 import Image from "next/image";
 import {
   Hammer,
@@ -10,7 +12,22 @@ import {
   Money,
   DeviceMobile,
   Receipt,
-} from "@phosphor-icons/react/dist/ssr";
+} from "@phosphor-icons/react";
+import { TiltCard } from "./TiltCard";
+
+/**
+ * "What's in the toolbox" bento + trades marquee.
+ *
+ * Ported from the Emergent landing-export bundle. The four feature cards
+ * sit in a 3-column bento (two cards span 2 columns each) and use TiltCard
+ * for cursor-tracked depth. The trades marquee is now framed by the
+ * `t2q-tape-strip` utility (animated metallic measuring-tape) instead of
+ * the previous flat caution-stripe band — that's the most visible polish
+ * upgrade in the section.
+ *
+ * The Unsplash visual band ("stop losing your weekends") is project-only
+ * polish — Emergent doesn't have it but it earns its keep on the page.
+ */
 
 const FEATURES = [
   {
@@ -52,8 +69,6 @@ const TRADES = [
 
 const FEATURE_BAND_IMG =
   "https://images.unsplash.com/photo-1758574697284-8e84046a45ae?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1NzB8MHwxfHNlYXJjaHwxfHxjb25zdHJ1Y3Rpb24lMjB0b29sJTIwaGFyZCUyMGhhdCUyMGJsdWVwcmludHxlbnwwfHx8fDE3NzgxMTA0MzR8MA&ixlib=rb-4.1.0&q=85";
-const TRADES_BG_IMG =
-  "https://images.unsplash.com/photo-1564483335100-3413b45dbd37?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1NzB8MHwxfHNlYXJjaHw0fHxjb25zdHJ1Y3Rpb24lMjB0b29sJTIwaGFyZCUyMGhhdCUyMGJsdWVwcmludHxlbnwwfHx8fDE3NzgxMTA0MzR8MA&ixlib=rb-4.1.0&q=85";
 
 export function Features() {
   return (
@@ -65,7 +80,7 @@ export function Features() {
       <div className="max-w-7xl mx-auto px-6 md:px-12">
         <div className="grid lg:grid-cols-12 gap-10 lg:gap-16 mb-14">
           <div className="lg:col-span-5">
-            <div className="t2q-section-label mb-4">// what&apos;s in the toolbox</div>
+            <div className="t2q-section-label mb-4">{"// what's in the toolbox"}</div>
             <h2 className="font-display text-4xl sm:text-5xl lg:text-6xl tracking-tighter uppercase leading-[0.95]">
               Less app.
               <br />
@@ -98,7 +113,7 @@ export function Features() {
           <div className="absolute inset-0 bg-gradient-to-r from-ink-950 via-ink-950/70 to-transparent" />
           <div className="absolute inset-0 flex items-center px-8 md:px-12">
             <div className="max-w-md">
-              <div className="t2q-section-label mb-2">// reality check</div>
+              <div className="t2q-section-label mb-2">{"// reality check"}</div>
               <p className="font-display text-2xl md:text-3xl uppercase tracking-tighter leading-[0.95] text-white">
                 Stop losing your weekends to quotes.
               </p>
@@ -106,13 +121,17 @@ export function Features() {
           </div>
         </div>
 
-        {/* Bento */}
+        {/* Bento — TiltCards for hover depth */}
         <div className="grid md:grid-cols-3 gap-4">
           {FEATURES.map(({ slug, title, body, icon: Icon, span }) => (
-            <div
-              key={title}
-              data-testid={`feature-card-${slug}`}
-              className={`${span ?? ""} bg-ink-900 border border-ink-600 rounded-sm p-8 md:p-10 group hover:bg-ink-800 transition-colors`}
+            <TiltCard
+              key={slug}
+              className={`${span ?? ""} bg-ink-900 border border-ink-600 rounded-sm`}
+              innerClassName="p-8 md:p-10 group h-full"
+              maxTiltX={6}
+              maxTiltY={8}
+              liftZ={20}
+              testid={`feature-card-${slug}`}
             >
               <Icon
                 size={28}
@@ -123,22 +142,14 @@ export function Features() {
                 {title}
               </h3>
               <p className="text-ink-200">{body}</p>
-            </div>
+            </TiltCard>
           ))}
         </div>
 
-        {/* Trades marquee */}
-        <div className="relative mt-16 border-y-2 border-ink-600 -mx-6 md:-mx-12 group overflow-hidden">
-          <Image
-            src={TRADES_BG_IMG}
-            alt=""
-            fill
-            sizes="100vw"
-            className="object-cover opacity-20 pointer-events-none"
-          />
-          <div className="absolute inset-0 bg-ink-950/80 pointer-events-none" />
-          <div className="relative t2q-stripes h-2" />
-          <div className="relative overflow-hidden no-scrollbar">
+        {/* Trades marquee — framed top + bottom by animated tape strips, pause on hover */}
+        <div className="relative mt-16 -mx-6 md:-mx-12 group">
+          <div className="t2q-tape-strip border-y-2 border-ink-900" style={{ height: "16px" }} />
+          <div className="overflow-hidden no-scrollbar bg-ink-900 border-x-0">
             <div className="flex animate-marquee whitespace-nowrap py-6 group-hover:[animation-play-state:paused]">
               {[...TRADES, ...TRADES, ...TRADES].map(({ label, icon: Icon }, i) => (
                 <div
@@ -152,7 +163,10 @@ export function Features() {
               ))}
             </div>
           </div>
-          <div className="relative t2q-stripes h-2" />
+          <div
+            className="t2q-tape-strip t2q-tape-strip-reverse border-y-2 border-ink-900"
+            style={{ height: "16px" }}
+          />
         </div>
       </div>
     </section>

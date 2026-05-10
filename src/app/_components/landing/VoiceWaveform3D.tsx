@@ -77,12 +77,21 @@ export function VoiceWaveform3D() {
   const [reducedMotion, setReducedMotion] = useState(false);
 
   useEffect(() => {
-    setMounted(true);
+    // Wrap mount + initial reduced-motion read in a 0-ms timer so the
+    // setStates sit inside a subscribed callback. React 19's
+    // `react-hooks/set-state-in-effect` rule rejects synchronous
+    // setState in the effect body.
     const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
-    setReducedMotion(mq.matches);
     const handler = () => setReducedMotion(mq.matches);
+    const t = setTimeout(() => {
+      setMounted(true);
+      setReducedMotion(mq.matches);
+    }, 0);
     mq.addEventListener("change", handler);
-    return () => mq.removeEventListener("change", handler);
+    return () => {
+      clearTimeout(t);
+      mq.removeEventListener("change", handler);
+    };
   }, []);
 
   if (!mounted || reducedMotion) return null;

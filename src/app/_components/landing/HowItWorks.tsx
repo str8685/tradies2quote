@@ -45,7 +45,7 @@ export function HowItWorks() {
     >
       <div className="max-w-7xl mx-auto px-6 md:px-12">
         <div className="max-w-3xl mb-16">
-          <div className="t2q-section-label mb-4">// the workflow</div>
+          <div className="t2q-section-label mb-4">{"// the workflow"}</div>
           <h2 className="font-display text-4xl sm:text-5xl lg:text-6xl tracking-tighter uppercase leading-[0.95]">
             Three steps. <br />
             <span className="text-brand">Zero forms.</span>

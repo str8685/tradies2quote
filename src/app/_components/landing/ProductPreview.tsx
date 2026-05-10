@@ -32,7 +32,7 @@ export function ProductPreview() {
       <div className="relative max-w-7xl mx-auto px-6 md:px-12">
         <div className="grid lg:grid-cols-12 gap-10 lg:gap-16 mb-14">
           <div className="lg:col-span-5">
-            <div className="t2q-section-label mb-4">// what your client sees</div>
+            <div className="t2q-section-label mb-4">{"// what your client sees"}</div>
             <h2 className="font-display text-4xl sm:text-5xl lg:text-6xl tracking-tighter uppercase leading-[0.95]">
               A quote that looks <br />
               <span className="text-brand">like you mean business.</span>
@@ -53,7 +53,7 @@ export function ProductPreview() {
             <div className="flex items-center gap-2 mb-4">
               <span className="w-2 h-2 rounded-full bg-brand animate-pulse" />
               <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-brand">
-                // step 1 · record
+                {"// step 1 · record"}
               </span>
             </div>
             <div className="flex items-center gap-3 mb-6">
@@ -93,7 +93,7 @@ export function ProductPreview() {
             <div className="px-6 md:px-8 pt-6 pb-4 bg-ink-50 border-b-2 border-ink-200 flex items-start justify-between gap-6">
               <div>
                 <div className="font-mono text-[10px] uppercase tracking-[0.22em] text-brand mb-1">
-                  // quote · Q-202605-04
+                  {"// quote · Q-202605-04"}
                 </div>
                 <div className="font-display text-2xl md:text-3xl uppercase tracking-tighter leading-tight">
                   Back deck framing &amp; line
@@ -118,7 +118,7 @@ export function ProductPreview() {
             <div className="grid md:grid-cols-2 gap-px bg-ink-200">
               <div className="bg-white p-6 md:p-7">
                 <div className="font-mono text-[10px] uppercase tracking-[0.22em] text-ink-500 mb-3">
-                  // materials
+                  {"// materials"}
                 </div>
                 <ul className="space-y-2">
                   {MATERIALS.map((it, i) => (
@@ -137,7 +137,7 @@ export function ProductPreview() {
               </div>
               <div className="bg-white p-6 md:p-7">
                 <div className="font-mono text-[10px] uppercase tracking-[0.22em] text-ink-500 mb-3">
-                  // labour
+                  {"// labour"}
                 </div>
                 <ul className="space-y-2">
                   {LABOUR.map((it, i) => (
@@ -198,7 +198,7 @@ export function ProductPreview() {
             </div>
             <div className="flex-1">
               <div className="font-mono text-[10px] uppercase tracking-[0.22em] text-brand mb-1">
-                // step 4 · convert to invoice
+                {"// step 4 · convert to invoice"}
               </div>
               <div className="font-display text-xl md:text-2xl uppercase tracking-tight">
                 Job done? One tap turns the quote into an invoice.

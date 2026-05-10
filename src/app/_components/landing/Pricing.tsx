@@ -1,5 +1,20 @@
+"use client";
+
 import Link from "next/link";
-import { Check, Lightning } from "@phosphor-icons/react/dist/ssr";
+import { Check, Lightning } from "@phosphor-icons/react";
+import { TiltCard } from "./TiltCard";
+import { Magnetic } from "./Magnetic";
+
+/**
+ * Pricing tiers — three TiltCards. The middle "Most popular" tier gets a
+ * brand border + brutal shadow + a hi-vis ribbon tab anchored to the top.
+ *
+ * Ported from the Emergent landing-export bundle. Wrapping each CTA in
+ * Magnetic gives the card a satisfying pull-to-cursor moment when the
+ * tradie is reaching for the button. TiltCards (with extra depth on this
+ * section, liftZ 40) make the whole tier feel like it's lifting off the
+ * page on hover.
+ */
 
 const TIERS = [
   {
@@ -58,7 +73,7 @@ export function Pricing() {
 
       <div className="relative max-w-7xl mx-auto px-6 md:px-12">
         <div className="text-center max-w-2xl mx-auto mb-16">
-          <div className="t2q-section-label mb-4 mx-auto inline-block">// pricing</div>
+          <div className="t2q-section-label mb-4 mx-auto inline-block">{"// pricing"}</div>
           <h2 className="font-display text-4xl sm:text-5xl lg:text-6xl tracking-tighter uppercase leading-[0.95]">
             Cheaper than a coffee a day. <br />
             <span className="text-brand">Wins back your weekends.</span>
@@ -70,14 +85,18 @@ export function Pricing() {
 
         <div className="grid md:grid-cols-3 gap-6">
           {TIERS.map((t) => (
-            <div
-              key={t.name}
-              data-testid={`pricing-tier-${t.slug}`}
-              className={`relative p-8 md:p-10 border-2 ${
+            <TiltCard
+              key={t.slug}
+              className={`border-2 ${
                 t.highlight
                   ? "border-brand bg-ink-800 t2q-shadow-brutal"
                   : "border-ink-600 bg-ink-800/70"
-              } rounded-sm flex flex-col hover:-translate-y-1 transition-transform`}
+              } rounded-sm`}
+              innerClassName="p-8 md:p-10 flex flex-col h-full relative"
+              maxTiltX={8}
+              maxTiltY={10}
+              liftZ={36}
+              testid={`pricing-tier-${t.slug}`}
             >
               {t.highlight && (
                 <div className="absolute -top-3 left-6 bg-hivis text-ink-900 font-display text-xs px-3 py-1 uppercase tracking-tight flex items-center gap-1.5 z-10">
@@ -102,14 +121,16 @@ export function Pricing() {
                   </li>
                 ))}
               </ul>
-              <Link
-                href="/signup"
-                data-testid={`pricing-cta-${t.slug}`}
-                className={`mt-8 ${t.highlight ? "t2q-btn-primary" : "t2q-btn-ghost"} w-full`}
-              >
-                Start 7-day trial
-              </Link>
-            </div>
+              <Magnetic strength={0.18} className="mt-8 w-full">
+                <Link
+                  href="/signup"
+                  data-testid={`pricing-cta-${t.slug}`}
+                  className={`${t.highlight ? "t2q-btn-primary" : "t2q-btn-ghost"} w-full`}
+                >
+                  Start 7-day trial
+                </Link>
+              </Magnetic>
+            </TiltCard>
           ))}
         </div>
       </div>

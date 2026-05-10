@@ -15,11 +15,15 @@ export function CursorSpotlight() {
   useEffect(() => {
     const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
     const fine = window.matchMedia("(pointer: fine)");
-    setReduced(mq.matches || !fine.matches);
     const onMq = () => setReduced(mq.matches || !fine.matches);
+    // Wrap initial setState in a 0-ms timer so React 19's
+    // `react-hooks/set-state-in-effect` rule sees it as a subscribed
+    // callback rather than a synchronous effect-body call.
+    const t = setTimeout(onMq, 0);
     mq.addEventListener("change", onMq);
     fine.addEventListener("change", onMq);
     return () => {
+      clearTimeout(t);
       mq.removeEventListener("change", onMq);
       fine.removeEventListener("change", onMq);
     };

@@ -49,7 +49,7 @@ export function FounderStory() {
       <div className="relative max-w-7xl mx-auto px-6 md:px-12">
         <div className="grid lg:grid-cols-12 gap-10 lg:gap-16 mb-14">
           <div className="lg:col-span-5">
-            <div className="t2q-section-label mb-4">// why you can trust this</div>
+            <div className="t2q-section-label mb-4">{"// why you can trust this"}</div>
             <h2 className="font-display text-4xl sm:text-5xl lg:text-6xl tracking-tighter uppercase leading-[0.95]">
               Built by a builder. <br />
               <span className="text-brand">For builders.</span>

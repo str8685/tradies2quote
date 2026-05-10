@@ -97,6 +97,16 @@ h1, h2, h3, h4, h5 {
   to   { background-position: 500px 0; }
 }
 
+@keyframes t2q-tape-h {
+  from { background-position: 0 0, 0 100%, 0 100%; }
+  to   { background-position: 0 0, 200px 100%, 100px 100%; }
+}
+
+@keyframes t2q-tape-sheen-anim {
+  0%, 100% { background-position: 0 -100%, 0 0; opacity: 0.4; }
+  50%      { background-position: 0 200%, 0 0; opacity: 0.65; }
+}
+
 @keyframes t2q-phone-scroll {
   0%   { transform: translateY(0); }
   100% { transform: translateY(-50%); }
@@ -139,6 +149,76 @@ h1, h2, h3, h4, h5 {
     #0A0A0A 18px,
     #0A0A0A 36px
   );
+}
+
+/* Animated horizontal tape-measure strip used in section dividers + marquee
+   borders. Pure CSS gradients = zero DOM nodes, smooth GPU animation.
+   Sheen highlight along the top + bottom edges, major ticks every 50px (=5mm),
+   minor ticks every 10px (=1mm). Base hi-vis yellow. Used by Features
+   marquee borders and TapeDivider. Landing-only. */
+.t2q-tape-strip {
+  background-color: #FFEA00;
+  background-image:
+    linear-gradient(180deg,
+      rgba(0,0,0,0.18) 0%,
+      rgba(0,0,0,0.0) 12%,
+      rgba(255,255,255,0.25) 35%,
+      rgba(255,255,255,0.05) 65%,
+      rgba(0,0,0,0.0) 88%,
+      rgba(0,0,0,0.18) 100%
+    ),
+    repeating-linear-gradient(
+      to right,
+      rgba(10,10,10,1) 0px,
+      rgba(10,10,10,1) 1.5px,
+      transparent 1.5px,
+      transparent 50px
+    ),
+    repeating-linear-gradient(
+      to right,
+      rgba(10,10,10,0.65) 0px,
+      rgba(10,10,10,0.65) 1px,
+      transparent 1px,
+      transparent 10px
+    );
+  background-size: 100% 100%, 100% 70%, 100% 32%;
+  background-position: 0 0, 0 100%, 0 100%;
+  background-repeat: repeat-x;
+  animation: t2q-tape-h 32s linear infinite;
+  position: relative;
+}
+.t2q-tape-strip-reverse { animation-direction: reverse; }
+.t2q-tape-strip-fast    { animation-duration: 18s; }
+.t2q-tape-strip::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 1px;
+  background: rgba(10,10,10,0.5);
+}
+
+/* Subtle metallic sheen drift overlay on tape strip. Landing-only. */
+.t2q-tape-sheen {
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.18) 50%, rgba(255,255,255,0) 100%),
+    linear-gradient(90deg, rgba(255,255,255,0.0) 0%, rgba(255,255,255,0.18) 50%, rgba(255,255,255,0) 100%);
+  background-size: 100% 200%, 100% 100%;
+  animation: t2q-tape-sheen-anim 6s ease-in-out infinite;
+  pointer-events: none;
+}
+
+/* Glossy reflection overlay for the hero phone screen. Landing-only. */
+.t2q-phone-glare {
+  background: linear-gradient(
+    135deg,
+    rgba(255,255,255,0.18) 0%,
+    rgba(255,255,255,0.04) 18%,
+    rgba(255,255,255,0) 35%,
+    rgba(255,255,255,0) 65%,
+    rgba(255,255,255,0.05) 85%,
+    rgba(255,255,255,0.12) 100%
+  );
+  mix-blend-mode: screen;
 }
 
 /* Yellow measuring tape — mm / 5mm / cm ticks, hivis yellow base. */
@@ -209,6 +289,20 @@ h1, h2, h3, h4, h5 {
   border-radius: 0.125rem;
 }
 
+/* Frosted glass card used by the QuoteWorkflow steps. Sits over the
+   page's animated blobs/grid so the backdrop-blur reads as depth.
+   Landing-only. */
+.t2q-glass-card {
+  background: rgba(20, 20, 20, 0.62);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 0.125rem;
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 24px 48px -16px rgba(0, 0, 0, 0.55);
+}
+
 .t2q-section-label {
   font-family: var(--font-ibm-plex-mono), "IBM Plex Mono", monospace;
   font-size: 0.75rem;
@@ -237,7 +331,9 @@ h1, h2, h3, h4, h5 {
   .animate-blob-slow,
   .animate-blob-mid,
   .t2q-phone-scroll,
-  .t2q-phone-scroll-fast {
+  .t2q-phone-scroll-fast,
+  .t2q-tape-strip,
+  .t2q-tape-sheen {
     animation: none;
   }
 }

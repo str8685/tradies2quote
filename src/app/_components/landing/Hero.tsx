@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 import { FileText, Receipt, ArrowRight, Check } from "@phosphor-icons/react";
 import { VoiceWaveform3D } from "./VoiceWaveform3D";
+import { Magnetic } from "./Magnetic";
 
 function CountUp({ to = 4820, duration = 1400 }: { to?: number; duration?: number }) {
   const [n, setN] = useState(0);
@@ -103,13 +104,15 @@ export function Hero() {
             transition={{ duration: 0.6, delay: 0.25 }}
             className="mt-10 flex flex-wrap gap-4"
           >
-            <Link
-              href="/signup"
-              data-testid="hero-cta-start-trial"
-              className="t2q-btn-primary"
-            >
-              <FileText size={20} weight="bold" /> Get beta access
-            </Link>
+            <Magnetic strength={0.22}>
+              <Link
+                href="/signup"
+                data-testid="hero-cta-start-trial"
+                className="t2q-btn-primary"
+              >
+                <FileText size={20} weight="bold" /> Get beta access
+              </Link>
+            </Magnetic>
             <a
               href="#how"
               data-testid="hero-cta-how-it-works"
@@ -222,7 +225,7 @@ export function Hero() {
                         <div key={loop} className="text-ink-900">
                           <div className="px-4 py-4 bg-ink-50">
                             <div className="font-mono text-[8px] uppercase tracking-[0.22em] text-brand">
-                              // quote
+                              {"// quote"}
                             </div>
                             <div className="font-display text-lg uppercase tracking-tighter leading-tight mt-1">
                               Bathroom Reno —
@@ -250,7 +253,7 @@ export function Hero() {
                           </div>
                           <div className="px-4 pt-4 pb-1">
                             <div className="font-mono text-[8px] uppercase tracking-[0.22em] text-ink-500">
-                              // materials
+                              {"// materials"}
                             </div>
                           </div>
                           {[
@@ -274,7 +277,7 @@ export function Hero() {
                           ))}
                           <div className="px-4 pt-4 pb-1">
                             <div className="font-mono text-[8px] uppercase tracking-[0.22em] text-ink-500">
-                              // labour
+                              {"// labour"}
                             </div>
                           </div>
                           {[
@@ -311,7 +314,7 @@ export function Hero() {
                           </div>
                           <div className="px-4 py-3">
                             <div className="font-mono text-[8px] uppercase tracking-[0.22em] text-ink-500 mb-1">
-                              // terms
+                              {"// terms"}
                             </div>
                             <p className="text-[10px] text-ink-600 leading-snug">
                               Quote valid for 30 days. 30% deposit required to confirm booking.
@@ -320,7 +323,7 @@ export function Hero() {
                           </div>
                           <div className="px-4 py-4 bg-ink-900 text-white">
                             <div className="font-mono text-[8px] uppercase tracking-[0.22em] text-hivis">
-                              // approve
+                              {"// approve"}
                             </div>
                             <div className="font-display text-sm uppercase tracking-tight mt-1">
                               Tap to accept &amp; book
@@ -345,6 +348,9 @@ export function Hero() {
                     </button>
                   </div>
                   <div className="absolute bottom-1 left-1/2 -translate-x-1/2 w-24 h-[3px] rounded-full bg-ink-900/70 z-30" />
+
+                  {/* Glossy reflection overlay — sits above everything inside the screen */}
+                  <div className="pointer-events-none absolute inset-0 t2q-phone-glare z-40 rounded-[39px]" />
                 </div>
               </div>
             </motion.div>

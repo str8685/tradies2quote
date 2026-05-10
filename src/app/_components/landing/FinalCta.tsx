@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Microphone, ShieldCheck } from "@phosphor-icons/react/dist/ssr";
+import { Magnetic } from "./Magnetic";
 
 export function FinalCta() {
   return (
@@ -16,7 +17,7 @@ export function FinalCta() {
         <div className="border-2 border-brand bg-ink-900 p-10 md:p-16 t2q-shadow-brutal-yellow">
           <div className="grid md:grid-cols-2 gap-10 items-end">
             <div>
-              <div className="t2q-section-label mb-4">// stop quoting on sundays</div>
+              <div className="t2q-section-label mb-4">{"// stop quoting on sundays"}</div>
               <h2 className="font-display text-4xl sm:text-5xl lg:text-6xl tracking-tighter uppercase leading-[0.95]">
                 Get quoting <br />
                 <span className="text-brand">at site speed.</span>
@@ -45,13 +46,15 @@ export function FinalCta() {
               </ul>
             </div>
             <div className="flex flex-col gap-4 md:items-end">
-              <Link
-                href="/signup"
-                data-testid="final-cta-primary"
-                className="t2q-btn-primary"
-              >
-                <Microphone size={20} weight="bold" /> Get beta access
-              </Link>
+              <Magnetic strength={0.22}>
+                <Link
+                  href="/signup"
+                  data-testid="final-cta-primary"
+                  className="t2q-btn-primary"
+                >
+                  <Microphone size={20} weight="bold" /> Get beta access
+                </Link>
+              </Magnetic>
               <Link
                 href="/login"
                 data-testid="final-cta-signin"

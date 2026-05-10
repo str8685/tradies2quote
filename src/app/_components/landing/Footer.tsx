@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Microphone } from "@phosphor-icons/react/dist/ssr";
+import { Logo } from "./Logo";
 
 export function Footer() {
   return (
@@ -10,14 +10,7 @@ export function Footer() {
       <div className="max-w-7xl mx-auto px-6 md:px-12">
         <div className="grid md:grid-cols-4 gap-10 pt-8 border-t border-ink-700">
           <div className="md:col-span-2">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 bg-brand grid place-items-center rounded-sm border-2 border-brand-700">
-                <Microphone size={16} weight="bold" className="text-ink-900" />
-              </div>
-              <span className="font-display text-lg uppercase tracking-tight">
-                tradies<span className="text-brand">2</span>Quote
-              </span>
-            </div>
+            <Logo size={32} />
             <p className="mt-4 text-ink-400 text-sm max-w-sm">
               Voice in. Quote out. Built by a builder running STR8 Builders in New Zealand.
             </p>
