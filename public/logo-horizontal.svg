@@ -1,0 +1,36 @@
+<svg width="280" height="64" viewBox="0 0 280 64" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="tradies2Quote">
+  <!-- ===== Mark ===== -->
+  <g>
+    <rect width="64" height="64" rx="4" fill="#FF5F15"/>
+    <path d="M52 0 L64 0 L64 12 Z" fill="#0A0A0A"/>
+    <path d="M52 0 L64 12 L52 12 Z" fill="#1F1F1F"/>
+    <text x="22" y="48"
+      font-family="'Archivo Black','Archivo',system-ui,sans-serif"
+      font-size="44" font-weight="900" fill="#FFFFFF" letter-spacing="-2">2</text>
+    <g fill="#FFEA00">
+      <circle cx="48" cy="22" r="2.4"/>
+      <circle cx="54" cy="22" r="1.8" opacity="0.85"/>
+      <circle cx="58.5" cy="22" r="1.2" opacity="0.6"/>
+    </g>
+    <rect x="0" y="56" width="64" height="8" fill="#FFEA00"/>
+    <g fill="#0A0A0A">
+      <polygon points="0,64 4,56 12,56 8,64"/>
+      <polygon points="13,64 17,56 25,56 21,64"/>
+      <polygon points="26,64 30,56 38,56 34,64"/>
+      <polygon points="39,64 43,56 51,56 47,64"/>
+      <polygon points="52,64 56,56 64,56 60,64"/>
+    </g>
+  </g>
+
+  <!-- ===== Wordmark ===== -->
+  <text x="80" y="42"
+    font-family="'Archivo Black','Archivo',system-ui,sans-serif"
+    font-size="26" font-weight="900" letter-spacing="-1">
+    <tspan fill="#FFFFFF">tradies</tspan><tspan fill="#FF5F15">2</tspan><tspan fill="#FFFFFF">Quote</tspan>
+  </text>
+  <text x="80" y="56"
+    font-family="'IBM Plex Mono', ui-monospace, monospace"
+    font-size="8" font-weight="500" letter-spacing="3" fill="#A8A8A8">
+    VOICE · QUOTE · INVOICE · PAID
+  </text>
+</svg>

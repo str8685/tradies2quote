@@ -78,9 +78,9 @@ export const metadata: Metadata = {
   // <link rel="manifest"> is auto-injected by Next 16; we just declare icon
   // links and iOS-specific meta tags here.
   icons: {
-    icon: [{ url: "/icon.svg", type: "image/svg+xml" }],
+    icon: [{ url: "/favicon.svg", type: "image/svg+xml" }],
     apple: [{ url: "/apple-icon.svg", type: "image/svg+xml" }],
-    shortcut: [{ url: "/icon.svg", type: "image/svg+xml" }],
+    shortcut: [{ url: "/favicon.svg", type: "image/svg+xml" }],
   },
   appleWebApp: {
     // Tells iOS this site can run as a standalone home-screen app.

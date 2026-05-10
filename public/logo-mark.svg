@@ -1,0 +1,44 @@
+<svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="tradies2Quote">
+  <!-- Outer hi-vis ring -->
+  <circle cx="32" cy="32" r="31" fill="#0A0A0A"/>
+  <circle cx="32" cy="32" r="31" fill="none" stroke="#FFEA00" stroke-width="2"/>
+
+  <!-- Inner caution-tape ring (rotated diagonal stripes) -->
+  <g>
+    <defs>
+      <pattern id="caution" patternUnits="userSpaceOnUse" width="6" height="6" patternTransform="rotate(45)">
+        <rect width="6" height="6" fill="#FFEA00"/>
+        <rect x="0" y="0" width="3" height="6" fill="#0A0A0A"/>
+      </pattern>
+      <mask id="ringMask">
+        <rect width="64" height="64" fill="black"/>
+        <circle cx="32" cy="32" r="29" fill="white"/>
+        <circle cx="32" cy="32" r="22" fill="black"/>
+      </mask>
+    </defs>
+    <rect width="64" height="64" fill="url(#caution)" mask="url(#ringMask)"/>
+  </g>
+
+  <!-- Center disc -->
+  <circle cx="32" cy="32" r="22" fill="#0A0A0A"/>
+  <circle cx="32" cy="32" r="22" fill="none" stroke="#FF5F15" stroke-width="1.5"/>
+
+  <!-- Soundwave bars on the left half — voice-in cue -->
+  <g fill="#FFEA00">
+    <rect x="13" y="29" width="2" height="6" rx="1"/>
+    <rect x="17" y="26" width="2" height="12" rx="1"/>
+    <rect x="21" y="22" width="2" height="20" rx="1"/>
+  </g>
+
+  <!-- Bold "²Q" right side — superscript 2 + Q -->
+  <text
+    x="29" y="40"
+    font-family="'Archivo Black','Archivo',system-ui,sans-serif"
+    font-size="20" font-weight="900" fill="#FFFFFF" letter-spacing="-1"
+  >²Q</text>
+
+  <!-- Recording dot -->
+  <circle cx="48" cy="22" r="2" fill="#FF5F15">
+    <animate attributeName="opacity" values="1;0.3;1" dur="1.6s" repeatCount="indefinite"/>
+  </circle>
+</svg>
