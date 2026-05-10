@@ -63,15 +63,33 @@ export function AppHeader({ context }: AppHeaderProps) {
       className="sticky top-0 z-30 border-b border-ink-700 bg-ink-950/90 backdrop-blur supports-[backdrop-filter]:bg-ink-950/70"
     >
       <div className="mx-auto flex max-w-3xl flex-col gap-2 px-4 py-3 sm:h-16 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:py-0 sm:px-6">
-        {/* Logo + context */}
+        {/* Logo + context. Desktop renders the Emergent horizontal lockup
+            (mark + wordmark) from public/logo-horizontal.svg; mobile drops to
+            just the round Site-Safe Badge from public/logo-mark.svg so the
+            row stays compact alongside the Sign-out button. */}
         <div className="flex min-w-0 items-center gap-3">
           <Link
             href="/app"
             data-testid="app-header-home"
             aria-label="Tradies2Quote dashboard"
-            className="shrink-0 font-display text-base uppercase tracking-tight text-white sm:text-lg"
+            className="shrink-0"
           >
-            tradies<span className="text-brand">2</span>Quote
+            {/* Mobile: compact round badge only. */}
+            <img
+              src="/logo-mark.svg"
+              alt="Tradies2Quote"
+              width={36}
+              height={36}
+              className="block h-9 w-9 sm:hidden"
+            />
+            {/* Desktop: full horizontal lockup. */}
+            <img
+              src="/logo-horizontal.svg"
+              alt="Tradies2Quote"
+              width={140}
+              height={32}
+              className="hidden h-8 w-auto sm:block"
+            />
           </Link>
           {context ? (
             <>
