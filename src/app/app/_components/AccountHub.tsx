@@ -1,6 +1,8 @@
 "use client";
 
+import { useRef, useState, useTransition } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   Pulse,
   Briefcase,
@@ -10,10 +12,16 @@ import {
   Receipt,
   Robot,
   SignOut,
+  Trash,
   UserCircle,
   UsersThree,
   X,
 } from "@phosphor-icons/react";
+import {
+  removeAvatarAction,
+  uploadAvatarAction,
+  type AvatarActionResult,
+} from "./account-hub-actions";
 
 /**
  * Shared body of the account hub.
@@ -301,19 +309,25 @@ function HubLinkRow({
 }
 
 /* ------------------------------------------------------------------
- * Avatar avatar + upload field.
+ * Avatar field — live upload + remove.
  *
- * The image upload is intentionally NOT wired up yet — it depends on
- * a `profiles.avatar_url` column that doesn't exist on the production
- * schema as of Wave 14.6. The full proposal is in the wave plan:
+ * Wave 14.7 — wired to the `profile-avatars` storage bucket and the
+ * `profiles.avatar_url` column. Validation runs both in the browser
+ * (instant feedback) and in the server action (authoritative + RLS-
+ * gated). The storage bucket also enforces the same mime allow-list
+ * + 2 MB limit, so a malformed call gets rejected at three layers.
  *
- *   ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS avatar_url text;
- *   + Supabase storage bucket `profile-avatars` with auth.uid()-scoped
- *     RLS.
- *
- * Once the migration ships, this component lights up — wire a
- * `<form action={uploadAvatarAction}>` and the disabled-explainer
- * below goes away.
+ * UX:
+ *   1. User taps "Upload" → file picker opens (jpg/png/webp).
+ *   2. On change, we submit the file straight away with the upload
+ *      server action — no separate "save" button.
+ *   3. While the action is pending, the button shows "Saving…" and
+ *      both buttons are disabled.
+ *   4. On success: router.refresh() repaints headers + sheet from
+ *      the revalidated server tree (the action also calls
+ *      revalidatePath("/app","layout") for safety).
+ *   5. On error: an inline message appears below the row and the
+ *      existing avatar (or initials) stays.
  * ------------------------------------------------------------------ */
 function AccountAvatar({
   avatarUrl,
@@ -348,6 +362,9 @@ function AccountAvatar({
   );
 }
 
+const ALLOWED_MIME = ["image/jpeg", "image/png", "image/webp"] as const;
+const MAX_SIZE_BYTES = 2 * 1024 * 1024;
+
 function AvatarUploadField({
   avatarUrl,
   initial,
@@ -355,32 +372,113 @@ function AvatarUploadField({
   avatarUrl: string | null;
   initial: string;
 }) {
+  const router = useRouter();
+  const fileRef = useRef<HTMLInputElement | null>(null);
+  const [pending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+
+  const handleResult = (res: AvatarActionResult) => {
+    if (!res.ok) {
+      setError(res.error);
+      return;
+    }
+    setError(null);
+    router.refresh();
+  };
+
+  const onPick = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setError(null);
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (
+      !(ALLOWED_MIME as ReadonlyArray<string>).includes(file.type)
+    ) {
+      setError("Use a JPG, PNG, or WebP image.");
+      return;
+    }
+    if (file.size > MAX_SIZE_BYTES) {
+      setError("File is over 2 MB.");
+      return;
+    }
+    const fd = new FormData();
+    fd.append("avatar", file);
+    startTransition(async () => {
+      const res = await uploadAvatarAction(fd);
+      handleResult(res);
+      // Reset the input so the same file can be picked again later.
+      if (fileRef.current) fileRef.current.value = "";
+    });
+  };
+
+  const onRemove = () => {
+    setError(null);
+    startTransition(async () => {
+      const res = await removeAvatarAction();
+      handleResult(res);
+    });
+  };
+
   return (
     <div
       data-testid="account-hub-avatar-field"
-      className="flex items-center gap-3 rounded-sm border border-dashed border-ink-700 bg-ink-900/40 p-3"
+      className="flex flex-col gap-2 rounded-sm border border-dashed border-ink-700 bg-ink-900/40 p-3"
     >
-      <AccountAvatar avatarUrl={avatarUrl} initial={initial} size={44} />
-      <div className="min-w-0 flex-1">
-        <p className="font-display text-xs uppercase tracking-tight text-white">
-          Avatar photo
-        </p>
-        <p className="mt-0.5 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-300">
-          {avatarUrl
-            ? "// active"
-            : "// using initials fallback"}
-        </p>
+      <div className="flex items-center gap-3">
+        <AccountAvatar avatarUrl={avatarUrl} initial={initial} size={44} />
+        <div className="min-w-0 flex-1">
+          <p className="font-display text-xs uppercase tracking-tight text-white">
+            Avatar photo
+          </p>
+          <p className="mt-0.5 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-300">
+            {avatarUrl ? "// active" : "// using initials fallback"}
+          </p>
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
+          {avatarUrl ? (
+            <button
+              type="button"
+              onClick={onRemove}
+              disabled={pending}
+              data-testid="account-hub-avatar-remove"
+              className="inline-flex items-center gap-1.5 rounded-sm border border-ink-700 bg-ink-900/60 px-2.5 py-2 text-[11px] font-display uppercase tracking-tight text-ink-300 hover:border-red-500/60 hover:text-red-200 disabled:opacity-60"
+            >
+              <Trash size={12} weight="bold" aria-hidden="true" />
+              Remove
+            </button>
+          ) : null}
+          <button
+            type="button"
+            onClick={() => fileRef.current?.click()}
+            disabled={pending}
+            data-testid="account-hub-avatar-upload"
+            className="inline-flex items-center gap-2 rounded-sm border border-ink-700 bg-ink-900/60 px-3 py-2 text-xs font-display uppercase tracking-tight text-white hover:border-brand hover:text-brand disabled:opacity-60"
+          >
+            <Camera size={13} weight="bold" aria-hidden="true" />
+            {pending ? "Saving…" : avatarUrl ? "Change" : "Upload"}
+          </button>
+        </div>
       </div>
-      <button
-        type="button"
-        disabled
-        aria-disabled="true"
-        title="Upload available after the profiles.avatar_url migration ships"
-        className="inline-flex shrink-0 items-center gap-2 rounded-sm border border-ink-700 bg-ink-900/60 px-3 py-2 text-xs font-display uppercase tracking-tight text-ink-400 opacity-70"
-      >
-        <Camera size={13} weight="bold" aria-hidden="true" />
-        Upload
-      </button>
+      <input
+        ref={fileRef}
+        type="file"
+        accept={ALLOWED_MIME.join(",")}
+        onChange={onPick}
+        className="sr-only"
+        data-testid="account-hub-avatar-input"
+      />
+      {error ? (
+        <p
+          role="alert"
+          data-testid="account-hub-avatar-error"
+          className="font-mono text-[10px] uppercase tracking-[0.18em] text-red-300"
+        >
+          {error}
+        </p>
+      ) : (
+        <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-ink-400">
+          {"// jpg / png / webp · 2 mb max · stored in profile-avatars bucket"}
+        </p>
+      )}
     </div>
   );
 }
