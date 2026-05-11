@@ -1,7 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ArrowRight, Plus } from "@phosphor-icons/react/dist/ssr";
+import {
+  ArrowRight,
+  GearSix,
+  Plus,
+  Robot,
+  UsersThree,
+} from "@phosphor-icons/react/dist/ssr";
 import { createClient } from "@/lib/supabase/server";
 import { quoteNumber } from "@/lib/quote-defaults";
 import type { QuoteData, QuoteStatus } from "@/lib/quote-types";
@@ -108,6 +114,39 @@ export default async function DashboardPage() {
           </div>
         </div>
 
+        {/* Wave 10.4 — small Agents card. Bridges the dashboard to the
+            new /app/agents hub without taking over the page. */}
+        <Link
+          href="/app/agents"
+          data-testid="dashboard-agents-card"
+          className="t2q-premium-card mt-6 flex items-center gap-4 p-4 sm:p-5"
+        >
+          <span
+            aria-hidden="true"
+            className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-sm border border-brand/40 bg-brand/10 text-brand"
+          >
+            <Robot size={22} weight="bold" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="font-display text-base uppercase tracking-tight text-white sm:text-lg">
+              AI Agents.
+            </p>
+            <p className="mt-0.5 text-sm text-ink-300">
+              Set up quote, materials, follow-up, and admin automations.
+            </p>
+          </div>
+          <span className="hidden items-center gap-1 font-mono text-[10px] uppercase tracking-[0.25em] text-brand sm:inline-flex">
+            Open agents
+            <ArrowRight size={12} weight="bold" />
+          </span>
+          <ArrowRight
+            size={18}
+            weight="bold"
+            className="shrink-0 text-brand sm:hidden"
+            aria-hidden="true"
+          />
+        </Link>
+
         <section className="mt-6">
           {recent.length === 0 ? (
             <div
@@ -147,6 +186,31 @@ export default async function DashboardPage() {
             </Link>
           </div>
         ) : null}
+
+        {/* Mobile tail nav — Clients + Settings were dropped from the
+            bottom nav in Wave 10.4 to make room for Agents. These small
+            links keep both reachable from the dashboard. Hidden on
+            desktop because the AppHeader carries them. */}
+        <nav
+          data-testid="dashboard-tail-links"
+          aria-label="Secondary"
+          className="mt-10 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 border-t border-ink-700/60 pt-6 sm:hidden"
+        >
+          <Link
+            href="/app/clients"
+            className="inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.25em] text-ink-300 hover:text-brand"
+          >
+            <UsersThree size={14} weight="bold" />
+            Clients
+          </Link>
+          <Link
+            href="/app/settings"
+            className="inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.25em] text-ink-300 hover:text-brand"
+          >
+            <GearSix size={14} weight="bold" />
+            Settings
+          </Link>
+        </nav>
       </main>
     </div>
   );

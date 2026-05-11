@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { LogoMark } from "./Logo";
 import TapeProgress from "./TapeProgress";
 
 /**
@@ -79,12 +78,25 @@ export default function LoadingScreen() {
           <div className="absolute -bottom-40 -left-40 w-[500px] h-[500px] rounded-full bg-hivis/10 blur-3xl animate-blob-slow" />
 
           <div className="relative flex flex-col items-center px-6">
+            {/* Wave 10.4 — splash now wears the new T2Q PNG mark.
+                The mark sits inside a small white-pill card with a
+                brand-orange glow shadow so the dark T/Q glyphs stay
+                readable against the dark splash background, without
+                turning into a hard white square. */}
             <motion.div
-              initial={{ scale: 0.6, opacity: 0, rotate: -90 }}
+              initial={{ scale: 0.6, opacity: 0, rotate: -10 }}
               animate={{ scale: 1, opacity: 1, rotate: 0 }}
               transition={{ duration: 0.55, ease: [0.21, 0.61, 0.27, 1] }}
+              className="rounded-2xl bg-white p-3 shadow-[0_0_0_1px_rgba(255,255,255,0.06),0_18px_48px_-12px_rgba(255,95,21,0.35)]"
             >
-              <LogoMark size={96} />
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/logo-mark.png"
+                alt="Tradies2Quote"
+                width={160}
+                height={136}
+                className="block h-20 w-auto sm:h-24"
+              />
             </motion.div>
 
             <motion.div

@@ -83,18 +83,25 @@ export const metadata: Metadata = {
   // Wave 10.3 — point all icon paths at the new T2Q mark PNGs generated
   // from `public/logo-mark.png`. The legacy Emergent SVG files are kept
   // on disk for safety but no longer referenced from metadata.
+  // Wave 10.4 — `?v=10.4` cache-bust forces desktop browsers (which
+  // cache favicons hard, often forever) to refetch the icon files after
+  // the Wave 10.3 mark swap. Drop the query on the next favicon change.
   icons: {
     icon: [
-      { url: "/favicon.ico", sizes: "any" },
-      { url: "/favicon-16x16.png", type: "image/png", sizes: "16x16" },
-      { url: "/favicon-32x32.png", type: "image/png", sizes: "32x32" },
-      { url: "/icon-192.png", type: "image/png", sizes: "192x192" },
-      { url: "/icon-512.png", type: "image/png", sizes: "512x512" },
+      { url: "/favicon.ico?v=10.4", sizes: "any" },
+      { url: "/favicon-16x16.png?v=10.4", type: "image/png", sizes: "16x16" },
+      { url: "/favicon-32x32.png?v=10.4", type: "image/png", sizes: "32x32" },
+      { url: "/icon-192.png?v=10.4", type: "image/png", sizes: "192x192" },
+      { url: "/icon-512.png?v=10.4", type: "image/png", sizes: "512x512" },
     ],
     apple: [
-      { url: "/apple-touch-icon.png", type: "image/png", sizes: "180x180" },
+      {
+        url: "/apple-touch-icon.png?v=10.4",
+        type: "image/png",
+        sizes: "180x180",
+      },
     ],
-    shortcut: [{ url: "/favicon.ico" }],
+    shortcut: [{ url: "/favicon.ico?v=10.4" }],
   },
   appleWebApp: {
     // Tells iOS this site can run as a standalone home-screen app.

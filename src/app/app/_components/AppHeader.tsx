@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { SignOut } from "@phosphor-icons/react";
+import { GearSix, SignOut } from "@phosphor-icons/react";
 import { InstallAppButton } from "@/app/_components/InstallAppButton";
 import { ThemeToggle } from "@/app/_components/landing/ThemeToggle";
 import { signOutAction } from "../actions";
@@ -36,8 +36,8 @@ const TABS = [
   { href: "/app", label: "Dashboard" },
   { href: "/app/quotes", label: "Quotes" },
   { href: "/app/materials", label: "Materials" },
+  { href: "/app/agents", label: "Agents" },
   { href: "/app/clients", label: "Clients" },
-  { href: "/app/settings", label: "Settings" },
 ] as const;
 
 /**
@@ -132,6 +132,18 @@ export function AppHeader({ context }: AppHeaderProps) {
           </nav>
 
           <div className="ml-2 flex items-center gap-2 border-l border-ink-700 pl-3">
+            {/* Settings icon — Wave 10.4 moved Settings out of the main
+                tab strip so the new Agents tab could fit without
+                overflowing the 768 px header. Stays one click away via
+                this cog button. */}
+            <Link
+              href="/app/settings"
+              aria-label="Settings"
+              data-testid="app-header-settings"
+              className="inline-flex h-10 w-10 items-center justify-center rounded-sm border border-ink-600 text-ink-300 transition-colors hover:border-brand hover:bg-brand hover:text-ink-900"
+            >
+              <GearSix size={16} weight="bold" />
+            </Link>
             <ThemeToggle />
             {/* Renders nothing when the app is already installed or the
                 browser can't install — see InstallAppButton.tsx. */}

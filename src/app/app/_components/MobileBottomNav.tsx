@@ -6,9 +6,8 @@ import type { Icon } from "@phosphor-icons/react";
 import {
   House,
   ListBullets,
+  Robot,
   Stack,
-  UsersThree,
-  GearSix,
 } from "@phosphor-icons/react";
 
 /**
@@ -30,12 +29,19 @@ import {
  * The +88px bottom padding the page content needs to clear this nav is
  * applied on `/app/layout.tsx`, not here.
  */
+/**
+ * Wave 10.4 — bottom-nav trimmed to 4 tiles to make room for the new
+ * Agents hub without crowding the phone. Clients and Settings moved
+ * off the bottom bar: Clients still has its own page (linked from the
+ * dashboard tail and the Agents-page tail nav), Settings stays one tap
+ * away via the cog icon in the desktop AppHeader and via the dashboard
+ * tail nav on mobile.
+ */
 const TILES: ReadonlyArray<{ href: string; label: string; icon: Icon }> = [
   { href: "/app", label: "Home", icon: House },
   { href: "/app/quotes", label: "Quotes", icon: ListBullets },
   { href: "/app/materials", label: "Materials", icon: Stack },
-  { href: "/app/clients", label: "Clients", icon: UsersThree },
-  { href: "/app/settings", label: "Settings", icon: GearSix },
+  { href: "/app/agents", label: "Agents", icon: Robot },
 ];
 
 function isActive(href: string, pathname: string) {
