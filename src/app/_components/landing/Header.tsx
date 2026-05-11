@@ -29,7 +29,11 @@ export function Header() {
   return (
     <header
       data-testid="site-header"
-      className={`sticky top-0 z-50 border-b border-ink-600 bg-ink-950 transition-shadow ${
+      // Wave 14.1 — pt-[env(safe-area-inset-top)] paints the header
+      // bg up under the iPhone notch / Android camera cutout so the
+      // landing feels edge-to-edge. The inner h-16 row stays below
+      // the inset so the logo and nav links never get clipped.
+      className={`sticky top-0 z-50 border-b border-ink-600 bg-ink-950 pt-[env(safe-area-inset-top)] transition-shadow ${
         scrolled ? "shadow-[0_1px_0_0_#FF5F15]" : ""
       }`}
     >

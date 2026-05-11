@@ -43,7 +43,12 @@ export function AppHeaderClient({ context, isOwner }: Props) {
     <header
       data-testid="app-header"
       data-is-owner={isOwner ? "true" : "false"}
-      className="sticky top-0 z-30 border-b border-ink-700 bg-ink-950/95 sm:bg-ink-950/85 sm:backdrop-blur"
+      // Wave 14.1 — pt-[env(safe-area-inset-top)] lets the header
+      // background paint up under the iPhone notch / Android camera
+      // cutout, while the inner row stays below the inset so the logo
+      // and tabs never get clipped. Pairs with viewport-fit=cover in
+      // src/app/layout.tsx.
+      className="sticky top-0 z-30 border-b border-ink-700 bg-ink-950/95 pt-[env(safe-area-inset-top)] sm:bg-ink-950/85 sm:backdrop-blur"
     >
       <div className="mx-auto flex h-14 max-w-3xl items-center justify-between gap-3 px-4 sm:h-16 sm:max-w-5xl sm:gap-4 sm:px-6">
         <div className="flex min-w-0 items-center gap-3">

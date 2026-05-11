@@ -109,11 +109,12 @@ export const metadata: Metadata = {
     capable: true,
     // Short title shown under the icon on iOS.
     title: "T2Q",
-    // "black" puts an opaque black status bar above the app — visually
-    // continuous with the bg-ink-950 dashboard header, no safe-area
-    // padding required. Picking "black-translucent" would push content
-    // behind the notch and would need a layout-level top inset.
-    statusBarStyle: "black",
+    // Wave 14.1 — flipped to `black-translucent` so the iOS PWA renders
+    // edge-to-edge: page content fills the area under the notch /
+    // dynamic island, making the screen feel taller. Headers (landing
+    // + /app) carry their own `pt-[env(safe-area-inset-top)]` so the
+    // logo / tabs sit below the notch and never get clipped.
+    statusBarStyle: "black-translucent",
   },
   other: {
     // Newer cross-platform equivalent of apple-mobile-web-app-capable.
@@ -125,6 +126,11 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 5,
+  // Wave 14.1 — `cover` lets the browser render the page under the
+  // iPhone notch / Android camera cutout. Combined with each
+  // top-of-page header's `pt-[env(safe-area-inset-top)]`, the page
+  // feels taller without clipping the logo or tabs.
+  viewportFit: "cover",
   themeColor: "#0A0A0A",
 };
 

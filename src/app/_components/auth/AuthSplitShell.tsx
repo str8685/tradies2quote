@@ -60,7 +60,10 @@ export function AuthSplitShell({
         </div>
       </aside>
 
-      <div className="relative flex flex-col px-6 py-8 sm:px-10 sm:py-12 lg:p-14">
+      {/* Wave 14.1 — adds safe-area top padding on top of the
+          existing py-8 so the Back link + logo stay clear of the
+          iPhone notch / Android cutout under viewport-fit=cover. */}
+      <div className="relative flex flex-col px-6 pt-[calc(env(safe-area-inset-top)+2rem)] pb-8 sm:px-10 sm:pt-[calc(env(safe-area-inset-top)+3rem)] sm:pb-12 lg:p-14">
         <div className="flex items-center justify-between gap-3">
           <Link
             href={backHref}
