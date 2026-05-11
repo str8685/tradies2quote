@@ -680,13 +680,13 @@ h1, h2, h3, h4, h5 {
   flex: 1 1 0;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  /* Wave 14.6 — flex-end pulls the icon + label cluster to the bottom
+     of the tile so it sits close to the screen edge, paired with the
+     reduced bar padding-bottom below. */
+  justify-content: flex-end;
   gap: 0.1875rem;
-  /* Wave 14.5 — back to a tappable height that fits the larger 22px
-     icons cleanly. Slimmer than the original 60px so the nav still
-     feels compact. */
   min-height: 56px;
-  padding: 0.375rem 0.5rem;
+  padding: 0.375rem 0.5rem 0.5rem;
   font-family: var(--font-ibm-plex-mono), "IBM Plex Mono", monospace;
   font-size: 0.6875rem;
   letter-spacing: 0.18em;
@@ -715,12 +715,14 @@ h1, h2, h3, h4, h5 {
 /* ─── Mobile bottom-nav bar ─────────────────────────────────────────────
    The container itself. Pinned to viewport bottom on mobile, hidden on
    desktop. `pb` value swallows iOS home-indicator safe area. */
-/* Wave 14.5 — flush bottom nav. User feedback: the floating island
-   from 14.4 made the page look like it was moving outside the screen
-   when navigating between tabs (the page bg showed through the side
-   margins during transitions). Reverted to a full-bleed bottom bar
-   pinned to the screen edge. iOS home-indicator inset still consumed
-   via padding-bottom so the bar lifts cleanly above the gesture area. */
+/* Wave 14.6 — icons hugging the bottom edge. Previously the bar
+   consumed the full iOS safe-area-inset-bottom (~34px on iPhone X+),
+   which floated the icons noticeably away from the screen edge.
+   Trimming the inset by 24px brings the icons close to the bottom
+   while preserving ~10px of clearance over the home-indicator
+   gesture area (so a downward swipe still hits the system gesture,
+   not a nav tile). Tiles use `justify-content: flex-end` to push
+   their icon + label cluster to the bottom of the tile too. */
 .t2q-bottomnav-bar {
   position: fixed;
   bottom: 0;
@@ -732,7 +734,7 @@ h1, h2, h3, h4, h5 {
   border-top: 1px solid #1F1F1F;
   backdrop-filter: blur(12px) saturate(140%);
   -webkit-backdrop-filter: blur(12px) saturate(140%);
-  padding-bottom: env(safe-area-inset-bottom, 0);
+  padding-bottom: max(env(safe-area-inset-bottom, 0px) - 24px, 4px);
   z-index: 40;
 }
 [data-theme="light"] .t2q-bottomnav-bar {
