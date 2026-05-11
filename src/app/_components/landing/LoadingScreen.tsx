@@ -151,10 +151,18 @@ export default function LoadingScreen({
               voice · quote · invoice · paid
             </motion.div>
 
+            {/* Wave 16.2 — tape fade-in delay removed.
+                Previously delay:0.7 caused the tape to appear ~700ms
+                after mount, by which time `progress` had already
+                counted up to ~14% — so the orange fill + 0→100mm
+                readout looked like they "jumped in" already partly
+                filled. Now the tape mounts at progress=0 alongside
+                the logo, so the orange and the numbers visibly count
+                up together from zero. */}
             <motion.div
               initial={{ opacity: 0, scaleX: 0.8 }}
               animate={{ opacity: 1, scaleX: 1 }}
-              transition={{ delay: 0.7, duration: 0.5 }}
+              transition={{ delay: 0, duration: 0.5 }}
               className="mt-10 origin-center"
             >
               <TapeProgress
