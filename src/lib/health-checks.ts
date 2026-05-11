@@ -135,6 +135,83 @@ export async function getAllHealthChecks(): Promise<HealthCheck[]> {
 }
 
 /**
+ * Wave 12 — readiness probe for each of the five named agents.
+ *
+ * "Ready" agents are the pure rule-based ones that need nothing
+ * beyond Supabase + the user's own data. None of the agents require
+ * an API key by themselves; they only need Supabase to read context.
+ *
+ * Reports also surface the related env-var status (already covered
+ * by the health checks above) so the owner can see at a glance which
+ * future AI-powered agents are unlocked. Never exposes env values.
+ */
+export interface AgentReadiness {
+  id: string;
+  name: string;
+  status: "ready" | "needs-setup" | "coming-later";
+  detail: string;
+}
+
+export function getAgentReadiness(): AgentReadiness[] {
+  return [
+    {
+      id: "quote-review",
+      name: "Quote Review Agent",
+      status: "ready",
+      detail: "Pure rule-based. Reads quote_data only.",
+    },
+    {
+      id: "compliance",
+      name: "Compliance Agent",
+      status: "ready",
+      detail: "Pure rule-based. Flags risky wording + suggests clauses.",
+    },
+    {
+      id: "voice-cleanup",
+      name: "Voice Cleanup Agent",
+      status: "ready",
+      detail:
+        "Pure rule-based. No AI call; uses regex/heuristics on the saved transcript.",
+    },
+    {
+      id: "followup",
+      name: "Follow-up Agent",
+      status: "ready",
+      detail: "Template-based. Copy-to-clipboard only — never sends.",
+    },
+    {
+      id: "admin",
+      name: "Admin Agent",
+      status: "ready",
+      detail: "Pure rule-based. Reads profile + clients to flag setup gaps.",
+    },
+    {
+      id: "ai-quote",
+      name: "AI Quote Builder (existing route)",
+      status: envSet("ANTHROPIC_API_KEY") ? "ready" : "needs-setup",
+      detail: envSet("ANTHROPIC_API_KEY")
+        ? "Anthropic key configured. The existing /api/quotes/generate route is the agent."
+        : "ANTHROPIC_API_KEY not set — AI quote generation will fail.",
+    },
+    {
+      id: "voice-transcribe",
+      name: "Voice Transcribe (existing route)",
+      status: envSet("OPENAI_API_KEY") ? "ready" : "needs-setup",
+      detail: envSet("OPENAI_API_KEY")
+        ? "OpenAI key configured. The existing /api/quotes/transcribe route is the agent."
+        : "OPENAI_API_KEY not set — voice transcription will fail.",
+    },
+    {
+      id: "invoice",
+      name: "Invoice Agent",
+      status: "coming-later",
+      detail:
+        "Builds invoice drafts from accepted quotes + timesheets. Not implemented yet.",
+    },
+  ];
+}
+
+/**
  * Build-time / deploy-time identity, sourced entirely from
  * Vercel-injected env vars. None of these are secrets — Vercel sets them
  * automatically on every build and they're already visible in the

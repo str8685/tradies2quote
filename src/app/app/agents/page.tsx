@@ -8,13 +8,17 @@ import {
   GearSix,
   Lifebuoy,
   Microphone,
-  Robot,
   ShieldCheck,
   Stack,
   UsersThree,
 } from "@phosphor-icons/react/dist/ssr";
 import { createClient } from "@/lib/supabase/server";
 import { AppHeader } from "../_components/AppHeader";
+import { AdminAgent } from "../_components/agents/AdminAgent";
+import type {
+  AdminClientSnapshot,
+  AdminProfileSnapshot,
+} from "@/lib/agents/admin";
 import { AgentCard } from "./_components/AgentCard";
 
 export const metadata: Metadata = {
@@ -42,6 +46,33 @@ export default async function AgentsPage() {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
+
+  // Wave 12 — Admin Agent context. Loads the user's profile + a
+  // lightweight count of clients-without-contact so the admin panel
+  // can flag missing setup. Both queries are RLS-scoped + read-only.
+  const [{ data: profileRow }, { data: clientsRows }] = await Promise.all([
+    supabase
+      .from("profiles")
+      .select(
+        "business_name, email, phone, address, gst_number, country, currency, tax_rate, default_labour_rate, default_markup_pct",
+      )
+      .eq("id", user.id)
+      .maybeSingle(),
+    supabase
+      .from("clients")
+      .select("id, email, phone")
+      .eq("user_id", user.id),
+  ]);
+
+  const adminProfile: AdminProfileSnapshot | null = profileRow ?? null;
+  const adminClients: AdminClientSnapshot = {
+    count: clientsRows?.length ?? 0,
+    countWithoutContact: (clientsRows ?? []).filter(
+      (c) =>
+        !(typeof c.email === "string" && c.email.trim().length > 0) &&
+        !(typeof c.phone === "string" && c.phone.trim().length > 0),
+    ).length,
+  };
 
   return (
     <div className="min-h-screen text-white">
@@ -83,26 +114,66 @@ export default async function AgentsPage() {
             Available agents
           </h2>
           <div className="grid gap-4 sm:grid-cols-2">
-            {/* Wave 10.5 — every card now points at a real route that
-                already exists. Status pills reflect what's actually
-                live vs what still needs setup. No agent claims live AI
-                unless the existing route is genuinely running. */}
+            {/* Wave 12 — the five named agents from the brief, in the
+                same order. Each card explains what the agent does and
+                links to where the user runs it. The deeper UI (the
+                actual flag list, suggested clauses, follow-up
+                templates, cleaned transcript) renders on the quote
+                preview page where the data lives. */}
             <AgentCard
-              icon={Robot}
-              title="Quote Builder Agent"
-              description="Turns job notes, voice transcripts, and photos into a quote draft using the existing new-quote flow."
+              icon={ClipboardText}
+              title="Quote Review Agent"
+              description="Reads quote_data only. Flags missing client name, address, scope, totals, GST, assumptions, exclusions, and payment terms. Suggests fixes — never auto-saves."
               status="Live"
               statusTone="ready"
-              cta={{ label: "Start Quote Agent", href: "/app/quotes/new" }}
+              cta={{
+                label: "Open in a quote",
+                href: "/app/quotes",
+              }}
+            />
+            <AgentCard
+              icon={ShieldCheck}
+              title="Compliance Agent"
+              description="Flags risky wording (guarantee, certified). Suggests exclusions, assumptions, site-access notes, weather delays, variation terms, payment terms. NZ-builder focused — not legal advice."
+              status="Live"
+              statusTone="ready"
+              cta={{
+                label: "Open in a quote",
+                href: "/app/quotes",
+              }}
             />
             <AgentCard
               icon={Microphone}
-              title="Voice Agent"
-              description="Record a 60-second site memo. The transcription route turns it into structured quote notes."
+              title="Voice Cleanup Agent"
+              description="Takes a voice transcript. Produces a clean trade scope. The original transcript stays. You click Apply before anything gets used."
               status="Live"
               statusTone="ready"
-              cta={{ label: "Open Voice Agent", href: "/app/quotes/new" }}
+              cta={{
+                label: "Open in a quote",
+                href: "/app/quotes",
+              }}
             />
+            <AgentCard
+              icon={Lifebuoy}
+              title="Follow-up Agent"
+              description="Generates follow-up messages for draft/sent quotes — friendly reminder, price clarification, acceptance nudge, missing-info request. Copy to clipboard only; never sends."
+              status="Live"
+              statusTone="ready"
+              cta={{
+                label: "Open in a quote",
+                href: "/app/quotes?status=sent",
+              }}
+            />
+            <AgentCard
+              icon={GearSix}
+              title="Admin Agent"
+              description="Checks your profile and client details. Flags missing business name, phone, GST number, default rates. Links you to the right setting — never edits anything itself."
+              status="Live"
+              statusTone="ready"
+              cta={{ label: "See findings below", href: "#admin-agent" }}
+            />
+            {/* Materials Agent stays as a useful adjacent helper, even
+                though it isn't one of the five "core" Wave 12 agents. */}
             <AgentCard
               icon={Stack}
               title="Materials Agent"
@@ -112,33 +183,6 @@ export default async function AgentsPage() {
               cta={{ label: "Open Materials", href: "/app/materials" }}
             />
             <AgentCard
-              icon={Lifebuoy}
-              title="Follow-up Agent"
-              description="Tracks sent quotes that need a chase. Pulls from the same quotes list you already use."
-              status="Live"
-              statusTone="ready"
-              cta={{
-                label: "Open Follow-ups",
-                href: "/app/quotes?status=sent",
-              }}
-            />
-            <AgentCard
-              icon={ShieldCheck}
-              title="Compliance Agent"
-              description="Reviews quote drafts for missing GST, scope, assumptions, exclusions, finish level, and NZ building notes."
-              status="Live"
-              statusTone="ready"
-              cta={{ label: "Review Quote", href: "/app/quotes" }}
-            />
-            <AgentCard
-              icon={GearSix}
-              title="Admin Agent"
-              description="Keeps your business profile, quote defaults, GST/labour/markup, and client details tidy."
-              status="Live"
-              statusTone="ready"
-              cta={{ label: "Open Admin", href: "/app/settings" }}
-            />
-            <AgentCard
               icon={Files}
               title="Invoice Agent"
               description="Prepares invoice drafts from accepted quotes and timesheets."
@@ -146,6 +190,13 @@ export default async function AgentsPage() {
               statusTone="planned"
             />
           </div>
+        </section>
+
+        {/* Wave 12 — Admin Agent panel runs inline on the hub since it
+            checks profile + clients, which aren't tied to any single
+            quote. */}
+        <section id="admin-agent" className="mb-12 scroll-mt-24">
+          <AdminAgent profile={adminProfile} clients={adminClients} />
         </section>
 
         {/* Safety panel */}

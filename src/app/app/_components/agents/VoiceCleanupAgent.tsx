@@ -1,0 +1,117 @@
+"use client";
+
+import { useMemo } from "react";
+import { Microphone, MagicWand } from "@phosphor-icons/react";
+import { runVoiceCleanup } from "@/lib/agents/voice-cleanup";
+import { CopyButton } from "./CopyButton";
+
+/**
+ * Voice Cleanup Agent — pure presentational client component.
+ *
+ * Renders the original voice transcript on the left, the cleaned
+ * version on the right (or stacked on mobile). Cleanup is a synchronous
+ * pure function so the result is computed at render-time — no API
+ * call, no Anthropic, no DB write. The "Copy cleaned text" button just
+ * puts the cleaned string on the clipboard.
+ *
+ * The original transcript is NEVER modified by this component.
+ */
+interface Props {
+  transcript: string | null;
+}
+
+export function VoiceCleanupAgent({ transcript }: Props) {
+  const original = (transcript ?? "").trim();
+  const result = useMemo(() => runVoiceCleanup(original), [original]);
+
+  if (!original) {
+    return null;
+  }
+
+  return (
+    <section
+      data-testid="agent-voice-cleanup"
+      className="t2q-premium-card-static mb-6 p-5 sm:p-6"
+    >
+      <div className="flex items-center gap-3">
+        <span
+          aria-hidden="true"
+          className="inline-flex h-10 w-10 items-center justify-center rounded-sm border border-brand/40 bg-brand/10 text-brand"
+        >
+          <Microphone size={20} weight="bold" />
+        </span>
+        <div>
+          <h2 className="font-display text-lg uppercase tracking-tight text-white sm:text-xl">
+            Voice Cleanup Agent.
+          </h2>
+          <p className="mt-0.5 font-mono text-[10px] uppercase tracking-[0.25em] text-ink-300">
+            {"// read-only · click apply to copy cleaned text"}
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-5 grid gap-4 sm:grid-cols-2">
+        <div>
+          <div className="flex items-center justify-between">
+            <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-ink-300">
+              {"// original"}
+            </p>
+            <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-ink-500">
+              {result.originalLength} chars
+            </span>
+          </div>
+          <pre
+            data-testid="agent-voice-cleanup-original"
+            className="mt-2 max-h-64 overflow-auto whitespace-pre-wrap rounded-sm border border-ink-700 bg-ink-900/40 p-3 text-sm leading-relaxed text-ink-200 font-sans"
+          >
+            {original}
+          </pre>
+        </div>
+        <div>
+          <div className="flex items-center justify-between gap-2">
+            <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-brand">
+              {"// cleaned"}
+            </p>
+            <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-ink-500">
+              {result.cleanedLength} chars
+            </span>
+          </div>
+          <pre
+            data-testid="agent-voice-cleanup-result"
+            className="mt-2 max-h-64 overflow-auto whitespace-pre-wrap rounded-sm border border-brand/40 bg-brand/5 p-3 text-sm leading-relaxed text-white font-sans"
+          >
+            {result.cleaned}
+          </pre>
+        </div>
+      </div>
+
+      <div className="mt-4 flex flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <p
+          data-testid="agent-voice-cleanup-status"
+          className="font-mono text-[10px] uppercase tracking-[0.2em] text-ink-400"
+        >
+          {result.changed
+            ? "// cleaned version trimmed fillers + tidied formatting"
+            : "// transcript already clean — no changes needed"}
+        </p>
+        <div className="flex items-center gap-2 sm:justify-end">
+          <CopyButton
+            text={result.cleaned}
+            label={
+              <span className="inline-flex items-center gap-1.5">
+                <MagicWand size={14} weight="bold" />
+                Apply (copy)
+              </span>
+            }
+            testId="agent-voice-cleanup-apply"
+            disabled={!result.changed}
+          />
+        </div>
+      </div>
+
+      <p className="mt-3 font-mono text-[10px] uppercase tracking-[0.2em] text-ink-400">
+        {"// original transcript is never overwritten by this agent"}
+      </p>
+    </section>
+  );
+}

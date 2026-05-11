@@ -9,8 +9,10 @@ import {
 import { createClient } from "@/lib/supabase/server";
 import { AppHeader } from "../_components/AppHeader";
 import {
+  getAgentReadiness,
   getAllHealthChecks,
   getBuildIdentity,
+  type AgentReadiness,
   type HealthStatus,
 } from "@/lib/health-checks";
 import { DeviceInfoClient } from "./_components/DeviceInfoClient";
@@ -49,6 +51,7 @@ export default async function DebugPage() {
 
   const checks = await getAllHealthChecks();
   const build = getBuildIdentity();
+  const agents = getAgentReadiness();
 
   return (
     <div className="min-h-screen text-white">
@@ -169,6 +172,47 @@ export default async function DebugPage() {
           </dl>
         </section>
 
+        {/* Wave 12 — agent readiness. Same pattern as the services
+            panel above: status + detail, never an env value. */}
+        <section
+          aria-label="Agents"
+          data-testid="debug-agents"
+          className="t2q-premium-card-static mb-8 p-5 sm:p-7"
+        >
+          <h2 className="font-display text-lg uppercase tracking-tight text-white sm:text-xl">
+            Agents.
+          </h2>
+          <ul className="mt-5 space-y-3">
+            {agents.map((a) => (
+              <li
+                key={a.id}
+                data-testid={`debug-agent-${a.id}`}
+                data-agent-status={a.status}
+                className="flex items-start gap-3 border-b border-ink-700/60 pb-3 last:border-b-0 last:pb-0"
+              >
+                <span aria-hidden="true" className="mt-0.5 shrink-0">
+                  {agentGlyph(a.status)}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="font-display text-sm uppercase tracking-tight text-white">
+                    {a.name}
+                  </p>
+                  <p className="mt-0.5 text-xs text-ink-300">{a.detail}</p>
+                </div>
+                <span
+                  className={`inline-flex items-center rounded-sm border px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.2em] ${agentPill(a.status)}`}
+                >
+                  {a.status === "ready"
+                    ? "ready"
+                    : a.status === "needs-setup"
+                      ? "needs setup"
+                      : "coming later"}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+
         {/* Client-side device info — runs on the client only */}
         <DeviceInfoClient />
 
@@ -179,6 +223,21 @@ export default async function DebugPage() {
       </main>
     </div>
   );
+}
+
+function agentGlyph(status: AgentReadiness["status"]) {
+  if (status === "ready")
+    return <CheckCircle size={18} weight="fill" className="text-brand" />;
+  if (status === "needs-setup")
+    return <Warning size={18} weight="fill" className="text-hivis" />;
+  return <Info size={18} weight="fill" className="text-ink-300" />;
+}
+
+function agentPill(status: AgentReadiness["status"]) {
+  if (status === "ready") return "border-brand/40 bg-brand/10 text-brand";
+  if (status === "needs-setup")
+    return "border-hivis/40 bg-hivis/10 text-hivis";
+  return "border-ink-600 bg-ink-800 text-ink-300";
 }
 
 function statusGlyph(status: HealthStatus) {

@@ -6,6 +6,9 @@ import { quoteNumber } from "@/lib/quote-defaults";
 import type { ComplianceLineItem, ComplianceReview } from "@/lib/compliance";
 import { AppHeader } from "../../../_components/AppHeader";
 import { QuoteReadinessCheck } from "../../../_components/QuoteReadinessCheck";
+import { ComplianceAgent } from "../../../_components/agents/ComplianceAgent";
+import { FollowupAgent } from "../../../_components/agents/FollowupAgent";
+import { VoiceCleanupAgent } from "../../../_components/agents/VoiceCleanupAgent";
 import { QuoteGenerator } from "./_components/QuoteGenerator";
 import { QuoteEditor } from "./_components/QuoteEditor";
 import { CompliancePanel } from "./_components/CompliancePanel";
@@ -130,12 +133,40 @@ export default async function QuotePreviewPage({
               );
             })()}
             {/* Wave 11 — readiness panel above the editor. Soft-warn
-                only; does not block the Send button below. */}
+                only; does not block the Send button below.
+                Wave 12 calls this the "Quote Review Agent" in the agent
+                hub. */}
             <QuoteReadinessCheck
               quoteData={quoteData}
               profile={profile ?? null}
               expiresAt={quote.expires_at ?? null}
             />
+
+            {/* Wave 12 — Compliance Agent. Read-only. Renders flags +
+                suggested clauses the user can copy. Mounted right
+                under the readiness check so both pre-send checks live
+                together. */}
+            <ComplianceAgent quoteData={quoteData} />
+
+            {/* Wave 12 — Voice Cleanup Agent. Only renders when the
+                quote has a stored voice transcript; cleanup is pure
+                client-side rule-based, no AI call. */}
+            <VoiceCleanupAgent transcript={quote.voice_transcript ?? null} />
+
+            {/* Wave 12 — Follow-up Agent. Hides templates that don't
+                apply (e.g. "friendly reminder" hidden until the quote
+                is actually sent). Never sends — copy to clipboard
+                only. */}
+            <FollowupAgent
+              quoteNumber={headerNumber}
+              clientName={quoteData.client?.name ?? null}
+              total={quoteData.total ?? 0}
+              currency={quoteData.currency || "NZD"}
+              status={(quote.status ?? "draft") as QuoteStatus}
+              sentAtIso={quote.sent_at ?? null}
+              businessName={profile?.business_name ?? null}
+            />
+
             <QuoteEditor
               quoteId={quote.id}
               createdAt={quote.created_at}
