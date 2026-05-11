@@ -401,10 +401,28 @@ h1, h2, h3, h4, h5 {
 [data-theme="light"] .bg-ink-700 { background-color: #F0EFE9 !important; }
 [data-theme="light"] .bg-ink-600 { background-color: #E0DFD7 !important; }
 
-/* Translucent surfaces */
-[data-theme="light"] .bg-ink-800\/70 { background-color: rgba(255,255,255,0.92) !important; }
+/* Translucent surfaces — Wave 12.2 audit. Before this block the only
+   translucent dark bg utilities that got remapped in light mode were
+   bg-ink-800/{60,70}, bg-ink-900/95, bg-ink-950/95. Everything else
+   stayed dark-with-opacity, which on a cream page produces muddy grey
+   panels (visible on the landing's QuoteWorkflow mockup). The full
+   list of in-use utilities is now covered:
+     bg-ink-700/{40,50,70}, bg-ink-800/{30,40,60,70},
+     bg-ink-900/{40,60,70,95}, bg-ink-950/{85,95}
+   Each maps to a near-white tint scaled to roughly the same visual
+   weight the dark version has against the original dark background. */
+[data-theme="light"] .bg-ink-700\/40 { background-color: rgba(240,239,233,0.65) !important; }
+[data-theme="light"] .bg-ink-700\/50 { background-color: rgba(240,239,233,0.75) !important; }
+[data-theme="light"] .bg-ink-700\/70 { background-color: rgba(240,239,233,0.85) !important; }
+[data-theme="light"] .bg-ink-800\/30 { background-color: rgba(255,255,255,0.60) !important; }
+[data-theme="light"] .bg-ink-800\/40 { background-color: rgba(255,255,255,0.72) !important; }
 [data-theme="light"] .bg-ink-800\/60 { background-color: rgba(255,255,255,0.85) !important; }
+[data-theme="light"] .bg-ink-800\/70 { background-color: rgba(255,255,255,0.92) !important; }
+[data-theme="light"] .bg-ink-900\/40 { background-color: rgba(245,244,238,0.55) !important; }
+[data-theme="light"] .bg-ink-900\/60 { background-color: rgba(245,244,238,0.75) !important; }
+[data-theme="light"] .bg-ink-900\/70 { background-color: rgba(245,244,238,0.85) !important; }
 [data-theme="light"] .bg-ink-900\/95 { background-color: rgba(245,244,238,0.96) !important; }
+[data-theme="light"] .bg-ink-950\/85 { background-color: rgba(238,237,230,0.88) !important; }
 [data-theme="light"] .bg-ink-950\/95 { background-color: rgba(238,237,230,0.96) !important; }
 
 /* Borders */
