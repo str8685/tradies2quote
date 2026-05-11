@@ -47,8 +47,13 @@ export default function LoadingScreen({
   tapeLabel = "// site setup",
   holdMs = DEFAULT_HOLD_MS,
 }: Props = {}) {
-  // Server-side: hidden. Client-side: an effect decides whether to show.
-  const [visible, setVisible] = useState(false);
+  // Wave 15.2 — server-renders VISIBLE so the splash is the very first
+  // thing painted on /app entry. The earlier `useState(false)` shape
+  // caused a one-frame flash of the dashboard before the client-side
+  // effect set visible=true. Now the effect's job is the opposite: if
+  // the session-storage skip window applies, hide IMMEDIATELY so
+  // repeat visits within 6h don't get the forced 5s wait.
+  const [visible, setVisible] = useState(true);
   const [progress, setProgress] = useState(0);
   const startRef = useRef(0);
 
@@ -58,9 +63,12 @@ export default function LoadingScreen({
     const t = setTimeout(() => {
       try {
         const last = Number(sessionStorage.getItem(storageKey) ?? 0);
-        if (Date.now() - last > 6 * 3600 * 1000) setVisible(true);
+        // Shown within the last 6h → skip. The brief AnimatePresence
+        // exit fade is the right UX hint that something was about to
+        // happen but isn't needed.
+        if (Date.now() - last <= 6 * 3600 * 1000) setVisible(false);
       } catch {
-        setVisible(true);
+        // sessionStorage unavailable — keep the splash visible.
       }
     }, 0);
     return () => clearTimeout(t);

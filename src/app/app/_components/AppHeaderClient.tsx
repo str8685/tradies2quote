@@ -95,7 +95,13 @@ export function AppHeaderClient({
     <header
       data-testid="app-header"
       data-is-owner={isOwner ? "true" : "false"}
-      className="sticky top-0 z-30 border-b border-ink-700/60 bg-ink-950/85 pt-[env(safe-area-inset-top)] backdrop-blur"
+      // Wave 15.2 — hidden on mobile again. On phones, the AppHeader's
+      // logo + avatar + dark strip felt like wasted screen height to
+      // the operator; nav lives in <MobileBottomNav /> and the avatar
+      // sits in that nav's Me tile, so removing the top bar on phones
+      // gives the dashboard the entire viewport. Desktop keeps the
+      // header (tabs + avatar dropdown stay).
+      className="hidden sm:block sticky top-0 z-30 border-b border-ink-700/60 bg-ink-950/85 pt-[env(safe-area-inset-top)] backdrop-blur"
     >
       <div className="mx-auto flex h-12 max-w-3xl items-center justify-between gap-3 px-3 sm:h-16 sm:max-w-5xl sm:gap-4 sm:px-6">
         <div className="flex min-w-0 items-center gap-3">

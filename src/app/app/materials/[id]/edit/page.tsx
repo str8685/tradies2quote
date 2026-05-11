@@ -33,7 +33,7 @@ export default async function EditMaterialPage({
 
   return (
     <div className="min-h-screen text-white">
-      <header className="border-b border-ink-700/60 bg-ink-950/85 pt-[env(safe-area-inset-top)] backdrop-blur">
+      <header className="border-b border-ink-700/60 bg-ink-950/85 backdrop-blur">
         <div className="mx-auto flex h-14 max-w-3xl items-center justify-between px-4 sm:px-6">
           <Link
             href="/app/materials"

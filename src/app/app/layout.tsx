@@ -1,32 +1,33 @@
 import { SideMeasureTape } from "../_components/app/SideMeasureTape";
+import LoadingScreen from "../_components/landing/LoadingScreen";
 import { MobileBottomNav } from "./_components/MobileBottomNav";
 
 /**
  * Visual layout for /app/* routes.
  *
- * Wave 15 — refresh:
- *   - Background swapped from `.t2q-app-grid-bg` (visible tiled grid)
- *     to `.t2q-app-canvas` (smooth dark gradient, no squares).
- *   - Removed the 5-second tape-measure `<LoadingScreen>` entry splash.
- *     Replaced by Next.js's route-level `app/app/loading.tsx`, which
- *     is server-rendered with zero JS and shown BEFORE the dashboard
- *     markup ever ships to the browser. That fixes the "dashboard
- *     flashes briefly before the splash" bug — there's nothing to
- *     flash, because the dashboard doesn't render until its data is
- *     ready, and the route loader covers the gap.
- *   - Safe-area inset top is now applied to the wrapper div in a way
- *     that doesn't insert a tall black band: just `pt-[env(...)]`
- *     and no opaque background on the inset itself, since the canvas
- *     paints continuously underneath.
- *   - Bottom inset still honoured via the mobile bottom nav's own
- *     `pb-[calc(env(safe-area-inset-bottom,0)+...)]`; nothing to do
- *     here.
+ * Wave 15.2 — restoration of the tape-measure entry splash:
+ *   - `<LoadingScreen>` is mounted back at the top of the tree. It's
+ *     gated by sessionStorage (6h skip window) so it only plays on the
+ *     first /app entry per browsing session, not on every navigation.
+ *   - The same component used to render with `useState(false)` and
+ *     fade in after mount, which caused the dashboard to flash for a
+ *     moment before the splash appeared. Wave 15.2 flips its initial
+ *     state to `true` so the splash is in the server-rendered HTML —
+ *     no protected UI is ever painted before it.
+ *   - The mobile header (logo + avatar + black strip) is hidden again
+ *     via `hidden sm:block` in <AppHeaderClient>. Mobile uses only the
+ *     bottom nav (which includes the avatar tile for the AccountHub).
+ *   - Because the mobile header is gone again, the wrapper restores
+ *     its own `pt-[env(safe-area-inset-top)] sm:pt-0` so phone
+ *     content still sits below the notch.
+ *
+ * The route-level `loading.tsx` next to this file now returns null —
+ * no more brand splash between tabs.
  *
  * Auth gating is unchanged. This layout does NOT call
  * `supabase.auth.getUser()`, does NOT redirect, does NOT fetch data.
- * Auth still happens in `src/proxy.ts` (session refresh + `/app`
- * gate) and as defense-in-depth at the top of each `/app/*` page's
- * server component.
+ * Auth still happens in `src/proxy.ts` and as defense-in-depth at the
+ * top of each `/app/*` page's server component.
  */
 export default function AppLayout({
   children,
@@ -35,16 +36,21 @@ export default function AppLayout({
 }) {
   return (
     <div className="t2q-app-canvas min-h-screen overflow-x-hidden lg:grid lg:grid-cols-[24px_1fr_24px]">
+      {/* Tape-measure brand splash. Renders once per session — the
+          sessionStorage check inside the component decides whether to
+          play or skip on each /app entry. Server-rendered visible so
+          there's no flash of dashboard before it appears. */}
+      <LoadingScreen
+        storageKey="t2q-app-splash-shown"
+        tapeLabel="// loading the tools"
+        holdMs={5000}
+      />
       <SideMeasureTape />
-      {/* Wave 15.1: NO safe-area-top here. The new mobile-visible
-          AppHeader owns its own `pt-[env(safe-area-inset-top)]`, so
-          adding it on the wrapper as well stacked the inset twice —
-          which was the "thick black top border" the user saw. Pages
-          that don't render AppHeader (3 materials editor pages) now
-          apply the inset on their own root.
-          `pb-[88px]` on mobile keeps the floating bottom nav clear
-          of the last page row. */}
-      <div className="min-w-0 pb-[88px] sm:pb-0">
+      {/* Mobile-only safe-area-top. AppHeader is `hidden sm:block`
+          again so the wrapper picks up the iPhone notch / Android
+          cutout inset on phones. Desktop gets the inset from the
+          header itself. */}
+      <div className="min-w-0 pt-[env(safe-area-inset-top)] pb-[88px] sm:pt-0 sm:pb-0">
         {children}
       </div>
       <div aria-hidden="true" className="hidden lg:block" />
