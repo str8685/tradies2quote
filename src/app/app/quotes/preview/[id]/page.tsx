@@ -6,6 +6,17 @@ import { quoteNumber } from "@/lib/quote-defaults";
 import type { ComplianceLineItem, ComplianceReview } from "@/lib/compliance";
 import { isOwnerEmail } from "@/lib/owner";
 import type { InvoiceSummary, InvoiceStatus } from "@/lib/types/invoice";
+import { orchestrate } from "@/lib/lifecycle/orchestrator";
+import {
+  checkQuoteReadiness,
+  summarizeReadiness,
+} from "@/lib/quote-readiness";
+import { runComplianceAgent } from "@/lib/agents/compliance";
+import { runInvoiceAgent } from "@/lib/agents/invoice";
+import {
+  logAgentApprovalNeeded,
+  logAgentEvent,
+} from "@/lib/agent-monitor/logger";
 import { AppHeader } from "../../../_components/AppHeader";
 import { QuoteReadinessCheck } from "../../../_components/QuoteReadinessCheck";
 import { ComplianceAgent } from "../../../_components/agents/ComplianceAgent";
@@ -106,6 +117,153 @@ export default async function QuotePreviewPage({
     is_ai_estimated: !!r.is_ai_estimated,
     last_used_at: r.last_used_at,
   }));
+
+  /* --------------------------------------------------------------------
+   * Agent observability — fire-and-forget logs to the external monitor
+   * dashboard. Each block dual-computes the agent's output server-side
+   * so we can post a short safe summary without touching the components
+   * below. Only ids, counts, status and short messages are transmitted
+   * (see logger PII allow-list).
+   *
+   * If AGENT_DASHBOARD_URL / AGENT_DASHBOARD_SECRET are unset, every
+   * helper is a no-op. Network failures only console.warn.
+   * ------------------------------------------------------------------ */
+  if (quoteData) {
+    const status = (quote.status ?? "draft") as QuoteStatus;
+
+    // 1. Lifecycle Orchestrator — same inputs the LifecycleCard will use.
+    try {
+      const orchOut = orchestrate({
+        status,
+        quoteData,
+        events: [],
+        expiresAt: quote.expires_at ?? null,
+        voiceTranscript: quote.voice_transcript ?? null,
+        invoiceExists: existingInvoice !== null,
+      });
+      logAgentEvent({
+        agentName: "Lifecycle Orchestrator",
+        quoteId: quote.id,
+        stepName: "stage.check",
+        status: "complete",
+        message: `Stage checked: ${orchOut.stage}`,
+      });
+      if (orchOut.nextAction) {
+        logAgentEvent({
+          agentName: "Lifecycle Orchestrator",
+          quoteId: quote.id,
+          stepName: "next-action.suggest",
+          status: "complete",
+          message: `Next action: ${orchOut.nextAction.buttonLabel}`,
+        });
+      }
+      if (orchOut.approvalNeeded) {
+        logAgentApprovalNeeded({
+          agentName: "Lifecycle Orchestrator",
+          quoteId: quote.id,
+          stepName: "approval.needed",
+          status: "waiting_approval",
+          message: "Owner approval required for next lifecycle action",
+        });
+      }
+    } catch {
+      // Pure function shouldn't throw, but defense-in-depth — never
+      // let logging break the render.
+    }
+
+    // 2. Quote Readiness Agent — count-only summary, no field names.
+    try {
+      const items = checkQuoteReadiness(
+        quoteData,
+        profile ?? null,
+        quote.expires_at ?? null,
+      );
+      const sum = summarizeReadiness(items);
+      logAgentEvent({
+        agentName: "Quote Readiness Agent",
+        quoteId: quote.id,
+        stepName: "readiness.evaluate",
+        status:
+          sum.status === "ready"
+            ? "complete"
+            : sum.status === "review"
+              ? "running"
+              : "failed",
+        message:
+          sum.status === "ready"
+            ? `Ready · ${sum.ready}/${sum.total} complete`
+            : `${sum.missing} missing · ${sum.review} warnings · ${sum.ready}/${sum.total} complete`,
+      });
+    } catch {
+      /* never break render */
+    }
+
+    // 3. Voice Cleanup Agent — only "suggested" (the actual cleanup
+    //    runs client-side via a button; we cannot log that without a
+    //    server action, which is out of scope for this wave).
+    if (quote.voice_transcript) {
+      logAgentEvent({
+        agentName: "Voice Cleanup Agent",
+        quoteId: quote.id,
+        stepName: "cleanup.suggested",
+        status: "pending",
+        message: "Transcript present — cleanup available (client-side, no auto-apply)",
+      });
+    }
+
+    // 4. Follow-up Agent — runs server-side inside <FollowupAgent>,
+    //    output is clipboard-only.
+    logAgentEvent({
+      agentName: "Follow-up Agent",
+      quoteId: quote.id,
+      stepName: "copy.generated",
+      status: "complete",
+      message: `Follow-up copy generated · clipboard-only · status=${status}`,
+    });
+
+    // 5. Compliance Agent — rule-based pass. If quoteData.compliance_review
+    //    is missing, we explicitly note the AI engine is off.
+    try {
+      const report = runComplianceAgent(quoteData);
+      const aiEngineOn = (quoteData.compliance_review ?? null) !== null;
+      logAgentEvent({
+        agentName: "Compliance Agent",
+        quoteId: quote.id,
+        stepName: "compliance.check",
+        status:
+          report.flags.some((f) => f.severity === "high")
+            ? "failed"
+            : report.flags.length > 0
+              ? "running"
+              : "complete",
+        message: aiEngineOn
+          ? `Rule-based: ${report.flags.length} flags, ${report.suggestions.length} suggestions · AI engine on`
+          : `Rule-based: ${report.flags.length} flags, ${report.suggestions.length} suggestions · AI compliance engine off (no compliance_review data)`,
+      });
+    } catch {
+      /* never break render */
+    }
+
+    // 7. Invoice Agent — only emits a log when the quote is completed
+    //    and no invoice exists yet (the LifecycleCard's "suggested"
+    //    state). Draft only — never sends, never bills.
+    if (status === "completed" && existingInvoice === null) {
+      try {
+        const preview = runInvoiceAgent(status, quoteData);
+        if (preview.reason === "ready") {
+          logAgentEvent({
+            agentName: "Invoice Agent",
+            quoteId: quote.id,
+            stepName: "draft.suggested",
+            status: "pending",
+            message: `Draft invoice suggested (Draft only) · ${preview.lineItemCount} lines · ${preview.currency}`,
+          });
+        }
+      } catch {
+        /* never break render */
+      }
+    }
+  }
 
   return (
     <div className="min-h-screen text-white">

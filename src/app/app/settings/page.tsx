@@ -3,10 +3,13 @@ import { redirect } from "next/navigation";
 import { SignOut } from "@phosphor-icons/react/dist/ssr";
 import { createClient } from "@/lib/supabase/server";
 import { NZ_DEFAULTS } from "@/lib/quote-defaults";
-import type {
-  AdminClientSnapshot,
-  AdminProfileSnapshot,
+import {
+  runAdminAgent,
+  summarizeAdmin,
+  type AdminClientSnapshot,
+  type AdminProfileSnapshot,
 } from "@/lib/agents/admin";
+import { logAgentEvent } from "@/lib/agent-monitor/logger";
 import { AppHeader } from "../_components/AppHeader";
 import { AdminChecklistPanel } from "../_components/agents/AdminChecklistPanel";
 import { SettingsForm, type SettingsInitial } from "./_components/SettingsForm";
@@ -87,6 +90,32 @@ export default async function SettingsPage() {
         !(typeof c.phone === "string" && c.phone.trim().length > 0),
     ).length,
   };
+
+  // Agent observability — log the Admin Agent's checklist evaluation
+  // each time the operator opens Settings. Counts only, no field
+  // values. The actual <AdminChecklistPanel> below re-runs the pure
+  // function for its render; double-compute is cheap.
+  try {
+    const findings = runAdminAgent(adminProfile, adminClients);
+    const sum = summarizeAdmin(findings);
+    const recommended = sum.missing + sum.warn;
+    logAgentEvent({
+      agentName: "Admin Agent",
+      stepName: "checklist.evaluate",
+      status:
+        sum.status === "ready"
+          ? "complete"
+          : sum.status === "review"
+            ? "running"
+            : "failed",
+      message:
+        recommended > 0
+          ? `${recommended} recommended setup items · ${sum.ready}/${sum.total} complete`
+          : `Settings checklist clean · ${sum.ready}/${sum.total} complete`,
+    });
+  } catch {
+    /* never break the render */
+  }
 
   // Inputs need string values. Falling back to NZ defaults for fresh
   // accounts keeps the form populated rather than blank.

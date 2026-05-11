@@ -7,6 +7,10 @@ import { round2 } from "@/lib/quote-defaults";
 import { applyMaterialCorrections } from "@/lib/quoteEditLearning";
 import type { QuoteData, QuoteStatus } from "@/lib/quote-types";
 import { canTransition } from "@/lib/lifecycle/stages";
+import {
+  logAgentError,
+  logAgentEvent,
+} from "@/lib/agent-monitor/logger";
 
 type SaveResult =
   | { ok: true; materialsLearned?: number }
@@ -309,12 +313,39 @@ export async function createInvoiceFromQuote(
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
+  // Correlate the three Invoice Agent events (rpc.start → rpc.success
+  // or rpc.failed) with a single run id. Random hex so two parallel
+  // calls from the same quote don't collide.
+  const runId = `inv_${quoteId}_${Math.random().toString(16).slice(2, 10)}`;
+  const startedAt = Date.now();
+
+  logAgentEvent({
+    agentName: "Invoice Agent",
+    quoteId,
+    runId,
+    stepName: "rpc.start",
+    status: "running",
+    message: "create_invoice_from_quote RPC started (Draft only)",
+    startedAt,
+  });
+
   const { data, error } = await supabase.rpc("create_invoice_from_quote", {
     p_quote_id: quoteId,
   });
 
   if (error) {
     console.error("create_invoice_from_quote RPC failed", error);
+    logAgentError({
+      agentName: "Invoice Agent",
+      quoteId,
+      runId,
+      stepName: "rpc.failed",
+      status: "failed",
+      message:
+        (error as { code?: string; message?: string }).message ??
+        "create_invoice_from_quote RPC error",
+      durationMs: Date.now() - startedAt,
+    });
     return explainInvoiceRpcError(error);
   }
 
@@ -323,6 +354,16 @@ export async function createInvoiceFromQuote(
   revalidatePath(`/app/quotes/preview/${quoteId}`);
   revalidatePath("/app/quotes");
   revalidatePath("/app");
+
+  logAgentEvent({
+    agentName: "Invoice Agent",
+    quoteId,
+    runId,
+    stepName: "rpc.success",
+    status: "complete",
+    message: "Draft invoice created (Draft only — not sent, not billed)",
+    durationMs: Date.now() - startedAt,
+  });
 
   return { ok: true, id: data as string };
 }
