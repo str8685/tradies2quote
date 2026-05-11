@@ -4,33 +4,31 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { SignOut } from "@phosphor-icons/react";
 import { InstallAppButton } from "@/app/_components/InstallAppButton";
+import { ThemeToggle } from "@/app/_components/landing/ThemeToggle";
 import { signOutAction } from "../actions";
 
 /**
  * Shared header for every `/app/*` page.
  *
- * Wave 10 rewrite — proper SaaS tab bar:
- *   - Logo on the left, always links to /app.
- *   - Optional `context` next to the logo (e.g. "Materials · Capture",
- *     "Q-2026-XXXX") so users always know which sub-page they're on.
- *   - Five primary tabs across the middle/right: Dashboard, Quotes,
- *     Materials, Clients, Settings. Active tab gets the brand-orange
- *     pill background + 2px underline accent (see `.t2q-nav-tab` in
- *     globals.css).
- *   - Install PWA button (renders nothing when not applicable).
- *   - Sign out moved into a clear outlined ghost button at the far right
- *     so it stops disappearing into the mono micro-caps strip it used to
- *     live in.
+ * Wave 10 — Wave 10.1 compact-mobile patch:
+ *   - Mobile header is a SINGLE row of fixed 56 px height (`h-14`). No
+ *     stacked second row, no sign-out button hijacking the bar. Sign-out
+ *     now lives at the bottom of `/app/settings`.
+ *   - Desktop header is 64 px (`sm:h-16`), with the existing tab strip +
+ *     the theme toggle moved over from the landing-only nav + the PWA
+ *     install button + the outlined Sign-out button.
+ *   - Backdrop blur only runs at `sm:` and up — mobile uses an opaque
+ *     `bg-ink-950/95` instead, which is much cheaper to scroll over.
+ *   - Optional page context (e.g. "Materials · Capture", "Q-2026-XXXX")
+ *     is now `sm:` and up only, so the mobile row stays compact even on
+ *     pages with long labels.
  *
- * Client-component-only because we need `usePathname()` for the active
- * indicator. `signOutAction` is still a server action; importing it
- * across the client/server boundary is fine — Next 16 handles the RPC.
- *
- * Mobile (< sm): everything except the logo + sign-out hides; the user
- * navigates via `<MobileBottomNav />` mounted in /app/layout.tsx.
+ * Client component because the active-tab indicator needs `usePathname()`.
+ * `signOutAction` is still a server action; importing it across the
+ * client/server boundary is fine — Next 16 handles the RPC.
  */
 interface AppHeaderProps {
-  /** Optional page label shown next to the logo. */
+  /** Optional page label shown next to the logo on desktop only. */
   context?: string;
 }
 
@@ -60,13 +58,10 @@ export function AppHeader({ context }: AppHeaderProps) {
   return (
     <header
       data-testid="app-header"
-      className="sticky top-0 z-30 border-b border-ink-700 bg-ink-950/90 backdrop-blur supports-[backdrop-filter]:bg-ink-950/70"
+      className="sticky top-0 z-30 border-b border-ink-700 bg-ink-950/95 sm:bg-ink-950/85 sm:backdrop-blur"
     >
-      <div className="mx-auto flex max-w-3xl flex-col gap-2 px-4 py-3 sm:h-16 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:py-0 sm:px-6">
-        {/* Logo + context. Desktop renders the Emergent horizontal lockup
-            (mark + wordmark) from public/logo-horizontal.svg; mobile drops to
-            just the round Site-Safe Badge from public/logo-mark.svg so the
-            row stays compact alongside the Sign-out button. */}
+      <div className="mx-auto flex h-14 max-w-3xl items-center justify-between gap-3 px-4 sm:h-16 sm:gap-4 sm:px-6">
+        {/* Logo + (desktop-only) page context. */}
         <div className="flex min-w-0 items-center gap-3">
           <Link
             href="/app"
@@ -74,15 +69,19 @@ export function AppHeader({ context }: AppHeaderProps) {
             aria-label="Tradies2Quote dashboard"
             className="shrink-0"
           >
-            {/* Mobile: compact round badge only. */}
+            {/* Mobile: compact round badge only. SVG asset — using a
+                plain <img> rather than next/image because SVGs are not
+                rasterized by the image-optimization pipeline anyway. */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src="/logo-mark.svg"
               alt="Tradies2Quote"
-              width={36}
-              height={36}
-              className="block h-9 w-9 sm:hidden"
+              width={32}
+              height={32}
+              className="block h-7 w-7 sm:hidden"
             />
             {/* Desktop: full horizontal lockup. */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src="/logo-horizontal.svg"
               alt="Tradies2Quote"
@@ -92,25 +91,20 @@ export function AppHeader({ context }: AppHeaderProps) {
             />
           </Link>
           {context ? (
-            <>
-              <span
-                aria-hidden="true"
-                className="hidden text-ink-600 sm:inline"
-              >
+            <span
+              data-testid="app-header-context"
+              className="hidden min-w-0 items-center gap-2 font-mono text-xs uppercase tracking-[0.25em] text-ink-400 sm:inline-flex"
+            >
+              <span aria-hidden="true" className="text-ink-600">
                 ·
               </span>
-              <span
-                data-testid="app-header-context"
-                className="truncate font-mono text-[10px] uppercase tracking-[0.25em] text-ink-400 sm:text-xs"
-              >
-                {context}
-              </span>
-            </>
+              <span className="truncate">{context}</span>
+            </span>
           ) : null}
         </div>
 
-        {/* Desktop tabs + actions. Hidden on mobile — the user navigates
-            via MobileBottomNav instead. */}
+        {/* Desktop tabs + actions cluster. Hidden on mobile — the user
+            navigates via MobileBottomNav instead. */}
         <div className="hidden items-center gap-2 sm:flex">
           <nav
             data-testid="app-header-tabs"
@@ -134,6 +128,7 @@ export function AppHeader({ context }: AppHeaderProps) {
           </nav>
 
           <div className="ml-2 flex items-center gap-2 border-l border-ink-700 pl-3">
+            <ThemeToggle />
             {/* Renders nothing when the app is already installed or the
                 browser can't install — see InstallAppButton.tsx. */}
             <InstallAppButton />
@@ -150,21 +145,12 @@ export function AppHeader({ context }: AppHeaderProps) {
           </div>
         </div>
 
-        {/* Mobile-only compact action: sign-out access stays visible at
-            the top right even though the tabs themselves move to the
-            bottom nav. Kept here as a small icon button to avoid trapping
-            users with no obvious exit. */}
-        <form action={signOutAction} className="sm:hidden self-end">
-          <button
-            type="submit"
-            data-testid="app-header-sign-out-mobile"
-            aria-label="Sign out"
-            className="inline-flex h-9 items-center gap-1 rounded-sm border border-ink-600 px-2 font-mono text-[10px] uppercase tracking-[0.2em] text-ink-200 transition-colors hover:border-brand hover:bg-brand hover:text-ink-900"
-          >
-            <SignOut size={14} weight="bold" />
-            <span>Sign out</span>
-          </button>
-        </form>
+        {/* Mobile-only right side: just the install button (renders
+            nothing when not installable). Sign-out has moved to the
+            bottom of /app/settings. */}
+        <div className="flex items-center gap-2 sm:hidden">
+          <InstallAppButton />
+        </div>
       </div>
     </header>
   );

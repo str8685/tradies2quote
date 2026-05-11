@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from "next";
+import Script from "next/script";
 import { Archivo_Black, IBM_Plex_Sans, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
+import { ThemeBoot } from "./_components/ThemeBoot";
 
 const archivoblack = Archivo_Black({
   variable: "--font-archivo-black",
@@ -106,6 +108,23 @@ export const viewport: Viewport = {
   themeColor: "#0A0A0A",
 };
 
+/**
+ * Pre-hydration theme script.
+ *
+ * Runs synchronously, before React hydrates, before the first paint.
+ * Reads `localStorage["t2q-theme"]` + `(prefers-color-scheme: dark)` and
+ * writes the resolved value to `<html data-theme="…">`, which the
+ * `[data-theme="light"]` CSS overrides in `globals.css` respond to.
+ *
+ * Without this, the server emits `<html>` with no `data-theme`, so the
+ * first paint is always the dark default; the `<ThemeToggle />` then runs
+ * its mount effect and flips the value, producing a single-frame flash.
+ *
+ * Wrapped in try/catch so a strict CSP / private-mode localStorage block
+ * never throws — `<ThemeBoot />` then re-applies on mount as a backstop.
+ */
+const THEME_INIT_SCRIPT = `(function(){try{var m=localStorage.getItem("t2q-theme");if(m!=="light"&&m!=="dark"&&m!=="auto"){m="auto";}var e=m==="auto"?(window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"):m;document.documentElement.dataset.theme=e;}catch(_){}})();`;
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -116,7 +135,15 @@ export default function RootLayout({
       lang="en"
       className={`${archivoblack.variable} ${ibmPlexSans.variable} ${ibmPlexMono.variable} h-full`}
     >
+      <head>
+        <Script
+          id="t2q-theme-init"
+          strategy="beforeInteractive"
+          dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }}
+        />
+      </head>
       <body className="min-h-full flex flex-col bg-ink-900 text-white antialiased">
+        <ThemeBoot />
         {children}
       </body>
     </html>

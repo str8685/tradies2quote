@@ -1,36 +1,31 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Moon, Sun, Sparkle } from "@phosphor-icons/react";
 
 /**
  * 3-state theme switch: AUTO ↔ LIGHT ↔ DARK.
  *
- * Self-contained: no provider, no context, no `src/lib/theme.tsx`. The
- * resolved theme is applied to `document.documentElement.dataset.theme`,
- * which the [data-theme="light"] CSS overrides in `globals.css` respond
- * to. With mode === "auto", the toggle subscribes to the OS-level
- * `(prefers-color-scheme: dark)` media query so the page tracks the
- * system in real time.
+ * The actual `data-theme` write lives in `src/app/_components/ThemeBoot.tsx`
+ * (mounted at the root layout), so OS-level theme changes are followed
+ * even when this toggle is not on screen — that fixed the bug where the
+ * /app pages would not switch with the phone's light/dark setting.
  *
  * Persistence:
  *   - localStorage["t2q-theme"] = "auto" | "light" | "dark"
  *   - Default for users with no saved preference: "auto"
- *   - Backwards compatible: pre-existing saved values "dark" or "light"
- *     still load correctly.
  *
  * Cycle order: auto → light → dark → auto.
  *
- * SSR notes:
- *   - Component is `"use client"`. SSR + first client render emit the
- *     same defaults ("auto" mode, "dark" effective). The mount effect
- *     then reads localStorage + matchMedia and applies the real value.
- *   - This means a user whose saved/auto-resolved theme is LIGHT will
- *     see ~one frame of dark before the effect runs. Eliminating this
- *     flash needs a pre-hydration script in `layout.tsx`, which is out
- *     of scope for this wave.
+ * On click this component:
+ *   1. Writes the new mode to localStorage.
+ *   2. Fires `t2q-theme-changed` so `<ThemeBoot />` re-applies the
+ *      resolved theme in the same tab (the native `storage` event only
+ *      reaches other tabs).
+ *
+ * `data-theme` is also written here as an instant-feedback shortcut so the
+ * UI never lags a frame behind the click.
  */
-
 const STORAGE_KEY = "t2q-theme";
 type Mode = "auto" | "light" | "dark";
 type Effective = "light" | "dark";
@@ -46,70 +41,72 @@ function resolveAuto(): Effective {
     : "light";
 }
 
-function applyTheme(effective: Effective) {
-  document.documentElement.dataset.theme = effective;
+function readSavedMode(): Mode {
+  if (typeof window === "undefined") return "auto";
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    return isMode(raw) ? raw : "auto";
+  } catch {
+    return "auto";
+  }
+}
+
+function readEffective(mode: Mode): Effective {
+  if (typeof window === "undefined") return "dark";
+  // Prefer the value the boot script already wrote — it's the source of
+  // truth for what's actually on screen right now.
+  const fromDom = document.documentElement.dataset.theme;
+  if (fromDom === "light" || fromDom === "dark") return fromDom;
+  return mode === "auto" ? resolveAuto() : mode;
 }
 
 export function ThemeToggle() {
-  // SSR-safe initial values. Real values hydrate via the mount effect.
+  // The pre-hydration script in `layout.tsx` already wrote the right
+  // `data-theme`, so we can read it back synchronously on mount. We still
+  // start with "auto" on the server render to match the SSR HTML.
+  const [hydrated, setHydrated] = useState(false);
   const [mode, setMode] = useState<Mode>("auto");
   const [effective, setEffective] = useState<Effective>("dark");
-  const [hydrated, setHydrated] = useState(false);
 
-  // Mount: read saved mode, resolve, apply, mark hydrated.
   useEffect(() => {
-    let savedMode: Mode = "auto";
-    try {
-      const raw = window.localStorage.getItem(STORAGE_KEY);
-      if (isMode(raw)) savedMode = raw;
-    } catch {
-      // localStorage blocked (private mode, strict cookie blocking) —
-      // fall through to "auto"
-    }
-    const eff: Effective = savedMode === "auto" ? resolveAuto() : savedMode;
-    setMode(savedMode);
-    setEffective(eff);
-    applyTheme(eff);
+    const saved = readSavedMode();
+    setMode(saved);
+    setEffective(readEffective(saved));
     setHydrated(true);
-  }, []);
 
-  // After hydrate: any mode change persists + re-applies effective.
-  useEffect(() => {
-    if (!hydrated) return;
-    try {
-      window.localStorage.setItem(STORAGE_KEY, mode);
-    } catch {
-      // localStorage write blocked — keep in-memory state only
-    }
-    const eff: Effective = mode === "auto" ? resolveAuto() : mode;
-    setEffective(eff);
-    applyTheme(eff);
-  }, [mode, hydrated]);
-
-  // While in auto mode, follow live OS preference changes.
-  useEffect(() => {
-    if (!hydrated || mode !== "auto") return;
-    if (typeof window === "undefined" || !window.matchMedia) return;
-
+    // While this toggle is mounted, also follow OS changes locally so the
+    // displayed `effective` label stays accurate. ThemeBoot already
+    // re-applies `data-theme`; we just mirror its decision into our own
+    // state so the (auto · currently …) label updates.
+    if (!window.matchMedia) return;
     const mql = window.matchMedia("(prefers-color-scheme: dark)");
-    const handler = (e: MediaQueryListEvent) => {
-      const eff: Effective = e.matches ? "dark" : "light";
-      setEffective(eff);
-      applyTheme(eff);
-    };
+    const handler = () => setEffective(readEffective(readSavedMode()));
     mql.addEventListener("change", handler);
     return () => mql.removeEventListener("change", handler);
-  }, [mode, hydrated]);
+  }, []);
 
-  function cycle() {
-    setMode((prev) =>
-      prev === "auto" ? "light" : prev === "light" ? "dark" : "auto",
-    );
-  }
+  const cycle = useCallback(() => {
+    setMode((prev) => {
+      const next: Mode =
+        prev === "auto" ? "light" : prev === "light" ? "dark" : "auto";
+      try {
+        window.localStorage.setItem(STORAGE_KEY, next);
+      } catch {
+        // Storage blocked — UI still works, just won't persist.
+      }
+      const eff: Effective = next === "auto" ? resolveAuto() : next;
+      // Instant UI feedback for the same tab — ThemeBoot will also apply
+      // via the custom event below, but writing here first avoids a frame
+      // gap.
+      document.documentElement.dataset.theme = eff;
+      setEffective(eff);
+      // Tell ThemeBoot (same tab) to re-sync.
+      window.dispatchEvent(new CustomEvent("t2q-theme-changed"));
+      return next;
+    });
+  }, []);
 
-  // Knob slot index — 0 (auto), 1 (light), 2 (dark).
   const idx = mode === "auto" ? 0 : mode === "light" ? 1 : 2;
-
   const label =
     mode === "auto"
       ? `Auto · currently ${effective}`
