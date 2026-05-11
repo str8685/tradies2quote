@@ -681,14 +681,15 @@ h1, h2, h3, h4, h5 {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0.125rem;
-  /* Wave 14.4 — slimmed from 60px → 48px so the floating nav reads
-     as a compact island, not a heavy bar. */
-  min-height: 48px;
-  padding: 0.25rem 0.5rem;
+  gap: 0.1875rem;
+  /* Wave 14.5 — back to a tappable height that fits the larger 22px
+     icons cleanly. Slimmer than the original 60px so the nav still
+     feels compact. */
+  min-height: 56px;
+  padding: 0.375rem 0.5rem;
   font-family: var(--font-ibm-plex-mono), "IBM Plex Mono", monospace;
-  font-size: 0.625rem;
-  letter-spacing: 0.16em;
+  font-size: 0.6875rem;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
   color: #D4D4D4;
   transition: color 150ms ease;
@@ -714,29 +715,29 @@ h1, h2, h3, h4, h5 {
 /* ─── Mobile bottom-nav bar ─────────────────────────────────────────────
    The container itself. Pinned to viewport bottom on mobile, hidden on
    desktop. `pb` value swallows iOS home-indicator safe area. */
-/* Wave 14.4 — floating bottom-nav. Detached from the screen edges
-   with side margins + a rounded card + drop-shadow, so it reads as an
-   island, not an attached bar. `bottom` adds the iOS home-indicator
-   inset so it lifts above the gesture area on iPhone X+. */
+/* Wave 14.5 — flush bottom nav. User feedback: the floating island
+   from 14.4 made the page look like it was moving outside the screen
+   when navigating between tabs (the page bg showed through the side
+   margins during transitions). Reverted to a full-bleed bottom bar
+   pinned to the screen edge. iOS home-indicator inset still consumed
+   via padding-bottom so the bar lifts cleanly above the gesture area. */
 .t2q-bottomnav-bar {
   position: fixed;
-  bottom: calc(env(safe-area-inset-bottom, 0) + 0.625rem);
-  left: 0.75rem;
-  right: 0.75rem;
+  bottom: 0;
+  left: 0;
+  right: 0;
   display: flex;
   align-items: stretch;
   background: rgba(10, 10, 10, 0.92);
-  border: 1px solid #1F1F1F;
-  border-radius: 1rem;
-  backdrop-filter: blur(16px) saturate(160%);
-  -webkit-backdrop-filter: blur(16px) saturate(160%);
-  box-shadow: 0 12px 32px -10px rgba(0, 0, 0, 0.7);
+  border-top: 1px solid #1F1F1F;
+  backdrop-filter: blur(12px) saturate(140%);
+  -webkit-backdrop-filter: blur(12px) saturate(140%);
+  padding-bottom: env(safe-area-inset-bottom, 0);
   z-index: 40;
-  overflow: hidden;
 }
 [data-theme="light"] .t2q-bottomnav-bar {
   background: rgba(255, 255, 255, 0.92) !important;
-  border-color: #D8D7CE !important;
+  border-top-color: #D8D7CE !important;
 }
 
 /* =========================================================================

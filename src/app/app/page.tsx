@@ -4,10 +4,8 @@ import { redirect } from "next/navigation";
 import {
   ArrowRight,
   Bug,
-  GearSix,
   Plus,
   Robot,
-  UsersThree,
 } from "@phosphor-icons/react/dist/ssr";
 import { createClient } from "@/lib/supabase/server";
 import { formatCurrency, quoteNumber } from "@/lib/quote-defaults";
@@ -283,49 +281,15 @@ export default async function DashboardPage() {
           </div>
         ) : null}
 
-        {/* Tail nav — Clients + Settings were dropped from the bottom
-            nav in Wave 10.4 to make room for Agents. These small links
-            keep both reachable from the dashboard. Wave 11 — owner
-            also sees a Debug link here. Mobile-only because the
-            desktop AppHeader carries the same destinations. */}
-        <nav
-          data-testid="dashboard-tail-links"
-          aria-label="Secondary"
-          className="mt-10 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 border-t border-ink-700/60 pt-6 sm:hidden"
-        >
-          <Link
-            href="/app/clients"
-            className="inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.25em] text-ink-300 hover:text-brand"
-          >
-            <UsersThree size={14} weight="bold" />
-            Clients
-          </Link>
-          <Link
-            href="/app/settings"
-            className="inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.25em] text-ink-300 hover:text-brand"
-          >
-            <GearSix size={14} weight="bold" />
-            Settings
-          </Link>
-          {isOwner ? (
-            <Link
-              href="/app/debug"
-              data-testid="dashboard-debug-link"
-              className="inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.25em] text-ink-300 hover:text-brand"
-            >
-              <Bug size={14} weight="bold" />
-              Debug
-            </Link>
-          ) : null}
-        </nav>
-
-        {/* Desktop owner-only Debug shortcut. The desktop AppHeader
-            already exposes Clients/Settings; Debug is owner-only so it
-            sits as a small footer note here instead. */}
+        {/* Wave 14.5 — mobile tail-nav (Clients/Settings/Debug links)
+            removed. The avatar tile + account sheet in
+            <MobileBottomNav /> is the single home for these on mobile.
+            Desktop still has Settings (cog icon) in the AppHeader, so
+            Debug stays here as a small owner-only desktop footer. */}
         {isOwner ? (
           <p
             data-testid="dashboard-debug-footer"
-            className="mt-8 hidden text-center font-mono text-[10px] uppercase tracking-[0.25em] text-ink-400 sm:block"
+            className="mt-10 hidden text-center font-mono text-[10px] uppercase tracking-[0.25em] text-ink-400 sm:block"
           >
             <Link
               href="/app/debug"

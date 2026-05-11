@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { Icon } from "@phosphor-icons/react";
 import {
+  Bug,
   GearSix,
   House,
   ListBullets,
@@ -74,7 +75,7 @@ export function MobileBottomNavClient({ isOwner, userEmail }: Props) {
               data-testid={`app-bottom-nav-${label.toLowerCase()}`}
             >
               <IconCmp
-                size={18}
+                size={22}
                 weight={active ? "fill" : "regular"}
                 aria-hidden="true"
               />
@@ -95,7 +96,7 @@ export function MobileBottomNavClient({ isOwner, userEmail }: Props) {
         >
           <span
             aria-hidden="true"
-            className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-brand text-ink-900 font-display text-[10px] leading-none"
+            className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-brand text-ink-900 font-display text-xs leading-none"
           >
             {initial}
           </span>
@@ -188,6 +189,33 @@ export function MobileBottomNavClient({ isOwner, userEmail }: Props) {
                   </span>
                 </Link>
               </li>
+              {/* Wave 14.5 — Debug moved into the account sheet for
+                  owners. Was a separate tail-nav block on the
+                  dashboard, but the avatar sheet is the right home
+                  for owner-only nav. Non-owners never see this. */}
+              {isOwner ? (
+                <li>
+                  <Link
+                    href="/app/debug"
+                    data-testid="account-sheet-debug"
+                    onClick={() => setSheetOpen(false)}
+                    className="flex items-center gap-3 rounded-sm border border-ink-700 bg-ink-900/60 px-4 py-3 hover:border-brand hover:bg-brand/5"
+                  >
+                    <Bug
+                      size={16}
+                      weight="bold"
+                      className="text-brand"
+                      aria-hidden="true"
+                    />
+                    <span className="font-display text-sm uppercase tracking-tight text-white">
+                      Debug
+                    </span>
+                    <span className="ml-auto font-mono text-[10px] uppercase tracking-[0.18em] text-ink-300">
+                      Owner only
+                    </span>
+                  </Link>
+                </li>
+              ) : null}
               <li>
                 <form action="/auth/signout" method="POST">
                   <button

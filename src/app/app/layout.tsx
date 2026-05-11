@@ -32,7 +32,7 @@ export default function AppLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="t2q-app-grid-bg min-h-screen lg:grid lg:grid-cols-[24px_1fr_24px]">
+    <div className="t2q-app-grid-bg min-h-screen overflow-x-hidden lg:grid lg:grid-cols-[24px_1fr_24px]">
       {/* Wave 13.2 — same brand splash as the landing, with its own
           session-storage key so it shows once per session on the
           tradie's first dashboard visit (independent of the landing
