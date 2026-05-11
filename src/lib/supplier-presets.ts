@@ -54,6 +54,12 @@ export interface SupplierPreset {
    */
   defaultSupplier: string | null;
   /**
+   * Public URL of the merchant's trade portal / website. Rendered as a
+   * quick-link below the preset picker so the tradie can hop straight
+   * to the source to download their CSV. `null` for the generic preset.
+   */
+  portalUrl: string | null;
+  /**
    * Per-target-field candidate column names. Strings here are matched
    * against the source CSV header row after lowercase + trim.
    *
@@ -88,6 +94,7 @@ export const GENERIC_PRESET: SupplierPreset = {
   hint:
     "Use this when your CSV already has the columns name, unit, default_unit_price (and optional supplier / supplier_url / notes).",
   defaultSupplier: null,
+  portalUrl: null,
   candidates: {
     name: ["name"],
     unit: ["unit"],
@@ -105,6 +112,7 @@ const MITRE_10_TRADE: SupplierPreset = {
   hint:
     "Export from your Mitre 10 Trade account. We map Description → name, Unit → unit, Trade Price → default_unit_price, Code/SKU → notes (as SKU).",
   defaultSupplier: "Mitre 10",
+  portalUrl: "https://www.mitre10.co.nz/trade",
   candidates: {
     name: ["description", "product name", "item", "item description", "product"],
     unit: ["unit", "uom", "pack size", "pack"],
@@ -128,6 +136,7 @@ const BUNNINGS_POWERPASS: SupplierPreset = {
   hint:
     "Export from your Bunnings PowerPass account. We map Item Description → name, Unit of Measure → unit, Trade Price → default_unit_price, Item Code → notes (as SKU).",
   defaultSupplier: "Bunnings",
+  portalUrl: "https://www.bunnings.co.nz/trade",
   candidates: {
     name: ["item description", "description", "product", "product name", "item"],
     unit: ["unit of measure", "uom", "unit", "pack size"],
@@ -151,6 +160,7 @@ const ITM_TRADE: SupplierPreset = {
   hint:
     "Export from your ITM trade account. We map Description → name, Unit → unit, Trade Price (or Price) → default_unit_price, ITM Code → notes (as SKU).",
   defaultSupplier: "ITM",
+  portalUrl: "https://www.itm.co.nz",
   candidates: {
     name: ["description", "product description", "product", "item"],
     unit: ["unit", "uom", "pack size"],
@@ -168,6 +178,7 @@ const PLACEMAKERS_TRADE: SupplierPreset = {
   hint:
     "Export from your PlaceMakers trade account. We map Description → name, Unit → unit, Net Price (or Trade Price) → default_unit_price, Code → notes (as SKU).",
   defaultSupplier: "PlaceMakers",
+  portalUrl: "https://www.placemakers.co.nz",
   candidates: {
     name: ["description", "product", "product description", "item"],
     unit: ["unit", "uom", "pack size"],

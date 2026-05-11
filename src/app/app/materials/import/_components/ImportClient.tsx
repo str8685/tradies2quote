@@ -3,6 +3,7 @@
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
+  ArrowSquareOut,
   CheckCircle,
   Download,
   Storefront,
@@ -170,6 +171,38 @@ export function ImportClient() {
         <p className="mt-3 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-400">
           {activePreset.hint}
         </p>
+
+        {/* Wave 16 — quick links to each merchant's trade portal so the
+            tradie can hop straight to the source to download their
+            CSV. These are intentionally separate from the preset
+            picker above: tapping a chip controls PARSING; tapping a
+            link below opens the WEBSITE. All four are always visible
+            regardless of the active preset (you might pick "Mitre 10"
+            here but realise you actually need to grab the PlaceMakers
+            CSV first — both are one tap away). */}
+        <div
+          data-testid="supplier-quick-links"
+          className="mt-4 border-t border-ink-700/40 pt-3"
+        >
+          <p className="mb-2 font-mono text-[9px] uppercase tracking-[0.2em] text-ink-400">
+            {"// need to grab your csv? open a supplier site"}
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {SUPPLIER_PRESETS.filter((p) => p.portalUrl).map((p) => (
+              <a
+                key={p.id}
+                href={p.portalUrl ?? "#"}
+                target="_blank"
+                rel="noreferrer noopener"
+                data-testid={`supplier-link-${p.id}`}
+                className="inline-flex items-center gap-1.5 rounded-sm border border-ink-700 bg-ink-900/40 px-3 py-1.5 text-[11px] font-display uppercase tracking-tight text-ink-200 transition-colors hover:border-brand hover:text-brand"
+              >
+                {p.shortLabel}
+                <ArrowSquareOut size={11} weight="bold" aria-hidden="true" />
+              </a>
+            ))}
+          </div>
+        </div>
       </section>
 
       <section className="t2q-card p-5 sm:p-6">

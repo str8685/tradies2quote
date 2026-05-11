@@ -50,6 +50,19 @@ describe("preset registry", () => {
     }
   });
 
+  it("every non-generic preset has a portalUrl pointing at the supplier's site", () => {
+    for (const p of SUPPLIER_PRESETS) {
+      if (p.id === "generic") continue;
+      expect(p.portalUrl, `${p.id} should set portalUrl`).toMatch(
+        /^https:\/\/(www\.)?(mitre10|bunnings|itm|placemakers)\.co\.nz\b/,
+      );
+    }
+  });
+
+  it("generic preset has no portalUrl", () => {
+    expect(GENERIC_PRESET.portalUrl).toBeNull();
+  });
+
   it("every non-generic preset can map name + unit + price", () => {
     for (const p of SUPPLIER_PRESETS) {
       if (p.id === "generic") continue;
