@@ -297,6 +297,11 @@ function HubLinkRow({
       ) : (
         <Link
           href={fullHref}
+          // Wave 15.4 — prefetch every hub item so tapping any of
+          // Profile / Business / Quote defaults / Invoice defaults /
+          // Clients / Agents / Debug navigates instantly. Next 16's
+          // default null only warms loading.tsx + the first segment.
+          prefetch={true}
           data-testid={`account-hub-${label.toLowerCase().replace(/\s+/g, "-")}`}
           onClick={onClose}
           className={cls}
@@ -468,32 +473,39 @@ function AvatarUploadField({
               Remove
             </button>
           ) : null}
-          {/* Wave 15.3 — the upload trigger is now a <label> wrapping
-              an actual file input. Programmatic .click() on a hidden
-              input was being blocked by iOS Safari, which is why the
-              picker wouldn't open on iPhone. A label is the native
-              trigger and works on every browser. */}
+          {/* Wave 15.4 — REAL upload fix.
+              Wave 15.3 used `<label htmlFor>` pointing at a separate
+              sr-only input. iOS Safari treats `clip:rect(0,0,0,0)` +
+              1×1px inputs as too hidden to trigger the file picker,
+              even via a native label association. The fix is to keep
+              the file input in the DOM AND in layout, positioned
+              absolute over the visible button content with opacity 0
+              — taps land on the actual input element, which is what
+              iOS's picker heuristic requires. */}
           <label
-            htmlFor="account-hub-avatar-input"
             aria-disabled={pending}
             data-testid="account-hub-avatar-upload"
-            className={`inline-flex items-center gap-2 rounded-sm border border-ink-700 bg-ink-900/60 px-3 py-2 text-xs font-display uppercase tracking-tight text-white hover:border-brand hover:text-brand ${
+            className={`relative inline-flex items-center gap-2 overflow-hidden rounded-sm border border-ink-700 bg-ink-900/60 px-3 py-2 text-xs font-display uppercase tracking-tight text-white hover:border-brand hover:text-brand ${
               pending ? "pointer-events-none opacity-60" : "cursor-pointer"
             }`}
           >
             <Camera size={13} weight="bold" aria-hidden="true" />
-            {pending ? "Saving…" : avatarUrl ? "Change" : "Upload"}
+            <span>
+              {pending ? "Saving…" : avatarUrl ? "Change" : "Upload"}
+            </span>
+            <input
+              type="file"
+              accept={CLIENT_ACCEPT}
+              onChange={onPick}
+              disabled={pending}
+              data-testid="account-hub-avatar-input"
+              // Fills the label box; opacity:0 keeps it invisible but
+              // taps go straight to the input → iOS opens the picker.
+              className="absolute inset-0 cursor-pointer opacity-0"
+            />
           </label>
         </div>
       </div>
-      <input
-        id="account-hub-avatar-input"
-        type="file"
-        accept={CLIENT_ACCEPT}
-        onChange={onPick}
-        className="sr-only"
-        data-testid="account-hub-avatar-input"
-      />
       {error ? (
         <p
           role="alert"

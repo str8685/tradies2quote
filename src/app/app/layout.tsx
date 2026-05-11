@@ -1,6 +1,7 @@
 import { SideMeasureTape } from "../_components/app/SideMeasureTape";
 import LoadingScreen from "../_components/landing/LoadingScreen";
 import { MobileBottomNav } from "./_components/MobileBottomNav";
+import { OnboardingTour } from "./_components/OnboardingTour";
 
 /**
  * Visual layout for /app/* routes.
@@ -55,6 +56,10 @@ export default function AppLayout({
       </div>
       <div aria-hidden="true" className="hidden lg:block" />
       <MobileBottomNav />
+      {/* First-run onboarding tour. Self-gates via localStorage so it
+          renders nothing on repeat visits and never blocks people who
+          already know the app. */}
+      <OnboardingTour />
     </div>
   );
 }
