@@ -163,15 +163,93 @@ describe("orchestrate — accepted onward", () => {
 });
 
 describe("orchestrate — terminal stages", () => {
-  const terminals: QuoteStatus[] = ["completed", "declined", "expired"];
+  // Wave 14 — `completed` is no longer fully terminal for agents.
+  // It still has no transition (nextAction null), but agentToTrigger
+  // becomes "Invoice" when no invoice exists yet. Tested separately
+  // below. Declined and expired remain fully terminal.
+  const terminals: QuoteStatus[] = ["declined", "expired"];
   for (const s of terminals) {
-    it(`returns no next action for ${s}`, () => {
+    it(`returns no next action and no agent for ${s}`, () => {
       const out = orchestrate({ status: s, quoteData: makeQuote() });
       expect(out.nextAction).toBeNull();
       expect(out.approvalNeeded).toBe(false);
       expect(out.agentToTrigger).toBeNull();
     });
   }
+
+  it("completed: no transition, but Invoice agent is suggested", () => {
+    const out = orchestrate({ status: "completed", quoteData: makeQuote() });
+    expect(out.nextAction).toBeNull();
+    expect(out.approvalNeeded).toBe(false);
+    expect(out.agentToTrigger).toBe("Invoice");
+  });
+});
+
+describe("orchestrate — Wave 14 Voice Cleanup suggestion", () => {
+  it("suggests Voice Cleanup on a clean draft when transcript exists", () => {
+    const out = orchestrate({
+      status: "draft",
+      quoteData: makeQuote(),
+      voiceTranscript: "Um, so I'm replacing a six metre wall, like, with gib.",
+    });
+    expect(out.agentToTrigger).toBe("Voice Cleanup");
+  });
+
+  it("transcript loses to missing-fields — Quote Review wins on dirty draft", () => {
+    const out = orchestrate({
+      status: "draft",
+      quoteData: makeQuote({ line_items: [] }),
+      voiceTranscript: "Anything",
+    });
+    expect(out.agentToTrigger).toBe("Quote Review");
+  });
+
+  it("empty/whitespace transcript falls through to Compliance", () => {
+    const out = orchestrate({
+      status: "draft",
+      quoteData: makeQuote(),
+      voiceTranscript: "   ",
+    });
+    expect(out.agentToTrigger).toBe("Compliance");
+  });
+
+  it("no transcript at all falls through to Compliance on clean draft", () => {
+    const out = orchestrate({ status: "draft", quoteData: makeQuote() });
+    expect(out.agentToTrigger).toBe("Compliance");
+  });
+});
+
+describe("orchestrate — Wave 14 Invoice suggestion", () => {
+  it("suggests Invoice on completed quote without an existing invoice", () => {
+    const out = orchestrate({
+      status: "completed",
+      quoteData: makeQuote(),
+      invoiceExists: false,
+    });
+    expect(out.agentToTrigger).toBe("Invoice");
+    expect(out.dashboardMessage).toMatch(/create a draft invoice/i);
+  });
+
+  it("does NOT re-suggest Invoice when an invoice already exists", () => {
+    const out = orchestrate({
+      status: "completed",
+      quoteData: makeQuote(),
+      invoiceExists: true,
+    });
+    expect(out.agentToTrigger).toBeNull();
+    expect(out.dashboardMessage).toMatch(/invoice draft created/i);
+  });
+
+  it("does NOT suggest Invoice on other stages even when invoiceExists is falsy", () => {
+    for (const s of ["draft", "sent", "viewed", "accepted", "scheduled", "in_progress"] as const) {
+      const out = orchestrate({
+        status: s,
+        quoteData: makeQuote(),
+        invoiceExists: false,
+      });
+      expect(out.agentToTrigger).not.toBe("Invoice");
+    }
+  });
 });
 
 describe("orchestrate — dashboardMessage", () => {

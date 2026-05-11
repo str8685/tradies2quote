@@ -38,7 +38,8 @@ export type AgentName =
   | "Quote Review"
   | "Compliance"
   | "Voice Cleanup"
-  | "Follow-up";
+  | "Follow-up"
+  | "Invoice";
 
 export interface NextAction {
   action: ServerAction;
@@ -58,6 +59,18 @@ export interface OrchestratorInput {
   quoteData: QuoteData | null;
   events?: QuoteEvent[] | null;
   expiresAt?: string | null;
+  /**
+   * Wave 14 — voice transcript flowed in from the quote row. Drives
+   * the Voice Cleanup suggestion when the quote is still in draft.
+   */
+  voiceTranscript?: string | null;
+  /**
+   * Wave 14 — whether a non-deleted, non-cancelled invoice already
+   * exists for this quote. When `true` AND the stage is `completed`,
+   * we DON'T re-suggest the Invoice agent (it would just hit the
+   * idempotency path of the RPC).
+   */
+  invoiceExists?: boolean;
 }
 
 export interface OrchestratorOutput {
@@ -76,6 +89,10 @@ export interface OrchestratorOutput {
  */
 export function orchestrate(input: OrchestratorInput): OrchestratorOutput {
   const { status, quoteData } = input;
+  const hasTranscript =
+    typeof input.voiceTranscript === "string" &&
+    input.voiceTranscript.trim().length > 0;
+  const invoiceExists = input.invoiceExists === true;
 
   const missing = computeMissing(status, quoteData);
   const blockingForSend = status === "draft" && missing.length > 0;
@@ -87,9 +104,14 @@ export function orchestrate(input: OrchestratorInput): OrchestratorOutput {
   const nextAction =
     proposed && proposed.target === "sent" && blockingForSend ? null : proposed;
 
-  const agentToTrigger = chooseAgent(status, missing.length);
+  const agentToTrigger = chooseAgent(
+    status,
+    missing.length,
+    hasTranscript,
+    invoiceExists,
+  );
   const approvalNeeded = nextAction !== null;
-  const dashboardMessage = dashboardLine(status, missing.length);
+  const dashboardMessage = dashboardLine(status, missing.length, invoiceExists);
   const questions = missing.length > 0
     ? missing.slice(0, 3).map((m) => `${humanField(m.field)}: ${m.why}`)
     : [];
@@ -158,16 +180,32 @@ function proposeNextAction(s: QuoteStatus): NextAction | null {
 }
 
 /**
- * Which existing Wave 12 agent helps at this stage. Returns `null`
- * when no agent applies. The LifecycleCard renders an "Open <agent>"
- * shortcut only when the caller is the project owner — never for
- * other tradies and never for customers.
+ * Which agent helps at this stage. Returns `null` when no agent
+ * applies. The LifecycleCard scrolls to the matching on-page section
+ * when the user taps the suggestion.
+ *
+ * Priority order on `draft`:
+ *   1. Missing required fields → Quote Review (must fix to send)
+ *   2. Voice transcript present → Voice Cleanup (refine the scope)
+ *   3. Clean draft → Compliance (polish exclusions / terms)
+ *
+ * On `sent`/`viewed`: Follow-up (templates).
+ * On `completed` without an active invoice: Invoice (create draft).
+ * Every other stage: no agent.
  */
-function chooseAgent(s: QuoteStatus, missingCount: number): AgentName | null {
+function chooseAgent(
+  s: QuoteStatus,
+  missingCount: number,
+  hasTranscript: boolean,
+  invoiceExists: boolean,
+): AgentName | null {
   if (s === "draft") {
-    return missingCount > 0 ? "Quote Review" : "Compliance";
+    if (missingCount > 0) return "Quote Review";
+    if (hasTranscript) return "Voice Cleanup";
+    return "Compliance";
   }
   if (s === "sent" || s === "viewed") return "Follow-up";
+  if (s === "completed" && !invoiceExists) return "Invoice";
   return null;
 }
 
@@ -231,7 +269,11 @@ function humanField(f: RequiredField): string {
   }
 }
 
-function dashboardLine(s: QuoteStatus, missingCount: number): string {
+function dashboardLine(
+  s: QuoteStatus,
+  missingCount: number,
+  invoiceExists: boolean,
+): string {
   if (s === "draft" && missingCount > 0)
     return `Draft — fix ${missingCount} thing${missingCount > 1 ? "s" : ""} before sending.`;
   if (s === "draft") return "Draft — ready to send.";
@@ -240,7 +282,10 @@ function dashboardLine(s: QuoteStatus, missingCount: number): string {
   if (s === "accepted") return "Accepted — schedule the job to keep momentum.";
   if (s === "scheduled") return "Scheduled — mark on-site when work starts.";
   if (s === "in_progress") return "On-site. Mark complete when the job's done.";
-  if (s === "completed") return "Completed. Invoice flow ships in Wave 14.";
+  if (s === "completed")
+    return invoiceExists
+      ? "Completed. Invoice draft created."
+      : "Completed — create a draft invoice when ready.";
   if (s === "declined") return "Declined. Follow up or archive.";
   if (s === "expired") return "Expired. Re-send with a fresh date if still live.";
   return "—";

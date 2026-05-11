@@ -3,7 +3,12 @@ import { redirect } from "next/navigation";
 import { SignOut } from "@phosphor-icons/react/dist/ssr";
 import { createClient } from "@/lib/supabase/server";
 import { NZ_DEFAULTS } from "@/lib/quote-defaults";
+import type {
+  AdminClientSnapshot,
+  AdminProfileSnapshot,
+} from "@/lib/agents/admin";
 import { AppHeader } from "../_components/AppHeader";
+import { AdminChecklistPanel } from "../_components/agents/AdminChecklistPanel";
 import { SettingsForm, type SettingsInitial } from "./_components/SettingsForm";
 
 export const metadata: Metadata = {
@@ -34,13 +39,54 @@ export default async function SettingsPage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select(
-      "business_name, email, phone, address, gst_number, country, currency, tax_label, tax_rate, default_labour_rate, default_markup_pct",
-    )
-    .eq("id", user.id)
-    .maybeSingle();
+  // Wave 14 — fetch profile + a slim clients snapshot so the inline
+  // AdminChecklistPanel can flag setup gaps (business name, labour
+  // rate, GST, clients without contact). Same RLS pattern the
+  // settings form already uses — auth.uid() owns the rows.
+  const [{ data: profile }, { data: clientsRows }] = await Promise.all([
+    supabase
+      .from("profiles")
+      .select(
+        "business_name, email, phone, address, gst_number, country, currency, tax_label, tax_rate, default_labour_rate, default_markup_pct",
+      )
+      .eq("id", user.id)
+      .maybeSingle(),
+    supabase
+      .from("clients")
+      .select("id, email, phone")
+      .eq("user_id", user.id),
+  ]);
+
+  const adminProfile: AdminProfileSnapshot | null = profile
+    ? {
+        business_name: profile.business_name,
+        email: profile.email,
+        phone: profile.phone,
+        address: profile.address,
+        gst_number: profile.gst_number,
+        country: profile.country,
+        currency: profile.currency,
+        tax_rate:
+          typeof profile.tax_rate === "number" ? profile.tax_rate : null,
+        default_labour_rate:
+          typeof profile.default_labour_rate === "number"
+            ? profile.default_labour_rate
+            : null,
+        default_markup_pct:
+          typeof profile.default_markup_pct === "number"
+            ? profile.default_markup_pct
+            : null,
+      }
+    : null;
+
+  const adminClients: AdminClientSnapshot = {
+    count: clientsRows?.length ?? 0,
+    countWithoutContact: (clientsRows ?? []).filter(
+      (c) =>
+        !(typeof c.email === "string" && c.email.trim().length > 0) &&
+        !(typeof c.phone === "string" && c.phone.trim().length > 0),
+    ).length,
+  };
 
   // Inputs need string values. Falling back to NZ defaults for fresh
   // accounts keeps the form populated rather than blank.
@@ -82,6 +128,12 @@ export default async function SettingsPage() {
             quote PDF and feed the AI generator.
           </p>
         </div>
+
+        {/* Wave 14 — Admin Agent checklist moved here from /app/agents
+            (which is now owner-only). Every tradie sees their setup
+            gaps here, with one-tap links to the field below that fixes
+            each item. Read-only. */}
+        <AdminChecklistPanel profile={adminProfile} clients={adminClients} />
 
         <SettingsForm initial={initial} />
 

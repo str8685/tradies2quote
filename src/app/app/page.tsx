@@ -221,8 +221,13 @@ export default async function DashboardPage() {
               <p className="font-display text-base uppercase tracking-tight text-white sm:text-lg">
                 AI Agents.
               </p>
+              {/* Wave 14 — honest subtitle. Previously claimed
+                  "automations" we don't run; every agent is owner-
+                  approval-only and synchronous. The directory page is
+                  owner-only; the tools themselves render on the
+                  per-quote preview for every tradie. */}
               <p className="mt-0.5 text-sm text-ink-300">
-                Set up quote, materials, follow-up, and admin automations.
+                Directory of agents — quote review, compliance, voice cleanup, follow-up, admin, invoice draft.
               </p>
             </div>
             <span className="hidden items-center gap-1 font-mono text-[10px] uppercase tracking-[0.25em] text-brand sm:inline-flex">

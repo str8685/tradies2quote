@@ -26,7 +26,7 @@ Before adding APIs you haven't used in this codebase yet (route handlers, server
 - **Styling:** Tailwind CSS v4 + Phosphor icons (no emojis in UI)
 - **Auth/DB/Storage:** Supabase via `@supabase/ssr` — project id `guiovuqccbzlbacaxepd`
 - **AI:** OpenAI Whisper (transcription) and Anthropic Claude `claude-sonnet-4` (quote generation, planned). Prefer `fetch` over SDKs where the API surface is small.
-- **Hosting:** Vercel project `tradies-nz` — production aliases `knockoff.app` and `tradies-nz.vercel.app`
+- **Hosting:** Vercel project `tradies-nz` — production aliases `tradies2quote.com` and `tradies-nz.vercel.app`. **`knockoff.app` is a separate Vercel project** (`knockoff`) — `vercel --prod` from this repo does NOT touch it.
 - **Planned later:** Stripe (subscriptions), Resend (email), react-pdf or pdf-lib (PDF generation)
 
 Avoid adding dependencies unless absolutely necessary.
@@ -82,7 +82,7 @@ A few auth/dashboard files reference semantic tokens (`bg-background`, `text-ink
 
 **There is no Git remote.** The repo is local-only; Vercel is connected via the CLI link in `/Users/str8685/Desktop/tradies2quote/.vercel/project.json`. `git push` will fail — pushing has no effect on the live site.
 
-To ship: run `vercel --prod` from the primary repo. Each deploy gets its own immutable per-deployment URL; the production aliases (`knockoff.app`, `tradies-nz.vercel.app`) auto-repoint to the latest. Per-deployment URLs from older deploys keep serving their frozen content forever — that's by design.
+To ship: run `vercel --prod` from the primary repo. Each deploy gets its own immutable per-deployment URL; the `tradies-nz` production aliases (`tradies2quote.com`, `tradies-nz.vercel.app`) auto-repoint to the latest. Per-deployment URLs from older deploys keep serving their frozen content forever — that's by design. `knockoff.app` lives in a different Vercel project and is unaffected.
 
 Set runtime env vars (`OPENAI_API_KEY`, etc.) in Vercel project settings → Environment Variables. Local dev reads `/Users/str8685/Desktop/tradies2quote/.env.local`.
 

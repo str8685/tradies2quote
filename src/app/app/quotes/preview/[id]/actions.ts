@@ -248,3 +248,81 @@ export async function markInProgress(
 export async function markComplete(quoteId: string): Promise<LifecycleResult> {
   return transition(quoteId, "completed");
 }
+
+/* -------------------------------------------------------------------------
+ * Wave 14 — Invoice draft creation.
+ *
+ * Single call to the `create_invoice_from_quote(uuid)` Postgres RPC.
+ * The RPC is the ONLY path that inserts into public.invoices:
+ *   - `authenticated` has no INSERT grant on the table
+ *   - no `invoices_insert_own` RLS policy exists
+ *   - the RPC is SECURITY DEFINER and runs as postgres (superuser),
+ *     bypassing both restrictions while enforcing its own checks:
+ *       * caller is authenticated
+ *       * caller owns the quote
+ *       * quote.status = 'completed'
+ *       * no non-cancelled invoice already exists for the quote
+ *
+ * No PDF generation, no email send, no payment flow in this action.
+ * The draft row lives in public.invoices and surfaces in the UI via
+ * <InvoiceDraftCard>.
+ * ------------------------------------------------------------------------- */
+
+export type InvoiceCreateResult =
+  | { ok: true; id: string }
+  | { error: string; code?: string };
+
+interface PostgresErrorShape {
+  code?: string;
+  message?: string;
+}
+
+function explainInvoiceRpcError(err: unknown): {
+  error: string;
+  code?: string;
+} {
+  const e = (err ?? {}) as PostgresErrorShape;
+  const code = e.code;
+  if (code === "28000")
+    return { error: "You need to sign in to do that.", code };
+  if (code === "P0002") return { error: "Quote not found.", code };
+  if (code === "42501")
+    return { error: "You don't own this quote.", code };
+  if (code === "22023")
+    return {
+      error:
+        "Mark the quote complete before invoicing — only completed quotes can become invoices.",
+      code,
+    };
+  return {
+    error: e.message ?? "Could not create the invoice draft.",
+    code,
+  };
+}
+
+export async function createInvoiceFromQuote(
+  quoteId: string,
+): Promise<InvoiceCreateResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const { data, error } = await supabase.rpc("create_invoice_from_quote", {
+    p_quote_id: quoteId,
+  });
+
+  if (error) {
+    console.error("create_invoice_from_quote RPC failed", error);
+    return explainInvoiceRpcError(error);
+  }
+
+  // Cache invalidation so the InvoiceDraftCard flips from "preview"
+  // to "existing" on the next render.
+  revalidatePath(`/app/quotes/preview/${quoteId}`);
+  revalidatePath("/app/quotes");
+  revalidatePath("/app");
+
+  return { ok: true, id: data as string };
+}

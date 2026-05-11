@@ -5,6 +5,7 @@ import type { LibraryMaterial, QuoteData, QuoteStatus } from "@/lib/quote-types"
 import { quoteNumber } from "@/lib/quote-defaults";
 import type { ComplianceLineItem, ComplianceReview } from "@/lib/compliance";
 import { isOwnerEmail } from "@/lib/owner";
+import type { InvoiceSummary, InvoiceStatus } from "@/lib/types/invoice";
 import { AppHeader } from "../../../_components/AppHeader";
 import { QuoteReadinessCheck } from "../../../_components/QuoteReadinessCheck";
 import { ComplianceAgent } from "../../../_components/agents/ComplianceAgent";
@@ -15,6 +16,7 @@ import { QuoteEditor } from "./_components/QuoteEditor";
 import { CompliancePanel } from "./_components/CompliancePanel";
 import { LifecycleCard } from "./_components/LifecycleCard";
 import { CollapsibleSection } from "./_components/CollapsibleSection";
+import { InvoiceDraftCard } from "./_components/InvoiceDraftCard";
 import {
   TranscriptPanel,
   type TranscriptPanelData,
@@ -61,6 +63,30 @@ export default async function QuotePreviewPage({
     .eq("id", user.id)
     .maybeSingle();
 
+  // Wave 14 — load the existing non-deleted, non-cancelled invoice
+  // for this quote if one exists. Drives both the LifecycleCard's
+  // suggestion suppression and the InvoiceDraftCard's existing-state
+  // branch. RLS already scopes to this user; we further filter by
+  // quote_id + deleted_at IS NULL + status <> 'cancelled'.
+  const { data: invoiceRow } = await supabase
+    .from("invoices")
+    .select("id, invoice_number, status, total_amount, currency, due_date, created_at")
+    .eq("quote_id", id)
+    .is("deleted_at", null)
+    .neq("status", "cancelled")
+    .maybeSingle();
+  const existingInvoice: InvoiceSummary | null = invoiceRow
+    ? {
+        id: invoiceRow.id,
+        invoice_number: invoiceRow.invoice_number,
+        status: invoiceRow.status as InvoiceStatus,
+        total_amount: Number(invoiceRow.total_amount) || 0,
+        currency: invoiceRow.currency ?? "NZD",
+        due_date: invoiceRow.due_date,
+        created_at: invoiceRow.created_at,
+      }
+    : null;
+
   const { data: libraryRows } = await supabase
     .from("materials")
     .select(
@@ -101,13 +127,18 @@ export default async function QuotePreviewPage({
 
         {quoteData ? (
           <>
-            {/* Wave 13 — lifecycle card at the top of the page. */}
+            {/* Wave 13 — lifecycle card at the top of the page.
+                Wave 14 — also fed voiceTranscript + invoiceExists so
+                the orchestrator can suggest Voice Cleanup on draft
+                and Invoice on completed (when no invoice yet). */}
             <LifecycleCard
               quoteId={quote.id}
               status={(quote.status ?? "draft") as QuoteStatus}
               quoteData={quoteData}
               expiresAt={quote.expires_at ?? null}
               isOwner={isOwnerEmail(user.email)}
+              voiceTranscript={quote.voice_transcript ?? null}
+              invoiceExists={existingInvoice !== null}
             />
 
             {/* Wave 13.1 — the editor is the primary work surface and
@@ -122,6 +153,16 @@ export default async function QuotePreviewPage({
               quoteStatus={(quote.status ?? "draft") as QuoteStatus}
               publicToken={quote.public_token ?? null}
               hasPdf={quote.pdf_path !== null && quote.pdf_path !== undefined}
+            />
+
+            {/* Wave 14 — Invoice draft card. Self-hides unless the
+                quote is `completed`. The card's id="agent-invoice"
+                is what the lifecycle suggestion scrolls to. */}
+            <InvoiceDraftCard
+              quoteId={quote.id}
+              status={(quote.status ?? "draft") as QuoteStatus}
+              quoteData={quoteData}
+              existingInvoice={existingInvoice}
             />
 
             {/* Wave 13.1 — review tools group. All collapsibles default

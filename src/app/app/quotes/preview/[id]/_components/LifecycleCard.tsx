@@ -50,22 +50,30 @@ interface Props {
   status: QuoteStatus;
   quoteData: QuoteData | null;
   expiresAt: string | null;
-  /** True only when the signed-in user matches `OWNER_EMAIL`. */
-  isOwner: boolean;
+  /**
+   * Kept on the API for future owner-only sub-features even though
+   * Wave 14 doesn't read it — the page passes it in and ESLint would
+   * complain about an unused destructure if we dropped it here.
+   */
+  isOwner?: boolean;
+  /** Wave 14 — drives the Voice Cleanup suggestion on draft. */
+  voiceTranscript?: string | null;
+  /** Wave 14 — suppresses the Invoice suggestion when one exists. */
+  invoiceExists?: boolean;
 }
 
 /**
- * Wave 13.1 — agent shortcut now scrolls to the on-page panel that
- * contains the agent's UI. The previous version navigated to
- * `/app/agents` (a directory), which is confusing when the actual
- * agent UI is already rendered further down the same page. The
- * matching IDs are set on the `<details>` wrappers in `page.tsx`.
+ * Wave 13.1 — agent shortcut scrolls to the on-page panel that
+ * contains the agent's UI. The matching IDs are set on the
+ * `<details>` wrappers in `page.tsx` + the `<InvoiceDraftCard>` for
+ * the Wave 14 invoice agent.
  */
 const AGENT_TARGET_ID: Record<AgentName, string> = {
   "Quote Review": "agent-quote-review",
   Compliance: "agent-compliance",
   "Voice Cleanup": "agent-voice-cleanup",
   "Follow-up": "agent-followup",
+  Invoice: "agent-invoice",
 };
 
 function openAgentSection(targetId: string) {
@@ -81,9 +89,17 @@ export function LifecycleCard({
   status,
   quoteData,
   expiresAt,
-  isOwner,
+  // isOwner consumed at the page level for now; kept on the prop API.
+  voiceTranscript,
+  invoiceExists,
 }: Props) {
-  const out = orchestrate({ status, quoteData, expiresAt });
+  const out = orchestrate({
+    status,
+    quoteData,
+    expiresAt,
+    voiceTranscript,
+    invoiceExists,
+  });
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
@@ -196,12 +212,13 @@ export function LifecycleCard({
         </p>
       )}
 
-      {/* Wave 13.1 — owner-only agent shortcut. Now scrolls to the
-          relevant on-page section (the agents are already rendered
-          further down) instead of navigating away. Non-owner tradies
-          and customers never see this; the agent shortcut stays gated
-          on `isOwner` per the Wave 13 contract. */}
-      {isOwner && out.agentToTrigger ? (
+      {/* Wave 14 — agent suggestion visible to every authenticated
+          tradie. (Wave 13 gated this on isOwner; that was an over-
+          restriction — the suggestion just scrolls to an on-page
+          panel the tradie can already see on their own quote. The
+          /app/agents directory itself stays owner-only via separate
+          gates in AppHeader / MobileBottomNav.) */}
+      {out.agentToTrigger ? (
         <div className="mt-5 flex items-center justify-between gap-3 rounded-sm border border-ink-700 bg-ink-900/60 p-3">
           <div className="min-w-0">
             <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-brand">

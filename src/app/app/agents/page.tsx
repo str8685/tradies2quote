@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import {
   CheckCircle,
-  CircleNotch,
   ClipboardText,
   Files,
   GearSix,
@@ -15,11 +14,6 @@ import {
 import { createClient } from "@/lib/supabase/server";
 import { isOwnerEmail } from "@/lib/owner";
 import { AppHeader } from "../_components/AppHeader";
-import { AdminAgent } from "../_components/agents/AdminAgent";
-import type {
-  AdminClientSnapshot,
-  AdminProfileSnapshot,
-} from "@/lib/agents/admin";
 import { AgentCard } from "./_components/AgentCard";
 
 export const metadata: Metadata = {
@@ -52,32 +46,11 @@ export default async function AgentsPage() {
   // existence isn't advertised. Mirrors the /app/debug gate.
   if (!isOwnerEmail(user.email)) notFound();
 
-  // Wave 12 — Admin Agent context. Loads the user's profile + a
-  // lightweight count of clients-without-contact so the admin panel
-  // can flag missing setup. Both queries are RLS-scoped + read-only.
-  const [{ data: profileRow }, { data: clientsRows }] = await Promise.all([
-    supabase
-      .from("profiles")
-      .select(
-        "business_name, email, phone, address, gst_number, country, currency, tax_rate, default_labour_rate, default_markup_pct",
-      )
-      .eq("id", user.id)
-      .maybeSingle(),
-    supabase
-      .from("clients")
-      .select("id, email, phone")
-      .eq("user_id", user.id),
-  ]);
-
-  const adminProfile: AdminProfileSnapshot | null = profileRow ?? null;
-  const adminClients: AdminClientSnapshot = {
-    count: clientsRows?.length ?? 0,
-    countWithoutContact: (clientsRows ?? []).filter(
-      (c) =>
-        !(typeof c.email === "string" && c.email.trim().length > 0) &&
-        !(typeof c.phone === "string" && c.phone.trim().length > 0),
-    ).length,
-  };
+  // Wave 14 — the inline Admin Agent panel that used to live on this
+  // page is gone. The same checklist now renders on /app/settings via
+  // <AdminChecklistPanel> so every tradie sees their setup gaps, not
+  // just the owner. The /app/agents page keeps the agent directory +
+  // status board.
 
   return (
     <div className="min-h-screen text-white">
@@ -169,39 +142,47 @@ export default async function AgentsPage() {
                 href: "/app/quotes?status=sent",
               }}
             />
+            {/* Wave 14 — Admin Agent moved to /app/settings so every
+                tradie sees it, not just the owner. CTA links to the
+                checklist's new home. */}
             <AgentCard
               icon={GearSix}
               title="Admin Agent"
               description="Checks your profile and client details. Flags missing business name, phone, GST number, default rates. Links you to the right setting — never edits anything itself."
               status="Live"
               statusTone="ready"
-              cta={{ label: "See findings below", href: "#admin-agent" }}
+              cta={{ label: "Open Settings", href: "/app/settings" }}
             />
             {/* Materials Agent stays as a useful adjacent helper, even
                 though it isn't one of the five "core" Wave 12 agents. */}
+            {/* Wave 14 — Materials Agent relabelled "Linked" so it
+                doesn't claim agent behaviour it doesn't have. It's a
+                jump-link to the manual materials UI; calling it
+                "Live" implied automation we never built. */}
             <AgentCard
               icon={Stack}
               title="Materials Agent"
-              description="Helps capture supplier items, prices, SKUs, sizes, and timber treatment into your materials list."
-              status="Live"
+              description="Jumps to the manual materials capture UI — supplier items, prices, SKUs, sizes, timber treatment."
+              status="Linked"
               statusTone="ready"
               cta={{ label: "Open Materials", href: "/app/materials" }}
             />
+            {/* Wave 14 — Invoice Agent now live. Card CTA jumps to the
+                quotes list filtered to completed quotes; the draft
+                gets created via the InvoiceDraftCard on the quote
+                preview page. */}
             <AgentCard
               icon={Files}
               title="Invoice Agent"
-              description="Prepares invoice drafts from accepted quotes and timesheets."
-              status="Coming later"
-              statusTone="planned"
+              description="Creates draft invoices from completed quotes. Owner-clicks, nothing sent automatically — Wave 15 will add email send + payment reminders."
+              status="Live"
+              statusTone="ready"
+              cta={{
+                label: "Open in a completed quote",
+                href: "/app/quotes?stage=completed",
+              }}
             />
           </div>
-        </section>
-
-        {/* Wave 12 — Admin Agent panel runs inline on the hub since it
-            checks profile + clients, which aren't tied to any single
-            quote. */}
-        <section id="admin-agent" className="mb-12 scroll-mt-24">
-          <AdminAgent profile={adminProfile} clients={adminClients} />
         </section>
 
         {/* Safety panel */}
@@ -248,12 +229,12 @@ export default async function AgentsPage() {
           </ul>
         </section>
 
-        {/* Wave 10.5 — replaced the "Phase 1 / 2 / 3 …" roadmap with an
-            honest 3-column status board. Items only count as "Live" if
-            an actual route already exists; "Needs setup" is for things
-            blocked on a one-time wiring step (e.g. a future Anthropic
-            review prompt); "Coming later" is everything genuinely
-            unbuilt. No fake "shipped" claims. */}
+        {/* Wave 14 — honest 2-column status board. The previous
+            "Needs setup" column claimed photo-extraction + auto
+            follow-ups were one-wiring-step away from working. They're
+            not — there's no backend code for either. Both moved to
+            "Coming later". Invoice draft assistant moved up to "Live"
+            (shipped in Wave 14). */}
         <section
           aria-labelledby="agents-roadmap-heading"
           data-testid="agents-status-board"
@@ -274,34 +255,33 @@ export default async function AgentsPage() {
             </h2>
           </div>
 
-          <div className="mt-6 grid gap-5 sm:grid-cols-3">
+          <div className="mt-6 grid gap-5 sm:grid-cols-2">
             <StatusColumn
               tone="live"
               label="Live"
               icon={<CheckCircle size={14} weight="fill" />}
               items={[
-                "Quote Builder",
-                "Voice Agent",
-                "Materials Agent",
-                "Follow-up Agent",
+                "Quote Builder (voice → quote AI pipeline)",
+                "Quote Review Agent",
                 "Compliance Agent",
-                "Admin Agent",
-              ]}
-            />
-            <StatusColumn
-              tone="setup"
-              label="Needs setup"
-              icon={<CircleNotch size={14} weight="bold" />}
-              items={[
-                "Photo material extraction (camera upload)",
-                "Sent-quote follow-up reminders (email schedule)",
+                "Voice Cleanup Agent",
+                "Follow-up Agent",
+                "Admin Agent (on /app/settings)",
+                "Materials linker",
+                "Invoice draft (Wave 14)",
               ]}
             />
             <StatusColumn
               tone="later"
               label="Coming later"
               icon={<ClipboardText size={14} weight="bold" />}
-              items={["Invoice draft assistant", "Timesheet-to-invoice agent"]}
+              items={[
+                "Invoice email send (Wave 15)",
+                "Overdue invoice reminders (Wave 15 cron)",
+                "Payment reminder agent (Wave 15)",
+                "Photo + plan reading agent (Wave 16 vision AI)",
+                "Variation agent (Wave 16)",
+              ]}
             />
           </div>
         </section>
