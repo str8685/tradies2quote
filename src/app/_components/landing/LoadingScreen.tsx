@@ -9,18 +9,36 @@ import TapeProgress from "./TapeProgress";
  *
  * Shows on first visit each session, holds for ~1.7s while the tape-measure
  * progress bar fills 0 → 1m, then fades out. Skips entirely if the user
- * has already seen it within the last 6 hours (sessionStorage).
+ * has already seen the splash for the given `storageKey` within the
+ * last 6 hours (sessionStorage).
+ *
+ * Wave 13.2 — `storageKey` and `label` props added so the same splash
+ * component can be mounted twice: once on the marketing landing
+ * (`t2q-splash-shown`, default) and once on the owner app entry
+ * (`t2q-app-splash-shown`). Each has its own session-skip state so a
+ * tradie who saw the landing splash still sees the app splash on
+ * first dashboard visit.
  *
  * Ported from `landing-export/components/LoadingScreen.jsx`. We seed
  * `visible` on the client only — the first server-rendered HTML never
  * shows the splash, which avoids a hydration mismatch on
  * `sessionStorage` (which doesn't exist on the server).
  */
-const STORAGE_KEY = "t2q-splash-shown";
+const DEFAULT_STORAGE_KEY = "t2q-splash-shown";
 const HOLD_MS = 1700;
 const FADE_MS = 600;
 
-export default function LoadingScreen() {
+interface Props {
+  /** sessionStorage key — distinguish landing splash from app splash. */
+  storageKey?: string;
+  /** Optional override for the tape-measure caption. */
+  tapeLabel?: string;
+}
+
+export default function LoadingScreen({
+  storageKey = DEFAULT_STORAGE_KEY,
+  tapeLabel = "// site setup",
+}: Props = {}) {
   // Server-side: hidden. Client-side: an effect decides whether to show.
   const [visible, setVisible] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -31,14 +49,14 @@ export default function LoadingScreen() {
     // callback (React 19 `react-hooks/set-state-in-effect`).
     const t = setTimeout(() => {
       try {
-        const last = Number(sessionStorage.getItem(STORAGE_KEY) ?? 0);
+        const last = Number(sessionStorage.getItem(storageKey) ?? 0);
         if (Date.now() - last > 6 * 3600 * 1000) setVisible(true);
       } catch {
         setVisible(true);
       }
     }, 0);
     return () => clearTimeout(t);
-  }, []);
+  }, [storageKey]);
 
   useEffect(() => {
     if (!visible) return;
@@ -51,7 +69,7 @@ export default function LoadingScreen() {
         raf = requestAnimationFrame(tick);
       } else {
         try {
-          sessionStorage.setItem(STORAGE_KEY, String(Date.now()));
+          sessionStorage.setItem(storageKey, String(Date.now()));
         } catch {
           /* ignore */
         }
@@ -60,7 +78,7 @@ export default function LoadingScreen() {
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [visible]);
+  }, [visible, storageKey]);
 
   return (
     <AnimatePresence>
@@ -127,7 +145,7 @@ export default function LoadingScreen() {
                 progress={progress}
                 width={340}
                 height={36}
-                label="// site setup"
+                label={tapeLabel}
               />
             </motion.div>
 

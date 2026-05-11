@@ -1,4 +1,5 @@
 import { SideMeasureTape } from "../_components/app/SideMeasureTape";
+import LoadingScreen from "../_components/landing/LoadingScreen";
 import { MobileBottomNav } from "./_components/MobileBottomNav";
 
 /**
@@ -32,6 +33,15 @@ export default function AppLayout({
 }) {
   return (
     <div className="t2q-app-grid-bg min-h-screen lg:grid lg:grid-cols-[24px_1fr_24px]">
+      {/* Wave 13.2 — same brand splash as the landing, with its own
+          session-storage key so it shows once per session on the
+          tradie's first dashboard visit (independent of the landing
+          splash). The 1.7s tape-measure animation is identical so the
+          experience reads as one continuous brand. */}
+      <LoadingScreen
+        storageKey="t2q-app-splash-shown"
+        tapeLabel="// loading the tools"
+      />
       <SideMeasureTape />
       <div className="min-w-0 pb-[88px] sm:pb-0">{children}</div>
       <div aria-hidden="true" className="hidden lg:block" />

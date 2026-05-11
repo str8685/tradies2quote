@@ -4,7 +4,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { GearSix, SignOut } from "@phosphor-icons/react";
 import { ThemeToggle } from "@/app/_components/landing/ThemeToggle";
-import { signOutAction } from "../actions";
 
 /**
  * Client part of the shared `/app/*` header. Owns the active-tab
@@ -114,7 +113,12 @@ export function AppHeaderClient({ context, isOwner }: Props) {
               <GearSix size={16} weight="bold" />
             </Link>
             <ThemeToggle />
-            <form action={signOutAction}>
+            {/* Wave 13.2 — POST to a dedicated route handler instead
+                of a server action. The route handler writes explicit
+                expire-cookie headers on the redirect Response, which
+                is the only deterministic way to make the redirected
+                GET to /login arrive without auth cookies. */}
+            <form action="/auth/signout" method="POST">
               <button
                 type="submit"
                 data-testid="app-header-sign-out"

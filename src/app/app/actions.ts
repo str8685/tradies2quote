@@ -1,49 +1,18 @@
-"use server";
-
-import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
-import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
-
 /**
- * Sign-out flow.
+ * Wave 13.2 — the legacy `signOutAction` server action lived here. It
+ * was unreliable: `cookies().delete()` inside a server action doesn't
+ * always include the `path` attribute the cookie was originally set
+ * with, so the delete header could fail to match and the cookie would
+ * survive. The middleware would then refresh the session on the next
+ * request and silently re-authenticate the user.
  *
- * Wave 13.1 — hardened. The previous version called `signOut()` and
- * redirected, but the middleware (`src/proxy.ts` → `updateSession`)
- * runs on every request and re-issues a fresh session cookie if a
- * refresh token is still in the request — so users were getting
- * silently "re-signed-in" right after the redirect.
+ * Sign-out now lives in a dedicated POST route handler at
+ * `src/app/auth/signout/route.ts`. The route handler constructs the
+ * redirect Response itself and writes explicit Max-Age=0 cookies on
+ * it, which the browser always honours.
  *
- * Defence in depth:
- *   1. `signOut({ scope: "global" })` — invalidates the refresh token
- *      server-side so even if a cookie leaks, it can't be refreshed.
- *   2. Explicit cookie sweep — delete every `sb-*` cookie the request
- *      carries, in case `signOut()` missed any.
- *   3. `revalidatePath("/", "layout")` — invalidates the cached
- *      layout state that holds the session-bound nav.
- *   4. Redirect to `/login` instead of `/` so the user lands on a
- *      page where the middleware won't try to refresh.
+ * This file is intentionally left empty for now — no `"use server"`
+ * exports are needed. Keeping the file (rather than deleting) so the
+ * import path stays stable if any future server action lands here.
  */
-export async function signOutAction() {
-  const supabase = await createClient();
-  try {
-    await supabase.auth.signOut({ scope: "global" });
-  } catch {
-    // Network error against the auth API is fine — we'll still clear
-    // local cookies below.
-  }
-
-  const cookieStore = await cookies();
-  for (const { name } of cookieStore.getAll()) {
-    if (name.startsWith("sb-")) {
-      try {
-        cookieStore.delete(name);
-      } catch {
-        /* server-component invocation — proxy picks it up */
-      }
-    }
-  }
-
-  revalidatePath("/", "layout");
-  redirect("/login");
-}
+export {};

@@ -4,7 +4,6 @@ import { SignOut } from "@phosphor-icons/react/dist/ssr";
 import { createClient } from "@/lib/supabase/server";
 import { NZ_DEFAULTS } from "@/lib/quote-defaults";
 import { AppHeader } from "../_components/AppHeader";
-import { signOutAction } from "../actions";
 import { SettingsForm, type SettingsInitial } from "./_components/SettingsForm";
 
 export const metadata: Metadata = {
@@ -101,7 +100,10 @@ export default async function SettingsPage() {
               {user.email ?? "—"}
             </p>
           </div>
-          <form action={signOutAction}>
+          {/* Wave 13.2 — POSTs to the /auth/signout route handler so
+              cookie clearing lands on the redirect response and the
+              middleware can't refresh the session. */}
+          <form action="/auth/signout" method="POST">
             <button
               type="submit"
               data-testid="settings-sign-out"
