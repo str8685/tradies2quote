@@ -5,6 +5,7 @@ import type { LibraryMaterial, QuoteData, QuoteStatus } from "@/lib/quote-types"
 import { quoteNumber } from "@/lib/quote-defaults";
 import type { ComplianceLineItem, ComplianceReview } from "@/lib/compliance";
 import { AppHeader } from "../../../_components/AppHeader";
+import { QuoteReadinessCheck } from "../../../_components/QuoteReadinessCheck";
 import { QuoteGenerator } from "./_components/QuoteGenerator";
 import { QuoteEditor } from "./_components/QuoteEditor";
 import { CompliancePanel } from "./_components/CompliancePanel";
@@ -35,7 +36,7 @@ export default async function QuotePreviewPage({
   const { data: quote, error } = await supabase
     .from("quotes")
     .select(
-      "id, voice_transcript, quote_data, created_at, status, public_token, pdf_path, sent_at, viewed_at, accepted_at",
+      "id, voice_transcript, quote_data, created_at, status, public_token, pdf_path, sent_at, viewed_at, accepted_at, expires_at",
     )
     .eq("id", id)
     .single();
@@ -44,6 +45,15 @@ export default async function QuotePreviewPage({
 
   const quoteData = (quote.quote_data ?? null) as QuoteData | null;
   const headerNumber = quoteNumber(quote.id, quote.created_at);
+
+  // Wave 11 — load the user's business profile for the readiness check
+  // panel below. Same RLS pattern Settings already uses; same fields
+  // the readiness function asks for. Safe to fail silently here.
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("business_name, email, phone, address")
+    .eq("id", user.id)
+    .maybeSingle();
 
   const { data: libraryRows } = await supabase
     .from("materials")
@@ -119,6 +129,13 @@ export default async function QuotePreviewPage({
                 </div>
               );
             })()}
+            {/* Wave 11 — readiness panel above the editor. Soft-warn
+                only; does not block the Send button below. */}
+            <QuoteReadinessCheck
+              quoteData={quoteData}
+              profile={profile ?? null}
+              expiresAt={quote.expires_at ?? null}
+            />
             <QuoteEditor
               quoteId={quote.id}
               createdAt={quote.created_at}

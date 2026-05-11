@@ -40,11 +40,20 @@ const STATUS_STYLES: Record<QuoteStatus, string> = {
   expired: "border-ink-600 bg-ink-800 text-ink-400",
 };
 
+/**
+ * Wave 11 — added the Declined filter. "Ready" is intentionally NOT a
+ * separate filter; the readiness state is a soft UI signal computed in
+ * `lib/quote-readiness.ts` and surfaced inside the quote preview, not
+ * a database status. Adding a real "Ready" enum value would require a
+ * `quote_status` enum migration, which Wave 11 deliberately skips —
+ * see commit message for rationale.
+ */
 const STATUS_FILTERS = [
   { id: "all", label: "All" },
   { id: "draft", label: "Draft" },
   { id: "sent", label: "Sent" },
   { id: "accepted", label: "Accepted" },
+  { id: "declined", label: "Declined" },
   { id: "archived", label: "Archived" },
 ] as const;
 

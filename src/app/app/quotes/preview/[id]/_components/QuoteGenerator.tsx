@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 export function QuoteGenerator({ id }: { id: string }) {
@@ -72,16 +73,42 @@ export function QuoteGenerator({ id }: { id: string }) {
             Generation failed
           </p>
           <p className="mt-3 max-w-md text-sm text-ink-300">{error}</p>
-          <button
-            type="button"
-            onClick={() => {
-              startedRef.current = true;
-              void generate();
-            }}
-            className="t2q-btn-primary mt-6"
-          >
-            Try again
-          </button>
+          <p className="mt-3 max-w-md font-mono text-[10px] uppercase tracking-[0.2em] text-ink-400">
+            {"// your draft was kept. you can retry, edit the lines manually, or come back later."}
+          </p>
+          {/* Wave 11 — three clear exits instead of one. The draft row
+              is already saved server-side at this point (createDraftQuote
+              ran before redirecting here), so "Edit manually" jumps
+              straight into the editor with whatever skeleton state
+              exists, and "Back to dashboard" is always safe. */}
+          <div className="mt-6 flex flex-col items-center gap-2 sm:flex-row sm:justify-center sm:gap-3">
+            <button
+              type="button"
+              data-testid="quote-generator-retry"
+              onClick={() => {
+                startedRef.current = true;
+                void generate();
+              }}
+              className="t2q-btn-primary inline-flex h-11 items-center justify-center px-5"
+            >
+              Try again
+            </button>
+            <button
+              type="button"
+              data-testid="quote-generator-manual"
+              onClick={() => router.refresh()}
+              className="t2q-btn-ghost inline-flex h-11 items-center justify-center px-5"
+            >
+              Edit manually
+            </button>
+            <Link
+              href="/app"
+              data-testid="quote-generator-dashboard"
+              className="inline-flex h-11 items-center justify-center px-5 font-mono text-[10px] uppercase tracking-[0.2em] text-ink-300 hover:text-brand"
+            >
+              Back to dashboard
+            </Link>
+          </div>
         </>
       )}
     </section>

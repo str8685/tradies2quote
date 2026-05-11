@@ -3,6 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import {
   ArrowRight,
+  Bug,
   GearSix,
   Plus,
   Robot,
@@ -96,6 +97,12 @@ export default async function DashboardPage() {
 
   const username = user.email?.split("@")[0] ?? "tradie";
   const statsCurrency = stats.currency;
+
+  // Owner-only Debug link visibility. Server-rendered, no client check,
+  // so the link is never serialised into the client bundle for other
+  // accounts.
+  const isOwner =
+    (user.email ?? "").trim().toLowerCase() === "challis836@gmail.com";
 
   return (
     <div className="min-h-screen text-white">
@@ -246,10 +253,11 @@ export default async function DashboardPage() {
           </div>
         ) : null}
 
-        {/* Mobile tail nav — Clients + Settings were dropped from the
-            bottom nav in Wave 10.4 to make room for Agents. These small
-            links keep both reachable from the dashboard. Hidden on
-            desktop because the AppHeader carries them. */}
+        {/* Tail nav — Clients + Settings were dropped from the bottom
+            nav in Wave 10.4 to make room for Agents. These small links
+            keep both reachable from the dashboard. Wave 11 — owner
+            also sees a Debug link here. Mobile-only because the
+            desktop AppHeader carries the same destinations. */}
         <nav
           data-testid="dashboard-tail-links"
           aria-label="Secondary"
@@ -269,7 +277,35 @@ export default async function DashboardPage() {
             <GearSix size={14} weight="bold" />
             Settings
           </Link>
+          {isOwner ? (
+            <Link
+              href="/app/debug"
+              data-testid="dashboard-debug-link"
+              className="inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.25em] text-ink-300 hover:text-brand"
+            >
+              <Bug size={14} weight="bold" />
+              Debug
+            </Link>
+          ) : null}
         </nav>
+
+        {/* Desktop owner-only Debug shortcut. The desktop AppHeader
+            already exposes Clients/Settings; Debug is owner-only so it
+            sits as a small footer note here instead. */}
+        {isOwner ? (
+          <p
+            data-testid="dashboard-debug-footer"
+            className="mt-8 hidden text-center font-mono text-[10px] uppercase tracking-[0.25em] text-ink-400 sm:block"
+          >
+            <Link
+              href="/app/debug"
+              className="inline-flex items-center gap-1.5 hover:text-brand"
+            >
+              <Bug size={12} weight="bold" />
+              Owner debug
+            </Link>
+          </p>
+        ) : null}
       </main>
     </div>
   );
