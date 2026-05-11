@@ -119,12 +119,16 @@ function summaryHeadline(s: AdminSummary): string {
   if (s.status === "ready") return "Setup complete.";
   if (s.status === "review") return "Setup ready — a few amber notes.";
   const missingWord = s.missing === 1 ? "item" : "items";
-  return `Setup needs attention — ${s.missing} red ${missingWord}.`;
+  return `${s.missing} red ${missingWord} recommended before sending.`;
 }
 
 function summaryBody(s: AdminSummary): string {
-  if (s.status === "ready") return "You're good to send quotes.";
+  if (s.status === "ready") return "Your details are good to go on every quote PDF.";
   if (s.status === "missing")
-    return "Fix the red items before sending your first quote — they're the ones clients will notice.";
+    // Wave 14 — wording moved from "Fix before sending" (which read
+    // like a hard block) to advisory. The Send action does NOT gate
+    // on this checklist; these are recommendations so the client PDF
+    // shows real business details instead of "Your business".
+    return "Recommended before sending: filling these in means clients see your real business name, contact, and rates on every quote PDF.";
   return "Setup is workable; review the amber items when you have a moment.";
 }

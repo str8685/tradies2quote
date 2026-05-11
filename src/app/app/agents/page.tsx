@@ -59,7 +59,7 @@ export default async function AgentsPage() {
       <main className="mx-auto max-w-3xl px-4 py-10 sm:px-6 sm:py-14">
         {/* Hero */}
         <section className="mb-10">
-          <div className="t2q-section-label mb-3">{"// automation hub"}</div>
+          <div className="t2q-section-label mb-3">{"// agents directory"}</div>
           <div className="flex flex-wrap items-center gap-3">
             <h1 className="font-display text-3xl uppercase tracking-tight sm:text-4xl">
               AI <span className="text-brand">Agents.</span>
@@ -68,16 +68,22 @@ export default async function AgentsPage() {
               data-testid="agents-preview-pill"
               className="inline-flex items-center rounded-sm border border-hivis/40 bg-hivis/10 px-2 py-1 font-mono text-[10px] uppercase tracking-[0.2em] text-hivis"
             >
-              Preview mode
+              Owner-only
             </span>
           </div>
+          {/* Wave 14 — copy retightened. Previously this hero pitched
+              "Automate quoting / follow-ups" and called itself an
+              "automation hub" — neither is true; every agent is
+              approval-only and runs synchronously on a button click.
+              No background work, no cron, no auto-send. */}
           <p className="mt-3 max-w-2xl text-sm text-ink-300 sm:text-base">
-            Automate quoting, materials, follow-ups, and admin without losing
-            control.
+            Directory of every agent that helps with quotes, follow-ups, and
+            setup. Every action is owner-driven — nothing runs in the
+            background, nothing sends without you tapping the button.
           </p>
           <p className="mt-2 max-w-2xl font-mono text-[10px] uppercase tracking-[0.2em] text-ink-500">
             {
-              "// agents are not running yet. this page is the control centre for upcoming automations."
+              "// each panel renders on the quote preview where the data lives. open a quote to use the agent."
             }
           </p>
         </section>
@@ -167,16 +173,18 @@ export default async function AgentsPage() {
               statusTone="ready"
               cta={{ label: "Open Materials", href: "/app/materials" }}
             />
-            {/* Wave 14 — Invoice Agent now live. Card CTA jumps to the
-                quotes list filtered to completed quotes; the draft
-                gets created via the InvoiceDraftCard on the quote
-                preview page. */}
+            {/* Wave 14 — Invoice Agent foundation. Status is "Draft
+                only" (not "Live") because only the draft-creation
+                slice works — no email send, no PDF route, no payment
+                state, no overdue tracking. Per the Wave 14 audit
+                guardrail: status labels must match what the backend
+                actually does. */}
             <AgentCard
               icon={Files}
               title="Invoice Agent"
-              description="Creates draft invoices from completed quotes. Owner-clicks, nothing sent automatically — Wave 15 will add email send + payment reminders."
-              status="Live"
-              statusTone="ready"
+              description="Creates a draft invoice from a completed quote. Owner-clicks; nothing sends. Draft-only — no email, no PDF, no payment tracking."
+              status="Draft only"
+              statusTone="preview"
               cta={{
                 label: "Open in a completed quote",
                 href: "/app/quotes?stage=completed",

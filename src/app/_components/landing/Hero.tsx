@@ -389,8 +389,12 @@ export function Hero() {
                 <Receipt size={16} weight="bold" className="text-hivis" />
               </div>
               <div className="font-display text-xl">$4,820.00</div>
+              {/* Wave 14 audit — dropped the "auto-reminders on"
+                  claim. There is no reminder backend; that lands in
+                  Wave 15 with cron + Resend. The mockup card now
+                  reads honestly. */}
               <div className="text-[9px] text-ink-400 font-mono uppercase tracking-[0.18em] mt-1">
-                Due in 7 days · auto-reminders on
+                Due in 7 days
               </div>
               <div className="mt-3 h-1 bg-ink-700">
                 <div className="h-full bg-hivis w-[62%]" />
