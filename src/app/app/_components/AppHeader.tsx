@@ -67,27 +67,31 @@ export function AppHeader({ context }: AppHeaderProps) {
             href="/app"
             data-testid="app-header-home"
             aria-label="Tradies2Quote dashboard"
-            className="shrink-0"
+            className="inline-flex shrink-0 items-center"
           >
-            {/* Mobile: compact round badge only. SVG asset — using a
-                plain <img> rather than next/image because SVGs are not
-                rasterized by the image-optimization pipeline anyway. */}
+            {/* Wave 10.2 — new Tradies2Quote brand PNGs.
+                Both variants sit on a small white pill so the dark T/Q
+                stays readable on dark mode AND on the cream light theme.
+                The pill is shorter than the surrounding header chrome so
+                it reads as a brand badge, not a heavy block.
+                Falls back gracefully — `public/logo-mark.svg` and
+                `public/logo-horizontal.svg` are still on disk if we ever
+                need to revert. */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src="/logo-mark.svg"
+              src="/logo-mark.png"
               alt="Tradies2Quote"
-              width={32}
-              height={32}
-              className="block h-7 w-7 sm:hidden"
+              width={160}
+              height={136}
+              className="block h-7 w-auto rounded-sm bg-white px-1.5 py-0.5 sm:hidden"
             />
-            {/* Desktop: full horizontal lockup. */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src="/logo-horizontal.svg"
+              src="/logo-horizontal.png"
               alt="Tradies2Quote"
-              width={140}
-              height={32}
-              className="hidden h-8 w-auto sm:block"
+              width={380}
+              height={100}
+              className="hidden h-8 w-auto rounded-sm bg-white px-2 py-1 sm:block"
             />
           </Link>
           {context ? (

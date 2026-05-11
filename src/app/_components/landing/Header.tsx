@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { List, X } from "@phosphor-icons/react";
 import { ThemeToggle } from "./ThemeToggle";
-import { Logo } from "./Logo";
 import InstallPWAButton from "./InstallPWAButton";
 
 const LINKS = [
@@ -35,10 +34,21 @@ export function Header() {
         <Link
           href="/"
           data-testid="nav-logo"
-          className="group"
+          className="group inline-flex items-center"
           aria-label="tradies2Quote home"
         >
-          <Logo size={34} />
+          {/* Wave 10.2 — new Tradies2Quote brand mark.
+              `public/logo-horizontal.png` ships as a transparent PNG; the
+              white-pill wrapper keeps the dark T/Q + wordmark readable
+              on both the cream light theme and the dark theme. */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/logo-horizontal.png"
+            alt="Tradies2Quote"
+            width={380}
+            height={100}
+            className="block h-9 w-auto rounded-md bg-white px-2 py-1 shadow-[0_1px_0_rgba(255,255,255,0.04)] sm:h-10"
+          />
         </Link>
 
         <nav className="hidden md:flex items-center gap-8" data-testid="nav-primary">
