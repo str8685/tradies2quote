@@ -1,4 +1,10 @@
 import type { LibraryMaterial, QuoteLineItem } from "./quote-types";
+import {
+  GENERIC_PRESET,
+  getSupplierPreset,
+  remapCsvWithPreset,
+  type SupplierPresetId,
+} from "./supplier-presets";
 
 export const CSV_HEADERS = [
   "name",
@@ -195,6 +201,39 @@ function splitCsvLine(line: string): string[] {
   }
   out.push(cur);
   return out;
+}
+
+/**
+ * Wave 16 — supplier-preset front-door for `parseMaterialsCsv`.
+ *
+ * Picks the named preset, rewrites the source CSV's header row + cells
+ * into the canonical generic format (with the merchant's SKU folded
+ * into the `notes` column), then hands off to the existing parser so
+ * validation + numeric coercion stay identical to the generic path.
+ *
+ * The "generic" preset short-circuits to the existing parser — same
+ * behaviour as before this wave for anyone uploading our template.
+ *
+ * Never throws. CSV-parsing failures surface as `invalid` rows the
+ * existing ReviewTable in ImportClient already handles.
+ */
+export function parseMaterialsCsvWithPreset(
+  text: string,
+  presetId: SupplierPresetId,
+): CsvParseResult {
+  const preset = getSupplierPreset(presetId);
+  if (preset.id === GENERIC_PRESET.id) {
+    return parseMaterialsCsv(text);
+  }
+  try {
+    const remapped = remapCsvWithPreset(text, preset);
+    return parseMaterialsCsv(remapped);
+  } catch {
+    // Defensive — remapCsvWithPreset is pure but if a future iteration
+    // hits an edge we don't want to crash the import UI. Fall back to
+    // the existing parser so the user at least sees row-level errors.
+    return parseMaterialsCsv(text);
+  }
 }
 
 export function buildLibrarySnapshot(

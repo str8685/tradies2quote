@@ -5,14 +5,19 @@ import { useRouter } from "next/navigation";
 import {
   CheckCircle,
   Download,
+  Storefront,
   Upload,
   Warning,
 } from "@phosphor-icons/react/dist/ssr";
 import {
   REQUIRED_CSV_HEADERS,
-  parseMaterialsCsv,
+  parseMaterialsCsvWithPreset,
   type CsvParseResult,
 } from "@/lib/materials";
+import {
+  SUPPLIER_PRESETS,
+  type SupplierPresetId,
+} from "@/lib/supplier-presets";
 import { importMaterials } from "../../actions";
 
 export function ImportClient() {
@@ -27,6 +32,14 @@ export function ImportClient() {
     failed: number;
   } | null>(null);
   const [isPending, startTransition] = useTransition();
+  // Wave 16 — supplier-preset picker. Generic is the default so anyone
+  // uploading our own template gets the same behaviour as before this
+  // wave. Switching the preset re-runs the parser on the already-loaded
+  // file so the user can flip presets without re-uploading.
+  const [presetId, setPresetId] = useState<SupplierPresetId>("generic");
+  const lastTextRef = useRef<string>("");
+  const activePreset =
+    SUPPLIER_PRESETS.find((p) => p.id === presetId) ?? SUPPLIER_PRESETS[0];
 
   async function handleFile(file: File) {
     setError("");
@@ -38,12 +51,29 @@ export function ImportClient() {
     }
     try {
       const text = await file.text();
-      const result = parseMaterialsCsv(text);
+      lastTextRef.current = text;
+      const result = parseMaterialsCsvWithPreset(text, presetId);
       setFileName(file.name);
       setParsed(result);
     } catch {
       setError("Could not read that file.");
       setParsed(null);
+    }
+  }
+
+  /** Re-parse the in-memory CSV with the new preset. Lets the user
+   *  flip "Mitre 10" → "Bunnings" without re-picking the file. */
+  function handlePresetChange(next: SupplierPresetId) {
+    setPresetId(next);
+    setError("");
+    setResult(null);
+    if (lastTextRef.current) {
+      try {
+        const result = parseMaterialsCsvWithPreset(lastTextRef.current, next);
+        setParsed(result);
+      } catch {
+        // Keep the existing parsed state; user can re-upload if needed.
+      }
     }
   }
 
@@ -75,14 +105,83 @@ export function ImportClient() {
 
   return (
     <div className="space-y-6">
-      <section className="t2q-card p-5 sm:p-6">
-        <div className="flex items-center justify-between gap-3">
-          <div>
+      {/* Wave 16 — supplier preset picker.
+          The picker comes FIRST because it controls how the next two
+          steps work: the template download is irrelevant when you're
+          uploading a merchant export, and the parser uses the preset
+          to translate columns. Generic stays the default so existing
+          tradies on our template see no behaviour change. */}
+      <section
+        data-testid="import-supplier-preset"
+        className="t2q-card p-5 sm:p-6"
+      >
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
             <p className="font-mono text-xs uppercase tracking-[0.2em] text-ink-400">
               {"// step 1"}
             </p>
             <h2 className="mt-1 font-display text-lg uppercase tracking-tight">
-              Download the template
+              Where's the CSV from?
+            </h2>
+            <p className="mt-2 text-sm text-ink-300">
+              Pick your supplier. We translate their column names automatically — no
+              renaming columns by hand.
+            </p>
+          </div>
+          <Storefront size={22} weight="bold" className="hidden text-ink-400 sm:block" />
+        </div>
+
+        <div
+          role="radiogroup"
+          aria-label="Supplier preset"
+          className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5"
+        >
+          {SUPPLIER_PRESETS.map((p) => {
+            const active = p.id === presetId;
+            return (
+              <button
+                key={p.id}
+                type="button"
+                role="radio"
+                aria-checked={active}
+                data-testid={`supplier-preset-${p.id}`}
+                onClick={() => handlePresetChange(p.id)}
+                className={`group flex flex-col items-start gap-1 rounded-sm border px-3 py-2.5 text-left transition-colors ${
+                  active
+                    ? "border-brand bg-brand/10 text-white"
+                    : "border-ink-700 bg-ink-900/40 text-ink-200 hover:border-brand/60 hover:bg-brand/5"
+                }`}
+              >
+                <span
+                  className={`font-mono text-[9px] uppercase tracking-[0.18em] ${
+                    active ? "text-brand" : "text-ink-400"
+                  }`}
+                >
+                  {active ? "active" : "tap to use"}
+                </span>
+                <span className="font-display text-sm uppercase tracking-tight leading-tight">
+                  {p.shortLabel}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        <p className="mt-3 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-400">
+          {activePreset.hint}
+        </p>
+      </section>
+
+      <section className="t2q-card p-5 sm:p-6">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="font-mono text-xs uppercase tracking-[0.2em] text-ink-400">
+              {"// step 2"}
+            </p>
+            <h2 className="mt-1 font-display text-lg uppercase tracking-tight">
+              {activePreset.id === "generic"
+                ? "Download the template"
+                : "Or use our template"}
             </h2>
           </div>
           <a
@@ -96,14 +195,23 @@ export function ImportClient() {
           </a>
         </div>
         <p className="mt-3 text-sm text-ink-300">
-          Required columns: <code className="text-white">{REQUIRED_CSV_HEADERS.join(", ")}</code>.
-          Optional: <code className="text-white">supplier, supplier_url, notes</code>.
+          {activePreset.id === "generic" ? (
+            <>
+              Required columns: <code className="text-white">{REQUIRED_CSV_HEADERS.join(", ")}</code>.
+              Optional: <code className="text-white">supplier, supplier_url, notes</code>.
+            </>
+          ) : (
+            <>
+              You don't need the template for the {activePreset.shortLabel} preset —
+              upload the CSV straight from your trade account.
+            </>
+          )}
         </p>
       </section>
 
       <section className="t2q-card p-5 sm:p-6">
         <p className="font-mono text-xs uppercase tracking-[0.2em] text-ink-400">
-          {"// step 2"}
+          {"// step 3"}
         </p>
         <h2 className="mt-1 font-display text-lg uppercase tracking-tight">
           Upload your CSV
@@ -139,7 +247,7 @@ export function ImportClient() {
       {parsed && (
         <section className="t2q-card p-5 sm:p-6">
           <p className="font-mono text-xs uppercase tracking-[0.2em] text-ink-400">
-            {"// step 3"}
+            {"// step 4"}
           </p>
           <h2 className="mt-1 font-display text-lg uppercase tracking-tight">
             Review &amp; import
