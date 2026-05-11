@@ -1,5 +1,29 @@
 import type { QuoteProfile } from "./quote-types";
 
+/**
+ * Wave 14.4 — client-name placeholder handling.
+ *
+ * The AI quote-generation pipeline writes "To be confirmed" into
+ * `quote_data.client.name` whenever the voice transcript doesn't
+ * mention a client. We don't want that placeholder leaking into the
+ * UI — tradies found it confusing ("why does it say to be confirmed
+ * on every quote?"). Display surfaces filter it out via these
+ * helpers; the AI prompt itself is unchanged (do-not-touch list).
+ */
+const PLACEHOLDER_NAMES = new Set(["", "to be confirmed", "tbc", "tbd"]);
+
+export function isPlaceholderClientName(name?: string | null): boolean {
+  return PLACEHOLDER_NAMES.has((name ?? "").trim().toLowerCase());
+}
+
+/** Returns the name if real, or `fallback` (default "—") when it's a placeholder. */
+export function displayClientName(
+  name?: string | null,
+  fallback = "—",
+): string {
+  return isPlaceholderClientName(name) ? fallback : (name as string);
+}
+
 export const NZ_DEFAULTS: QuoteProfile = {
   business_name: null,
   country: "NZ",

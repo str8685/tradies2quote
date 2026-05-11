@@ -12,6 +12,7 @@ import {
 import {
   formatCurrency,
   formatIssueDate,
+  isPlaceholderClientName,
   quoteNumber,
   round2,
   validUntilDate,
@@ -213,8 +214,11 @@ export function QuoteEditor({
   const issueDate = formatIssueDate(createdAt);
   const validUntil = formatIssueDate(validUntilDate(createdAt, 30));
   const number = quoteNumber(quoteId, createdAt);
-  const clientPlaceholder =
-    client.name.trim().toLowerCase() === "to be confirmed";
+  // Wave 14.4 — treat "To be confirmed" / TBC / TBD / blank the same.
+  // The input value is suppressed to "" so the native placeholder
+  // ("Client name") shows and the tradie can type cleanly.
+  const clientPlaceholder = isPlaceholderClientName(client.name);
+  const clientNameInputValue = clientPlaceholder ? "" : client.name;
 
   return (
     <div className="space-y-6">
@@ -226,7 +230,7 @@ export function QuoteEditor({
             </div>
             <input
               data-testid="quote-client-name"
-              value={client.name}
+              value={clientNameInputValue}
               onChange={(e) =>
                 setClient((c) => ({ ...c, name: e.target.value }))
               }
@@ -234,7 +238,7 @@ export function QuoteEditor({
               disabled={isAccepted}
               className={[
                 "mt-2 block w-full rounded-sm border bg-ink-900 px-3 py-2 font-display text-xl uppercase tracking-tight outline-none focus:border-brand disabled:cursor-not-allowed disabled:opacity-60",
-                clientPlaceholder ? "border-hivis text-hivis" : "border-ink-600 text-white",
+                clientPlaceholder ? "border-hivis text-white placeholder:text-hivis/70" : "border-ink-600 text-white",
               ].join(" ")}
             />
             <textarea

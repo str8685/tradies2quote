@@ -165,13 +165,20 @@ export default async function QuotePreviewPage({
               existingInvoice={existingInvoice}
             />
 
-            {/* Wave 13.1 — review tools group. All collapsibles default
-                closed; the lifecycle agent shortcut programmatically
-                opens whichever one matches the suggested agent. The
-                ids here (agent-quote-review, agent-compliance, …)
-                match LifecycleCard's AGENT_TARGET_ID map. */}
-            <div className="mt-8 space-y-3">
-              <p className="t2q-section-label">{"// review tools"}</p>
+            {/* Wave 14.4 — review tools group, now in a brand-tinted
+                card so it reads as a deliberate "look inside" panel
+                rather than a flat list. Each collapsible has the
+                Eye/EyeClosed affordance via CollapsibleSection. */}
+            <section
+              data-testid="review-tools-section"
+              className="mt-8 rounded-sm border border-brand/40 bg-brand/5 p-4 sm:p-5"
+            >
+              <div className="mb-3 flex flex-wrap items-center gap-3">
+                <p className="t2q-section-label !text-brand">{"// review tools"}</p>
+                <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-200">
+                  Tap any panel to peek inside.
+                </p>
+              </div>
 
               <CollapsibleSection
                 id="agent-quote-review"
@@ -254,7 +261,7 @@ export default async function QuotePreviewPage({
                   </CollapsibleSection>
                 );
               })()}
-            </div>
+            </section>
           </>
         ) : (
           <QuoteGenerator id={quote.id} />

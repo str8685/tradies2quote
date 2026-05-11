@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { CaretDown } from "@phosphor-icons/react/dist/ssr";
+import { Eye, EyeClosed } from "@phosphor-icons/react/dist/ssr";
 
 /**
  * Native `<details>` accordion used to compact the quote preview page.
@@ -40,7 +40,7 @@ export function CollapsibleSection({
       id={id}
       open={defaultOpen}
       data-testid={id ? `collapsible-${id}` : undefined}
-      className="group mb-3 rounded-sm border border-ink-700 bg-ink-900/40 open:bg-ink-900/60 transition-colors"
+      className="group mb-3 rounded-sm border border-brand/30 bg-ink-900/40 open:border-brand/60 open:bg-ink-900/70 transition-colors"
     >
       <summary
         className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 hover:bg-ink-900/80"
@@ -48,14 +48,25 @@ export function CollapsibleSection({
         <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-brand">
           {`// ${title}`}
         </span>
-        <CaretDown
-          size={14}
-          weight="bold"
-          aria-hidden="true"
-          className="text-ink-200 transition-transform group-open:rotate-180"
-        />
+        {/* Wave 14.4 — Eye icon instead of caret. Closed = open eye
+            ("tap to look inside"); open = squinted eye ("you're
+            looking"). The brand-tinted ring + Eye icon makes the
+            review tools read as a peek-affordance, not just a
+            disclosure widget. */}
+        <span aria-hidden="true" className="inline-flex">
+          <Eye
+            size={18}
+            weight="fill"
+            className="block text-brand transition-opacity group-open:hidden"
+          />
+          <EyeClosed
+            size={18}
+            weight="fill"
+            className="hidden text-brand transition-opacity group-open:block"
+          />
+        </span>
       </summary>
-      <div className="border-t border-ink-700 p-3 sm:p-4">{children}</div>
+      <div className="border-t border-brand/30 p-3 sm:p-4">{children}</div>
     </details>
   );
 }

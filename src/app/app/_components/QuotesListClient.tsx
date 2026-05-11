@@ -7,7 +7,11 @@ import {
   MagnifyingGlass,
   Plus,
 } from "@phosphor-icons/react";
-import { formatCurrency, formatIssueDate } from "@/lib/quote-defaults";
+import {
+  displayClientName,
+  formatCurrency,
+  formatIssueDate,
+} from "@/lib/quote-defaults";
 import type { QuoteStatus } from "@/lib/quote-types";
 import { QuoteRowActions } from "./QuoteRowActions";
 
@@ -226,7 +230,9 @@ export function QuotesListClient({ rows, isHub = false }: Props) {
                       ) : null}
                     </div>
                     <p className="mt-1 truncate font-display text-sm uppercase tracking-tight text-white">
-                      {q.clientName}
+                      {/* Wave 14.4 — collapses "To be confirmed" /
+                          TBC / blank to a single em-dash. */}
+                      {displayClientName(q.clientName)}
                     </p>
                     <p className="truncate font-mono text-[10px] uppercase tracking-[0.2em] text-ink-300">
                       {formatIssueDate(q.created_at)}
