@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import {
   Check,
@@ -82,6 +83,103 @@ interface Props {
 }
 
 export function AuthMarketingPanel({ kind }: Props) {
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  /**
+   * Wave 12.4 — ambient auto-scroll of the marketing aside.
+   *
+   * The aside is a long scrollable story (hero → 5 steps → features →
+   * trade tags → safety promise) so most users on a 13" laptop only
+   * ever see the top third. Walks up to the nearest scrollable
+   * ancestor (AuthSplitShell's `overflow-y-auto` div inside the aside)
+   * and ping-pongs it at ~24 px/sec with a small pause at each end.
+   *
+   * Pauses on hover, wheel, and touch — resumes after a short idle.
+   * Respects `prefers-reduced-motion`. Bails if the panel isn't
+   * actually scrollable (e.g. mobile where the aside is
+   * `display:none`, or a very tall viewport).
+   */
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+    const root = rootRef.current;
+    if (!root) return;
+
+    // Walk up to find the nearest scrollable ancestor.
+    let cursor: HTMLElement | null = root.parentElement;
+    while (cursor && cursor !== document.body) {
+      const overflowY = window.getComputedStyle(cursor).overflowY;
+      if (overflowY === "auto" || overflowY === "scroll") break;
+      cursor = cursor.parentElement;
+    }
+    if (!cursor) return;
+    const scrollEl: HTMLElement = cursor;
+
+    // Bail if there's nothing meaningful to scroll.
+    if (scrollEl.scrollHeight - scrollEl.clientHeight < 80) return;
+
+    const PX_PER_SEC = 24;
+    const PAUSE_AT_ENDS_MS = 1800;
+    const RESUME_AFTER_USER_MS = 4000;
+
+    let rafId = 0;
+    let lastTime = performance.now();
+    let hoverPaused = false;
+    let pauseUntil = 0;
+    let direction: 1 | -1 = 1;
+
+    function step(now: number) {
+      const dt = Math.min((now - lastTime) / 1000, 0.05);
+      lastTime = now;
+
+      if (!hoverPaused && now >= pauseUntil) {
+        const max = scrollEl.scrollHeight - scrollEl.clientHeight;
+        if (max > 0) {
+          const next = scrollEl.scrollTop + direction * PX_PER_SEC * dt;
+          if (next >= max) {
+            scrollEl.scrollTop = max;
+            direction = -1;
+            pauseUntil = now + PAUSE_AT_ENDS_MS;
+          } else if (next <= 0) {
+            scrollEl.scrollTop = 0;
+            direction = 1;
+            pauseUntil = now + PAUSE_AT_ENDS_MS;
+          } else {
+            scrollEl.scrollTop = next;
+          }
+        }
+      }
+      rafId = requestAnimationFrame(step);
+    }
+
+    function onUserScroll() {
+      pauseUntil = performance.now() + RESUME_AFTER_USER_MS;
+    }
+    function onEnter() {
+      hoverPaused = true;
+    }
+    function onLeave() {
+      hoverPaused = false;
+      lastTime = performance.now();
+    }
+
+    scrollEl.addEventListener("wheel", onUserScroll, { passive: true });
+    scrollEl.addEventListener("touchstart", onUserScroll, { passive: true });
+    scrollEl.addEventListener("mouseenter", onEnter);
+    scrollEl.addEventListener("mouseleave", onLeave);
+
+    rafId = requestAnimationFrame(step);
+
+    return () => {
+      cancelAnimationFrame(rafId);
+      scrollEl.removeEventListener("wheel", onUserScroll);
+      scrollEl.removeEventListener("touchstart", onUserScroll);
+      scrollEl.removeEventListener("mouseenter", onEnter);
+      scrollEl.removeEventListener("mouseleave", onLeave);
+    };
+  }, []);
+
   const headline =
     kind === "signin" ? (
       <>
@@ -107,7 +205,7 @@ export function AuthMarketingPanel({ kind }: Props) {
       : "90 seconds to set up. Voice your first quote tonight. Send it before knock-off.";
 
   return (
-    <div className="relative flex h-full flex-col">
+    <div ref={rootRef} className="relative flex h-full flex-col">
       {/* Hero — intentional NO motion on this block; it should land at
           first paint so the panel never looks blank. */}
       <div>
