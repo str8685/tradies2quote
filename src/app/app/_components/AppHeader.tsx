@@ -3,9 +3,12 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { GearSix, SignOut } from "@phosphor-icons/react";
-import { InstallAppButton } from "@/app/_components/InstallAppButton";
 import { ThemeToggle } from "@/app/_components/landing/ThemeToggle";
 import { signOutAction } from "../actions";
+
+// Wave 12.3 — InstallAppButton no longer rendered here. The floating
+// pill at <FloatingInstallButton /> (mounted in src/app/layout.tsx)
+// replaces every old top-bar install affordance.
 
 /**
  * Shared header for every `/app/*` page.
@@ -150,9 +153,6 @@ export function AppHeader({ context }: AppHeaderProps) {
               <GearSix size={16} weight="bold" />
             </Link>
             <ThemeToggle />
-            {/* Renders nothing when the app is already installed or the
-                browser can't install — see InstallAppButton.tsx. */}
-            <InstallAppButton />
             <form action={signOutAction}>
               <button
                 type="submit"
@@ -166,12 +166,10 @@ export function AppHeader({ context }: AppHeaderProps) {
           </div>
         </div>
 
-        {/* Mobile-only right side: just the install button (renders
-            nothing when not installable). Sign-out has moved to the
+        {/* Wave 12.3 — mobile right side now empty by design. The
+            floating Install pill at the bottom-right corner replaces
+            the old top-bar install button; sign-out lives at the
             bottom of /app/settings. */}
-        <div className="flex items-center gap-2 sm:hidden">
-          <InstallAppButton />
-        </div>
       </div>
     </header>
   );

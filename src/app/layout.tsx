@@ -3,6 +3,7 @@ import Script from "next/script";
 import { Archivo_Black, IBM_Plex_Sans, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
 import { ThemeBoot } from "./_components/ThemeBoot";
+import { FloatingInstallButton } from "./_components/FloatingInstallButton";
 
 const archivoblack = Archivo_Black({
   variable: "--font-archivo-black",
@@ -164,6 +165,10 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col bg-ink-900 text-white antialiased">
         <ThemeBoot />
         {children}
+        {/* Wave 12.3 — floating Install-App CTA. Renders nothing when
+            the app is already installed or the browser can't install,
+            so safe to mount globally. */}
+        <FloatingInstallButton />
       </body>
     </html>
   );

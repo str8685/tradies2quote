@@ -8,7 +8,6 @@ import {
   FormField,
   SubmitButton,
 } from "../_components/AuthCard";
-import { Logo } from "../../_components/landing/Logo";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = {
@@ -42,8 +41,16 @@ export default async function ResetPasswordPage({
 
       <header className="relative z-10 border-b border-ink-600">
         <div className="mx-auto flex h-16 max-w-6xl items-center px-6">
-          <Link href="/" aria-label="tradies2Quote home">
-            <Logo size={28} />
+          <Link href="/" aria-label="tradies2Quote home" className="inline-flex">
+            {/* Wave 12.3 — new Tradies2Quote brand PNG. */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/logo-horizontal.png"
+              alt="Tradies2Quote"
+              width={380}
+              height={100}
+              className="block h-8 w-auto rounded-sm bg-white px-2 py-1"
+            />
           </Link>
         </div>
       </header>

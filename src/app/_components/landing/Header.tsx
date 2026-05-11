@@ -4,7 +4,10 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { List, X } from "@phosphor-icons/react";
 import { ThemeToggle } from "./ThemeToggle";
-import InstallPWAButton from "./InstallPWAButton";
+
+// Wave 12.3 — InstallPWAButton removed from the landing top bar.
+// The floating Install pill at <FloatingInstallButton /> (mounted in
+// src/app/layout.tsx) carries this CTA across the whole site now.
 
 const LINKS = [
   { href: "#how", label: "How it works" },
@@ -65,7 +68,6 @@ export function Header() {
         </nav>
 
         <div className="hidden md:flex items-center gap-3">
-          <InstallPWAButton variant="nav" />
           <ThemeToggle />
           <Link
             href="/login"
@@ -129,9 +131,8 @@ export function Header() {
                 Start free
               </Link>
             </div>
-            <div className="pt-2">
-              <InstallPWAButton variant="nav" className="w-full justify-center" />
-            </div>
+            {/* Install CTA moved to the floating bottom-right pill —
+                see <FloatingInstallButton /> in src/app/layout.tsx. */}
           </div>
         </div>
       )}

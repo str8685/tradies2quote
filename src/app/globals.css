@@ -832,3 +832,26 @@ h1, h2, h3, h4, h5 {
 .t2q-bottomnav-tile[aria-current="page"] {
   font-weight: 700;
 }
+
+/* Wave 12.3 — floating Install-App attention pulse. Slow brand-orange
+   glow ring that loops every 2.4s, just enough to catch a tradie's eye
+   without becoming annoying. Stops on reduced-motion + on touch
+   pointers after first dismissal (component sets data-dismissed=true). */
+@keyframes t2q-install-pulse {
+  0%, 100% {
+    box-shadow:
+      0 10px 30px -8px rgba(255, 95, 21, 0.55),
+      0 0 0 0 rgba(255, 234, 0, 0.0);
+  }
+  50% {
+    box-shadow:
+      0 10px 30px -8px rgba(255, 95, 21, 0.7),
+      0 0 0 8px rgba(255, 234, 0, 0.18);
+  }
+}
+.t2q-install-pulse {
+  animation: t2q-install-pulse 2.4s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .t2q-install-pulse { animation: none; }
+}

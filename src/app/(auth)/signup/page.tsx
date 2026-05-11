@@ -1,18 +1,11 @@
 import type { Metadata } from "next";
-import { Check } from "@phosphor-icons/react/dist/ssr";
 import { AuthSplitShell } from "../../_components/auth/AuthSplitShell";
+import { AuthMarketingPanel } from "../../_components/auth/AuthMarketingPanel";
 import { SignupForm } from "./_components/SignupForm";
 
 export const metadata: Metadata = {
   title: "Start your free trial",
 };
-
-const BENEFITS = [
-  "Unlimited quotes & invoices",
-  "Branded PDFs in your colours",
-  "Auto-converts quote → invoice when client accepts",
-  "Cancel by text — we don't lock you in",
-];
 
 /**
  * /signup — split-screen sign-up.
@@ -37,43 +30,7 @@ export default async function SignupPage({
   return (
     <AuthSplitShell
       backHref="/"
-      visual={
-        <>
-          <div className="font-mono text-[10px] uppercase tracking-[0.3em] text-brand mb-3">
-            {"// onboard the crew"}
-          </div>
-          <h2 className="font-display text-4xl sm:text-5xl uppercase tracking-tighter leading-[0.9]">
-            Start free.
-            <br />
-            7 days.
-            <br />
-            <span className="text-brand">No card.</span>
-          </h2>
-          <p className="mt-6 text-ink-200 leading-relaxed max-w-md">
-            90 seconds to set up. Voice your first quote tonight. Send it
-            before knock-off.
-          </p>
-
-          <ul className="mt-8 space-y-3 max-w-md">
-            {BENEFITS.map((b) => (
-              <li key={b} className="flex items-start gap-3 text-sm text-ink-100">
-                <Check
-                  size={16}
-                  weight="bold"
-                  className="text-brand shrink-0 mt-0.5"
-                />
-                {b}
-              </li>
-            ))}
-          </ul>
-
-          <div className="flex-1" />
-
-          {/* Wave 10.5 — removed the "1,243 tradies on the tools" pill.
-              The number was fabricated and the panel reads cleaner
-              without manufactured social proof. */}
-        </>
-      }
+      visual={<AuthMarketingPanel kind="signup" />}
       form={
         <>
           <div className="font-mono text-[10px] uppercase tracking-[0.3em] text-brand mb-3">

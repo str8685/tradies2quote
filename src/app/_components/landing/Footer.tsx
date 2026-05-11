@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { Logo } from "./Logo";
 
 export function Footer() {
   return (
@@ -10,7 +9,17 @@ export function Footer() {
       <div className="max-w-7xl mx-auto px-6 md:px-12">
         <div className="grid md:grid-cols-4 gap-10 pt-8 border-t border-ink-700">
           <div className="md:col-span-2">
-            <Logo size={32} />
+            {/* Wave 12.3 — new Tradies2Quote brand mark (horizontal
+                lockup on a small white pill, matches the rest of the
+                site). Replaces the old inline Site-Safe Badge. */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/logo-horizontal.png"
+              alt="Tradies2Quote"
+              width={380}
+              height={100}
+              className="block h-9 w-auto rounded-sm bg-white px-2 py-1"
+            />
             <p className="mt-4 text-ink-400 text-sm max-w-sm">
               Voice in. Quote out. Built by a builder running STR8 Builders in New Zealand.
             </p>

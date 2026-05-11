@@ -1,17 +1,11 @@
 import type { Metadata } from "next";
-import { Check } from "@phosphor-icons/react/dist/ssr";
 import { AuthSplitShell } from "../../_components/auth/AuthSplitShell";
+import { AuthMarketingPanel } from "../../_components/auth/AuthMarketingPanel";
 import { LoginForm } from "./_components/LoginForm";
 
 export const metadata: Metadata = {
   title: "Log in",
 };
-
-const TRUST = [
-  "Voice in. Quote out. Under 60 seconds",
-  "Built by a builder · Tauranga, NZ",
-  "Cancel by text — we don't lock you in",
-];
 
 /**
  * /login — split-screen sign-in.
@@ -38,46 +32,7 @@ export default async function LoginPage({
     <AuthSplitShell
       backHref="/"
       reverse
-      visual={
-        <>
-          <div className="font-mono text-[10px] uppercase tracking-[0.3em] text-hivis mb-3">
-            {"// for the tools"}
-          </div>
-          <h2 className="font-display text-4xl sm:text-5xl uppercase tracking-tighter leading-[0.9]">
-            Voice in.
-            <br />
-            <span className="text-brand">Quote out.</span>
-            <br />
-            Under 60 seconds.
-          </h2>
-          <p className="mt-6 text-ink-200 leading-relaxed max-w-md">
-            Built by a builder. No drag-and-drop, no menus, no time-suckers —
-            just talk.
-          </p>
-
-          <ul className="mt-8 space-y-3 max-w-md">
-            {TRUST.map((b) => (
-              <li
-                key={b}
-                className="flex items-start gap-3 text-sm text-ink-100"
-              >
-                <Check
-                  size={16}
-                  weight="bold"
-                  className="text-brand shrink-0 mt-0.5"
-                />
-                {b}
-              </li>
-            ))}
-          </ul>
-
-          <div className="flex-1" />
-
-          {/* Wave 10.5 — removed the "1,243 tradies on the tools" pill.
-              The number was fabricated and the panel reads cleaner
-              without manufactured social proof. */}
-        </>
-      }
+      visual={<AuthMarketingPanel kind="signin" />}
       form={
         <>
           <div className="font-mono text-[10px] uppercase tracking-[0.3em] text-brand mb-3">
