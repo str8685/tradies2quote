@@ -36,12 +36,15 @@ export default function AppLayout({
   return (
     <div className="t2q-app-canvas min-h-screen overflow-x-hidden lg:grid lg:grid-cols-[24px_1fr_24px]">
       <SideMeasureTape />
-      {/* Wave 14.3: AppHeader is `hidden sm:block`, so the mobile
-          shell picks up the safe-area-top inset HERE. Without it,
-          page content would start under the iPhone notch / Android
-          camera cutout. No coloured band — the canvas paints behind
-          the inset so it just adds breathing room. */}
-      <div className="min-w-0 pt-[env(safe-area-inset-top)] pb-[88px] sm:pt-0 sm:pb-0">
+      {/* Wave 15.1: NO safe-area-top here. The new mobile-visible
+          AppHeader owns its own `pt-[env(safe-area-inset-top)]`, so
+          adding it on the wrapper as well stacked the inset twice —
+          which was the "thick black top border" the user saw. Pages
+          that don't render AppHeader (3 materials editor pages) now
+          apply the inset on their own root.
+          `pb-[88px]` on mobile keeps the floating bottom nav clear
+          of the last page row. */}
+      <div className="min-w-0 pb-[88px] sm:pb-0">
         {children}
       </div>
       <div aria-hidden="true" className="hidden lg:block" />
