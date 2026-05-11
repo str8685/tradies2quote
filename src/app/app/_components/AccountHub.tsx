@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -362,8 +362,25 @@ function AccountAvatar({
   );
 }
 
-const ALLOWED_MIME = ["image/jpeg", "image/png", "image/webp"] as const;
+// Wave 15.3 — broader client-side accept than the server allow-list so
+// the iOS Photos picker actually lets the user pick. We still validate
+// the resulting mime + extension server-side, AND the storage bucket's
+// own allow-list (image/jpeg|png|webp) is the third layer of defence.
+const CLIENT_ACCEPT = "image/jpeg,image/png,image/webp,image/jpg";
+const SAFE_EXT_RE = /\.(jpe?g|png|webp)$/i;
 const MAX_SIZE_BYTES = 2 * 1024 * 1024;
+
+function isLikelyImage(file: File): boolean {
+  // Some mobile browsers (notably older iOS Safari) hand back an empty
+  // file.type. Fall back to the filename's extension so we don't fail
+  // a perfectly valid pick.
+  if (file.type === "image/jpeg" || file.type === "image/png" || file.type === "image/webp") {
+    return true;
+  }
+  if (file.type === "image/jpg") return true; // some Android stacks
+  if (!file.type) return SAFE_EXT_RE.test(file.name);
+  return false;
+}
 
 function AvatarUploadField({
   avatarUrl,
@@ -373,7 +390,6 @@ function AvatarUploadField({
   initial: string;
 }) {
   const router = useRouter();
-  const fileRef = useRef<HTMLInputElement | null>(null);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
@@ -389,11 +405,19 @@ function AvatarUploadField({
   const onPick = (e: React.ChangeEvent<HTMLInputElement>) => {
     setError(null);
     const file = e.target.files?.[0];
+    // Clear the input value immediately so picking the same file again
+    // re-fires onChange. (Browsers suppress duplicate change events.)
+    if (e.target) e.target.value = "";
     if (!file) return;
-    if (
-      !(ALLOWED_MIME as ReadonlyArray<string>).includes(file.type)
-    ) {
-      setError("Use a JPG, PNG, or WebP image.");
+    if (!isLikelyImage(file)) {
+      // iPhone photos default to HEIC; if iOS didn't transcode to JPEG
+      // we surface a clear message rather than letting the server
+      // reject silently.
+      setError(
+        /\.hei[cf]$/i.test(file.name)
+          ? "iPhone HEIC photo — open it in Photos, share → save as JPEG, then pick that."
+          : "Use a JPG, PNG, or WebP image.",
+      );
       return;
     }
     if (file.size > MAX_SIZE_BYTES) {
@@ -405,8 +429,6 @@ function AvatarUploadField({
     startTransition(async () => {
       const res = await uploadAvatarAction(fd);
       handleResult(res);
-      // Reset the input so the same file can be picked again later.
-      if (fileRef.current) fileRef.current.value = "";
     });
   };
 
@@ -446,22 +468,28 @@ function AvatarUploadField({
               Remove
             </button>
           ) : null}
-          <button
-            type="button"
-            onClick={() => fileRef.current?.click()}
-            disabled={pending}
+          {/* Wave 15.3 — the upload trigger is now a <label> wrapping
+              an actual file input. Programmatic .click() on a hidden
+              input was being blocked by iOS Safari, which is why the
+              picker wouldn't open on iPhone. A label is the native
+              trigger and works on every browser. */}
+          <label
+            htmlFor="account-hub-avatar-input"
+            aria-disabled={pending}
             data-testid="account-hub-avatar-upload"
-            className="inline-flex items-center gap-2 rounded-sm border border-ink-700 bg-ink-900/60 px-3 py-2 text-xs font-display uppercase tracking-tight text-white hover:border-brand hover:text-brand disabled:opacity-60"
+            className={`inline-flex items-center gap-2 rounded-sm border border-ink-700 bg-ink-900/60 px-3 py-2 text-xs font-display uppercase tracking-tight text-white hover:border-brand hover:text-brand ${
+              pending ? "pointer-events-none opacity-60" : "cursor-pointer"
+            }`}
           >
             <Camera size={13} weight="bold" aria-hidden="true" />
             {pending ? "Saving…" : avatarUrl ? "Change" : "Upload"}
-          </button>
+          </label>
         </div>
       </div>
       <input
-        ref={fileRef}
+        id="account-hub-avatar-input"
         type="file"
-        accept={ALLOWED_MIME.join(",")}
+        accept={CLIENT_ACCEPT}
         onChange={onPick}
         className="sr-only"
         data-testid="account-hub-avatar-input"

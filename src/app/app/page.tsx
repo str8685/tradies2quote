@@ -142,7 +142,10 @@ export default async function DashboardPage() {
           </div>
           <div
             data-testid="dashboard-stage-tiles"
-            className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7"
+            // Wave 15.3 — mobile compaction. 3-col on phones (7 stages
+            // fit in 3 rows instead of 4) with tighter gap. Desktop
+            // grids unchanged.
+            className="mt-3 grid grid-cols-3 gap-1.5 sm:mt-4 sm:grid-cols-4 sm:gap-2 lg:grid-cols-7"
           >
             {DASHBOARD_STAGES.map((s) => (
               <StageTile
@@ -394,18 +397,21 @@ function StageTile({
       href={`/app/quotes?stage=${stage}`}
       data-testid={`stage-tile-${stage}`}
       data-count={count}
-      className={`group flex flex-col gap-1 rounded-sm border px-3 py-3 transition-colors ${
+      // Wave 15.3 — mobile compaction. Tighter padding + smaller
+      // count font on phones; desktop visuals unchanged via sm:
+      // overrides.
+      className={`group flex flex-col gap-0.5 rounded-sm border px-2.5 py-2 transition-colors sm:gap-1 sm:px-3 sm:py-3 ${
         active
           ? "border-ink-700/60 bg-ink-900/40 hover:border-brand/60 hover:bg-brand/5"
           : "border-ink-800 bg-ink-900/20 text-ink-500 hover:border-ink-600"
       }`}
     >
       <p
-        className={`font-display tabular-nums leading-none ${active ? "text-white group-hover:text-brand" : "text-ink-500"} text-xl sm:text-2xl`}
+        className={`font-display tabular-nums leading-none ${active ? "text-white group-hover:text-brand" : "text-ink-500"} text-base sm:text-2xl`}
       >
         {count}
       </p>
-      <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-ink-300">
+      <p className="font-mono text-[9px] uppercase tracking-[0.18em] text-ink-300 sm:text-[10px] sm:tracking-[0.2em]">
         {label}
       </p>
     </Link>

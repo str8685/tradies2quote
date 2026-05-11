@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { Icon } from "@phosphor-icons/react";
@@ -54,8 +54,17 @@ function isActive(href: string, pathname: string) {
 
 export function MobileBottomNavClient({ isOwner, userEmail, avatarUrl }: Props) {
   const pathname = usePathname() ?? "";
-  const visibleTiles = TILES.filter((t) => isOwner || !t.ownerOnly);
-  const initial = (userEmail ?? "?").trim().charAt(0).toUpperCase() || "?";
+  // Wave 15.3 — memoised so re-renders triggered by sheetOpen state
+  // don't recompute the tile list or the avatar initial. Cheap but
+  // tightens the nav's render path on every tab interaction.
+  const visibleTiles = useMemo(
+    () => TILES.filter((t) => isOwner || !t.ownerOnly),
+    [isOwner],
+  );
+  const initial = useMemo(
+    () => (userEmail ?? "?").trim().charAt(0).toUpperCase() || "?",
+    [userEmail],
+  );
   const [sheetOpen, setSheetOpen] = useState(false);
 
   return (
@@ -72,6 +81,11 @@ export function MobileBottomNavClient({ isOwner, userEmail, avatarUrl }: Props) 
             <Link
               key={href}
               href={href}
+              // Wave 15.3 — explicit prefetch so the next tab's JS is
+              // warmed as soon as the nav renders. Next 16's default
+              // `null` only prefetches loading.tsx + the first level,
+              // which is why mobile tap → render felt sluggish.
+              prefetch={true}
               className="t2q-bottomnav-tile"
               aria-current={active ? "page" : undefined}
               data-testid={`app-bottom-nav-${label.toLowerCase()}`}
@@ -102,14 +116,16 @@ export function MobileBottomNavClient({ isOwner, userEmail, avatarUrl }: Props) 
             <img
               src={avatarUrl}
               alt=""
-              width={28}
-              height={28}
-              className="inline-block h-7 w-7 shrink-0 rounded-full object-cover"
+              width={36}
+              height={36}
+              // Wave 15.3 — bumped from h-7 (28px) → h-9 (36px) for
+              // bigger thumb target + a more "this is me" feel.
+              className="inline-block h-9 w-9 shrink-0 rounded-full object-cover"
             />
           ) : (
             <span
               aria-hidden="true"
-              className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-brand text-ink-900 font-display text-xs leading-none"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-brand text-ink-900 font-display text-sm leading-none"
             >
               {initial}
             </span>

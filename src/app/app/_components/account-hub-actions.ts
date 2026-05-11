@@ -42,12 +42,34 @@ export type AvatarActionResult =
   | { ok: true; avatarUrl: string | null }
   | { ok: false; error: string };
 
-/** Pick a safe filename extension from the file's mime type. */
-function extForMime(mime: string): string | null {
-  if (mime === "image/jpeg") return "jpg";
-  if (mime === "image/png") return "png";
-  if (mime === "image/webp") return "webp";
-  return null;
+/**
+ * Resolve a (mime, extension) pair from a File. Mobile browsers
+ * sometimes hand us `image/jpg` (instead of `image/jpeg`) or an empty
+ * file.type — in those cases we fall back to the filename's
+ * extension. iPhone HEIC pickups that didn't get auto-converted by
+ * iOS get rejected with a clear, actionable error rather than
+ * disappearing into a generic storage failure.
+ */
+function resolveImage(file: File): { mime: string; ext: string } | { error: string } {
+  const name = file.name || "";
+  const lower = (file.type || "").toLowerCase();
+  if (lower === "image/jpeg" || lower === "image/jpg") return { mime: "image/jpeg", ext: "jpg" };
+  if (lower === "image/png") return { mime: "image/png", ext: "png" };
+  if (lower === "image/webp") return { mime: "image/webp", ext: "webp" };
+  // Empty / unknown mime → trust the extension. iOS Safari sometimes
+  // omits the mime for camera-roll picks.
+  if (!lower) {
+    if (/\.(jpe?g)$/i.test(name)) return { mime: "image/jpeg", ext: "jpg" };
+    if (/\.png$/i.test(name)) return { mime: "image/png", ext: "png" };
+    if (/\.webp$/i.test(name)) return { mime: "image/webp", ext: "webp" };
+  }
+  if (/^image\/hei[cf]$/i.test(lower) || /\.hei[cf]$/i.test(name)) {
+    return {
+      error:
+        "iPhone HEIC photo — open it in Photos, share → save as JPEG, then pick that.",
+    };
+  }
+  return { error: "Use a JPG, PNG, or WebP image." };
 }
 
 /**
@@ -66,22 +88,26 @@ async function uploadFileForUser(
   if (file.size > MAX_SIZE_BYTES) {
     return { ok: false, error: "File is over 2 MB." };
   }
-  if (!ALLOWED_MIME.includes(file.type)) {
-    return {
-      ok: false,
-      error: "Use a JPG, PNG, or WebP image.",
-    };
+  const resolved = resolveImage(file);
+  if ("error" in resolved) {
+    return { ok: false, error: resolved.error };
   }
-  const ext = extForMime(file.type);
-  if (!ext) {
+  if (!ALLOWED_MIME.includes(resolved.mime)) {
+    // Safety net — resolveImage shouldn't return a mime outside this
+    // list, but if it ever does, the storage bucket's own allow-list
+    // would reject anyway.
     return { ok: false, error: "Unsupported image format." };
   }
 
-  const path = `${userId}/${Date.now()}.${ext}`;
+  const path = `${userId}/${Date.now()}.${resolved.ext}`;
   const { error: uploadErr } = await supabase.storage
     .from(BUCKET)
     .upload(path, file, {
-      contentType: file.type,
+      // Always send a normalised contentType. Some mobile browsers
+      // pass file.type === "" which makes the storage bucket use a
+      // generic application/octet-stream and may also block via the
+      // bucket's allowed_mime_types policy.
+      contentType: resolved.mime,
       upsert: false,
       cacheControl: "3600",
     });
