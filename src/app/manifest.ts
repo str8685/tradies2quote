@@ -17,9 +17,12 @@ import type { MetadataRoute } from "next";
  * If unauthenticated, the existing `/app` server-component redirects to
  * `/login` (defense-in-depth on top of `proxy.ts`).
  *
- * Icons reference `/icon.svg` at two declared sizes — the same file resolved
- * with different size hints, since SVG is resolution-independent. Browsers
- * pick whichever entry best fits a given install surface.
+ * Wave 10.3 — install icons now use the new Tradies2Quote PNG mark
+ * generated from `public/logo-mark.png`. `purpose: "any"` covers
+ * standard Android + Chrome install surfaces; `purpose: "maskable"`
+ * is a separately-sized PNG with 15 % safe padding + an opaque ink-950
+ * background so Android's circle/squircle mask never clips the mark
+ * and never lets the wallpaper bleed through.
  */
 export default function manifest(): MetadataRoute.Manifest {
   return {
@@ -36,21 +39,21 @@ export default function manifest(): MetadataRoute.Manifest {
     categories: ["business", "productivity"],
     icons: [
       {
-        src: "/logo-mark.svg",
+        src: "/icon-192.png",
         sizes: "192x192",
-        type: "image/svg+xml",
+        type: "image/png",
         purpose: "any",
       },
       {
-        src: "/logo-mark.svg",
+        src: "/icon-512.png",
         sizes: "512x512",
-        type: "image/svg+xml",
+        type: "image/png",
         purpose: "any",
       },
       {
-        src: "/logo-mark.svg",
-        sizes: "192x192 512x512",
-        type: "image/svg+xml",
+        src: "/maskable-icon-512.png",
+        sizes: "512x512",
+        type: "image/png",
         purpose: "maskable",
       },
     ],

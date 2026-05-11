@@ -79,10 +79,22 @@ export const metadata: Metadata = {
   // PWA — `app/manifest.ts` is auto-served at `/manifest.webmanifest` and the
   // <link rel="manifest"> is auto-injected by Next 16; we just declare icon
   // links and iOS-specific meta tags here.
+  //
+  // Wave 10.3 — point all icon paths at the new T2Q mark PNGs generated
+  // from `public/logo-mark.png`. The legacy Emergent SVG files are kept
+  // on disk for safety but no longer referenced from metadata.
   icons: {
-    icon: [{ url: "/favicon.svg", type: "image/svg+xml" }],
-    apple: [{ url: "/apple-icon.svg", type: "image/svg+xml" }],
-    shortcut: [{ url: "/favicon.svg", type: "image/svg+xml" }],
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/favicon-16x16.png", type: "image/png", sizes: "16x16" },
+      { url: "/favicon-32x32.png", type: "image/png", sizes: "32x32" },
+      { url: "/icon-192.png", type: "image/png", sizes: "192x192" },
+      { url: "/icon-512.png", type: "image/png", sizes: "512x512" },
+    ],
+    apple: [
+      { url: "/apple-touch-icon.png", type: "image/png", sizes: "180x180" },
+    ],
+    shortcut: [{ url: "/favicon.ico" }],
   },
   appleWebApp: {
     // Tells iOS this site can run as a standalone home-screen app.
