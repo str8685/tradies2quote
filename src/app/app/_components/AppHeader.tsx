@@ -1,176 +1,30 @@
-"use client";
-
-import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { GearSix, SignOut } from "@phosphor-icons/react";
-import { ThemeToggle } from "@/app/_components/landing/ThemeToggle";
-import { signOutAction } from "../actions";
-
-// Wave 12.3 — InstallAppButton no longer rendered here. The floating
-// pill at <FloatingInstallButton /> (mounted in src/app/layout.tsx)
-// replaces every old top-bar install affordance.
+import { createClient } from "@/lib/supabase/server";
+import { isOwnerEmail } from "@/lib/owner";
+import { AppHeaderClient } from "./AppHeaderClient";
 
 /**
- * Shared header for every `/app/*` page.
+ * Server wrapper for the shared `/app/*` header.
  *
- * Wave 10 — Wave 10.1 compact-mobile patch:
- *   - Mobile header is a SINGLE row of fixed 56 px height (`h-14`). No
- *     stacked second row, no sign-out button hijacking the bar. Sign-out
- *     now lives at the bottom of `/app/settings`.
- *   - Desktop header is 64 px (`sm:h-16`), with the existing tab strip +
- *     the theme toggle moved over from the landing-only nav + the PWA
- *     install button + the outlined Sign-out button.
- *   - Backdrop blur only runs at `sm:` and up — mobile uses an opaque
- *     `bg-ink-950/95` instead, which is much cheaper to scroll over.
- *   - Optional page context (e.g. "Materials · Capture", "Q-2026-XXXX")
- *     is now `sm:` and up only, so the mobile row stays compact even on
- *     pages with long labels.
+ * Wave 13 — owner-only tab gating. The header now fetches the current
+ * user server-side and passes `isOwner` to the client tabs component
+ * so the Agents tab is hidden from non-owner tradies without leaking
+ * its existence to the client bundle.
  *
- * Client component because the active-tab indicator needs `usePathname()`.
- * `signOutAction` is still a server action; importing it across the
- * client/server boundary is fine — Next 16 handles the RPC.
+ * Every existing call site (e.g. `<AppHeader context="Quotes" />`)
+ * keeps working: this server component renders the client child with
+ * the resolved `isOwner` flag — callers don't need to plumb it
+ * through.
  */
-interface AppHeaderProps {
+interface Props {
   /** Optional page label shown next to the logo on desktop only. */
   context?: string;
 }
 
-const TABS = [
-  { href: "/app", label: "Dashboard" },
-  { href: "/app/quotes", label: "Quotes" },
-  { href: "/app/materials", label: "Materials" },
-  { href: "/app/agents", label: "Agents" },
-  { href: "/app/clients", label: "Clients" },
-] as const;
-
-/**
- * Returns true when the current pathname falls inside the given tab.
- *
- * Special-case `/app` (dashboard) because every other tab href is also a
- * prefix of some path; otherwise visiting `/app/materials` would light up
- * the Dashboard tab as well.
- */
-function isActiveTab(href: string, pathname: string) {
-  if (href === "/app") return pathname === "/app";
-  return pathname === href || pathname.startsWith(`${href}/`);
-}
-
-export function AppHeader({ context }: AppHeaderProps) {
-  const pathname = usePathname() ?? "";
-
-  return (
-    <header
-      data-testid="app-header"
-      className="sticky top-0 z-30 border-b border-ink-700 bg-ink-950/95 sm:bg-ink-950/85 sm:backdrop-blur"
-    >
-      {/* Wave 10.5 — header bar widens from max-w-3xl → max-w-5xl on
-          desktop so the 5-tab strip + Settings cog + theme toggle +
-          install + sign-out cluster have room to sit beside the logo
-          without crowding it. Page content below the header keeps its
-          own narrower max-w-3xl in each page wrapper. */}
-      <div className="mx-auto flex h-14 max-w-3xl items-center justify-between gap-3 px-4 sm:h-16 sm:max-w-5xl sm:gap-4 sm:px-6">
-        {/* Logo + (desktop-only) page context. */}
-        <div className="flex min-w-0 items-center gap-3">
-          <Link
-            href="/app"
-            data-testid="app-header-home"
-            aria-label="Tradies2Quote dashboard"
-            className="inline-flex shrink-0 items-center"
-          >
-            {/* Wave 10.2 — new Tradies2Quote brand PNGs.
-                Both variants sit on a small white pill so the dark T/Q
-                stays readable on dark mode AND on the cream light theme.
-                The pill is shorter than the surrounding header chrome so
-                it reads as a brand badge, not a heavy block.
-                Falls back gracefully — `public/logo-mark.svg` and
-                `public/logo-horizontal.svg` are still on disk if we ever
-                need to revert. */}
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="/logo-mark.png"
-              alt="Tradies2Quote"
-              width={160}
-              height={136}
-              className="block h-7 w-auto rounded-sm bg-white px-1.5 py-0.5 sm:hidden"
-            />
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="/logo-horizontal.png"
-              alt="Tradies2Quote"
-              width={380}
-              height={100}
-              className="hidden h-8 w-auto rounded-sm bg-white px-2 py-1 sm:block"
-            />
-          </Link>
-          {context ? (
-            <span
-              data-testid="app-header-context"
-              className="hidden min-w-0 items-center gap-2 font-mono text-xs uppercase tracking-[0.25em] text-ink-400 sm:inline-flex"
-            >
-              <span aria-hidden="true" className="text-ink-600">
-                ·
-              </span>
-              <span className="truncate">{context}</span>
-            </span>
-          ) : null}
-        </div>
-
-        {/* Desktop tabs + actions cluster. Hidden on mobile — the user
-            navigates via MobileBottomNav instead. */}
-        <div className="hidden items-center gap-2 sm:flex">
-          <nav
-            data-testid="app-header-tabs"
-            aria-label="Primary"
-            className="flex items-center gap-1"
-          >
-            {TABS.map((tab) => {
-              const active = isActiveTab(tab.href, pathname);
-              return (
-                <Link
-                  key={tab.href}
-                  href={tab.href}
-                  className="t2q-nav-tab"
-                  aria-current={active ? "page" : undefined}
-                  data-testid={`app-header-tab-${tab.label.toLowerCase()}`}
-                >
-                  {tab.label}
-                </Link>
-              );
-            })}
-          </nav>
-
-          <div className="ml-2 flex items-center gap-2 border-l border-ink-700 pl-3">
-            {/* Settings icon — Wave 10.4 moved Settings out of the main
-                tab strip so the new Agents tab could fit without
-                overflowing the 768 px header. Stays one click away via
-                this cog button. */}
-            <Link
-              href="/app/settings"
-              aria-label="Settings"
-              data-testid="app-header-settings"
-              className="inline-flex h-10 w-10 items-center justify-center rounded-sm border border-ink-600 text-ink-300 transition-colors hover:border-brand hover:bg-brand hover:text-ink-900"
-            >
-              <GearSix size={16} weight="bold" />
-            </Link>
-            <ThemeToggle />
-            <form action={signOutAction}>
-              <button
-                type="submit"
-                data-testid="app-header-sign-out"
-                className="inline-flex h-10 items-center gap-1.5 rounded-sm border border-ink-600 px-3 font-mono text-[10px] uppercase tracking-[0.2em] text-ink-200 transition-colors hover:border-brand hover:bg-brand hover:text-ink-900"
-              >
-                <SignOut size={14} weight="bold" />
-                Sign out
-              </button>
-            </form>
-          </div>
-        </div>
-
-        {/* Wave 12.3 — mobile right side now empty by design. The
-            floating Install pill at the bottom-right corner replaces
-            the old top-bar install button; sign-out lives at the
-            bottom of /app/settings. */}
-      </div>
-    </header>
-  );
+export async function AppHeader({ context }: Props) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const isOwner = isOwnerEmail(user?.email);
+  return <AppHeaderClient context={context} isOwner={isOwner} />;
 }

@@ -1,10 +1,12 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { round2 } from "@/lib/quote-defaults";
 import { applyMaterialCorrections } from "@/lib/quoteEditLearning";
-import type { QuoteData } from "@/lib/quote-types";
+import type { QuoteData, QuoteStatus } from "@/lib/quote-types";
+import { canTransition } from "@/lib/lifecycle/stages";
 
 type SaveResult =
   | { ok: true; materialsLearned?: number }
@@ -113,4 +115,136 @@ export async function saveQuoteChanges(
   );
 
   return { ok: true, materialsLearned: learn.materialsLearned };
+}
+
+/* -------------------------------------------------------------------------
+ * Wave 13 — Lifecycle transition server actions.
+ *
+ * Each action delegates the actual UPDATE + quote_events INSERT to the
+ * Postgres RPC `public.transition_quote_lifecycle`, which performs both
+ * inside a single transaction. That guarantees an audit row is written
+ * for every status change without a 2-statement race window.
+ *
+ * Pre-flight checks before the RPC call:
+ *   1. `auth.getUser()` — must be signed in.
+ *   2. Load the current quote (RLS-scoped to this owner).
+ *   3. Validate the transition is allowed via `canTransition()`.
+ *
+ * If the TS check passes but the RPC rejects (concurrent transition,
+ * drift between TS + DB matrix, etc.), the error is bubbled back with
+ * the original Postgres sqlstate so the LifecycleCard can render a
+ * meaningful message.
+ *
+ * No background side-effects. No email send. No PDF generation. No
+ * automation. Pure owner-driven state change + audit log. Wave 14 will
+ * layer optional email-on-send on top of `sendQuote`.
+ * ------------------------------------------------------------------------- */
+
+export type LifecycleResult =
+  | { ok: true; status: QuoteStatus }
+  | { error: string; code?: string };
+
+interface PostgresErrorShape {
+  code?: string;
+  message?: string;
+}
+
+/** Map Postgres error codes raised by the RPC to plain-English messages. */
+function explainRpcError(err: unknown): { error: string; code?: string } {
+  const e = (err ?? {}) as PostgresErrorShape;
+  const code = e.code;
+  if (code === "28000") return { error: "You need to sign in to do that.", code };
+  if (code === "P0002") return { error: "Quote not found.", code };
+  if (code === "42501") return { error: "You don't own this quote.", code };
+  if (code === "22023")
+    return {
+      error: "That status change isn't allowed from the current state.",
+      code,
+    };
+  return {
+    error: e.message ?? "Could not update the quote's lifecycle stage.",
+    code,
+  };
+}
+
+/**
+ * Core transition helper. Validates the move TS-side, calls the RPC,
+ * and revalidates the affected pages. Every public action below is a
+ * thin wrapper around this.
+ */
+async function transition(
+  quoteId: string,
+  target: QuoteStatus,
+): Promise<LifecycleResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  // Pre-flight: read current status so we can give a useful error
+  // BEFORE round-tripping to the RPC. RLS keeps this scoped to the
+  // owner's own quotes.
+  const { data: row, error: loadErr } = await supabase
+    .from("quotes")
+    .select("status")
+    .eq("id", quoteId)
+    .single();
+  if (loadErr || !row) {
+    return { error: "Quote not found.", code: "P0002" };
+  }
+  const current = (row.status ?? "draft") as QuoteStatus;
+  if (!canTransition(current, target)) {
+    return {
+      error: `Cannot move a ${current} quote to ${target}.`,
+      code: "22023",
+    };
+  }
+
+  // The RPC does: row-lock → re-check ownership → re-check matrix →
+  // UPDATE quotes (status + matching first-time timestamp) → INSERT
+  // quote_events. Single transaction.
+  const { data: newStatus, error: rpcErr } = await supabase.rpc(
+    "transition_quote_lifecycle",
+    {
+      p_quote_id: quoteId,
+      p_target: target,
+      p_metadata: { source: "lifecycle_card" },
+    },
+  );
+  if (rpcErr) {
+    console.error("transition_quote_lifecycle RPC failed", rpcErr);
+    return explainRpcError(rpcErr);
+  }
+
+  revalidatePath(`/app/quotes/preview/${quoteId}`);
+  revalidatePath("/app/quotes");
+  revalidatePath("/app");
+  return { ok: true, status: (newStatus as QuoteStatus) ?? target };
+}
+
+export async function sendQuote(quoteId: string): Promise<LifecycleResult> {
+  return transition(quoteId, "sent");
+}
+
+export async function acceptQuote(quoteId: string): Promise<LifecycleResult> {
+  return transition(quoteId, "accepted");
+}
+
+export async function declineQuote(quoteId: string): Promise<LifecycleResult> {
+  return transition(quoteId, "declined");
+}
+
+export async function scheduleJob(quoteId: string): Promise<LifecycleResult> {
+  return transition(quoteId, "scheduled");
+}
+
+export async function markInProgress(
+  quoteId: string,
+): Promise<LifecycleResult> {
+  return transition(quoteId, "in_progress");
+}
+
+export async function markComplete(quoteId: string): Promise<LifecycleResult> {
+  return transition(quoteId, "completed");
 }

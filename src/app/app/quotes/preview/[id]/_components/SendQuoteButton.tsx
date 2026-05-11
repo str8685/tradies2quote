@@ -187,6 +187,10 @@ function StatusPill({ status }: { status: QuoteStatus }) {
     sent: { label: "Sent", color: "border-blue-500/40 bg-blue-500/10 text-blue-300" },
     viewed: { label: "Viewed", color: "border-hivis/40 bg-hivis/10 text-hivis" },
     accepted: { label: "Accepted", color: "border-brand/40 bg-brand/10 text-brand" },
+    // Wave 13 — lifecycle stages past acceptance.
+    scheduled: { label: "Scheduled", color: "border-cyan-500/40 bg-cyan-500/10 text-cyan-300" },
+    in_progress: { label: "In progress", color: "border-amber-500/40 bg-amber-500/10 text-amber-300" },
+    completed: { label: "Completed", color: "border-emerald-500/40 bg-emerald-500/10 text-emerald-300" },
     declined: { label: "Declined", color: "border-red-500/40 bg-red-500/10 text-red-300" },
     expired: { label: "Expired", color: "border-ink-600 bg-ink-800 text-ink-400" },
   };

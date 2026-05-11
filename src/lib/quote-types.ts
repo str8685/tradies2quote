@@ -109,20 +109,37 @@ export type QuoteClient = {
   contact?: string | null;
 };
 
+/**
+ * Quote lifecycle statuses.
+ *
+ * `scheduled`, `in_progress`, `completed` were added in Wave 13 (the
+ * lifecycle state machine). They mirror the new Postgres enum values
+ * applied by `wave13_lifecycle_status_enums_and_columns`.
+ *
+ * Transitions between these are enforced server-side by the
+ * `public.transition_quote_lifecycle` RPC and mirrored in
+ * `src/lib/lifecycle/stages.ts`.
+ */
 export type QuoteStatus =
   | "draft"
   | "sent"
   | "viewed"
   | "accepted"
   | "declined"
-  | "expired";
+  | "expired"
+  | "scheduled"
+  | "in_progress"
+  | "completed";
 
 export type QuoteEventType =
   | "sent"
   | "viewed"
   | "accepted"
   | "declined"
-  | "expired";
+  | "expired"
+  | "scheduled"
+  | "in_progress"
+  | "completed";
 
 export type QuoteEvent = {
   id: string;

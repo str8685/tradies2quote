@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import {
   CheckCircle,
   CircleNotch,
@@ -13,6 +13,7 @@ import {
   UsersThree,
 } from "@phosphor-icons/react/dist/ssr";
 import { createClient } from "@/lib/supabase/server";
+import { isOwnerEmail } from "@/lib/owner";
 import { AppHeader } from "../_components/AppHeader";
 import { AdminAgent } from "../_components/agents/AdminAgent";
 import type {
@@ -46,6 +47,10 @@ export default async function AgentsPage() {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
+
+  // Wave 13 — owner-only. Non-owner tradies get a 404 so the route's
+  // existence isn't advertised. Mirrors the /app/debug gate.
+  if (!isOwnerEmail(user.email)) notFound();
 
   // Wave 12 — Admin Agent context. Loads the user's profile + a
   // lightweight count of clients-without-contact so the admin panel

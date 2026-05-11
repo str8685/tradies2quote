@@ -12,6 +12,8 @@ import {
 import { createClient } from "@/lib/supabase/server";
 import { formatCurrency, quoteNumber } from "@/lib/quote-defaults";
 import type { QuoteData, QuoteStatus } from "@/lib/quote-types";
+import { isOwnerEmail } from "@/lib/owner";
+import { STAGE_LABELS } from "@/lib/lifecycle/stages";
 import { AppHeader } from "./_components/AppHeader";
 import {
   QuotesListClient,
@@ -74,7 +76,9 @@ export default async function DashboardPage() {
 
   // Aggregate this user's own quote stats. Pure JS so no extra Postgres
   // RPC needed, and the query already RLS-scopes by user_id.
-  const stats = computeUserStats(statsRows ?? []);
+  // Wave 13 — extended to count every lifecycle stage so the dashboard
+  // tiles surface the orchestrator's view of the pipeline.
+  const stats = computeLifecycleStats(statsRows ?? []);
 
   const recent: QuoteListRow[] = (quotes ?? []).map((q) => {
     const qd = q.quote_data as QuoteData | null;
@@ -98,11 +102,11 @@ export default async function DashboardPage() {
   const username = user.email?.split("@")[0] ?? "tradie";
   const statsCurrency = stats.currency;
 
-  // Owner-only Debug link visibility. Server-rendered, no client check,
-  // so the link is never serialised into the client bundle for other
-  // accounts.
-  const isOwner =
-    (user.email ?? "").trim().toLowerCase() === "challis836@gmail.com";
+  // Owner-only Debug link + Agents card visibility. Server-rendered,
+  // no client check, so neither is serialised into the client bundle
+  // for non-owner accounts. Wave 13 — extended to also gate the
+  // Agents card below; previously the card was visible to all tradies.
+  const isOwner = isOwnerEmail(user.email);
 
   return (
     <div className="min-h-screen text-white">
@@ -116,44 +120,60 @@ export default async function DashboardPage() {
           </h1>
         </div>
 
-        {/* Wave 10.5 — honest stats from the user's own quotes. No
-            platform-wide hype numbers. Empty state appears when the
-            user hasn't sent a quote yet. */}
+        {/* Wave 13 — lifecycle stage tiles. Each tile is a real DB
+            count for this user, keyed by the same quote_status enum
+            the orchestrator drives. Tiles link into /app/quotes with
+            a stage filter pre-applied so the owner can drill in. The
+            secondary KPI row (Quotes this month + Total quoted) keeps
+            the Wave 10.5 honest-numbers idea alive without taking up
+            screen-space the lifecycle tiles need. */}
         <section
           data-testid="dashboard-stats"
-          aria-label="Your quote stats"
+          aria-label="Pipeline by lifecycle stage"
           className="t2q-premium-card-static mb-6 p-4 sm:p-5"
         >
           <div className="flex items-center justify-between gap-3">
             <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-ink-300">
-              {"// your numbers"}
+              {"// pipeline"}
             </p>
             {stats.totalQuotes === 0 ? (
               <p className="hidden font-mono text-[10px] uppercase tracking-[0.2em] text-ink-400 sm:inline">
-                Live numbers appear after your first quote.
+                Stages light up after your first quote.
               </p>
             ) : null}
           </div>
-          <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <StatTile
+          <div
+            data-testid="dashboard-stage-tiles"
+            className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7"
+          >
+            {DASHBOARD_STAGES.map((s) => (
+              <StageTile
+                key={s}
+                stage={s}
+                label={STAGE_LABELS[s]}
+                count={stats.byStage[s]}
+              />
+            ))}
+          </div>
+
+          {/* Secondary KPI strip — keeps the Wave 10.5 honest numbers
+              without competing with the stage tiles. */}
+          <div className="mt-4 grid grid-cols-2 gap-3 border-t border-ink-700/60 pt-4">
+            <SecondaryStat
               label="Quotes this month"
               value={stats.thisMonth.toLocaleString()}
             />
-            <StatTile
-              label="Accepted"
-              value={stats.accepted.toLocaleString()}
-              tone="brand"
-            />
-            <StatTile label="Drafts" value={stats.drafts.toLocaleString()} />
-            <StatTile
+            <SecondaryStat
               label="Total quoted"
               value={formatCurrency(stats.totalAmount, statsCurrency)}
               tone="brand"
             />
           </div>
+
           {stats.totalQuotes === 0 ? (
             <p className="mt-4 text-xs leading-relaxed text-ink-300 sm:hidden">
-              Your live job numbers will appear here after your first quote.
+              Your live pipeline appears here once your first quote
+              moves through a stage.
             </p>
           ) : null}
         </section>
@@ -180,38 +200,43 @@ export default async function DashboardPage() {
           </div>
         </div>
 
-        {/* Wave 10.4 — small Agents card. Bridges the dashboard to the
-            new /app/agents hub without taking over the page. */}
-        <Link
-          href="/app/agents"
-          data-testid="dashboard-agents-card"
-          className="t2q-premium-card mt-6 flex items-center gap-4 p-4 sm:p-5"
-        >
-          <span
-            aria-hidden="true"
-            className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-sm border border-brand/40 bg-brand/10 text-brand"
+        {/* Wave 13 — Agents card is now owner-only. Was visible to
+            every tradie in Wave 10.4; now hidden from non-owners so
+            the hub doesn't show pre-launch automation features. The
+            link is server-rendered behind `isOwner`, so it isn't even
+            present in the HTML payload for non-owner accounts. */}
+        {isOwner ? (
+          <Link
+            href="/app/agents"
+            data-testid="dashboard-agents-card"
+            className="t2q-premium-card mt-6 flex items-center gap-4 p-4 sm:p-5"
           >
-            <Robot size={22} weight="bold" />
-          </span>
-          <div className="min-w-0 flex-1">
-            <p className="font-display text-base uppercase tracking-tight text-white sm:text-lg">
-              AI Agents.
-            </p>
-            <p className="mt-0.5 text-sm text-ink-300">
-              Set up quote, materials, follow-up, and admin automations.
-            </p>
-          </div>
-          <span className="hidden items-center gap-1 font-mono text-[10px] uppercase tracking-[0.25em] text-brand sm:inline-flex">
-            Open agents
-            <ArrowRight size={12} weight="bold" />
-          </span>
-          <ArrowRight
-            size={18}
-            weight="bold"
-            className="shrink-0 text-brand sm:hidden"
-            aria-hidden="true"
-          />
-        </Link>
+            <span
+              aria-hidden="true"
+              className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-sm border border-brand/40 bg-brand/10 text-brand"
+            >
+              <Robot size={22} weight="bold" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="font-display text-base uppercase tracking-tight text-white sm:text-lg">
+                AI Agents.
+              </p>
+              <p className="mt-0.5 text-sm text-ink-300">
+                Set up quote, materials, follow-up, and admin automations.
+              </p>
+            </div>
+            <span className="hidden items-center gap-1 font-mono text-[10px] uppercase tracking-[0.25em] text-brand sm:inline-flex">
+              Open agents
+              <ArrowRight size={12} weight="bold" />
+            </span>
+            <ArrowRight
+              size={18}
+              weight="bold"
+              className="shrink-0 text-brand sm:hidden"
+              aria-hidden="true"
+            />
+          </Link>
+        ) : null}
 
         <section className="mt-6">
           {recent.length === 0 ? (
@@ -311,52 +336,115 @@ export default async function DashboardPage() {
   );
 }
 
-/** Lightweight aggregates over the user's own non-deleted quotes. */
-interface UserStats {
+/**
+ * Wave 13 — lifecycle-aware dashboard aggregates.
+ *
+ * Counts every non-deleted quote owned by the caller, bucketed by
+ * status. The set of stages shown on the dashboard is `DASHBOARD_STAGES`
+ * below — kept short so the tile row fits on a phone. Declined/expired
+ * still get counted in `byStage` so /app/quotes filters can use the
+ * same shape, but they don't appear as primary tiles.
+ */
+const DASHBOARD_STAGES: readonly QuoteStatus[] = [
+  "draft",
+  "sent",
+  "viewed",
+  "accepted",
+  "scheduled",
+  "in_progress",
+  "completed",
+];
+
+interface LifecycleStats {
   totalQuotes: number;
   thisMonth: number;
-  accepted: number;
-  drafts: number;
   totalAmount: number;
   currency: string;
+  byStage: Record<QuoteStatus, number>;
 }
 
-function computeUserStats(
+function computeLifecycleStats(
   rows: Array<{
     status: QuoteStatus | null;
     total_amount: number | string | null;
     currency: string | null;
     created_at: string;
   }>,
-): UserStats {
+): LifecycleStats {
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
   let thisMonth = 0;
-  let accepted = 0;
-  let drafts = 0;
   let totalAmount = 0;
   let currency = "NZD";
+  const byStage: Record<QuoteStatus, number> = {
+    draft: 0,
+    sent: 0,
+    viewed: 0,
+    accepted: 0,
+    scheduled: 0,
+    in_progress: 0,
+    completed: 0,
+    declined: 0,
+    expired: 0,
+  };
   for (const row of rows) {
     const total = Number(row.total_amount) || 0;
     totalAmount += total;
     if (row.currency) currency = row.currency;
-    if (row.status === "accepted") accepted += 1;
-    if (row.status === "draft") drafts += 1;
+    const stage = (row.status ?? "draft") as QuoteStatus;
+    if (stage in byStage) byStage[stage] += 1;
     const created = Date.parse(row.created_at);
     if (!Number.isNaN(created) && created >= monthStart) thisMonth += 1;
   }
   return {
     totalQuotes: rows.length,
     thisMonth,
-    accepted,
-    drafts,
     totalAmount: Math.round(totalAmount * 100) / 100,
     currency,
+    byStage,
   };
 }
 
-/** One stat tile inside the "Your numbers" panel. */
-function StatTile({
+/**
+ * One lifecycle stage tile. Acts as a `Link` into the quotes hub with
+ * a `?stage=` filter pre-applied, so clicking "Sent · 3" lands on the
+ * filtered list view.
+ */
+function StageTile({
+  stage,
+  label,
+  count,
+}: {
+  stage: QuoteStatus;
+  label: string;
+  count: number;
+}) {
+  const active = count > 0;
+  return (
+    <Link
+      href={`/app/quotes?stage=${stage}`}
+      data-testid={`stage-tile-${stage}`}
+      data-count={count}
+      className={`group flex flex-col gap-1 rounded-sm border px-3 py-3 transition-colors ${
+        active
+          ? "border-ink-700/60 bg-ink-900/40 hover:border-brand/60 hover:bg-brand/5"
+          : "border-ink-800 bg-ink-900/20 text-ink-500 hover:border-ink-600"
+      }`}
+    >
+      <p
+        className={`font-display tabular-nums leading-none ${active ? "text-white group-hover:text-brand" : "text-ink-500"} text-xl sm:text-2xl`}
+      >
+        {count}
+      </p>
+      <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-ink-300">
+        {label}
+      </p>
+    </Link>
+  );
+}
+
+/** Secondary KPI strip (Quotes-this-month + Total-quoted). */
+function SecondaryStat({
   label,
   value,
   tone = "neutral",
@@ -371,11 +459,11 @@ function StatTile({
       className="rounded-sm border border-ink-700/60 bg-ink-900/40 px-3 py-3"
     >
       <p
-        className={`font-display tabular-nums leading-none ${tone === "brand" ? "text-brand" : "text-white"} text-xl sm:text-2xl`}
+        className={`font-display tabular-nums leading-none ${tone === "brand" ? "text-brand" : "text-white"} text-lg sm:text-xl`}
       >
         {value}
       </p>
-      <p className="mt-2 font-mono text-[10px] uppercase tracking-[0.2em] text-ink-300">
+      <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.2em] text-ink-300">
         {label}
       </p>
     </div>

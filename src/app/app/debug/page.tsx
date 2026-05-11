@@ -7,6 +7,7 @@ import {
   XCircle,
 } from "@phosphor-icons/react/dist/ssr";
 import { createClient } from "@/lib/supabase/server";
+import { isOwnerEmail } from "@/lib/owner";
 import { AppHeader } from "../_components/AppHeader";
 import {
   getAgentReadiness,
@@ -35,8 +36,6 @@ export const dynamic = "force-dynamic";
  * anything else that could leak into a screenshot. The health-checks
  * module returns only `{ status: "ok" | "missing" | "error", detail }`.
  */
-const OWNER_EMAIL = "challis836@gmail.com";
-
 export default async function DebugPage() {
   const supabase = await createClient();
   const {
@@ -44,10 +43,10 @@ export default async function DebugPage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  // Owner check — anyone else just gets a 404 so the route's existence
-  // isn't advertised.
-  const callerEmail = (user.email ?? "").trim().toLowerCase();
-  if (callerEmail !== OWNER_EMAIL.toLowerCase()) notFound();
+  // Wave 13 — refactored to use the shared isOwnerEmail helper so this
+  // page and /app/agents stay in lockstep on owner gating. Non-owners
+  // get a 404 so the route's existence isn't advertised.
+  if (!isOwnerEmail(user.email)) notFound();
 
   const checks = await getAllHealthChecks();
   const build = getBuildIdentity();

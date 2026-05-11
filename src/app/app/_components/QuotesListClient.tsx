@@ -36,6 +36,10 @@ const STATUS_STYLES: Record<QuoteStatus, string> = {
   sent: "border-blue-500/40 bg-blue-500/10 text-blue-300",
   viewed: "border-hivis/40 bg-hivis/10 text-hivis",
   accepted: "border-brand/40 bg-brand/10 text-brand",
+  // Wave 13 — lifecycle stages past acceptance.
+  scheduled: "border-cyan-500/40 bg-cyan-500/10 text-cyan-300",
+  in_progress: "border-amber-500/40 bg-amber-500/10 text-amber-300",
+  completed: "border-emerald-500/40 bg-emerald-500/10 text-emerald-300",
   declined: "border-red-500/40 bg-red-500/10 text-red-300",
   expired: "border-ink-600 bg-ink-800 text-ink-400",
 };

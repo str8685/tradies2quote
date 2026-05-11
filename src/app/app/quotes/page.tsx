@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { quoteNumber } from "@/lib/quote-defaults";
 import type { QuoteData, QuoteStatus } from "@/lib/quote-types";
+import { STAGE_LABELS, STAGES } from "@/lib/lifecycle/stages";
 import { AppHeader } from "../_components/AppHeader";
 import {
   QuotesListClient,
@@ -14,6 +16,20 @@ export const metadata: Metadata = {
 };
 
 export const dynamic = "force-dynamic";
+
+/**
+ * Wave 13 — lifecycle stage filter via `?stage=`. The dashboard's
+ * stage tiles deep-link here, so each stage gets its own quote list
+ * view. The QuotesListClient already provides client-side filtering;
+ * this server-side `?stage=` filter narrows the row set BEFORE
+ * shipping it, which keeps the wire payload small for big inboxes.
+ */
+const VALID_STAGES = new Set<QuoteStatus>(STAGES);
+
+function parseStage(raw: string | undefined): QuoteStatus | null {
+  if (!raw) return null;
+  return VALID_STAGES.has(raw as QuoteStatus) ? (raw as QuoteStatus) : null;
+}
 
 /**
  * /app/quotes — full quote-management hub.
@@ -31,20 +47,36 @@ export const dynamic = "force-dynamic";
  */
 const PAGE_FETCH_LIMIT = 100;
 
-export default async function QuotesPage() {
+export default async function QuotesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ stage?: string }>;
+}) {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data: rows } = await supabase
+  const { stage: stageRaw } = await searchParams;
+  const stageFilter = parseStage(stageRaw);
+
+  let query = supabase
     .from("quotes")
     .select(
       "id, status, total_amount, currency, quote_data, created_at, archived_at",
     )
     .eq("user_id", user.id)
-    .is("deleted_at", null)
+    .is("deleted_at", null);
+
+  // Wave 13 — server-side stage filter. The QuotesListClient still
+  // offers its own client-side status tabs; this filter narrows the
+  // dataset upstream when the user lands via a dashboard tile link.
+  if (stageFilter) {
+    query = query.eq("status", stageFilter);
+  }
+
+  const { data: rows } = await query
     .order("created_at", { ascending: false })
     .limit(PAGE_FETCH_LIMIT);
 
@@ -82,6 +114,30 @@ export default async function QuotesPage() {
             chased lives here.
           </p>
         </div>
+
+        {/* Wave 13 — stage filter pill, only visible when the page is
+            entered via `?stage=`. Lets the owner clear the filter and
+            see the full list without going back to the dashboard. */}
+        {stageFilter ? (
+          <div
+            data-testid="stage-filter-banner"
+            className="mb-5 flex flex-wrap items-center gap-3 rounded-sm border border-brand/40 bg-brand/5 p-3"
+          >
+            <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-brand">
+              {"// filtering by stage"}
+            </p>
+            <span className="inline-flex items-center rounded-sm border border-brand/40 bg-brand/10 px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.2em] text-brand">
+              {STAGE_LABELS[stageFilter]}
+            </span>
+            <Link
+              href="/app/quotes"
+              data-testid="stage-filter-clear"
+              className="ml-auto font-mono text-[10px] uppercase tracking-[0.2em] text-ink-300 hover:text-brand"
+            >
+              clear filter
+            </Link>
+          </div>
+        ) : null}
 
         <QuotesListClient rows={list} isHub />
       </main>

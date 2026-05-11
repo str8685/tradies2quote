@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import type { LibraryMaterial, QuoteData, QuoteStatus } from "@/lib/quote-types";
 import { quoteNumber } from "@/lib/quote-defaults";
 import type { ComplianceLineItem, ComplianceReview } from "@/lib/compliance";
+import { isOwnerEmail } from "@/lib/owner";
 import { AppHeader } from "../../../_components/AppHeader";
 import { QuoteReadinessCheck } from "../../../_components/QuoteReadinessCheck";
 import { ComplianceAgent } from "../../../_components/agents/ComplianceAgent";
@@ -12,6 +13,7 @@ import { VoiceCleanupAgent } from "../../../_components/agents/VoiceCleanupAgent
 import { QuoteGenerator } from "./_components/QuoteGenerator";
 import { QuoteEditor } from "./_components/QuoteEditor";
 import { CompliancePanel } from "./_components/CompliancePanel";
+import { LifecycleCard } from "./_components/LifecycleCard";
 import {
   TranscriptPanel,
   type TranscriptPanelData,
@@ -98,6 +100,18 @@ export default async function QuotePreviewPage({
 
         {quoteData ? (
           <>
+            {/* Wave 13 — lifecycle card at the top of the page. Renders
+                the orchestrator's current stage, dashboard message,
+                missing-field checklist, and the next-action buttons.
+                Owner-only agent shortcut is gated via `isOwner`. */}
+            <LifecycleCard
+              quoteId={quote.id}
+              status={(quote.status ?? "draft") as QuoteStatus}
+              quoteData={quoteData}
+              expiresAt={quote.expires_at ?? null}
+              isOwner={isOwnerEmail(user.email)}
+            />
+
             {/* Stage 6 — transcript panel (raw / cleaned / summary).
                 Renders only when the generator wrote a transcript object
                 onto quote_data (i.e. Stage 6 onwards). Quotes from
