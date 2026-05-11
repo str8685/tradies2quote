@@ -4,7 +4,7 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 import { FileText, Receipt, ArrowRight, Check } from "@phosphor-icons/react";
-import { VoiceWaveform3D } from "./VoiceWaveform3D";
+import TapeProgress from "./TapeProgress";
 import { Magnetic } from "./Magnetic";
 
 function CountUp({ to = 4820, duration = 1400 }: { to?: number; duration?: number }) {
@@ -58,9 +58,8 @@ export function Hero() {
       <div className="absolute -top-40 -right-40 w-[560px] h-[560px] rounded-full bg-brand/30 blur-3xl pointer-events-none animate-blob" />
       <div className="absolute -bottom-40 -left-40 w-[520px] h-[520px] rounded-full bg-hivis/15 blur-3xl pointer-events-none animate-blob-slow" />
       <div className="absolute top-1/3 left-1/2 w-[420px] h-[420px] rounded-full bg-brand/10 blur-3xl pointer-events-none animate-blob-mid" />
-      <VoiceWaveform3D />
 
-      <div className="relative max-w-7xl mx-auto px-6 md:px-12 pt-24 pb-20 lg:pt-32 lg:pb-28 grid lg:grid-cols-12 gap-10 items-center">
+      <div className="relative max-w-7xl mx-auto px-6 md:px-12 pt-24 pb-12 lg:pt-32 lg:pb-16 grid lg:grid-cols-12 gap-10 items-center">
         <div className="lg:col-span-7">
           <motion.div
             initial={{ opacity: 0, y: 16 }}
@@ -146,10 +145,11 @@ export function Hero() {
               initial={{ opacity: 0, scale: 0.92, rotate: -3 }}
               animate={{ opacity: 1, scale: 1, rotate: 0 }}
               transition={{ duration: 0.7 }}
-              className="relative w-full h-full t2q-shadow-brutal"
+              className="relative w-full h-full"
               style={{
                 transform: "rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg)) translateZ(0)",
                 transition: "transform 200ms ease-out",
+                filter: "drop-shadow(0 30px 60px rgba(0,0,0,0.55))",
               }}
             >
               {/* Titanium frame */}
@@ -401,6 +401,26 @@ export function Hero() {
             </motion.div>
           </div>
         </div>
+      </div>
+
+      {/* Wave 12.5 — measuring-tape ambient loader. Replaces the old
+          3D voice-waveform bars at the bottom of the hero. Same
+          `TapeProgress` widget the splash screen uses, in indeterminate
+          mode so the orange needle sweeps 0 → 100mm in a loop. The
+          tradie measuring-tape motif now threads from first-load
+          splash → marketing surface → in-app "generating quote..."
+          screen, so the visual language is consistent end-to-end. */}
+      <div
+        aria-hidden="true"
+        className="relative z-[1] hidden md:flex justify-center pb-14 lg:pb-20 px-6"
+      >
+        <TapeProgress
+          width={680}
+          height={36}
+          label="// voice in · quote out · live"
+          showReadout
+          testId="hero-tape"
+        />
       </div>
     </section>
   );

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import TapeProgress from "@/app/_components/landing/TapeProgress";
 
 export function QuoteGenerator({ id }: { id: string }) {
   const router = useRouter();
@@ -50,7 +51,18 @@ export function QuoteGenerator({ id }: { id: string }) {
     >
       {pending ? (
         <>
-          <WaveLoader />
+          {/* Wave 12.5 — swapped the 8-bar `WaveLoader` for the same
+              measuring-tape progress widget the splash screen uses.
+              Indeterminate mode loops the orange needle 0 → 100mm so
+              users see consistent tradie-tool aesthetics from first
+              load through quote generation. */}
+          <TapeProgress
+            width={340}
+            height={36}
+            label="// generating quote"
+            showReadout
+            testId="quote-generator-loader"
+          />
           <h2 className="mt-8 font-display text-2xl uppercase tracking-tight sm:text-3xl">
             Generating your <span className="text-brand">quote</span>…
           </h2>
@@ -115,20 +127,3 @@ export function QuoteGenerator({ id }: { id: string }) {
   );
 }
 
-function WaveLoader() {
-  const bars = [0, 1, 2, 3, 4, 5, 6, 7];
-  return (
-    <div
-      aria-hidden="true"
-      className="flex h-16 items-end gap-1.5"
-    >
-      {bars.map((i) => (
-        <span
-          key={i}
-          className="t2q-wave-bar h-full animate-wave"
-          style={{ animationDelay: `${i * 0.11}s` }}
-        />
-      ))}
-    </div>
-  );
-}
