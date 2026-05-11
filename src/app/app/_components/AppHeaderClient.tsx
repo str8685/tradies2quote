@@ -54,21 +54,19 @@ export function AppHeaderClient({ context, isOwner }: Props) {
             aria-label="Tradies2Quote dashboard"
             className="inline-flex shrink-0 items-center"
           >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="/logo-mark.png"
-              alt="Tradies2Quote"
-              width={160}
-              height={136}
-              className="block h-7 w-auto rounded-sm bg-white px-1.5 py-0.5 sm:hidden"
-            />
+            {/* Wave 13.1 — show the horizontal wordmark on every
+                breakpoint so the brand reads as "Tradies2Quote" not
+                just an unlabelled square icon. The horizontal PNG is
+                380x100 — at h-7 (28px) it's ~106px wide, which fits
+                the mobile header comfortably alongside the right-side
+                actions cluster. */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src="/logo-horizontal.png"
               alt="Tradies2Quote"
               width={380}
               height={100}
-              className="hidden h-8 w-auto rounded-sm bg-white px-2 py-1 sm:block"
+              className="block h-7 w-auto rounded-sm bg-white px-1.5 py-0.5 sm:h-8 sm:px-2 sm:py-1"
             />
           </Link>
           {context ? (

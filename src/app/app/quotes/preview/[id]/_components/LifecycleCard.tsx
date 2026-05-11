@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import Link from "next/link";
 import {
   ArrowRight,
   CheckCircle,
@@ -55,12 +54,27 @@ interface Props {
   isOwner: boolean;
 }
 
-const AGENT_HREF: Record<AgentName, string> = {
-  "Quote Review": "/app/agents",
-  Compliance: "/app/agents",
-  "Voice Cleanup": "/app/agents",
-  "Follow-up": "/app/agents",
+/**
+ * Wave 13.1 — agent shortcut now scrolls to the on-page panel that
+ * contains the agent's UI. The previous version navigated to
+ * `/app/agents` (a directory), which is confusing when the actual
+ * agent UI is already rendered further down the same page. The
+ * matching IDs are set on the `<details>` wrappers in `page.tsx`.
+ */
+const AGENT_TARGET_ID: Record<AgentName, string> = {
+  "Quote Review": "agent-quote-review",
+  Compliance: "agent-compliance",
+  "Voice Cleanup": "agent-voice-cleanup",
+  "Follow-up": "agent-followup",
 };
+
+function openAgentSection(targetId: string) {
+  if (typeof document === "undefined") return;
+  const el = document.getElementById(targetId);
+  if (!el) return;
+  if (el instanceof HTMLDetailsElement) el.open = true;
+  el.scrollIntoView({ behavior: "smooth", block: "start" });
+}
 
 export function LifecycleCard({
   quoteId,
@@ -170,20 +184,23 @@ export function LifecycleCard({
           ) : null}
 
           {out.nextAction ? (
-            <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-ink-400">
+            <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-ink-200">
               {out.nextAction.description}
             </p>
           ) : null}
         </div>
       ) : (
-        <p className="mt-5 inline-flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.2em] text-ink-400">
+        <p className="mt-5 inline-flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.2em] text-ink-200">
           <CheckCircle size={12} weight="fill" className="text-brand" />
           End of the workflow — nothing more to do here.
         </p>
       )}
 
-      {/* Owner-only agent shortcut. Non-owner tradies and customers
-          never see this link, per the Wave 13 owner-only contract. */}
+      {/* Wave 13.1 — owner-only agent shortcut. Now scrolls to the
+          relevant on-page section (the agents are already rendered
+          further down) instead of navigating away. Non-owner tradies
+          and customers never see this; the agent shortcut stays gated
+          on `isOwner` per the Wave 13 contract. */}
       {isOwner && out.agentToTrigger ? (
         <div className="mt-5 flex items-center justify-between gap-3 rounded-sm border border-ink-700 bg-ink-900/60 p-3">
           <div className="min-w-0">
@@ -194,21 +211,24 @@ export function LifecycleCard({
               {out.agentToTrigger} Agent
             </p>
           </div>
-          <Link
-            href={AGENT_HREF[out.agentToTrigger]}
+          <button
+            type="button"
+            onClick={() =>
+              openAgentSection(AGENT_TARGET_ID[out.agentToTrigger!])
+            }
             data-testid="lifecycle-agent-link"
             className="inline-flex h-9 items-center gap-1.5 rounded-sm border border-ink-600 bg-ink-900 px-3 font-mono text-[10px] uppercase tracking-[0.2em] text-ink-200 transition-colors hover:border-brand hover:bg-brand hover:text-ink-900"
           >
             Open
             <ArrowRight size={12} weight="bold" />
-          </Link>
+          </button>
         </div>
       ) : null}
 
       {/* Audit hint — tiny line letting the owner know every transition
-          is logged to quote_events. Helps build trust that nothing is
-          happening invisibly. */}
-      <p className="mt-4 inline-flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.2em] text-ink-500">
+          is logged to quote_events. Wave 13.1 — brighter (ink-300) so
+          it's actually readable in dark mode. */}
+      <p className="mt-4 inline-flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.2em] text-ink-300">
         <Info size={12} weight="bold" />
         Every change writes an audit row to quote_events. No background sends.
       </p>

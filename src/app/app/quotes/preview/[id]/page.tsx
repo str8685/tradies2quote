@@ -14,6 +14,7 @@ import { QuoteGenerator } from "./_components/QuoteGenerator";
 import { QuoteEditor } from "./_components/QuoteEditor";
 import { CompliancePanel } from "./_components/CompliancePanel";
 import { LifecycleCard } from "./_components/LifecycleCard";
+import { CollapsibleSection } from "./_components/CollapsibleSection";
 import {
   TranscriptPanel,
   type TranscriptPanelData,
@@ -100,10 +101,7 @@ export default async function QuotePreviewPage({
 
         {quoteData ? (
           <>
-            {/* Wave 13 — lifecycle card at the top of the page. Renders
-                the orchestrator's current stage, dashboard message,
-                missing-field checklist, and the next-action buttons.
-                Owner-only agent shortcut is gated via `isOwner`. */}
+            {/* Wave 13 — lifecycle card at the top of the page. */}
             <LifecycleCard
               quoteId={quote.id}
               status={(quote.status ?? "draft") as QuoteStatus}
@@ -112,75 +110,10 @@ export default async function QuotePreviewPage({
               isOwner={isOwnerEmail(user.email)}
             />
 
-            {/* Stage 6 — transcript panel (raw / cleaned / summary).
-                Renders only when the generator wrote a transcript object
-                onto quote_data (i.e. Stage 6 onwards). Quotes from
-                before this commit have `transcript === undefined` and
-                the panel renders nothing. */}
-            {(() => {
-              const t = (quoteData.transcript ?? null) as
-                | TranscriptPanelData
-                | null;
-              if (!t) return null;
-              return (
-                <div className="mb-6">
-                  <TranscriptPanel quoteId={quote.id} transcript={t} />
-                </div>
-              );
-            })()}
-            {/* Compliance review panel — renders nothing when the
-                engine was off (production today) or the quote was
-                generated before Stage 5 landed. */}
-            {(() => {
-              const review = (quoteData.compliance_review ?? null) as
-                | ComplianceReview
-                | null;
-              if (!review) return null;
-              return (
-                <div className="mb-6">
-                  <CompliancePanel
-                    quoteId={quote.id}
-                    review={review}
-                    items={quoteData.line_items as ComplianceLineItem[]}
-                  />
-                </div>
-              );
-            })()}
-            {/* Wave 11 — readiness panel above the editor. Soft-warn
-                only; does not block the Send button below.
-                Wave 12 calls this the "Quote Review Agent" in the agent
-                hub. */}
-            <QuoteReadinessCheck
-              quoteData={quoteData}
-              profile={profile ?? null}
-              expiresAt={quote.expires_at ?? null}
-            />
-
-            {/* Wave 12 — Compliance Agent. Read-only. Renders flags +
-                suggested clauses the user can copy. Mounted right
-                under the readiness check so both pre-send checks live
-                together. */}
-            <ComplianceAgent quoteData={quoteData} />
-
-            {/* Wave 12 — Voice Cleanup Agent. Only renders when the
-                quote has a stored voice transcript; cleanup is pure
-                client-side rule-based, no AI call. */}
-            <VoiceCleanupAgent transcript={quote.voice_transcript ?? null} />
-
-            {/* Wave 12 — Follow-up Agent. Hides templates that don't
-                apply (e.g. "friendly reminder" hidden until the quote
-                is actually sent). Never sends — copy to clipboard
-                only. */}
-            <FollowupAgent
-              quoteNumber={headerNumber}
-              clientName={quoteData.client?.name ?? null}
-              total={quoteData.total ?? 0}
-              currency={quoteData.currency || "NZD"}
-              status={(quote.status ?? "draft") as QuoteStatus}
-              sentAtIso={quote.sent_at ?? null}
-              businessName={profile?.business_name ?? null}
-            />
-
+            {/* Wave 13.1 — the editor is the primary work surface and
+                now sits second so it's above the fold once the user
+                scrolls past the lifecycle status. Everything below is
+                a review tool tucked behind collapsibles. */}
             <QuoteEditor
               quoteId={quote.id}
               createdAt={quote.created_at}
@@ -190,6 +123,97 @@ export default async function QuotePreviewPage({
               publicToken={quote.public_token ?? null}
               hasPdf={quote.pdf_path !== null && quote.pdf_path !== undefined}
             />
+
+            {/* Wave 13.1 — review tools group. All collapsibles default
+                closed; the lifecycle agent shortcut programmatically
+                opens whichever one matches the suggested agent. The
+                ids here (agent-quote-review, agent-compliance, …)
+                match LifecycleCard's AGENT_TARGET_ID map. */}
+            <div className="mt-8 space-y-3">
+              <p className="t2q-section-label">{"// review tools"}</p>
+
+              <CollapsibleSection
+                id="agent-quote-review"
+                title="Quote Review Agent"
+              >
+                <QuoteReadinessCheck
+                  quoteData={quoteData}
+                  profile={profile ?? null}
+                  expiresAt={quote.expires_at ?? null}
+                />
+              </CollapsibleSection>
+
+              <CollapsibleSection
+                id="agent-compliance"
+                title="Compliance Agent"
+              >
+                <ComplianceAgent quoteData={quoteData} />
+              </CollapsibleSection>
+
+              {quote.voice_transcript ? (
+                <CollapsibleSection
+                  id="agent-voice-cleanup"
+                  title="Voice Cleanup Agent"
+                >
+                  <VoiceCleanupAgent
+                    transcript={quote.voice_transcript ?? null}
+                  />
+                </CollapsibleSection>
+              ) : null}
+
+              <CollapsibleSection
+                id="agent-followup"
+                title="Follow-up Agent"
+              >
+                <FollowupAgent
+                  quoteNumber={headerNumber}
+                  clientName={quoteData.client?.name ?? null}
+                  total={quoteData.total ?? 0}
+                  currency={quoteData.currency || "NZD"}
+                  status={(quote.status ?? "draft") as QuoteStatus}
+                  sentAtIso={quote.sent_at ?? null}
+                  businessName={profile?.business_name ?? null}
+                />
+              </CollapsibleSection>
+
+              {/* Stage 6 transcript panel — only when the generator wrote
+                  a transcript object onto quote_data. */}
+              {(() => {
+                const t = (quoteData.transcript ?? null) as
+                  | TranscriptPanelData
+                  | null;
+                if (!t) return null;
+                return (
+                  <CollapsibleSection
+                    id="agent-transcript"
+                    title="Transcript"
+                  >
+                    <TranscriptPanel quoteId={quote.id} transcript={t} />
+                  </CollapsibleSection>
+                );
+              })()}
+
+              {/* Stage 5 compliance review panel — only when there's a
+                  server-side review attached. */}
+              {(() => {
+                const review = (quoteData.compliance_review ?? null) as
+                  | ComplianceReview
+                  | null;
+                if (!review) return null;
+                return (
+                  <CollapsibleSection
+                    id="agent-compliance-review"
+                    title="Compliance Review"
+                  >
+                    <CompliancePanel
+                      quoteId={quote.id}
+                      review={review}
+                      items={quoteData.line_items as ComplianceLineItem[]}
+                    />
+                  </CollapsibleSection>
+                );
+              })()}
+            </div>
           </>
         ) : (
           <QuoteGenerator id={quote.id} />

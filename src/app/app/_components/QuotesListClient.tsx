@@ -228,7 +228,7 @@ export function QuotesListClient({ rows, isHub = false }: Props) {
                     <p className="mt-1 truncate font-display text-sm uppercase tracking-tight text-white">
                       {q.clientName}
                     </p>
-                    <p className="truncate font-mono text-[10px] uppercase tracking-[0.2em] text-ink-500">
+                    <p className="truncate font-mono text-[10px] uppercase tracking-[0.2em] text-ink-300">
                       {formatIssueDate(q.created_at)}
                       {q.jobSummary ? ` · ${q.jobSummary.slice(0, 80)}` : ""}
                     </p>
