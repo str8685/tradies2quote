@@ -492,18 +492,21 @@ h1, h2, h3, h4, h5 {
    Softer cousin of `.t2q-grid-bg`. Used as the canvas behind /app/* so the
    logged-in app feels like the same visual system as the landing without
    being as loud as the marketing page's grid. */
+/* Wave 10.5 — bumped grid alpha so the "site paper" texture is actually
+   visible to tradies in daylight without becoming noisy. Dark mode was
+   0.045 → 0.085, light mode was 0.07 → 0.13. Grid spacing unchanged. */
 .t2q-app-grid-bg {
   background-color: #0F0F0F;
   background-image:
-    linear-gradient(to right,  rgba(255, 95, 21, 0.045) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(255, 95, 21, 0.045) 1px, transparent 1px);
+    linear-gradient(to right,  rgba(255, 95, 21, 0.085) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 95, 21, 0.085) 1px, transparent 1px);
   background-size: 64px 64px, 64px 64px;
 }
 [data-theme="light"] .t2q-app-grid-bg {
   background-color: #F5F4EE;
   background-image:
-    linear-gradient(to right,  rgba(255, 95, 21, 0.07) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(255, 95, 21, 0.07) 1px, transparent 1px);
+    linear-gradient(to right,  rgba(255, 95, 21, 0.13) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 95, 21, 0.13) 1px, transparent 1px);
 }
 
 /* ─── Premium card ───────────────────────────────────────────────────────
@@ -597,19 +600,23 @@ h1, h2, h3, h4, h5 {
    Used by AppHeader (desktop) and MobileBottomNav (mobile). The active
    indicator pivots on `aria-current="page"` which Next's <Link> sets when
    we mirror the matched route. */
+/* Wave 10.5 — nav-tab text bumped from ink-300 to ink-100 (#A8A8A8 →
+   #E5E5E5) so the tabs read clearly outdoors. Tighter horizontal
+   padding (0.875rem → 0.7rem) gives the 5-tab strip a bit of extra
+   breathing room. */
 .t2q-nav-tab {
   position: relative;
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0 0.875rem;
+  padding: 0 0.7rem;
   height: 44px;
   border-radius: 0.125rem;
   font-family: var(--font-archivo-black), "Archivo Black", system-ui, sans-serif;
   font-size: 0.8125rem;
   letter-spacing: -0.01em;
   text-transform: uppercase;
-  color: #A8A8A8;
+  color: #E5E5E5;
   border: 1px solid transparent;
   transition: color 150ms ease, background-color 150ms ease, border-color 150ms ease;
 }
@@ -647,6 +654,8 @@ h1, h2, h3, h4, h5 {
    Used only inside <MobileBottomNav>. Stacked icon over label. Active state
    matches the desktop tab — same brand-orange affordance, vertical bar
    indicator on top so it reads cleanly when pinned to the screen bottom. */
+/* Wave 10.5 — bottom-nav tile label bumped from ink-300 to ink-200
+   (#A8A8A8 → #D4D4D4) for daytime mobile readability. */
 .t2q-bottomnav-tile {
   position: relative;
   display: inline-flex;
@@ -661,7 +670,7 @@ h1, h2, h3, h4, h5 {
   font-size: 0.6875rem;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: #A8A8A8;
+  color: #D4D4D4;
   transition: color 150ms ease;
 }
 .t2q-bottomnav-tile:hover { color: #FFFFFF; }

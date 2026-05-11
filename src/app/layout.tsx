@@ -28,8 +28,8 @@ const siteUrl =
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: "tradies2Quote — Voice in. Quote out. Under 60 seconds.",
-    template: "%s · tradies2Quote",
+    default: "Tradies2Quote — Voice in. Quote out. Under 60 seconds.",
+    template: "Tradies2Quote | %s",
   },
   description:
     "Voice-first AI quoting app for tradies. Record a 60-second voice memo on the job, get a professional, branded quote PDF emailed to your client before you've left the driveway. Built for builders, plumbers, electricians, sparkies, painters and every tradie who hates writing quotes.",
@@ -83,25 +83,25 @@ export const metadata: Metadata = {
   // Wave 10.3 — point all icon paths at the new T2Q mark PNGs generated
   // from `public/logo-mark.png`. The legacy Emergent SVG files are kept
   // on disk for safety but no longer referenced from metadata.
-  // Wave 10.4 — `?v=10.4` cache-bust forces desktop browsers (which
+  // Wave 10.4 — `?v=10.5` cache-bust forces desktop browsers (which
   // cache favicons hard, often forever) to refetch the icon files after
   // the Wave 10.3 mark swap. Drop the query on the next favicon change.
   icons: {
     icon: [
-      { url: "/favicon.ico?v=10.4", sizes: "any" },
-      { url: "/favicon-16x16.png?v=10.4", type: "image/png", sizes: "16x16" },
-      { url: "/favicon-32x32.png?v=10.4", type: "image/png", sizes: "32x32" },
-      { url: "/icon-192.png?v=10.4", type: "image/png", sizes: "192x192" },
-      { url: "/icon-512.png?v=10.4", type: "image/png", sizes: "512x512" },
+      { url: "/favicon.ico?v=10.5", sizes: "any" },
+      { url: "/favicon-16x16.png?v=10.5", type: "image/png", sizes: "16x16" },
+      { url: "/favicon-32x32.png?v=10.5", type: "image/png", sizes: "32x32" },
+      { url: "/icon-192.png?v=10.5", type: "image/png", sizes: "192x192" },
+      { url: "/icon-512.png?v=10.5", type: "image/png", sizes: "512x512" },
     ],
     apple: [
       {
-        url: "/apple-touch-icon.png?v=10.4",
+        url: "/apple-touch-icon.png?v=10.5",
         type: "image/png",
         sizes: "180x180",
       },
     ],
-    shortcut: [{ url: "/favicon.ico?v=10.4" }],
+    shortcut: [{ url: "/favicon.ico?v=10.5" }],
   },
   appleWebApp: {
     // Tells iOS this site can run as a standalone home-screen app.

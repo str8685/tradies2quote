@@ -69,12 +69,9 @@ export default async function SignupPage({
 
           <div className="flex-1" />
 
-          <div className="mt-10 inline-flex items-center gap-2 border border-ink-600 bg-ink-900/60 px-3 py-1.5 rounded-sm">
-            <span className="h-1.5 w-1.5 rounded-full bg-brand animate-pulse" />
-            <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-ink-200">
-              1,243 tradies on the tools — NZ · AU · UK · US · CA
-            </span>
-          </div>
+          {/* Wave 10.5 — removed the "1,243 tradies on the tools" pill.
+              The number was fabricated and the panel reads cleaner
+              without manufactured social proof. */}
         </>
       }
       form={

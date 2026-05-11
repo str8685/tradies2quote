@@ -9,7 +9,7 @@ import {
   UsersThree,
 } from "@phosphor-icons/react/dist/ssr";
 import { createClient } from "@/lib/supabase/server";
-import { quoteNumber } from "@/lib/quote-defaults";
+import { formatCurrency, quoteNumber } from "@/lib/quote-defaults";
 import type { QuoteData, QuoteStatus } from "@/lib/quote-types";
 import { AppHeader } from "./_components/AppHeader";
 import {
@@ -48,16 +48,32 @@ export default async function DashboardPage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data: quotes } = await supabase
-    .from("quotes")
-    .select(
-      "id, status, total_amount, currency, quote_data, created_at, archived_at",
-    )
-    .eq("user_id", user.id)
-    .is("deleted_at", null)
-    .is("archived_at", null)
-    .order("created_at", { ascending: false })
-    .limit(DASHBOARD_RECENT_LIMIT);
+  // Wave 10.5 — pull lightweight aggregates for the dashboard stats
+  // panel (no platform-wide hype numbers, just this user's own data).
+  // Stats query is intentionally separate from the recent-quotes query
+  // so it can scan all the user's non-deleted rows for accurate counts
+  // and totals without bloating the recent-list payload.
+  const [{ data: quotes }, { data: statsRows }] = await Promise.all([
+    supabase
+      .from("quotes")
+      .select(
+        "id, status, total_amount, currency, quote_data, created_at, archived_at",
+      )
+      .eq("user_id", user.id)
+      .is("deleted_at", null)
+      .is("archived_at", null)
+      .order("created_at", { ascending: false })
+      .limit(DASHBOARD_RECENT_LIMIT),
+    supabase
+      .from("quotes")
+      .select("status, total_amount, currency, created_at")
+      .eq("user_id", user.id)
+      .is("deleted_at", null),
+  ]);
+
+  // Aggregate this user's own quote stats. Pure JS so no extra Postgres
+  // RPC needed, and the query already RLS-scopes by user_id.
+  const stats = computeUserStats(statsRows ?? []);
 
   const recent: QuoteListRow[] = (quotes ?? []).map((q) => {
     const qd = q.quote_data as QuoteData | null;
@@ -79,6 +95,7 @@ export default async function DashboardPage() {
   });
 
   const username = user.email?.split("@")[0] ?? "tradie";
+  const statsCurrency = stats.currency;
 
   return (
     <div className="min-h-screen text-white">
@@ -91,6 +108,48 @@ export default async function DashboardPage() {
             Welcome, <span className="text-brand">{username}.</span>
           </h1>
         </div>
+
+        {/* Wave 10.5 — honest stats from the user's own quotes. No
+            platform-wide hype numbers. Empty state appears when the
+            user hasn't sent a quote yet. */}
+        <section
+          data-testid="dashboard-stats"
+          aria-label="Your quote stats"
+          className="t2q-premium-card-static mb-6 p-4 sm:p-5"
+        >
+          <div className="flex items-center justify-between gap-3">
+            <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-ink-300">
+              {"// your numbers"}
+            </p>
+            {stats.totalQuotes === 0 ? (
+              <p className="hidden font-mono text-[10px] uppercase tracking-[0.2em] text-ink-400 sm:inline">
+                Live numbers appear after your first quote.
+              </p>
+            ) : null}
+          </div>
+          <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <StatTile
+              label="Quotes this month"
+              value={stats.thisMonth.toLocaleString()}
+            />
+            <StatTile
+              label="Accepted"
+              value={stats.accepted.toLocaleString()}
+              tone="brand"
+            />
+            <StatTile label="Drafts" value={stats.drafts.toLocaleString()} />
+            <StatTile
+              label="Total quoted"
+              value={formatCurrency(stats.totalAmount, statsCurrency)}
+              tone="brand"
+            />
+          </div>
+          {stats.totalQuotes === 0 ? (
+            <p className="mt-4 text-xs leading-relaxed text-ink-300 sm:hidden">
+              Your live job numbers will appear here after your first quote.
+            </p>
+          ) : null}
+        </section>
 
         <div className="flex flex-col-reverse items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between">
           <p
@@ -212,6 +271,77 @@ export default async function DashboardPage() {
           </Link>
         </nav>
       </main>
+    </div>
+  );
+}
+
+/** Lightweight aggregates over the user's own non-deleted quotes. */
+interface UserStats {
+  totalQuotes: number;
+  thisMonth: number;
+  accepted: number;
+  drafts: number;
+  totalAmount: number;
+  currency: string;
+}
+
+function computeUserStats(
+  rows: Array<{
+    status: QuoteStatus | null;
+    total_amount: number | string | null;
+    currency: string | null;
+    created_at: string;
+  }>,
+): UserStats {
+  const now = new Date();
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+  let thisMonth = 0;
+  let accepted = 0;
+  let drafts = 0;
+  let totalAmount = 0;
+  let currency = "NZD";
+  for (const row of rows) {
+    const total = Number(row.total_amount) || 0;
+    totalAmount += total;
+    if (row.currency) currency = row.currency;
+    if (row.status === "accepted") accepted += 1;
+    if (row.status === "draft") drafts += 1;
+    const created = Date.parse(row.created_at);
+    if (!Number.isNaN(created) && created >= monthStart) thisMonth += 1;
+  }
+  return {
+    totalQuotes: rows.length,
+    thisMonth,
+    accepted,
+    drafts,
+    totalAmount: Math.round(totalAmount * 100) / 100,
+    currency,
+  };
+}
+
+/** One stat tile inside the "Your numbers" panel. */
+function StatTile({
+  label,
+  value,
+  tone = "neutral",
+}: {
+  label: string;
+  value: string;
+  tone?: "neutral" | "brand";
+}) {
+  return (
+    <div
+      data-testid={`stat-${label.toLowerCase().replace(/\s+/g, "-")}`}
+      className="rounded-sm border border-ink-700/60 bg-ink-900/40 px-3 py-3"
+    >
+      <p
+        className={`font-display tabular-nums leading-none ${tone === "brand" ? "text-brand" : "text-white"} text-xl sm:text-2xl`}
+      >
+        {value}
+      </p>
+      <p className="mt-2 font-mono text-[10px] uppercase tracking-[0.2em] text-ink-300">
+        {label}
+      </p>
     </div>
   );
 }

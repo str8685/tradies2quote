@@ -60,7 +60,12 @@ export function AppHeader({ context }: AppHeaderProps) {
       data-testid="app-header"
       className="sticky top-0 z-30 border-b border-ink-700 bg-ink-950/95 sm:bg-ink-950/85 sm:backdrop-blur"
     >
-      <div className="mx-auto flex h-14 max-w-3xl items-center justify-between gap-3 px-4 sm:h-16 sm:gap-4 sm:px-6">
+      {/* Wave 10.5 — header bar widens from max-w-3xl → max-w-5xl on
+          desktop so the 5-tab strip + Settings cog + theme toggle +
+          install + sign-out cluster have room to sit beside the logo
+          without crowding it. Page content below the header keeps its
+          own narrower max-w-3xl in each page wrapper. */}
+      <div className="mx-auto flex h-14 max-w-3xl items-center justify-between gap-3 px-4 sm:h-16 sm:max-w-5xl sm:gap-4 sm:px-6">
         {/* Logo + (desktop-only) page context. */}
         <div className="flex min-w-0 items-center gap-3">
           <Link

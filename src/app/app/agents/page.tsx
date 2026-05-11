@@ -2,10 +2,12 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import {
   CheckCircle,
+  CircleNotch,
   ClipboardText,
   Files,
   GearSix,
   Lifebuoy,
+  Microphone,
   Robot,
   ShieldCheck,
   Stack,
@@ -16,7 +18,7 @@ import { AppHeader } from "../_components/AppHeader";
 import { AgentCard } from "./_components/AgentCard";
 
 export const metadata: Metadata = {
-  title: "AI Agents",
+  title: "Agents",
 };
 
 export const dynamic = "force-dynamic";
@@ -81,47 +83,66 @@ export default async function AgentsPage() {
             Available agents
           </h2>
           <div className="grid gap-4 sm:grid-cols-2">
+            {/* Wave 10.5 — every card now points at a real route that
+                already exists. Status pills reflect what's actually
+                live vs what still needs setup. No agent claims live AI
+                unless the existing route is genuinely running. */}
             <AgentCard
               icon={Robot}
               title="Quote Builder Agent"
-              description="Turns job notes, voice transcripts, and photos into a quote draft."
-              status="Connected to quote flow soon"
-              statusTone="planned"
+              description="Turns job notes, voice transcripts, and photos into a quote draft using the existing new-quote flow."
+              status="Live"
+              statusTone="ready"
+              cta={{ label: "Start Quote Agent", href: "/app/quotes/new" }}
+            />
+            <AgentCard
+              icon={Microphone}
+              title="Voice Agent"
+              description="Record a 60-second site memo. The transcription route turns it into structured quote notes."
+              status="Live"
+              statusTone="ready"
+              cta={{ label: "Open Voice Agent", href: "/app/quotes/new" }}
             />
             <AgentCard
               icon={Stack}
               title="Materials Agent"
-              description="Helps capture supplier items, prices, SKUs, and timber details into your materials list."
-              status="UI ready"
+              description="Helps capture supplier items, prices, SKUs, sizes, and timber treatment into your materials list."
+              status="Live"
               statusTone="ready"
               cta={{ label: "Open Materials", href: "/app/materials" }}
             />
             <AgentCard
               icon={Lifebuoy}
               title="Follow-up Agent"
-              description="Tracks sent quotes and reminds you when to follow up."
-              status="Planned"
-              statusTone="planned"
+              description="Tracks sent quotes that need a chase. Pulls from the same quotes list you already use."
+              status="Live"
+              statusTone="ready"
+              cta={{
+                label: "Open Follow-ups",
+                href: "/app/quotes?status=sent",
+              }}
+            />
+            <AgentCard
+              icon={ShieldCheck}
+              title="Compliance Agent"
+              description="Reviews quote drafts for missing GST, scope, assumptions, exclusions, finish level, and NZ building notes."
+              status="Live"
+              statusTone="ready"
+              cta={{ label: "Review Quote", href: "/app/quotes" }}
+            />
+            <AgentCard
+              icon={GearSix}
+              title="Admin Agent"
+              description="Keeps your business profile, quote defaults, GST/labour/markup, and client details tidy."
+              status="Live"
+              statusTone="ready"
+              cta={{ label: "Open Admin", href: "/app/settings" }}
             />
             <AgentCard
               icon={Files}
               title="Invoice Agent"
               description="Prepares invoice drafts from accepted quotes and timesheets."
-              status="Planned"
-              statusTone="planned"
-            />
-            <AgentCard
-              icon={ShieldCheck}
-              title="Compliance Agent"
-              description="Flags missing scope, exclusions, assumptions, GST, and NZ building notes before sending."
-              status="Planned"
-              statusTone="planned"
-            />
-            <AgentCard
-              icon={GearSix}
-              title="Admin Agent"
-              description="Keeps settings, client details, and quote folders tidy."
-              status="Planned"
+              status="Coming later"
               statusTone="planned"
             />
           </div>
@@ -171,10 +192,15 @@ export default async function AgentsPage() {
           </ul>
         </section>
 
-        {/* Roadmap */}
+        {/* Wave 10.5 — replaced the "Phase 1 / 2 / 3 …" roadmap with an
+            honest 3-column status board. Items only count as "Live" if
+            an actual route already exists; "Needs setup" is for things
+            blocked on a one-time wiring step (e.g. a future Anthropic
+            review prompt); "Coming later" is everything genuinely
+            unbuilt. No fake "shipped" claims. */}
         <section
           aria-labelledby="agents-roadmap-heading"
-          data-testid="agents-roadmap"
+          data-testid="agents-status-board"
           className="t2q-premium-card-static p-5 sm:p-7"
         >
           <div className="flex items-center gap-3">
@@ -188,47 +214,40 @@ export default async function AgentsPage() {
               id="agents-roadmap-heading"
               className="font-display text-lg uppercase tracking-tight text-white sm:text-xl"
             >
-              Roadmap.
+              Status board.
             </h2>
           </div>
-          <ol className="mt-5 space-y-3">
-            {[
-              { phase: "Phase 1", title: "Agent dashboard shell", done: true },
-              { phase: "Phase 2", title: "Materials capture helper", done: false },
-              { phase: "Phase 3", title: "Quote review assistant", done: false },
-              { phase: "Phase 4", title: "Follow-up reminders", done: false },
-              { phase: "Phase 5", title: "Invoice draft assistant", done: false },
-            ].map(({ phase, title, done }) => (
-              <li
-                key={phase}
-                className="flex items-center justify-between gap-3 border-b border-ink-700/60 pb-3 last:border-b-0 last:pb-0"
-              >
-                <div className="flex min-w-0 items-center gap-3">
-                  <span
-                    aria-hidden="true"
-                    className={`inline-flex h-6 w-6 items-center justify-center rounded-full border ${done ? "border-brand bg-brand text-ink-900" : "border-ink-600 bg-ink-800 text-ink-500"}`}
-                  >
-                    {done ? (
-                      <CheckCircle size={14} weight="fill" />
-                    ) : (
-                      <span className="font-mono text-[9px]">…</span>
-                    )}
-                  </span>
-                  <div className="min-w-0">
-                    <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-ink-400">
-                      {phase}
-                    </p>
-                    <p className="truncate text-sm text-white">{title}</p>
-                  </div>
-                </div>
-                <span
-                  className={`hidden font-mono text-[10px] uppercase tracking-[0.2em] sm:inline ${done ? "text-brand" : "text-ink-500"}`}
-                >
-                  {done ? "shipped" : "upcoming"}
-                </span>
-              </li>
-            ))}
-          </ol>
+
+          <div className="mt-6 grid gap-5 sm:grid-cols-3">
+            <StatusColumn
+              tone="live"
+              label="Live"
+              icon={<CheckCircle size={14} weight="fill" />}
+              items={[
+                "Quote Builder",
+                "Voice Agent",
+                "Materials Agent",
+                "Follow-up Agent",
+                "Compliance Agent",
+                "Admin Agent",
+              ]}
+            />
+            <StatusColumn
+              tone="setup"
+              label="Needs setup"
+              icon={<CircleNotch size={14} weight="bold" />}
+              items={[
+                "Photo material extraction (camera upload)",
+                "Sent-quote follow-up reminders (email schedule)",
+              ]}
+            />
+            <StatusColumn
+              tone="later"
+              label="Coming later"
+              icon={<ClipboardText size={14} weight="bold" />}
+              items={["Invoice draft assistant", "Timesheet-to-invoice agent"]}
+            />
+          </div>
         </section>
 
         {/* Mobile-friendly tail navigation — Clients + Settings live here
@@ -255,6 +274,56 @@ export default async function AgentsPage() {
           </a>
         </nav>
       </main>
+    </div>
+  );
+}
+
+type StatusTone = "live" | "setup" | "later";
+
+const STATUS_COLUMN_STYLES: Record<StatusTone, string> = {
+  live: "border-brand/40 bg-brand/10",
+  setup: "border-hivis/40 bg-hivis/10",
+  later: "border-ink-600 bg-ink-800/60",
+};
+
+const STATUS_LABEL_STYLES: Record<StatusTone, string> = {
+  live: "text-brand",
+  setup: "text-hivis",
+  later: "text-ink-300",
+};
+
+function StatusColumn({
+  tone,
+  label,
+  icon,
+  items,
+}: {
+  tone: StatusTone;
+  label: string;
+  icon: React.ReactNode;
+  items: ReadonlyArray<string>;
+}) {
+  return (
+    <div
+      data-testid={`agents-status-${tone}`}
+      className={`flex flex-col gap-3 rounded-sm border p-4 ${STATUS_COLUMN_STYLES[tone]}`}
+    >
+      <p
+        className={`inline-flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.25em] ${STATUS_LABEL_STYLES[tone]}`}
+      >
+        <span aria-hidden="true">{icon}</span>
+        {label}
+      </p>
+      <ul className="space-y-1.5">
+        {items.map((item) => (
+          <li
+            key={item}
+            className="text-sm leading-snug text-ink-100"
+          >
+            {item}
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

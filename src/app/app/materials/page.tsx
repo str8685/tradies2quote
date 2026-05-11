@@ -11,7 +11,7 @@ import { SupplierShortcuts } from "./_components/SupplierShortcuts";
 import { MaterialsList } from "./_components/MaterialsList";
 
 export const metadata: Metadata = {
-  title: "Materials library",
+  title: "Materials",
 };
 
 export default async function MaterialsPage() {
