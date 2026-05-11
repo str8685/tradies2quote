@@ -47,7 +47,11 @@ export default function AppLayout({
         holdMs={5000}
       />
       <SideMeasureTape />
-      <div className="min-w-0 pb-[88px] sm:pb-0">{children}</div>
+      {/* Wave 14.3 — the AppHeader is now `hidden sm:block`, so on
+          mobile this wrapper picks up the safe-area-top inset that
+          the header used to provide. Without it, page content would
+          render under the iPhone notch / Android camera cutout. */}
+      <div className="min-w-0 pt-[env(safe-area-inset-top)] pb-[88px] sm:pt-0 sm:pb-0">{children}</div>
       <div aria-hidden="true" className="hidden lg:block" />
       <MobileBottomNav />
     </div>
