@@ -773,3 +773,44 @@ h1, h2, h3, h4, h5 {
 [data-testid="side-measure-tape"] {
   pointer-events: none;
 }
+
+/* =========================================================================
+   WAVE 12.1 — Global weight bump.
+   IBM Plex Mono + Sans are loaded at weights 400 / 500 / 600 / 700, but
+   `font-family: var(--font-mono)` was inheriting the browser default
+   (weight 400). On a phone in daylight + light mode that reads as too
+   thin to be readable, especially for the all-caps tracking-[0.2em]
+   labels that pepper the app.
+   This block lifts the default mono weight from 400 → 500 everywhere
+   and adds a further 500 → 600 bump for the high-importance nav /
+   eyebrow labels. Sans body copy is intentionally left at the browser
+   default (400) so paragraphs don't get heavy — only mono labels gain
+   weight. Light-mode text colours get a small contrast nudge so the
+   thicker letters are also a touch darker on cream.
+   ========================================================================= */
+.font-mono {
+  font-weight: 500;
+}
+
+.t2q-bottomnav-tile,
+.t2q-nav-tab,
+.t2q-section-label {
+  font-weight: 600;
+}
+
+/* Light-mode contrast nudge — pair with the weight bump so the small
+   mono labels read as confidently in daylight as the dark-mode ones do
+   on a screen at night. The change is one notch darker per ink token. */
+[data-theme="light"] .text-ink-300 { color: #2E2E2E !important; }
+[data-theme="light"] .text-ink-400 { color: #3F3F3F !important; }
+[data-theme="light"] .text-ink-500 { color: #525252 !important; }
+
+/* Buttons whose label uses `font-mono text-[10px] tracking-[…]` (sign
+   out, copy, install, etc.) also benefit from the weight bump. The
+   `.font-mono { font-weight: 500 }` rule above already covers them;
+   this just hands the active-state ones the heavier 600 so an active
+   tab / pressed pill reads more decisively. */
+.t2q-nav-tab[aria-current="page"],
+.t2q-bottomnav-tile[aria-current="page"] {
+  font-weight: 700;
+}
