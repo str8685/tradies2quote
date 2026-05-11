@@ -527,6 +527,71 @@ h1, h2, h3, h4, h5 {
     linear-gradient(to bottom, rgba(255, 95, 21, 0.13) 1px, transparent 1px);
 }
 
+/* ─── App canvas (Wave 15) ────────────────────────────────────────────────
+   Replaces `.t2q-app-grid-bg` as the canvas behind every signed-in /app/*
+   route. No tiled pattern, no visible squares — a smooth dark gradient
+   that reads as premium on iPhone and Android without competing with the
+   actual UI (cards, quote pages, settings, mobile nav).
+
+   Layered:
+     1. Solid #0A0A0A floor (matches `bg-ink-950` cards).
+     2. A soft brand-orange radial in the top-right, peaking ~12% opacity,
+        falling off well before midscreen. Depth without color noise.
+     3. A second radial in the bottom-left at the hi-vis hue (~4%) to
+        balance the warmth.
+
+   `background-attachment: fixed` keeps the gradient still on long
+   scrolls (long pages don't reveal seams; the page feels calmer).
+   Honoured on iOS Safari 16+. Light theme mirrors the composition with
+   a paper floor for the existing theme toggle. */
+.t2q-app-canvas {
+  background-color: #0A0A0A;
+  background-image:
+    radial-gradient(
+      80% 60% at 100% 0%,
+      rgba(255, 95, 21, 0.12) 0%,
+      rgba(255, 95, 21, 0.04) 32%,
+      transparent 64%
+    ),
+    radial-gradient(
+      90% 70% at 0% 100%,
+      rgba(255, 234, 0, 0.04) 0%,
+      rgba(255, 234, 0, 0.015) 40%,
+      transparent 70%
+    ),
+    linear-gradient(180deg, #0E0E10 0%, #0A0A0A 38%, #0A0A0A 100%);
+  background-attachment: fixed;
+  background-repeat: no-repeat;
+}
+[data-theme="light"] .t2q-app-canvas {
+  background-color: #F5F4EE;
+  background-image:
+    radial-gradient(
+      80% 60% at 100% 0%,
+      rgba(255, 95, 21, 0.10) 0%,
+      transparent 60%
+    ),
+    radial-gradient(
+      90% 70% at 0% 100%,
+      rgba(0, 0, 0, 0.05) 0%,
+      transparent 65%
+    ),
+    linear-gradient(180deg, #F7F6F1 0%, #F2F0EA 100%);
+  background-attachment: fixed;
+  background-repeat: no-repeat;
+}
+
+/* Tiny life-sign on the route loader caption so it doesn't read as a
+   frozen page. ~1.6s opacity breathe — GPU-free, no JS animation lib. */
+@keyframes t2q-loading-breathe {
+  0%, 100% { opacity: 0.45; }
+  50%      { opacity: 0.9; }
+}
+.t2q-loading-caption {
+  animation: t2q-loading-breathe 1.6s ease-in-out infinite;
+  will-change: opacity;
+}
+
 /* ─── Premium card ───────────────────────────────────────────────────────
    Drop-in replacement for the plain `rounded-sm border border-ink-700
    bg-ink-800` pattern used across /app/*. Adds:

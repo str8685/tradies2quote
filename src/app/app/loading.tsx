@@ -1,72 +1,58 @@
 /**
- * Default loading skeleton for every `/app/*` page.
+ * Route-level loading state for every `/app/*` page.
  *
- * Wave 11 — Next 16's app-router loading.tsx convention. Whenever a
- * /app page is fetching its server-side data, the user sees this
- * skeleton instead of a blank white screen.
+ * Why this exists: Next.js renders this server-side while the matching
+ * `page.tsx` (and anything it `await`s — session refresh, profile
+ * fetch, quote loads, RPCs) is resolving. Because it's server-rendered
+ * with zero JS, the user sees a brand-matching splash IMMEDIATELY,
+ * before any protected dashboard markup is even fetched. This is what
+ * eliminates the "dashboard flashes briefly before the loading screen"
+ * problem the user reported — the dashboard literally doesn't render
+ * until its data is ready, and this loader holds the screen until then.
  *
- * Per-route loading.tsx files can override this where a tighter layout
- * makes sense.
- *
- * Static, server-rendered, no client-side JS. Reuses `.t2q-premium-card-static`
- * for visual consistency with the real pages it stands in for.
+ * Wave 15:
+ *   - Was the auto-skeleton with placeholder cards. Reworked to a
+ *     brand splash that matches the new `.t2q-app-canvas` so the
+ *     transition into the real page is invisible.
+ *   - Static, no framer-motion, no animation library. A single tiny
+ *     CSS keyframe on the caption keeps it feeling alive without
+ *     paying the cost of a JS animation runtime.
+ *   - Safe: no Supabase calls, no cookie reads, no agent-monitor
+ *     imports.
  */
 export default function AppLoading() {
   return (
-    <div className="min-h-screen text-white">
-      <main
-        data-testid="app-loading-skeleton"
-        aria-busy="true"
-        aria-live="polite"
-        className="mx-auto max-w-3xl px-4 py-10 sm:px-6 sm:py-14"
-      >
-        {/* Eyebrow + heading skeleton */}
-        <div className="mb-8">
-          <div className="h-3 w-24 rounded-sm bg-ink-700/70" />
-          <div className="mt-3 h-9 w-2/3 rounded-sm bg-ink-700/70 sm:h-10" />
-          <div className="mt-3 h-4 w-3/4 rounded-sm bg-ink-700/50" />
-        </div>
-
-        {/* Card row skeleton */}
-        <div className="t2q-premium-card-static p-5 sm:p-6">
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <SkeletonTile />
-            <SkeletonTile />
-            <SkeletonTile />
-            <SkeletonTile />
-          </div>
-        </div>
-
-        {/* List skeleton */}
-        <div className="mt-6 space-y-2">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <div
-              key={i}
-              className="t2q-premium-card-static flex items-center justify-between gap-3 p-4"
-            >
-              <div className="flex-1">
-                <div className="h-3 w-20 rounded-sm bg-ink-700/70" />
-                <div className="mt-2 h-4 w-3/4 rounded-sm bg-ink-700/50" />
-                <div className="mt-1.5 h-3 w-1/2 rounded-sm bg-ink-700/40" />
-              </div>
-              <div className="h-5 w-24 rounded-sm bg-ink-700/70" />
-            </div>
-          ))}
-        </div>
-
-        <p className="mt-10 text-center font-mono text-[10px] uppercase tracking-[0.25em] text-ink-400">
-          {"// loading the tools"}
+    <div
+      data-testid="app-route-loading"
+      aria-busy="true"
+      aria-live="polite"
+      // Painted with the same canvas gradient the layout below uses,
+      // so when the page resolves the only visible change is the
+      // dashboard fading IN — nothing about the background shifts.
+      className="t2q-app-canvas fixed inset-0 z-[60] flex items-center justify-center"
+      style={{
+        // Respect the iPhone notch + Android cutout so the centered
+        // brand mark stays optically centered.
+        paddingTop: "env(safe-area-inset-top, 0px)",
+        paddingBottom: "env(safe-area-inset-bottom, 0px)",
+      }}
+    >
+      <div className="flex flex-col items-center gap-5 px-6 text-center">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/logo-mark.png"
+          alt="Tradies2Quote"
+          width={160}
+          height={136}
+          className="block h-16 w-auto rounded-2xl bg-white p-2 shadow-[0_0_0_1px_rgba(255,255,255,0.06),0_18px_48px_-12px_rgba(255,95,21,0.35)] sm:h-20"
+        />
+        <p className="font-display text-lg uppercase tracking-tight text-white sm:text-2xl">
+          Loading your <span className="text-brand">tools.</span>
         </p>
-      </main>
-    </div>
-  );
-}
-
-function SkeletonTile() {
-  return (
-    <div className="rounded-sm border border-ink-700/60 bg-ink-900/40 p-3">
-      <div className="h-6 w-16 rounded-sm bg-ink-700/70" />
-      <div className="mt-3 h-3 w-24 rounded-sm bg-ink-700/50" />
+        <p className="t2q-loading-caption font-mono text-[10px] uppercase tracking-[0.25em] text-ink-400">
+          {"// resolving session"}
+        </p>
+      </div>
     </div>
   );
 }

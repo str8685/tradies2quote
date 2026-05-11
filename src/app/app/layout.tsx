@@ -1,30 +1,32 @@
 import { SideMeasureTape } from "../_components/app/SideMeasureTape";
-import LoadingScreen from "../_components/landing/LoadingScreen";
 import { MobileBottomNav } from "./_components/MobileBottomNav";
 
 /**
  * Visual layout for /app/* routes.
  *
- * Adds a thin decorative measuring-tape rail on the far-left edge at
- * desktop breakpoints (≥lg). Mobile stays unchanged — `SideMeasureTape`
- * is `hidden lg:block`, so it consumes no space and renders no element
- * on small screens. The rail is also `pointer-events: none` via globals.css
- * so it can never block clicks even if its painting changes.
+ * Wave 15 — refresh:
+ *   - Background swapped from `.t2q-app-grid-bg` (visible tiled grid)
+ *     to `.t2q-app-canvas` (smooth dark gradient, no squares).
+ *   - Removed the 5-second tape-measure `<LoadingScreen>` entry splash.
+ *     Replaced by Next.js's route-level `app/app/loading.tsx`, which
+ *     is server-rendered with zero JS and shown BEFORE the dashboard
+ *     markup ever ships to the browser. That fixes the "dashboard
+ *     flashes briefly before the splash" bug — there's nothing to
+ *     flash, because the dashboard doesn't render until its data is
+ *     ready, and the route loader covers the gap.
+ *   - Safe-area inset top is now applied to the wrapper div in a way
+ *     that doesn't insert a tall black band: just `pt-[env(...)]`
+ *     and no opaque background on the inset itself, since the canvas
+ *     paints continuously underneath.
+ *   - Bottom inset still honoured via the mobile bottom nav's own
+ *     `pb-[calc(env(safe-area-inset-bottom,0)+...)]`; nothing to do
+ *     here.
  *
- * Strictly visual. This layout does NOT call `supabase.auth.getUser()`,
- * does NOT redirect, does NOT fetch data. Auth gating is unchanged and
- * still happens in `src/proxy.ts` (session refresh + `/app` gate) and
- * as defense-in-depth at the top of each `/app/*` page's server
- * component (`await supabase.auth.getUser()` → `redirect("/login")`).
- *
- * Wave 9.1 — grid balanced (`24px_1fr_24px`) so the tape rail no longer
- * pushed centered content 12 px off the visual midline.
- *
- * Wave 10 — sticky bottom nav for mobile (`<MobileBottomNav />`) and
- * `pb-[88px] sm:pb-0` on the content track so the nav never covers the
- * last page row. The app grid background (`.t2q-app-grid-bg`) is applied
- * here too so every /app/* page sits on the same subtle surface,
- * matching the landing's visual rhythm.
+ * Auth gating is unchanged. This layout does NOT call
+ * `supabase.auth.getUser()`, does NOT redirect, does NOT fetch data.
+ * Auth still happens in `src/proxy.ts` (session refresh + `/app`
+ * gate) and as defense-in-depth at the top of each `/app/*` page's
+ * server component.
  */
 export default function AppLayout({
   children,
@@ -32,26 +34,16 @@ export default function AppLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="t2q-app-grid-bg min-h-screen overflow-x-hidden lg:grid lg:grid-cols-[24px_1fr_24px]">
-      {/* Wave 13.2 — same brand splash as the landing, with its own
-          session-storage key so it shows once per session on the
-          tradie's first dashboard visit (independent of the landing
-          splash).
-          Wave 14.2 — bumped to a 5s hold so the tape-measure fill
-          plays in full before the dashboard renders. Once per session
-          (sessionStorage 6h skip window), so it never gets in the
-          way of repeat visits in the same browser session. */}
-      <LoadingScreen
-        storageKey="t2q-app-splash-shown"
-        tapeLabel="// loading the tools"
-        holdMs={5000}
-      />
+    <div className="t2q-app-canvas min-h-screen overflow-x-hidden lg:grid lg:grid-cols-[24px_1fr_24px]">
       <SideMeasureTape />
-      {/* Wave 14.3 — the AppHeader is now `hidden sm:block`, so on
-          mobile this wrapper picks up the safe-area-top inset that
-          the header used to provide. Without it, page content would
-          render under the iPhone notch / Android camera cutout. */}
-      <div className="min-w-0 pt-[env(safe-area-inset-top)] pb-[88px] sm:pt-0 sm:pb-0">{children}</div>
+      {/* Wave 14.3: AppHeader is `hidden sm:block`, so the mobile
+          shell picks up the safe-area-top inset HERE. Without it,
+          page content would start under the iPhone notch / Android
+          camera cutout. No coloured band — the canvas paints behind
+          the inset so it just adds breathing room. */}
+      <div className="min-w-0 pt-[env(safe-area-inset-top)] pb-[88px] sm:pt-0 sm:pb-0">
+        {children}
+      </div>
       <div aria-hidden="true" className="hidden lg:block" />
       <MobileBottomNav />
     </div>
