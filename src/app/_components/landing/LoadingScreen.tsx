@@ -25,7 +25,7 @@ import TapeProgress from "./TapeProgress";
  * `sessionStorage` (which doesn't exist on the server).
  */
 const DEFAULT_STORAGE_KEY = "t2q-splash-shown";
-const HOLD_MS = 1700;
+const DEFAULT_HOLD_MS = 1700;
 const FADE_MS = 600;
 
 interface Props {
@@ -33,11 +33,19 @@ interface Props {
   storageKey?: string;
   /** Optional override for the tape-measure caption. */
   tapeLabel?: string;
+  /**
+   * Wave 14.2 — how long the tape-measure fills from 0 → 100mm before
+   * the splash fades. Default is 1.7s (landing splash, snappy). The
+   * /app layout passes 5000ms so the tradie sees the full animation
+   * once per session on dashboard entry.
+   */
+  holdMs?: number;
 }
 
 export default function LoadingScreen({
   storageKey = DEFAULT_STORAGE_KEY,
   tapeLabel = "// site setup",
+  holdMs = DEFAULT_HOLD_MS,
 }: Props = {}) {
   // Server-side: hidden. Client-side: an effect decides whether to show.
   const [visible, setVisible] = useState(false);
@@ -63,7 +71,7 @@ export default function LoadingScreen({
     startRef.current = performance.now();
     let raf = 0;
     const tick = (t: number) => {
-      const k = Math.min(1, (t - startRef.current) / HOLD_MS);
+      const k = Math.min(1, (t - startRef.current) / holdMs);
       setProgress(k);
       if (k < 1) {
         raf = requestAnimationFrame(tick);
@@ -78,7 +86,7 @@ export default function LoadingScreen({
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [visible, storageKey]);
+  }, [visible, storageKey, holdMs]);
 
   return (
     <AnimatePresence>

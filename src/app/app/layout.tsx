@@ -36,11 +36,15 @@ export default function AppLayout({
       {/* Wave 13.2 — same brand splash as the landing, with its own
           session-storage key so it shows once per session on the
           tradie's first dashboard visit (independent of the landing
-          splash). The 1.7s tape-measure animation is identical so the
-          experience reads as one continuous brand. */}
+          splash).
+          Wave 14.2 — bumped to a 5s hold so the tape-measure fill
+          plays in full before the dashboard renders. Once per session
+          (sessionStorage 6h skip window), so it never gets in the
+          way of repeat visits in the same browser session. */}
       <LoadingScreen
         storageKey="t2q-app-splash-shown"
         tapeLabel="// loading the tools"
+        holdMs={5000}
       />
       <SideMeasureTape />
       <div className="min-w-0 pb-[88px] sm:pb-0">{children}</div>
