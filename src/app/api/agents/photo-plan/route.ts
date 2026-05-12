@@ -1,0 +1,96 @@
+import { NextResponse, type NextRequest } from "next/server";
+import { createClient } from "@/lib/supabase/server";
+import {
+  MAX_IMAGE_BYTES,
+  runPhotoPlanAgent,
+} from "@/lib/agents/photo-plan";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+/**
+ * POST /api/agents/photo-plan
+ *
+ * Body: multipart/form-data with:
+ *   • image: File (image/jpeg | image/png | image/webp | image/gif)
+ *   • hint:  optional string the tradie typed alongside
+ *
+ * Returns: { description, items, reviewFlags, quoteNote }
+ *
+ * Auth gated. Never writes to the database. Image bytes are forwarded
+ * to OpenAI Vision in-memory and discarded after the response.
+ */
+export async function POST(req: NextRequest) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const contentType = req.headers.get("content-type") ?? "";
+  if (!contentType.includes("multipart/form-data")) {
+    return NextResponse.json(
+      { error: "Expected multipart/form-data with an 'image' field." },
+      { status: 400 },
+    );
+  }
+
+  let form: FormData;
+  try {
+    form = await req.formData();
+  } catch {
+    return NextResponse.json({ error: "Could not read form data." }, { status: 400 });
+  }
+
+  const file = form.get("image");
+  if (!(file instanceof File)) {
+    return NextResponse.json(
+      { error: "Missing 'image' file field." },
+      { status: 400 },
+    );
+  }
+  if (file.size === 0) {
+    return NextResponse.json({ error: "Image is empty." }, { status: 400 });
+  }
+  if (file.size > MAX_IMAGE_BYTES) {
+    return NextResponse.json(
+      {
+        error: `Image is too large (${(file.size / 1024 / 1024).toFixed(1)} MB). Max 8 MB.`,
+      },
+      { status: 413 },
+    );
+  }
+  if (!file.type.startsWith("image/")) {
+    return NextResponse.json(
+      { error: `Unsupported file type: ${file.type}` },
+      { status: 415 },
+    );
+  }
+
+  const hintRaw = form.get("hint");
+  const hint = typeof hintRaw === "string" ? hintRaw : null;
+
+  // Convert the image to base64 in-memory. Buffer is more efficient
+  // than the regular btoa() path for binary data and is available in
+  // the Node runtime.
+  const arrayBuf = await file.arrayBuffer();
+  const imageBase64 = Buffer.from(arrayBuf).toString("base64");
+
+  try {
+    const result = await runPhotoPlanAgent({
+      imageBase64,
+      mimeType: file.type,
+      hint,
+    });
+    return NextResponse.json({ ok: true, result });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unknown error";
+    const isConfig = /not configured/i.test(message);
+    return NextResponse.json(
+      { error: message },
+      { status: isConfig ? 503 : 502 },
+    );
+  }
+}
