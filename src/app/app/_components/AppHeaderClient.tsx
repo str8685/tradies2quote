@@ -1,10 +1,21 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ThemeToggle } from "@/app/_components/landing/ThemeToggle";
-import { AccountHub } from "./AccountHub";
+
+/**
+ * Wave 17 — perf — see MobileBottomNavClient.tsx for the rationale.
+ * Same `AccountHub` is used here (desktop dropdown variant via the
+ * `mode="panel"` prop). Splitting it into its own chunk that's only
+ * fetched when the avatar trigger is clicked.
+ */
+const AccountHub = dynamic(
+  () => import("./AccountHub").then((m) => m.AccountHub),
+  { ssr: false, loading: () => null },
+);
 
 /**
  * Client part of the shared `/app/*` header.

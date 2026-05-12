@@ -1,7 +1,7 @@
 import { SideMeasureTape } from "../_components/app/SideMeasureTape";
 import LoadingScreen from "../_components/landing/LoadingScreen";
 import { MobileBottomNav } from "./_components/MobileBottomNav";
-import { OnboardingTour } from "./_components/OnboardingTour";
+import { OnboardingTourGate } from "./_components/OnboardingTourGate";
 
 /**
  * Visual layout for /app/* routes.
@@ -56,10 +56,12 @@ export default function AppLayout({
       </div>
       <div aria-hidden="true" className="hidden lg:block" />
       <MobileBottomNav />
-      {/* First-run onboarding tour. Self-gates via localStorage so it
-          renders nothing on repeat visits and never blocks people who
-          already know the app. */}
-      <OnboardingTour />
+      {/* First-run onboarding tour. The Gate self-checks
+          `localStorage["t2q-tour-done"]` on the client and ONLY
+          triggers the dynamic import of the heavy tour UI if the user
+          hasn't dismissed it yet. Returning users never fetch the
+          tour's JS chunk. */}
+      <OnboardingTourGate />
     </div>
   );
 }

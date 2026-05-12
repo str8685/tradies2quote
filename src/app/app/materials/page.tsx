@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import type { Metadata } from "next";
 import { headers } from "next/headers";
 import Link from "next/link";
@@ -9,48 +10,24 @@ import type { LibraryMaterial } from "@/lib/quote-types";
 import { AppHeader } from "../_components/AppHeader";
 import { SupplierShortcuts } from "./_components/SupplierShortcuts";
 import { MaterialsList } from "./_components/MaterialsList";
+import { MaterialsListSkeleton } from "./_components/MaterialsListSkeleton";
 
 export const metadata: Metadata = {
   title: "Materials",
 };
 
 export default async function MaterialsPage() {
+  // Wave 17 — perf — auth runs in the page; the materials query (which
+  // can scan hundreds of rows for an established tradie) streams in
+  // under a `<Suspense>` so the heading + capture nudge + supplier
+  // shortcuts paint instantly. Returning visitors with cached HTML
+  // see the static frame in <100ms even before the DB round-trip
+  // finishes.
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
-
-  const { data: rows } = await supabase
-    .from("materials")
-    .select(
-      "id, name, unit, default_unit_price, supplier, supplier_url, notes, usage_count, is_ai_estimated, last_used_at",
-    )
-    .eq("user_id", user.id)
-    .order("usage_count", { ascending: false })
-    .order("name", { ascending: true });
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("currency")
-    .eq("id", user.id)
-    .maybeSingle();
-
-  const currency = profile?.currency ?? NZ_DEFAULTS.currency;
-
-  const materials: LibraryMaterial[] = (rows ?? []).map((r) => ({
-    id: r.id,
-    name: r.name,
-    unit: r.unit,
-    default_unit_price:
-      r.default_unit_price !== null ? Number(r.default_unit_price) : null,
-    supplier: r.supplier,
-    supplier_url: r.supplier_url,
-    notes: r.notes,
-    usage_count: Number(r.usage_count) || 0,
-    is_ai_estimated: !!r.is_ai_estimated,
-    last_used_at: r.last_used_at,
-  }));
 
   return (
     <div className="min-h-screen text-white">
@@ -104,36 +81,89 @@ export default async function MaterialsPage() {
 
         <SupplierShortcuts />
 
-        <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <p
-            data-testid="materials-count"
-            className="font-mono text-xs uppercase tracking-[0.2em] text-ink-500"
-          >
-            {`// ${materials.length} item${materials.length === 1 ? "" : "s"} saved`}
-          </p>
-          <div className="flex gap-2">
-            <Link
-              href="/app/materials/import"
-              data-testid="materials-import-link"
-              className="t2q-btn-ghost"
-            >
-              <Upload size={18} weight="bold" />
-              Import CSV
-            </Link>
-            <Link
-              href="/app/materials/new"
-              data-testid="materials-add-link"
-              className="t2q-btn-primary"
-            >
-              <Plus size={18} weight="bold" />
-              Add material
-            </Link>
-          </div>
-        </div>
-
-        <MaterialsList materials={materials} currency={currency} />
+        <Suspense fallback={<MaterialsListSkeleton />}>
+          <MaterialsBody userId={user.id} />
+        </Suspense>
       </main>
     </div>
+  );
+}
+
+/**
+ * Wave 17 — perf — data-driven materials body.
+ *
+ * Split out so a Suspense boundary above can stream the page shell to
+ * the browser while the Supabase query is still in flight. The action
+ * row (// count + Import CSV + Add material) is intentionally inside
+ * the boundary so its count placeholder shows during loading — it
+ * swaps to the real number with zero layout shift because
+ * `MaterialsListSkeleton` mirrors the row's height.
+ */
+async function MaterialsBody({ userId }: { userId: string }) {
+  const supabase = await createClient();
+  const [{ data: rows }, { data: profile }] = await Promise.all([
+    supabase
+      .from("materials")
+      .select(
+        "id, name, unit, default_unit_price, supplier, supplier_url, notes, usage_count, is_ai_estimated, last_used_at",
+      )
+      .eq("user_id", userId)
+      .order("usage_count", { ascending: false })
+      .order("name", { ascending: true }),
+    supabase
+      .from("profiles")
+      .select("currency")
+      .eq("id", userId)
+      .maybeSingle(),
+  ]);
+
+  const currency = profile?.currency ?? NZ_DEFAULTS.currency;
+
+  const materials: LibraryMaterial[] = (rows ?? []).map((r) => ({
+    id: r.id,
+    name: r.name,
+    unit: r.unit,
+    default_unit_price:
+      r.default_unit_price !== null ? Number(r.default_unit_price) : null,
+    supplier: r.supplier,
+    supplier_url: r.supplier_url,
+    notes: r.notes,
+    usage_count: Number(r.usage_count) || 0,
+    is_ai_estimated: !!r.is_ai_estimated,
+    last_used_at: r.last_used_at,
+  }));
+
+  return (
+    <>
+      <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <p
+          data-testid="materials-count"
+          className="font-mono text-xs uppercase tracking-[0.2em] text-ink-500"
+        >
+          {`// ${materials.length} item${materials.length === 1 ? "" : "s"} saved`}
+        </p>
+        <div className="flex gap-2">
+          <Link
+            href="/app/materials/import"
+            data-testid="materials-import-link"
+            className="t2q-btn-ghost"
+          >
+            <Upload size={18} weight="bold" />
+            Import CSV
+          </Link>
+          <Link
+            href="/app/materials/new"
+            data-testid="materials-add-link"
+            className="t2q-btn-primary"
+          >
+            <Plus size={18} weight="bold" />
+            Add material
+          </Link>
+        </div>
+      </div>
+
+      <MaterialsList materials={materials} currency={currency} />
+    </>
   );
 }
 

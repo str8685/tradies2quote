@@ -592,6 +592,74 @@ h1, h2, h3, h4, h5 {
   will-change: opacity;
 }
 
+/* ─── Splash entrance animations (Wave 17 — perf) ─────────────────────────
+   These replicate the framer-motion entrance that LoadingScreen.tsx used
+   to drive. Doing it in CSS lets the splash drop framer-motion entirely
+   from the /app bundle (framer-motion was the *only* /app dependency on
+   that library), which trims a sizeable chunk off every protected page's
+   initial JS payload. All animations are GPU-cheap transforms + opacity. */
+@keyframes t2q-splash-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes t2q-splash-logo-in {
+  from { opacity: 0; transform: scale(0.6) rotate(-10deg); }
+  to   { opacity: 1; transform: scale(1) rotate(0deg); }
+}
+@keyframes t2q-splash-fade-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes t2q-splash-scale-x {
+  from { opacity: 0; transform: scaleX(0.8); }
+  to   { opacity: 1; transform: scaleX(1); }
+}
+/* The outer splash wrapper. Opacity defaults to 1 (server-rendered
+   visible). Adding `is-fading-out` triggers the fade-out transition;
+   React unmounts the node after the transition finishes via setTimeout
+   in LoadingScreen.tsx so we don't have to listen for transitionend. */
+.t2q-splash-wrap {
+  opacity: 1;
+  transition: opacity 600ms ease-in-out;
+}
+.t2q-splash-wrap.is-fading-out {
+  opacity: 0;
+}
+.t2q-splash-logo {
+  animation: t2q-splash-logo-in 550ms cubic-bezier(0.21, 0.61, 0.27, 1) both;
+  transform-origin: center;
+  will-change: transform, opacity;
+}
+.t2q-splash-title {
+  animation: t2q-splash-fade-up 400ms ease-out 300ms both;
+  will-change: transform, opacity;
+}
+.t2q-splash-tagline {
+  animation: t2q-splash-fade-in 400ms ease-out 550ms both;
+  will-change: opacity;
+}
+.t2q-splash-tape {
+  animation: t2q-splash-scale-x 500ms ease-out both;
+  transform-origin: center;
+  will-change: transform, opacity;
+}
+.t2q-splash-caption {
+  animation: t2q-splash-fade-in 400ms ease-out 1000ms both;
+  will-change: opacity;
+}
+@media (prefers-reduced-motion: reduce) {
+  .t2q-splash-wrap,
+  .t2q-splash-logo,
+  .t2q-splash-title,
+  .t2q-splash-tagline,
+  .t2q-splash-tape,
+  .t2q-splash-caption {
+    animation: none;
+    transition: none;
+  }
+  .t2q-splash-wrap.is-fading-out { opacity: 0; }
+}
+
 /* ─── Premium card ───────────────────────────────────────────────────────
    Drop-in replacement for the plain `rounded-sm border border-ink-700
    bg-ink-800` pattern used across /app/*. Adds:

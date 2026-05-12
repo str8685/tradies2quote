@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import Image from "next/image";
 import TapeProgress from "./TapeProgress";
 
 /**
@@ -18,6 +18,21 @@ import TapeProgress from "./TapeProgress";
  * (`t2q-app-splash-shown`). Each has its own session-skip state so a
  * tradie who saw the landing splash still sees the app splash on
  * first dashboard visit.
+ *
+ * Wave 17 — perf — framer-motion was the only /app-side use of that
+ * library; removing it from this file drops the entire framer-motion
+ * chunk off every /app/* page's bundle. The entrance + exit animations
+ * are now driven by CSS classes defined in `globals.css`
+ * (`.t2q-splash-*`), which are pure transform + opacity (GPU-cheap)
+ * and respect `prefers-reduced-motion`. The visible/exit sequence is
+ * still controlled by React state — when the tape hits 100mm we flip
+ * `setFadingOut(true)` (CSS handles the opacity drop), then unmount
+ * after FADE_MS via setTimeout so the markup leaves the DOM cleanly.
+ *
+ * The hero logo image is now rendered via `next/image` with `priority`
+ * so the browser preloads it during HTML parsing — this image is the
+ * LCP element of the splash screen and the priority hint saves ~50ms
+ * of paint time on mobile.
  *
  * Ported from `landing-export/components/LoadingScreen.jsx`. We seed
  * `visible` on the client only — the first server-rendered HTML never
@@ -54,6 +69,11 @@ export default function LoadingScreen({
   // the session-storage skip window applies, hide IMMEDIATELY so
   // repeat visits within 6h don't get the forced 5s wait.
   const [visible, setVisible] = useState(true);
+  // Wave 17 — explicit fade-out + unmount states replace framer-motion's
+  // <AnimatePresence>. `mounted` keeps the splash in the DOM through
+  // the fade; we clear it FADE_MS after `visible` flips false.
+  const [mounted, setMounted] = useState(true);
+  const [fadingOut, setFadingOut] = useState(false);
   const [progress, setProgress] = useState(0);
   const startRef = useRef(0);
 
@@ -63,9 +83,9 @@ export default function LoadingScreen({
     const t = setTimeout(() => {
       try {
         const last = Number(sessionStorage.getItem(storageKey) ?? 0);
-        // Shown within the last 6h → skip. The brief AnimatePresence
-        // exit fade is the right UX hint that something was about to
-        // happen but isn't needed.
+        // Shown within the last 6h → skip. The brief fade-out is the
+        // right UX hint that something was about to happen but isn't
+        // needed.
         if (Date.now() - last <= 6 * 3600 * 1000) setVisible(false);
       } catch {
         // sessionStorage unavailable — keep the splash visible.
@@ -96,94 +116,77 @@ export default function LoadingScreen({
     return () => cancelAnimationFrame(raf);
   }, [visible, storageKey, holdMs]);
 
+  // Wave 17 — drives the CSS fade-out class + delayed unmount. Replaces
+  // framer-motion's <AnimatePresence exit>.
+  useEffect(() => {
+    if (visible) return;
+    setFadingOut(true);
+    const t = setTimeout(() => setMounted(false), FADE_MS);
+    return () => clearTimeout(t);
+  }, [visible]);
+
+  if (!mounted) return null;
+
   return (
-    <AnimatePresence>
-      {visible && (
-        <motion.div
-          key="splash"
-          initial={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: FADE_MS / 1000, ease: "easeInOut" }}
-          className="fixed inset-0 z-[100] bg-ink-950 grid place-items-center"
-          data-testid="loading-screen"
-        >
-          <div className="absolute inset-0 t2q-grid-bg opacity-40" />
-          <div className="absolute -top-40 -right-40 w-[500px] h-[500px] rounded-full bg-brand/15 blur-3xl animate-blob" />
-          <div className="absolute -bottom-40 -left-40 w-[500px] h-[500px] rounded-full bg-hivis/10 blur-3xl animate-blob-slow" />
+    <div
+      className={`t2q-splash-wrap fixed inset-0 z-[100] bg-ink-950 grid place-items-center${
+        fadingOut ? " is-fading-out" : ""
+      }`}
+      data-testid="loading-screen"
+    >
+      <div className="absolute inset-0 t2q-grid-bg opacity-40" />
+      <div className="absolute -top-40 -right-40 w-[500px] h-[500px] rounded-full bg-brand/15 blur-3xl animate-blob" />
+      <div className="absolute -bottom-40 -left-40 w-[500px] h-[500px] rounded-full bg-hivis/10 blur-3xl animate-blob-slow" />
 
-          <div className="relative flex flex-col items-center px-6">
-            {/* Wave 10.4 — splash now wears the new T2Q PNG mark.
-                The mark sits inside a small white-pill card with a
-                brand-orange glow shadow so the dark T/Q glyphs stay
-                readable against the dark splash background, without
-                turning into a hard white square. */}
-            <motion.div
-              initial={{ scale: 0.6, opacity: 0, rotate: -10 }}
-              animate={{ scale: 1, opacity: 1, rotate: 0 }}
-              transition={{ duration: 0.55, ease: [0.21, 0.61, 0.27, 1] }}
-              className="rounded-2xl bg-white p-3 shadow-[0_0_0_1px_rgba(255,255,255,0.06),0_18px_48px_-12px_rgba(255,95,21,0.35)]"
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="/logo-mark.png"
-                alt="Tradies2Quote"
-                width={160}
-                height={136}
-                className="block h-20 w-auto sm:h-24"
-              />
-            </motion.div>
+      <div className="relative flex flex-col items-center px-6">
+        {/* Wave 10.4 — splash now wears the new T2Q PNG mark.
+            The mark sits inside a small white-pill card with a
+            brand-orange glow shadow so the dark T/Q glyphs stay
+            readable against the dark splash background, without
+            turning into a hard white square.
+            Wave 17 — switched to next/image with priority so the
+            LCP element of the splash gets preloaded during HTML
+            parsing. */}
+        <div className="t2q-splash-logo rounded-2xl bg-white p-3 shadow-[0_0_0_1px_rgba(255,255,255,0.06),0_18px_48px_-12px_rgba(255,95,21,0.35)]">
+          <Image
+            src="/logo-mark.png"
+            alt="Tradies2Quote"
+            width={160}
+            height={136}
+            priority
+            className="block h-20 w-auto sm:h-24"
+          />
+        </div>
 
-            <motion.div
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3, duration: 0.4 }}
-              className="mt-6 font-display text-2xl sm:text-3xl uppercase tracking-tighter text-white text-center leading-[0.9]"
-            >
-              tradies<span className="text-brand">²</span>Quote
-            </motion.div>
+        <div className="t2q-splash-title mt-6 font-display text-2xl sm:text-3xl uppercase tracking-tighter text-white text-center leading-[0.9]">
+          tradies<span className="text-brand">²</span>Quote
+        </div>
 
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.55, duration: 0.4 }}
-              className="mt-2 font-mono text-[10px] uppercase tracking-[0.32em] text-brand"
-            >
-              voice · quote · invoice · paid
-            </motion.div>
+        <div className="t2q-splash-tagline mt-2 font-mono text-[10px] uppercase tracking-[0.32em] text-brand">
+          voice · quote · invoice · paid
+        </div>
 
-            {/* Wave 16.2 — tape fade-in delay removed.
-                Previously delay:0.7 caused the tape to appear ~700ms
-                after mount, by which time `progress` had already
-                counted up to ~14% — so the orange fill + 0→100mm
-                readout looked like they "jumped in" already partly
-                filled. Now the tape mounts at progress=0 alongside
-                the logo, so the orange and the numbers visibly count
-                up together from zero. */}
-            <motion.div
-              initial={{ opacity: 0, scaleX: 0.8 }}
-              animate={{ opacity: 1, scaleX: 1 }}
-              transition={{ delay: 0, duration: 0.5 }}
-              className="mt-10 origin-center"
-            >
-              <TapeProgress
-                progress={progress}
-                width={340}
-                height={36}
-                label={tapeLabel}
-              />
-            </motion.div>
+        {/* Wave 16.2 — tape fade-in delay removed.
+            Previously delay:0.7 caused the tape to appear ~700ms
+            after mount, by which time `progress` had already
+            counted up to ~14% — so the orange fill + 0→100mm
+            readout looked like they "jumped in" already partly
+            filled. Now the tape mounts at progress=0 alongside
+            the logo, so the orange and the numbers visibly count
+            up together from zero. */}
+        <div className="t2q-splash-tape mt-10">
+          <TapeProgress
+            progress={progress}
+            width={340}
+            height={36}
+            label={tapeLabel}
+          />
+        </div>
 
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 1.0, duration: 0.4 }}
-              className="mt-6 font-mono text-[10px] uppercase tracking-[0.22em] text-ink-400"
-            >
-              measuring up · loading the tools
-            </motion.div>
-          </div>
-        </motion.div>
-      )}
-    </AnimatePresence>
+        <div className="t2q-splash-caption mt-6 font-mono text-[10px] uppercase tracking-[0.22em] text-ink-400">
+          measuring up · loading the tools
+        </div>
+      </div>
+    </div>
   );
 }

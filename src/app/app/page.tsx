@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -13,6 +14,7 @@ import type { QuoteData, QuoteStatus } from "@/lib/quote-types";
 import { isOwnerEmail } from "@/lib/owner";
 import { STAGE_LABELS } from "@/lib/lifecycle/stages";
 import { AppHeader } from "./_components/AppHeader";
+import { DashboardSkeleton } from "./_components/DashboardSkeleton";
 import {
   QuotesListClient,
   type QuoteListRow,
@@ -43,12 +45,68 @@ export const dynamic = "force-dynamic";
 const DASHBOARD_RECENT_LIMIT = 5;
 
 export default async function DashboardPage() {
+  // Wave 17 — perf — auth runs in the page so we can paint the static
+  // frame (header + welcome heading) before the dashboard's Supabase
+  // queries finish. The data-driven sections (stats card, recent
+  // quotes, agents card, debug footer) live in `<DashboardData />` and
+  // stream in under a `<Suspense>` boundary backed by
+  // `<DashboardSkeleton />`. Previously the entire page waited for two
+  // queries before sending ANY HTML, which read as a blank screen on
+  // first /app entry over 4G.
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
+  const username = user.email?.split("@")[0] ?? "tradie";
+  // Owner-only Debug link + Agents card visibility. Server-rendered,
+  // no client check, so neither is serialised into the client bundle
+  // for non-owner accounts. Wave 13 — extended to also gate the
+  // Agents card below; previously the card was visible to all tradies.
+  const isOwner = isOwnerEmail(user.email);
+
+  return (
+    <div className="min-h-screen text-white">
+      <AppHeader />
+
+      <main className="mx-auto max-w-3xl px-4 py-10 sm:px-6 sm:py-14">
+        <div className="mb-6">
+          <div className="t2q-section-label mb-3">{"// dashboard"}</div>
+          <h1 className="font-display text-3xl uppercase tracking-tight sm:text-4xl">
+            Welcome, <span className="text-brand">{username}.</span>
+          </h1>
+        </div>
+
+        <Suspense fallback={<DashboardSkeleton />}>
+          <DashboardData userId={user.id} isOwner={isOwner} />
+        </Suspense>
+      </main>
+    </div>
+  );
+}
+
+/**
+ * Wave 17 — perf — data-driven body of the dashboard.
+ *
+ * Split out from `DashboardPage` so a `<Suspense>` boundary above can
+ * stream the welcome heading + skeleton to the browser BEFORE the two
+ * quotes queries land. Once they resolve, the real markup swaps in
+ * with zero layout shift (the skeleton mirrors the same card padding
+ * + border widths).
+ *
+ * Receives `userId` instead of calling `auth.getUser()` itself — the
+ * parent has already done that, and a second auth round-trip would
+ * defeat the streaming win.
+ */
+async function DashboardData({
+  userId,
+  isOwner,
+}: {
+  userId: string;
+  isOwner: boolean;
+}) {
+  const supabase = await createClient();
   // Wave 10.5 — pull lightweight aggregates for the dashboard stats
   // panel (no platform-wide hype numbers, just this user's own data).
   // Stats query is intentionally separate from the recent-quotes query
@@ -60,7 +118,7 @@ export default async function DashboardPage() {
       .select(
         "id, status, total_amount, currency, quote_data, created_at, archived_at",
       )
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .is("deleted_at", null)
       .is("archived_at", null)
       .order("created_at", { ascending: false })
@@ -68,7 +126,7 @@ export default async function DashboardPage() {
     supabase
       .from("quotes")
       .select("status, total_amount, currency, created_at")
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .is("deleted_at", null),
   ]);
 
@@ -97,214 +155,196 @@ export default async function DashboardPage() {
     };
   });
 
-  const username = user.email?.split("@")[0] ?? "tradie";
   const statsCurrency = stats.currency;
 
-  // Owner-only Debug link + Agents card visibility. Server-rendered,
-  // no client check, so neither is serialised into the client bundle
-  // for non-owner accounts. Wave 13 — extended to also gate the
-  // Agents card below; previously the card was visible to all tradies.
-  const isOwner = isOwnerEmail(user.email);
-
   return (
-    <div className="min-h-screen text-white">
-      <AppHeader />
-
-      <main className="mx-auto max-w-3xl px-4 py-10 sm:px-6 sm:py-14">
-        <div className="mb-6">
-          <div className="t2q-section-label mb-3">{"// dashboard"}</div>
-          <h1 className="font-display text-3xl uppercase tracking-tight sm:text-4xl">
-            Welcome, <span className="text-brand">{username}.</span>
-          </h1>
-        </div>
-
-        {/* Wave 13 — lifecycle stage tiles. Each tile is a real DB
-            count for this user, keyed by the same quote_status enum
-            the orchestrator drives. Tiles link into /app/quotes with
-            a stage filter pre-applied so the owner can drill in. The
-            secondary KPI row (Quotes this month + Total quoted) keeps
-            the Wave 10.5 honest-numbers idea alive without taking up
-            screen-space the lifecycle tiles need. */}
-        <section
-          data-testid="dashboard-stats"
-          aria-label="Pipeline by lifecycle stage"
-          className="t2q-premium-card-static mb-6 p-4 sm:p-5"
-        >
-          <div className="flex items-center justify-between gap-3">
-            <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-ink-300">
-              {"// pipeline"}
-            </p>
-            {stats.totalQuotes === 0 ? (
-              <p className="hidden font-mono text-[10px] uppercase tracking-[0.2em] text-ink-400 sm:inline">
-                Stages light up after your first quote.
-              </p>
-            ) : null}
-          </div>
-          <div
-            data-testid="dashboard-stage-tiles"
-            // Wave 15.3 — mobile compaction. 3-col on phones (7 stages
-            // fit in 3 rows instead of 4) with tighter gap. Desktop
-            // grids unchanged.
-            className="mt-3 grid grid-cols-3 gap-1.5 sm:mt-4 sm:grid-cols-4 sm:gap-2 lg:grid-cols-7"
-          >
-            {DASHBOARD_STAGES.map((s) => (
-              <StageTile
-                key={s}
-                stage={s}
-                label={STAGE_LABELS[s]}
-                count={stats.byStage[s]}
-              />
-            ))}
-          </div>
-
-          {/* Secondary KPI strip — keeps the Wave 10.5 honest numbers
-              without competing with the stage tiles. */}
-          <div className="mt-4 grid grid-cols-2 gap-3 border-t border-ink-700/60 pt-4">
-            <SecondaryStat
-              label="Quotes this month"
-              value={stats.thisMonth.toLocaleString()}
-            />
-            <SecondaryStat
-              label="Total quoted"
-              value={formatCurrency(stats.totalAmount, statsCurrency)}
-              tone="brand"
-            />
-          </div>
-
+    <>
+      {/* Wave 13 — lifecycle stage tiles. Each tile is a real DB
+          count for this user, keyed by the same quote_status enum
+          the orchestrator drives. Tiles link into /app/quotes with
+          a stage filter pre-applied so the owner can drill in. The
+          secondary KPI row (Quotes this month + Total quoted) keeps
+          the Wave 10.5 honest-numbers idea alive without taking up
+          screen-space the lifecycle tiles need. */}
+      <section
+        data-testid="dashboard-stats"
+        aria-label="Pipeline by lifecycle stage"
+        className="t2q-premium-card-static mb-6 p-4 sm:p-5"
+      >
+        <div className="flex items-center justify-between gap-3">
+          <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-ink-300">
+            {"// pipeline"}
+          </p>
           {stats.totalQuotes === 0 ? (
-            <p className="mt-4 text-xs leading-relaxed text-ink-300 sm:hidden">
-              Your live pipeline appears here once your first quote
-              moves through a stage.
+            <p className="hidden font-mono text-[10px] uppercase tracking-[0.2em] text-ink-400 sm:inline">
+              Stages light up after your first quote.
             </p>
           ) : null}
-        </section>
-
-        <div className="flex flex-col-reverse items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <p
-            data-testid="dashboard-recent-label"
-            className="font-mono text-xs uppercase tracking-[0.2em] text-ink-500"
-          >
-            {`// ${recent.length} recent quote${recent.length === 1 ? "" : "s"}`}
-          </p>
-          <div className="flex gap-2">
-            <Link href="/app/materials" className="t2q-btn-ghost">
-              Materials
-            </Link>
-            <Link
-              href="/app/quotes/new"
-              data-testid="dashboard-new-quote"
-              className="t2q-btn-primary"
-            >
-              <Plus size={18} weight="bold" />
-              New quote
-            </Link>
-          </div>
+        </div>
+        <div
+          data-testid="dashboard-stage-tiles"
+          // Wave 15.3 — mobile compaction. 3-col on phones (7 stages
+          // fit in 3 rows instead of 4) with tighter gap. Desktop
+          // grids unchanged.
+          className="mt-3 grid grid-cols-3 gap-1.5 sm:mt-4 sm:grid-cols-4 sm:gap-2 lg:grid-cols-7"
+        >
+          {DASHBOARD_STAGES.map((s) => (
+            <StageTile
+              key={s}
+              stage={s}
+              label={STAGE_LABELS[s]}
+              count={stats.byStage[s]}
+            />
+          ))}
         </div>
 
-        {/* Wave 13 — Agents card is now owner-only. Was visible to
-            every tradie in Wave 10.4; now hidden from non-owners so
-            the hub doesn't show pre-launch automation features. The
-            link is server-rendered behind `isOwner`, so it isn't even
-            present in the HTML payload for non-owner accounts. */}
-        {isOwner ? (
-          <Link
-            href="/app/agents"
-            data-testid="dashboard-agents-card"
-            className="t2q-premium-card mt-6 flex items-center gap-4 p-4 sm:p-5"
-          >
-            <span
-              aria-hidden="true"
-              className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-sm border border-brand/40 bg-brand/10 text-brand"
-            >
-              <Robot size={22} weight="bold" />
-            </span>
-            <div className="min-w-0 flex-1">
-              <p className="font-display text-base uppercase tracking-tight text-white sm:text-lg">
-                AI Agents.
-              </p>
-              {/* Wave 14 — honest subtitle. Previously claimed
-                  "automations" we don't run; every agent is owner-
-                  approval-only and synchronous. The directory page is
-                  owner-only; the tools themselves render on the
-                  per-quote preview for every tradie. */}
-              <p className="mt-0.5 text-sm text-ink-300">
-                Directory of agents — quote review, compliance, voice cleanup, follow-up, admin, invoice draft.
-              </p>
-            </div>
-            <span className="hidden items-center gap-1 font-mono text-[10px] uppercase tracking-[0.25em] text-brand sm:inline-flex">
-              Open agents
-              <ArrowRight size={12} weight="bold" />
-            </span>
-            <ArrowRight
-              size={18}
-              weight="bold"
-              className="shrink-0 text-brand sm:hidden"
-              aria-hidden="true"
-            />
-          </Link>
-        ) : null}
+        {/* Secondary KPI strip — keeps the Wave 10.5 honest numbers
+            without competing with the stage tiles. */}
+        <div className="mt-4 grid grid-cols-2 gap-3 border-t border-ink-700/60 pt-4">
+          <SecondaryStat
+            label="Quotes this month"
+            value={stats.thisMonth.toLocaleString()}
+          />
+          <SecondaryStat
+            label="Total quoted"
+            value={formatCurrency(stats.totalAmount, statsCurrency)}
+            tone="brand"
+          />
+        </div>
 
-        <section className="mt-6">
-          {recent.length === 0 ? (
-            <div
-              data-testid="dashboard-empty"
-              className="t2q-premium-card-static flex flex-col items-center gap-3 p-10 text-center"
-            >
-              <p className="font-display text-lg uppercase tracking-tight text-white">
-                No quotes yet.
-              </p>
-              <p className="max-w-sm text-sm text-ink-300">
-                Your first quote takes about 60 seconds — talk through the job
-                and we&apos;ll turn it into a branded PDF.
-              </p>
-              <Link
-                href="/app/quotes/new"
-                data-testid="dashboard-empty-cta"
-                className="t2q-btn-primary mt-2"
-              >
-                <Plus size={18} weight="bold" />
-                Start your first quote
-              </Link>
-            </div>
-          ) : (
-            <QuotesListClient rows={recent} />
-          )}
-        </section>
-
-        {recent.length > 0 ? (
-          <div className="mt-5 flex justify-end">
-            <Link
-              href="/app/quotes"
-              data-testid="dashboard-all-quotes"
-              className="inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.25em] text-ink-300 hover:text-brand"
-            >
-              All quotes
-              <ArrowRight size={12} weight="bold" />
-            </Link>
-          </div>
-        ) : null}
-
-        {/* Wave 14.5 — mobile tail-nav (Clients/Settings/Debug links)
-            removed. The avatar tile + account sheet in
-            <MobileBottomNav /> is the single home for these on mobile.
-            Desktop still has Settings (cog icon) in the AppHeader, so
-            Debug stays here as a small owner-only desktop footer. */}
-        {isOwner ? (
-          <p
-            data-testid="dashboard-debug-footer"
-            className="mt-10 hidden text-center font-mono text-[10px] uppercase tracking-[0.25em] text-ink-400 sm:block"
-          >
-            <Link
-              href="/app/debug"
-              className="inline-flex items-center gap-1.5 hover:text-brand"
-            >
-              <Bug size={12} weight="bold" />
-              Owner debug
-            </Link>
+        {stats.totalQuotes === 0 ? (
+          <p className="mt-4 text-xs leading-relaxed text-ink-300 sm:hidden">
+            Your live pipeline appears here once your first quote
+            moves through a stage.
           </p>
         ) : null}
-      </main>
-    </div>
+      </section>
+
+      <div className="flex flex-col-reverse items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <p
+          data-testid="dashboard-recent-label"
+          className="font-mono text-xs uppercase tracking-[0.2em] text-ink-500"
+        >
+          {`// ${recent.length} recent quote${recent.length === 1 ? "" : "s"}`}
+        </p>
+        <div className="flex gap-2">
+          <Link href="/app/materials" className="t2q-btn-ghost">
+            Materials
+          </Link>
+          <Link
+            href="/app/quotes/new"
+            data-testid="dashboard-new-quote"
+            className="t2q-btn-primary"
+          >
+            <Plus size={18} weight="bold" />
+            New quote
+          </Link>
+        </div>
+      </div>
+
+      {/* Wave 13 — Agents card is now owner-only. Was visible to
+          every tradie in Wave 10.4; now hidden from non-owners so
+          the hub doesn't show pre-launch automation features. The
+          link is server-rendered behind `isOwner`, so it isn't even
+          present in the HTML payload for non-owner accounts. */}
+      {isOwner ? (
+        <Link
+          href="/app/agents"
+          data-testid="dashboard-agents-card"
+          className="t2q-premium-card mt-6 flex items-center gap-4 p-4 sm:p-5"
+        >
+          <span
+            aria-hidden="true"
+            className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-sm border border-brand/40 bg-brand/10 text-brand"
+          >
+            <Robot size={22} weight="bold" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="font-display text-base uppercase tracking-tight text-white sm:text-lg">
+              AI Agents.
+            </p>
+            {/* Wave 14 — honest subtitle. Previously claimed
+                "automations" we don't run; every agent is owner-
+                approval-only and synchronous. The directory page is
+                owner-only; the tools themselves render on the
+                per-quote preview for every tradie. */}
+            <p className="mt-0.5 text-sm text-ink-300">
+              Directory of agents — quote review, compliance, voice cleanup, follow-up, admin, invoice draft.
+            </p>
+          </div>
+          <span className="hidden items-center gap-1 font-mono text-[10px] uppercase tracking-[0.25em] text-brand sm:inline-flex">
+            Open agents
+            <ArrowRight size={12} weight="bold" />
+          </span>
+          <ArrowRight
+            size={18}
+            weight="bold"
+            className="shrink-0 text-brand sm:hidden"
+            aria-hidden="true"
+          />
+        </Link>
+      ) : null}
+
+      <section className="mt-6">
+        {recent.length === 0 ? (
+          <div
+            data-testid="dashboard-empty"
+            className="t2q-premium-card-static flex flex-col items-center gap-3 p-10 text-center"
+          >
+            <p className="font-display text-lg uppercase tracking-tight text-white">
+              No quotes yet.
+            </p>
+            <p className="max-w-sm text-sm text-ink-300">
+              Your first quote takes about 60 seconds — talk through the job
+              and we&apos;ll turn it into a branded PDF.
+            </p>
+            <Link
+              href="/app/quotes/new"
+              data-testid="dashboard-empty-cta"
+              className="t2q-btn-primary mt-2"
+            >
+              <Plus size={18} weight="bold" />
+              Start your first quote
+            </Link>
+          </div>
+        ) : (
+          <QuotesListClient rows={recent} />
+        )}
+      </section>
+
+      {recent.length > 0 ? (
+        <div className="mt-5 flex justify-end">
+          <Link
+            href="/app/quotes"
+            data-testid="dashboard-all-quotes"
+            className="inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.25em] text-ink-300 hover:text-brand"
+          >
+            All quotes
+            <ArrowRight size={12} weight="bold" />
+          </Link>
+        </div>
+      ) : null}
+
+      {/* Wave 14.5 — mobile tail-nav (Clients/Settings/Debug links)
+          removed. The avatar tile + account sheet in
+          <MobileBottomNav /> is the single home for these on mobile.
+          Desktop still has Settings (cog icon) in the AppHeader, so
+          Debug stays here as a small owner-only desktop footer. */}
+      {isOwner ? (
+        <p
+          data-testid="dashboard-debug-footer"
+          className="mt-10 hidden text-center font-mono text-[10px] uppercase tracking-[0.25em] text-ink-400 sm:block"
+        >
+          <Link
+            href="/app/debug"
+            className="inline-flex items-center gap-1.5 hover:text-brand"
+          >
+            <Bug size={12} weight="bold" />
+            Owner debug
+          </Link>
+        </p>
+      ) : null}
+    </>
   );
 }
 

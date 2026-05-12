@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { Icon } from "@phosphor-icons/react";
@@ -10,7 +11,23 @@ import {
   Robot,
   Stack,
 } from "@phosphor-icons/react";
-import { AccountHub } from "./AccountHub";
+
+/**
+ * Wave 17 — perf — `AccountHub` is the heaviest client component
+ * dependency of the bottom nav (~520 lines + 11 icons + server-action
+ * client glue). Eagerly importing it bloated every /app/* page's
+ * initial bundle, even though the sheet only opens when the user taps
+ * the "Me" tile. Dynamic-importing with `ssr: false` splits it into
+ * its own chunk that's only fetched on first tap. After the first
+ * fetch, the chunk is browser-cached for the rest of the session, so
+ * subsequent opens feel instant. `loading: () => null` keeps the
+ * sheet's first-open transition clean — the backdrop already fades
+ * in, and the body fills the moment the chunk lands.
+ */
+const AccountHub = dynamic(
+  () => import("./AccountHub").then((m) => m.AccountHub),
+  { ssr: false, loading: () => null },
+);
 
 /**
  * Client part of the mobile bottom nav.
