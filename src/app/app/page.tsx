@@ -175,49 +175,55 @@ async function DashboardData({
           <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-ink-300">
             {"// pipeline"}
           </p>
-          {stats.totalQuotes === 0 ? (
-            <p className="hidden font-mono text-[10px] uppercase tracking-[0.2em] text-ink-400 sm:inline">
-              Stages light up after your first quote.
-            </p>
-          ) : null}
         </div>
-        <div
-          data-testid="dashboard-stage-tiles"
-          // Wave 15.3 — mobile compaction. 3-col on phones (7 stages
-          // fit in 3 rows instead of 4) with tighter gap. Desktop
-          // grids unchanged.
-          className="mt-3 grid grid-cols-3 gap-1.5 sm:mt-4 sm:grid-cols-4 sm:gap-2 lg:grid-cols-7"
-        >
-          {DASHBOARD_STAGES.map((s) => (
-            <StageTile
-              key={s}
-              stage={s}
-              label={STAGE_LABELS[s]}
-              count={stats.byStage[s]}
-            />
-          ))}
-        </div>
-
-        {/* Secondary KPI strip — keeps the Wave 10.5 honest numbers
-            without competing with the stage tiles. */}
-        <div className="mt-4 grid grid-cols-2 gap-3 border-t border-ink-700/60 pt-4">
-          <SecondaryStat
-            label="Quotes this month"
-            value={stats.thisMonth.toLocaleString()}
-          />
-          <SecondaryStat
-            label="Total quoted"
-            value={formatCurrency(stats.totalAmount, statsCurrency)}
-            tone="brand"
-          />
-        </div>
-
         {stats.totalQuotes === 0 ? (
-          <p className="mt-4 text-xs leading-relaxed text-ink-300 sm:hidden">
-            Your live pipeline appears here once your first quote
-            moves through a stage.
+          /* Empty pipeline used to render a grid of zero-count tiles
+             plus a "$0.00 Total quoted" KPI — which reads as fake
+             placeholder data on a fresh account. Replaced with a
+             single quiet line so the dashboard introduces the
+             pipeline concept without faking activity. */
+          <p
+            data-testid="dashboard-pipeline-empty"
+            className="mt-3 text-sm leading-relaxed text-ink-300"
+          >
+            Your live pipeline appears here once your first quote moves
+            through a stage. Hit{" "}
+            <span className="text-white">New quote</span> below to start.
           </p>
-        ) : null}
+        ) : (
+          <>
+            <div
+              data-testid="dashboard-stage-tiles"
+              // Wave 15.3 — mobile compaction. 3-col on phones (7 stages
+              // fit in 3 rows instead of 4) with tighter gap. Desktop
+              // grids unchanged.
+              className="mt-3 grid grid-cols-3 gap-1.5 sm:mt-4 sm:grid-cols-4 sm:gap-2 lg:grid-cols-7"
+            >
+              {DASHBOARD_STAGES.map((s) => (
+                <StageTile
+                  key={s}
+                  stage={s}
+                  label={STAGE_LABELS[s]}
+                  count={stats.byStage[s]}
+                />
+              ))}
+            </div>
+
+            {/* Secondary KPI strip — keeps the Wave 10.5 honest numbers
+                without competing with the stage tiles. */}
+            <div className="mt-4 grid grid-cols-2 gap-3 border-t border-ink-700/60 pt-4">
+              <SecondaryStat
+                label="Quotes this month"
+                value={stats.thisMonth.toLocaleString()}
+              />
+              <SecondaryStat
+                label="Total quoted"
+                value={formatCurrency(stats.totalAmount, statsCurrency)}
+                tone="brand"
+              />
+            </div>
+          </>
+        )}
       </section>
 
       <div className="flex flex-col-reverse items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between">

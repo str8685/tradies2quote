@@ -870,6 +870,17 @@ h1, h2, h3, h4, h5 {
   padding-bottom: max(env(safe-area-inset-bottom, 0px) - 24px, 4px);
   z-index: 40;
 }
+/* The bottom nav is mobile-only. The component carries `sm:hidden` but
+   Tailwind's utility loses to `.t2q-bottomnav-bar` on source order
+   inside this file, which previously left the bar visible on desktop
+   alongside the top header — the "duplicate top/bottom nav on web"
+   defect. Forcing `display: none` at the sm: breakpoint here makes the
+   class itself responsive and immune to that ordering. */
+@media (min-width: 640px) {
+  .t2q-bottomnav-bar {
+    display: none;
+  }
+}
 [data-theme="light"] .t2q-bottomnav-bar {
   background: rgba(255, 255, 255, 0.92) !important;
   border-top-color: #D8D7CE !important;
