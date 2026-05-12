@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { getCachedAuthUser } from "@/lib/supabase/auth";
 import { isOwnerEmail } from "@/lib/owner";
 import { AppHeaderClient } from "./AppHeaderClient";
 
@@ -26,10 +27,12 @@ interface Props {
 }
 
 export async function AppHeader({ context }: Props) {
+  // Wave 18.1 — perf — `getCachedAuthUser` + `createClient` are both
+  // wrapped in React `cache()`, so the auth roundtrip + Supabase
+  // client are shared with `<MobileBottomNav>` and the page itself
+  // within the same render. One network call instead of three.
+  const { user } = await getCachedAuthUser();
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
   const isOwner = isOwnerEmail(user?.email);
 
   let avatarUrl: string | null = null;

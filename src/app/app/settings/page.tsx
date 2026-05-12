@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { SignOut } from "@phosphor-icons/react/dist/ssr";
 import { createClient } from "@/lib/supabase/server";
+import { getCachedAuthUser } from "@/lib/supabase/auth";
 import { NZ_DEFAULTS } from "@/lib/quote-defaults";
 import {
   runAdminAgent,
@@ -36,11 +37,11 @@ export const dynamic = "force-dynamic";
  * `actions.ts`.
  */
 export default async function SettingsPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // Wave 18.1 — perf — `getCachedAuthUser` shares one auth roundtrip
+  // with the surrounding `<AppHeader>` + `<MobileBottomNav>`.
+  const { user } = await getCachedAuthUser();
   if (!user) redirect("/login");
+  const supabase = await createClient();
 
   // Wave 14 — fetch profile + a slim clients snapshot so the inline
   // AdminChecklistPanel can flag setup gaps (business name, labour

@@ -11,7 +11,7 @@ import {
   Stack,
   UsersThree,
 } from "@phosphor-icons/react/dist/ssr";
-import { createClient } from "@/lib/supabase/server";
+import { getCachedAuthUser } from "@/lib/supabase/auth";
 import { isOwnerEmail } from "@/lib/owner";
 import { AppHeader } from "../_components/AppHeader";
 import { AgentCard } from "./_components/AgentCard";
@@ -36,10 +36,11 @@ export const dynamic = "force-dynamic";
  * deliver.
  */
 export default async function AgentsPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // Wave 18.1 — perf — cached. Agents page is owner-only and renders
+  // no per-user data, so the only Supabase work needed is the auth
+  // check (deduped via React `cache()` with `<AppHeader>` /
+  // `<MobileBottomNav>`).
+  const { user } = await getCachedAuthUser();
   if (!user) redirect("/login");
 
   // Wave 13 — owner-only. Non-owner tradies get a 404 so the route's
@@ -165,12 +166,17 @@ export default async function AgentsPage() {
                 doesn't claim agent behaviour it doesn't have. It's a
                 jump-link to the manual materials UI; calling it
                 "Live" implied automation we never built. */}
+            {/* Wave 18.1 — honesty — statusTone moved from "ready"
+                (orange, identical to Live agents) to "linked" (neutral
+                ink). Materials is a navigation shortcut, not an
+                automated agent — the badge colour now matches the
+                "Linked" label. */}
             <AgentCard
               icon={Stack}
               title="Materials Agent"
-              description="Jumps to the manual materials capture UI — supplier items, prices, SKUs, sizes, timber treatment."
+              description="Jumps to the manual materials capture UI — supplier items, prices, SKUs, sizes, timber treatment. Not an automated agent — just a shortcut."
               status="Linked"
-              statusTone="ready"
+              statusTone="linked"
               cta={{ label: "Open Materials", href: "/app/materials" }}
             />
             {/* Wave 14 — Invoice Agent foundation. Status is "Draft

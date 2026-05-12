@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { getCachedAuthUser } from "@/lib/supabase/auth";
 import { isOwnerEmail } from "@/lib/owner";
 import { MobileBottomNavClient } from "./MobileBottomNavClient";
 
@@ -22,10 +23,11 @@ import { MobileBottomNavClient } from "./MobileBottomNavClient";
  * returning real URLs.
  */
 export async function MobileBottomNav() {
+  // Wave 18.1 — perf — see AppHeader for the rationale. `getCachedAuthUser`
+  // + cached `createClient` collapse three sequential auth calls per
+  // /app/* render into one shared call.
+  const { user } = await getCachedAuthUser();
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
   const isOwner = isOwnerEmail(user?.email);
 
   let avatarUrl: string | null = null;

@@ -16,7 +16,7 @@ import { ArrowRight } from "@phosphor-icons/react/dist/ssr";
  * hub feels like the rest of the app, with a brand-orange status pill in
  * the corner and a Phosphor icon block at the top.
  */
-type StatusTone = "preview" | "planned" | "ready";
+type StatusTone = "preview" | "planned" | "ready" | "linked";
 
 interface AgentCardProps {
   icon: Icon;
@@ -31,6 +31,11 @@ const STATUS_CLASSES: Record<StatusTone, string> = {
   ready: "border-brand/40 bg-brand/10 text-brand",
   preview: "border-hivis/40 bg-hivis/10 text-hivis",
   planned: "border-ink-600 bg-ink-800 text-ink-300",
+  // Wave 18.1 — honesty — neutral ink tone for "Linked" cards
+  // (Materials Agent) so they visually read as navigation shortcuts,
+  // not as Live AI agents. Using the brand-orange `ready` tone made
+  // the Materials card look identical to the actually-Live cards.
+  linked: "border-ink-500/40 bg-ink-700/40 text-ink-200",
 };
 
 export function AgentCard({

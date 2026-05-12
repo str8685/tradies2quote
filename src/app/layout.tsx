@@ -159,6 +159,12 @@ export default function RootLayout({
   return (
     <html
       lang="en"
+      // Wave 18.1 — perf — the pre-hydration `THEME_INIT_SCRIPT` below
+      // intentionally writes `data-theme="..."` to <html> before React
+      // hydrates, so React's hydration check always flagged a mismatch
+      // here in dev. Suppress only on the <html> element so other
+      // mismatches still surface.
+      suppressHydrationWarning
       className={`${archivoblack.variable} ${ibmPlexSans.variable} ${ibmPlexMono.variable} h-full`}
     >
       <head>

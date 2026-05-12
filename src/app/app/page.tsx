@@ -9,6 +9,7 @@ import {
   Robot,
 } from "@phosphor-icons/react/dist/ssr";
 import { createClient } from "@/lib/supabase/server";
+import { getCachedAuthUser } from "@/lib/supabase/auth";
 import { formatCurrency, quoteNumber } from "@/lib/quote-defaults";
 import type { QuoteData, QuoteStatus } from "@/lib/quote-types";
 import { isOwnerEmail } from "@/lib/owner";
@@ -53,10 +54,9 @@ export default async function DashboardPage() {
   // `<DashboardSkeleton />`. Previously the entire page waited for two
   // queries before sending ANY HTML, which read as a blank screen on
   // first /app entry over 4G.
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // Wave 18.1 — perf — cached. The same `getUser()` call is reused by
+  // `<AppHeader>` and `<MobileBottomNav>` within this render.
+  const { user } = await getCachedAuthUser();
   if (!user) redirect("/login");
 
   const username = user.email?.split("@")[0] ?? "tradie";

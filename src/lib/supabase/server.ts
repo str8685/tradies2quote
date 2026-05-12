@@ -1,7 +1,19 @@
+import { cache } from "react";
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
 
-export async function createClient() {
+/**
+ * Wave 18.1 — perf — wrapped in React `cache()` so multiple
+ * `await createClient()` calls within a single server render share one
+ * client instance. Without this, `<AppHeader>` (which calls getUser +
+ * a profile read), the page component (which calls getUser + data
+ * queries), and `<MobileBottomNav>` (getUser + profile read) each
+ * created a fresh Supabase client and made a fresh network roundtrip
+ * to verify the JWT — three sequential ~100ms auth calls per /app/*
+ * page render. With `cache()` the work is deduped per render; the
+ * proxy / middleware still runs separately (different runtime).
+ */
+export const createClient = cache(async () => {
   const cookieStore = await cookies();
 
   return createServerClient(
@@ -25,4 +37,4 @@ export async function createClient() {
       },
     },
   );
-}
+});
