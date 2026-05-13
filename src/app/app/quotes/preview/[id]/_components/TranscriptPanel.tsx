@@ -121,9 +121,19 @@ export function TranscriptPanel({ quoteId, transcript }: Props) {
       <div className="flex items-center justify-between gap-2">
         <p className="t2q-section-label">{"// transcript"}</p>
         {transcript.fallback === "summary_failed" && (
-          <span className="inline-flex items-center gap-1 rounded-sm border border-ink-600 bg-ink-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-[0.2em] text-ink-400">
-            <WarningCircle size={10} weight="bold" />
-            ai summary unavailable
+          // Wave 19.5 — bumped from a muted ink-400 corner badge to a
+          // hivis warning pill so silent AI failures actually announce
+          // themselves. Founder-facing observability: if you ever see
+          // this pill on a real quote, the Anthropic call didn't fire
+          // and the quote was built by the deterministic regex pass
+          // alone. Pair this with the matching `[transcript] fallback`
+          // line in /api/quotes/generate/route.ts → Vercel runtime logs.
+          <span
+            data-testid="transcript-ai-fallback-pill"
+            className="inline-flex items-center gap-1.5 rounded-sm border border-hivis/40 bg-hivis/10 px-2 py-1 font-mono text-[11px] uppercase tracking-[0.18em] text-hivis"
+          >
+            <WarningCircle size={12} weight="fill" />
+            AI skipped · rules only
           </span>
         )}
       </div>

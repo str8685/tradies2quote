@@ -25,7 +25,7 @@ const FAQS = [
   {
     slug: "regions",
     q: "What if I'm in NZ / AU / UK / US / CA?",
-    a: "We auto-handle GST, VAT, sales tax — set your country in settings and it just works.",
+    a: "NZ today — that's where the beta is live with GST 15% baked in. AU, UK, US and CA are queued; drop your country at signup and we'll email you the day it switches on in your region.",
   },
   {
     slug: "edit-quote",
@@ -35,7 +35,7 @@ const FAQS = [
   {
     slug: "data-safety",
     q: "Is my data safe?",
-    a: "Encrypted in transit and at rest. We never share your client list. Cancel anytime and export everything.",
+    a: "Your client list is yours. We never sell it, never share it, and you can export the whole lot to a CSV any time. Encrypted in transit and at rest, hosted on Supabase.",
   },
   {
     slug: "replaces-jms",

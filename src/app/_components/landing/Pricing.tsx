@@ -55,7 +55,6 @@ const TIERS = [
       "Everything in Crew",
       "Up to 20 users",
       "Custom terms templates",
-      "API + webhooks",
       "Dedicated success mate",
     ],
   },
@@ -75,11 +74,14 @@ export function Pricing() {
         <div className="text-center max-w-2xl mx-auto mb-16">
           <div className="t2q-section-label mb-4 mx-auto inline-block">{"// pricing"}</div>
           <h2 className="font-display text-4xl sm:text-5xl lg:text-6xl tracking-tighter uppercase leading-[0.95]">
-            Cheaper than a coffee a day. <br />
-            <span className="text-brand">Wins back your weekends.</span>
+            Less than a box of screws. <br />
+            <span className="text-brand">Saves your Sundays.</span>
           </h2>
           <p className="mt-5 text-lg text-ink-200">
             7-day free trial. No credit card. Cancel by text if you want.
+          </p>
+          <p className="mt-3 font-mono text-xs uppercase tracking-[0.2em] text-hivis">
+            {"// beta tradies pay $0 until launch — these rates lock when we go live"}
           </p>
         </div>
 
@@ -127,7 +129,7 @@ export function Pricing() {
                   data-testid={`pricing-cta-${t.slug}`}
                   className={`${t.highlight ? "t2q-btn-primary" : "t2q-btn-ghost"} w-full`}
                 >
-                  Start 7-day trial
+                  Join the beta
                 </Link>
               </Magnetic>
             </TiltCard>

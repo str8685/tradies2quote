@@ -1,4 +1,3 @@
-import Image from "next/image";
 import {
   MapPin,
   ShieldCheck,
@@ -6,8 +5,11 @@ import {
   HandPalm,
 } from "@phosphor-icons/react/dist/ssr";
 
-const FOUNDER_PORTRAIT =
-  "https://images.unsplash.com/photo-1616179283726-e96f7aa16a56?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA3MDR8MHwxfHNlYXJjaHwxfHxjb25zdHJ1Y3Rpb24lMjB3b3JrZXIlMjB3b3Jrc2l0ZSUyMHBvcnRyYWl0fGVufDB8fHx8MTc3ODExMDM5MXww&ixlib=rb-4.1.0&q=85";
+// Wave 19.2 — removed the Unsplash stock portrait that was being shown
+// next to the bio with the alt text "Challis Samu, founder of
+// tradies2Quote". Reverse-image-searchable credibility risk. Bio reads
+// honestly on its own; swap a real on-site photo back in here when one
+// is ready.
 
 const PILLARS = [
   {
@@ -55,16 +57,7 @@ export function FounderStory() {
               <span className="text-brand">For builders.</span>
             </h2>
           </div>
-          <div className="lg:col-span-7 lg:pt-4 flex items-start gap-5">
-            <div className="relative shrink-0 w-20 h-20 md:w-24 md:h-24 border-2 border-ink-600 overflow-hidden rounded-sm">
-              <Image
-                src={FOUNDER_PORTRAIT}
-                alt="Challis Samu, founder of tradies2Quote"
-                fill
-                sizes="96px"
-                className="object-cover grayscale"
-              />
-            </div>
+          <div className="lg:col-span-7 lg:pt-4">
             <p className="text-lg text-ink-200 leading-relaxed">
               I&apos;m Challis Samu — qualified builder, running STR8 Builders out of NZ. I built
               this for myself first because I was sick of losing Sundays to quoting. Now it&apos;s

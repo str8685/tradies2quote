@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { List, X } from "@phosphor-icons/react";
 import { ThemeToggle } from "./ThemeToggle";
+import { Logo } from "./Logo";
 
 // Wave 12.3 — InstallPWAButton removed from the landing top bar.
 // The floating Install pill at <FloatingInstallButton /> (mounted in
@@ -41,21 +42,18 @@ export function Header() {
         <Link
           href="/"
           data-testid="nav-logo"
-          className="group inline-flex items-center"
+          className="group inline-flex items-center text-white"
           aria-label="tradies2Quote home"
         >
-          {/* Wave 10.2 — new Tradies2Quote brand mark.
-              `public/logo-horizontal.png` ships as a transparent PNG; the
-              white-pill wrapper keeps the dark T/Q + wordmark readable
-              on both the cream light theme and the dark theme. */}
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src="/logo-horizontal.png"
-            alt="Tradies2Quote"
-            width={380}
-            height={100}
-            className="block h-9 w-auto rounded-md bg-white px-2 py-1 shadow-[0_1px_0_rgba(255,255,255,0.04)] sm:h-10"
-          />
+          {/* Wave 19.4 — replaced the PNG-in-a-white-pill with the
+              first-class <Logo /> SVG mark. LogoMark's caution-tape
+              ring + ²Q monogram is purpose-built for dark backgrounds
+              (no pill needed) and the wordmark inherits text-white
+              from this Link, so the brand reads cleanly on the
+              ink-950 header instead of looking like a temporary
+              sticker. The PNG file in /public is left in place for
+              now in case it's referenced elsewhere (og-image, etc). */}
+          <Logo size={36} />
         </Link>
 
         <nav className="hidden md:flex items-center gap-8" data-testid="nav-primary">
@@ -85,7 +83,7 @@ export function Header() {
             data-testid="nav-start-free"
             className="inline-flex items-center h-10 px-4 bg-brand text-ink-900 font-display text-sm tracking-tight uppercase rounded-sm hover:bg-hivis transition-colors"
           >
-            Start free
+            Get beta access
           </Link>
         </div>
 
@@ -112,7 +110,7 @@ export function Header() {
                 href={l.href}
                 data-testid={`nav-mobile-link-${l.href.replace("#", "")}`}
                 onClick={() => setOpen(false)}
-                className="py-2 text-base text-ink-200"
+                className="py-3 text-base text-ink-200"
               >
                 {l.label}
               </a>
@@ -132,7 +130,7 @@ export function Header() {
                 className="flex-1 t2q-btn-primary text-center"
                 onClick={() => setOpen(false)}
               >
-                Start free
+                Get beta access
               </Link>
             </div>
             {/* Install CTA moved to the floating bottom-right pill —

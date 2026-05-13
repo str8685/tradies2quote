@@ -6,14 +6,12 @@ import { HowItWorks } from "./_components/landing/HowItWorks";
 import { Features } from "./_components/landing/Features";
 import { FounderStory } from "./_components/landing/FounderStory";
 import { Pricing } from "./_components/landing/Pricing";
-import { Testimonials } from "./_components/landing/Testimonials";
 import { FAQ } from "./_components/landing/FAQ";
 import { FinalCta } from "./_components/landing/FinalCta";
 import { Footer } from "./_components/landing/Footer";
 import { ScrollProgress } from "./_components/landing/ScrollProgress";
 import { CursorSpotlight } from "./_components/landing/CursorSpotlight";
 import TapeDivider from "./_components/landing/TapeDivider";
-import LoadingScreen from "./_components/landing/LoadingScreen";
 import InstallNudge from "./_components/landing/InstallNudge";
 import { softwareApplicationLd } from "./_components/landing/structured-data";
 
@@ -21,11 +19,15 @@ import { softwareApplicationLd } from "./_components/landing/structured-data";
  * Wave 10.5 — `<StatStrip />` and `<LiveTicker />` were removed from the
  * landing because they showed invented platform numbers (12,847 quotes,
  * $4.2M invoiced, 1,243 tradies, fake "Riki T. sent quote $3,420"
- * notifications). The components themselves are kept on disk (in
- * `./_components/landing/`) so the count-up animation logic can be
- * re-used later against real Supabase aggregates, but the landing no
- * longer mounts them. The page reads honestly: Hero → Pain → product
- * → pricing → FAQ → CTA, no fabricated social proof.
+ * notifications).
+ *
+ * Wave 19.2 — `<Testimonials />` removed for the same reason: the three
+ * quotes ("Riki T. · Builder · Auckland", "Macca · Plumber · Brisbane",
+ * "James W. · Sparkie · Manchester") were placeholder copy attributed
+ * to non-existent customers. The component is kept on disk so it can
+ * be re-mounted once real beta-tradie quotes (with consent) are ready
+ * to swap in. The page reads honestly: Hero → Pain → product → pricing
+ * → FAQ → CTA, no fabricated social proof.
  */
 export default function HomePage() {
   return (
@@ -42,12 +44,15 @@ export default function HomePage() {
         <Features />
         <FounderStory />
         <Pricing />
-        <Testimonials />
         <FAQ />
         <FinalCta />
       </main>
       <Footer />
-      <LoadingScreen />
+      {/* Wave 19.4 — <LoadingScreen /> removed from the marketing
+          landing. The Hero phone mockup is the LCP and shouldn't be
+          covered by a 1.7s splash overlay on cold loads. The in-app
+          splash stays mounted at src/app/app/layout.tsx for the
+          authenticated surface where it makes more sense. */}
       <InstallNudge />
 
       <script

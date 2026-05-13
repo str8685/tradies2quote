@@ -1,31 +1,42 @@
 "use client";
 
 import Link from "next/link";
-import { motion } from "framer-motion";
-import { useEffect, useRef, useState } from "react";
+import { motion, useReducedMotion, type Variants } from "framer-motion";
+import { useRef } from "react";
 import { FileText, Receipt, ArrowRight, Check } from "@phosphor-icons/react";
 import TapeProgress from "./TapeProgress";
 import { Magnetic } from "./Magnetic";
 
-function CountUp({ to = 4820, duration = 1400 }: { to?: number; duration?: number }) {
-  const [n, setN] = useState(0);
-  useEffect(() => {
-    const t0 = performance.now();
-    let raf: number;
-    const step = (t: number) => {
-      const k = Math.min(1, (t - t0) / duration);
-      const ease = 1 - Math.pow(1 - k, 3);
-      setN(Math.floor(to * ease));
-      if (k < 1) raf = requestAnimationFrame(step);
-    };
-    raf = requestAnimationFrame(step);
-    return () => cancelAnimationFrame(raf);
-  }, [to, duration]);
-  return <>{n.toLocaleString()}</>;
-}
+// Wave 19.3 — Hero motion amplification.
+//
+// The Hero already had a 3D phone with cursor parallax + animated
+// background blobs, but the headline, CTAs and floating cards were
+// doing flat fade+y entrances that read as polite. This pass swaps
+// them for spring-driven, overlapping motion that matches the
+// brutalist tradie voice:
+//
+//   - H1 white lines slide up word-by-word out of an overflow-hidden
+//     line wrapper (each word as its own motion.span).
+//   - The orange brand line ("Send the quote.") gets a left-to-right
+//     clip-path wipe instead of a stagger, so it reads as the
+//     showpiece phrase rather than blending in.
+//   - Eyebrow drops with a spring + scale overshoot.
+//   - Subhead, CTA row and trust strip cascade in with bigger
+//     distances (40-50px) and overlapping delays.
+//   - Phone entrance gains a pronounced spring drop (y:80, rotate:-8°)
+//     and the entire phone column then floats gently forever.
+//   - PAID stamp slams in with rotation overshoot; invoice card
+//     swings up from below.
+//
+// useReducedMotion() short-circuits every animation to a flat opacity
+// fade for users who have prefers-reduced-motion: reduce.
+const HERO_LINE_1 = ["Talk", "the", "job."] as const;
+const HERO_LINE_2 = ["Send", "the", "quote."] as const;
+const HERO_LINE_3 = ["Get", "paid", "faster."] as const;
 
 export function Hero() {
   const stageRef = useRef<HTMLDivElement>(null);
+  const reduce = useReducedMotion();
 
   function onMove(e: React.MouseEvent) {
     const el = stageRef.current;
@@ -43,9 +54,126 @@ export function Hero() {
     el.style.setProperty("--ry", "0deg");
   }
 
-  // CountUp is part of the design language but isn't displayed in this hero —
-  // exporting via void prevents an unused-import lint.
-  void CountUp;
+  // Word variant — used by every staggered headline word. With
+  // reduce-motion on, collapse to a flat opacity fade.
+  //
+  // Wave 19.6 — switched from y:"115%" (which required the parent
+  // line-wrapper to be `overflow-hidden` so the words could "slide
+  // up out of a clipped band") to a small absolute y:30 translate.
+  // The clipped-wrapper trick broke at mobile widths because each
+  // H1 line wraps to two visual lines below 640px and the
+  // `overflow-hidden` on the wrapper hid the second wrapped line —
+  // so on iPhone the hero rendered as "TALK THE [empty] GET PAID"
+  // with the periods, "JOB.", "SEND THE QUOTE." and "FASTER." all
+  // invisibly clipped. Plain y:30 + opacity gives the same
+  // perceptual slide-up effect without needing to clip the parent.
+  const word: Variants = reduce
+    ? {
+        hidden: { opacity: 0 },
+        visible: { opacity: 1, transition: { duration: 0.25 } },
+      }
+    : {
+        hidden: { y: 30, opacity: 0 },
+        visible: {
+          y: 0,
+          opacity: 1,
+          transition: { type: "spring", stiffness: 110, damping: 16 },
+        },
+      };
+
+  // Container variant for a stagger-children line. Each line owns its
+  // own delay so we can overlap line 2's wipe with the tail of line 1
+  // and the head of line 3.
+  const lineContainer = (delay: number): Variants => ({
+    hidden: {},
+    visible: {
+      transition: {
+        delayChildren: reduce ? 0 : delay,
+        staggerChildren: reduce ? 0 : 0.07,
+      },
+    },
+  });
+
+  // Inline animation prop bundles. Spreading these onto each motion
+  // component keeps the JSX readable.
+  const eyebrowAnim = reduce
+    ? { initial: { opacity: 0 }, animate: { opacity: 1 }, transition: { duration: 0.4 } }
+    : {
+        initial: { opacity: 0, y: -24, scale: 0.85 },
+        animate: { opacity: 1, y: 0, scale: 1 },
+        transition: { type: "spring" as const, stiffness: 230, damping: 14, delay: 0.05 },
+      };
+
+  const brandWipe = reduce
+    ? { initial: { opacity: 0 }, animate: { opacity: 1 }, transition: { duration: 0.4, delay: 0.4 } }
+    : {
+        initial: { clipPath: "inset(0 100% 0 0)" },
+        animate: { clipPath: "inset(0 0% 0 0)" },
+        transition: { duration: 0.85, delay: 0.55, ease: [0.65, 0, 0.35, 1] as const },
+      };
+
+  const subheadAnim = reduce
+    ? { initial: { opacity: 0 }, animate: { opacity: 1 }, transition: { duration: 0.4, delay: 0.45 } }
+    : {
+        initial: { opacity: 0, y: 50 },
+        animate: { opacity: 1, y: 0 },
+        transition: { type: "spring" as const, stiffness: 80, damping: 18, delay: 0.95 },
+      };
+
+  const ctaRowAnim = reduce
+    ? { initial: { opacity: 0 }, animate: { opacity: 1 }, transition: { duration: 0.4, delay: 0.6 } }
+    : {
+        initial: { opacity: 0, y: 60 },
+        animate: { opacity: 1, y: 0 },
+        transition: { type: "spring" as const, stiffness: 110, damping: 13, delay: 1.1 },
+      };
+
+  const trustStripAnim = reduce
+    ? { initial: { opacity: 0 }, animate: { opacity: 1 }, transition: { duration: 0.4, delay: 0.75 } }
+    : {
+        initial: { opacity: 0, x: -50 },
+        animate: { opacity: 1, x: 0 },
+        transition: { duration: 0.7, delay: 1.35, ease: [0.22, 1, 0.36, 1] as const },
+      };
+
+  // Phone column — outer wrapper does the slow infinite idle float;
+  // inner div does the entrance. Cursor parallax stays on the inner
+  // div (untouched) so the float and parallax compose without fighting.
+  const phoneIdleAnim = reduce
+    ? {}
+    : {
+        animate: { y: [0, -10, 0] as number[] },
+        transition: {
+          duration: 5.5,
+          repeat: Infinity,
+          ease: "easeInOut" as const,
+          delay: 1.6,
+        },
+      };
+
+  const phoneEntranceAnim = reduce
+    ? { initial: { opacity: 0 }, animate: { opacity: 1 }, transition: { duration: 0.5 } }
+    : {
+        initial: { opacity: 0, scale: 0.85, y: 80, rotate: -8 },
+        animate: { opacity: 1, scale: 1, y: 0, rotate: 0 },
+        transition: { type: "spring" as const, stiffness: 70, damping: 13, delay: 0.3 },
+      };
+
+  const paidStampAnim = reduce
+    ? { initial: { opacity: 0 }, animate: { opacity: 1 }, transition: { duration: 0.5, delay: 0.9 } }
+    : {
+        initial: { opacity: 0, scale: 0.4, rotate: -45 },
+        animate: { opacity: 1, scale: 1, rotate: -12 },
+        transition: { type: "spring" as const, stiffness: 200, damping: 11, delay: 1.3 },
+      };
+
+  const invoiceCardAnim = reduce
+    ? { initial: { opacity: 0 }, animate: { opacity: 1 }, transition: { duration: 0.5, delay: 0.7 } }
+    : {
+        initial: { opacity: 0, y: 90, rotate: 18 },
+        animate: { opacity: 1, y: 0, rotate: 3 },
+        transition: { type: "spring" as const, stiffness: 90, damping: 12, delay: 1.05 },
+      };
 
   return (
     <section
@@ -62,9 +190,7 @@ export function Hero() {
       <div className="relative max-w-7xl mx-auto px-6 md:px-12 pt-24 pb-12 lg:pt-32 lg:pb-16 grid lg:grid-cols-12 gap-10 items-center">
         <div className="lg:col-span-7">
           <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
+            {...eyebrowAnim}
             className="inline-flex items-center gap-2 mb-6 border border-ink-600 px-3 py-1.5 rounded-sm bg-ink-800"
           >
             <span className="w-2 h-2 rounded-full bg-brand animate-pulse" />
@@ -73,23 +199,64 @@ export function Hero() {
             </span>
           </motion.div>
 
-          <motion.h1
-            initial={{ opacity: 0, y: 24 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.05 }}
-            className="font-display text-5xl sm:text-6xl lg:text-7xl xl:text-8xl tracking-tighter leading-[0.9] text-white uppercase"
-          >
-            Quote the job.
-            <br />
-            <span className="text-brand">Send the invoice.</span>
-            <br />
-            <span className="text-white/90">Get paid faster.</span>
-          </motion.h1>
+          <h1 className="font-display text-5xl sm:text-6xl lg:text-7xl xl:text-8xl tracking-tighter leading-[0.9] text-white uppercase">
+            {/* Wave 19.6 — dropped overflow-hidden + pb/-mb hack from
+                each line wrapper. At mobile widths the H1 wraps each
+                line to two visual lines and overflow-hidden was clipping
+                the second wrapped line, hiding "JOB.", the entire orange
+                "SEND THE QUOTE." line, and "FASTER." on iPhone. The word
+                slide-up is now a plain y:30 translate which doesn't
+                require a clipped parent. The brand-line clip-path wipe
+                survives multi-line wrapping fine — the wipe direction
+                still reads left-to-right because clip-path on a block
+                element operates on its bounding box. */}
+            <motion.span
+              variants={lineContainer(0.1)}
+              initial="hidden"
+              animate="visible"
+              className="block"
+            >
+              {HERO_LINE_1.map((w, i) => (
+                <motion.span
+                  key={`l1-${i}`}
+                  variants={word}
+                  className="inline-block mr-[0.22em] last:mr-0"
+                >
+                  {w}
+                </motion.span>
+              ))}
+            </motion.span>
+
+            {/* Line 2 — orange wipes in from the left via clip-path. */}
+            <motion.span
+              {...brandWipe}
+              className="block text-brand"
+            >
+              {HERO_LINE_2.join(" ")}
+            </motion.span>
+
+            {/* Line 3 — white words again, delayed so they overlap the
+                tail end of line 2's wipe. */}
+            <motion.span
+              variants={lineContainer(0.95)}
+              initial="hidden"
+              animate="visible"
+              className="block text-white/90"
+            >
+              {HERO_LINE_3.map((w, i) => (
+                <motion.span
+                  key={`l3-${i}`}
+                  variants={word}
+                  className="inline-block mr-[0.22em] last:mr-0"
+                >
+                  {w}
+                </motion.span>
+              ))}
+            </motion.span>
+          </h1>
 
           <motion.p
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.15 }}
+            {...subheadAnim}
             className="mt-7 text-lg md:text-xl text-ink-200 max-w-xl leading-relaxed"
           >
             Stop losing your weekends. Talk through the job once and watch a branded
@@ -98,9 +265,7 @@ export function Hero() {
           </motion.p>
 
           <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.25 }}
+            {...ctaRowAnim}
             className="mt-10 flex flex-wrap gap-4"
           >
             <Magnetic strength={0.22}>
@@ -122,36 +287,40 @@ export function Hero() {
           </motion.div>
 
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.5, duration: 0.6 }}
+            {...trustStripAnim}
             className="mt-10 flex flex-wrap items-center gap-6 text-ink-300 font-mono text-xs uppercase tracking-[0.18em]"
           >
             <span>No credit card</span>
-            <span className="w-1 h-1 rounded-full bg-ink-500" />
+            <span aria-hidden="true" className="w-1 h-1 rounded-full bg-ink-500" />
             <span>Cancel anytime</span>
-            <span className="w-1 h-1 rounded-full bg-ink-500" />
+            <span aria-hidden="true" className="w-1 h-1 rounded-full bg-ink-500" />
             <span>Built for tradies</span>
           </motion.div>
         </div>
 
-        {/* 3D phone mockup */}
+        {/* 3D phone mockup. Wrapped in an outer motion.div that does
+            the slow infinite idle float (y: 0 → -10 → 0). The inner
+            motion.div handles the dramatic entrance; cursor parallax
+            stays on the same inner div via the inline transform that
+            reads --rx/--ry CSS variables set by onMove on the parent
+            section. The three layers compose without fighting: outer
+            translates Y, inner does scale/rotate entrance, inline
+            style does the X/Y rotation parallax. */}
         <div className="lg:col-span-5 relative">
-          <div
-            ref={stageRef}
-            className="t2q-stage relative mx-auto w-full max-w-[380px] aspect-[9/19]"
-          >
-            <motion.div
-              initial={{ opacity: 0, scale: 0.92, rotate: -3 }}
-              animate={{ opacity: 1, scale: 1, rotate: 0 }}
-              transition={{ duration: 0.7 }}
-              className="relative w-full h-full"
-              style={{
-                transform: "rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg)) translateZ(0)",
-                transition: "transform 200ms ease-out",
-                filter: "drop-shadow(0 30px 60px rgba(0,0,0,0.55))",
-              }}
+          <motion.div {...phoneIdleAnim}>
+            <div
+              ref={stageRef}
+              className="t2q-stage relative mx-auto w-full max-w-[380px] aspect-[9/19]"
             >
+              <motion.div
+                {...phoneEntranceAnim}
+                className="relative w-full h-full"
+                style={{
+                  transform: "rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg)) translateZ(0)",
+                  transition: "transform 200ms ease-out",
+                  filter: "drop-shadow(0 30px 60px rgba(0,0,0,0.55))",
+                }}
+              >
               {/* Titanium frame */}
               <div
                 className="absolute inset-0 rounded-[48px]"
@@ -171,8 +340,13 @@ export function Hero() {
               {/* Inner bezel */}
               <div className="absolute inset-[6px] rounded-[42px] bg-black overflow-hidden">
                 <div className="absolute inset-[3px] rounded-[39px] bg-white overflow-hidden">
-                  {/* Status bar */}
-                  <div className="relative z-20 flex justify-between items-center px-7 pt-2.5 pb-1 text-[10px] font-mono text-ink-900 bg-white">
+                  {/* Status bar — decorative chrome inside the phone mockup.
+                      Screen readers shouldn't announce "9:41 5G" out of
+                      context, so the whole bar is aria-hidden. */}
+                  <div
+                    aria-hidden="true"
+                    className="relative z-20 flex justify-between items-center px-7 pt-2.5 pb-1 text-[10px] font-mono text-ink-900 bg-white"
+                  >
                     <span className="font-semibold tracking-tight">9:41</span>
                     <span className="flex items-center gap-1.5">
                       <span className="flex items-end gap-[1.5px] h-2.5">
@@ -355,13 +529,12 @@ export function Hero() {
               </div>
             </motion.div>
 
-            {/* Floating PAID stamp */}
+            {/* Floating PAID stamp — slams in with rotation overshoot
+                (-45° → -12°) on a high-stiffness spring for snap. */}
             <motion.div
-              initial={{ opacity: 0, scale: 0.7, rotate: -20 }}
-              animate={{ opacity: 1, scale: 1, rotate: -12 }}
-              transition={{ delay: 1.4, type: "spring", stiffness: 220 }}
+              {...paidStampAnim}
               style={{ zIndex: 30 }}
-              className="hidden lg:block absolute -left-20 top-12 w-32 px-4 py-3 bg-hivis text-ink-900 border-2 border-ink-900 t2q-shadow-brutal rotate-[-12deg]"
+              className="hidden lg:block absolute -left-20 top-12 w-32 px-4 py-3 bg-hivis text-ink-900 border-2 border-ink-900 t2q-shadow-brutal"
             >
               <div className="font-mono text-[9px] uppercase tracking-[0.22em] opacity-70">
                 Status
@@ -374,13 +547,12 @@ export function Hero() {
               </div>
             </motion.div>
 
-            {/* Floating invoice card */}
+            {/* Floating invoice card — swings up from below (y:90,
+                rotate:18°) and lands at rotate:3°. */}
             <motion.div
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.6 }}
+              {...invoiceCardAnim}
               style={{ zIndex: 30 }}
-              className="hidden lg:block absolute -right-12 -bottom-12 w-56 bg-ink-900 text-white p-4 rounded-sm border border-ink-600 t2q-shadow-brutal-yellow rotate-[3deg]"
+              className="hidden lg:block absolute -right-12 -bottom-12 w-56 bg-ink-900 text-white p-4 rounded-sm border border-ink-600 t2q-shadow-brutal-yellow"
             >
               <div className="flex items-center justify-between mb-2">
                 <span className="font-display text-[10px] uppercase tracking-tight text-hivis">
@@ -403,7 +575,8 @@ export function Hero() {
                 Sent · viewed by client
               </div>
             </motion.div>
-          </div>
+            </div>
+          </motion.div>
         </div>
       </div>
 
