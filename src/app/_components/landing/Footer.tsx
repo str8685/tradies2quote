@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { LEGAL } from "@/lib/legal";
+import { Logo } from "./Logo";
 
 export function Footer() {
   return (
@@ -10,17 +11,12 @@ export function Footer() {
       <div className="max-w-7xl mx-auto px-6 md:px-12">
         <div className="grid md:grid-cols-5 gap-10 pt-8 border-t border-ink-700">
           <div className="md:col-span-2">
-            {/* Wave 12.3 — new Tradies2Quote brand mark (horizontal
-                lockup on a small white pill, matches the rest of the
-                site). Replaces the old inline Site-Safe Badge. */}
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="/logo-horizontal.png"
-              alt="Tradies2Quote"
-              width={380}
-              height={100}
-              className="block h-9 w-auto rounded-sm bg-white px-2 py-1"
-            />
+            {/* Wave 19.8 — swapped the legacy logo-horizontal.png +
+                white-pill wrapper for the new <Logo /> SVG lockup.
+                Inherits text-white from the footer for the T/Q letters;
+                the orange 2 is hardcoded in LogoMark. No pill needed
+                because the SVG renders cleanly on the dark footer. */}
+            <Logo size={32} className="text-white" />
             <p className="mt-4 text-ink-400 text-sm max-w-sm">
               Voice in. Quote out. Built by a builder running STR8 Builders in New Zealand.
             </p>

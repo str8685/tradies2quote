@@ -46,14 +46,12 @@ export function Header() {
           aria-label="tradies2Quote home"
         >
           {/* Wave 19.4 — replaced the PNG-in-a-white-pill with the
-              first-class <Logo /> SVG mark. LogoMark's caution-tape
-              ring + ²Q monogram is purpose-built for dark backgrounds
-              (no pill needed) and the wordmark inherits text-white
-              from this Link, so the brand reads cleanly on the
-              ink-950 header instead of looking like a temporary
-              sticker. The PNG file in /public is left in place for
-              now in case it's referenced elsewhere (og-image, etc). */}
-          <Logo size={36} />
+              first-class <Logo /> SVG mark. Wave 19.8 — swapped the
+              caution-tape SVG for the new T2Q wordmark. Wave 19.9 —
+              wordmark hides on mobile so the burger menu has room
+              to breathe; T2Q alone reads as the brand on a phone
+              and TRADIES2QUOTE rejoins it on tablet/desktop. */}
+          <Logo size={36} wordmarkClassName="hidden md:inline" />
         </Link>
 
         <nav className="hidden md:flex items-center gap-8" data-testid="nav-primary">

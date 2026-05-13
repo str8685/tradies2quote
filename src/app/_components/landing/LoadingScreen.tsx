@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import Image from "next/image";
 import TapeProgress from "./TapeProgress";
+import { LogoMark } from "./Logo";
 
 /**
  * Brand splash / loading screen.
@@ -139,27 +139,21 @@ export default function LoadingScreen({
       <div className="absolute -bottom-40 -left-40 w-[500px] h-[500px] rounded-full bg-hivis/10 blur-3xl animate-blob-slow" />
 
       <div className="relative flex flex-col items-center px-6">
-        {/* Wave 10.4 — splash now wears the new T2Q PNG mark.
-            The mark sits inside a small white-pill card with a
-            brand-orange glow shadow so the dark T/Q glyphs stay
-            readable against the dark splash background, without
-            turning into a hard white square.
-            Wave 17 — switched to next/image with priority so the
-            LCP element of the splash gets preloaded during HTML
-            parsing. */}
-        <div className="t2q-splash-logo rounded-2xl bg-white p-3 shadow-[0_0_0_1px_rgba(255,255,255,0.06),0_18px_48px_-12px_rgba(255,95,21,0.35)]">
-          <Image
-            src="/logo-mark.png"
-            alt="Tradies2Quote"
-            width={160}
-            height={136}
-            priority
-            className="block h-20 w-auto sm:h-24"
-          />
+        {/* Wave 19.8 — splash logo swapped from the legacy
+            logo-mark.png (which sat in a white pill on the dark
+            splash) to the new T2Q SVG LogoMark. The SVG inherits
+            text-white from the wrapper for the T and Q glyphs and
+            the brand-orange 2 is hardcoded in the SVG, so we no
+            longer need the white pill or the brand-glow shadow —
+            it reads clean on the dark splash bg. Dropping the
+            next/image import too; SVG is inlined into the document
+            so no separate request and no LCP cost. */}
+        <div className="t2q-splash-logo text-white">
+          <LogoMark size={96} />
         </div>
 
         <div className="t2q-splash-title mt-6 font-display text-2xl sm:text-3xl uppercase tracking-tighter text-white text-center leading-[0.9]">
-          tradies<span className="text-brand">²</span>Quote
+          TRADIES<span className="text-brand">2</span>QUOTE
         </div>
 
         <div className="t2q-splash-tagline mt-2 font-mono text-[10px] uppercase tracking-[0.32em] text-brand">

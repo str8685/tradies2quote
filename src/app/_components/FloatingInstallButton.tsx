@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import { DownloadSimple, X } from "@phosphor-icons/react";
 import {
   isIOSUserAgent,
@@ -47,6 +48,15 @@ type State =
   | { mode: "ios" };
 
 export function FloatingInstallButton() {
+  // Wave 19.7 — hide on the marketing landing. The pill was anchored
+  // bottom-right and on mobile sat directly on top of the hero "Get
+  // beta access" CTA, creating a tap-collision risk. The InstallNudge
+  // toast lower on the page already nudges PWA install for landing
+  // visitors; the floating pill is more useful inside /app where it
+  // stops covering primary CTAs.
+  const pathname = usePathname();
+  const isMarketingLanding = pathname === "/";
+
   const [state, setState] = useState<State>({ mode: "hidden" });
   const [showIOSSheet, setShowIOSSheet] = useState(false);
   const [dismissed, setDismissed] = useState(false);
@@ -114,6 +124,7 @@ export function FloatingInstallButton() {
   }, []);
 
   if (state.mode === "hidden") return null;
+  if (isMarketingLanding) return null;
 
   return (
     <>

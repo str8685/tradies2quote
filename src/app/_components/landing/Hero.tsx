@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { motion, useReducedMotion, type Variants } from "framer-motion";
-import { useRef } from "react";
+import { Fragment, useRef } from "react";
 import { FileText, Receipt, ArrowRight, Check } from "@phosphor-icons/react";
 import TapeProgress from "./TapeProgress";
 import { Magnetic } from "./Magnetic";
@@ -128,12 +128,22 @@ export function Hero() {
         transition: { type: "spring" as const, stiffness: 110, damping: 13, delay: 1.1 },
       };
 
+  // Wave 19.7 — dropped the x:-50 slide on the trust strip. On
+  // mobile if framer-motion's `animate` didn't complete (Safari
+  // deferral, scroll-during-mount race), the strip got stuck 50px
+  // to the left of its parent. With `flex flex-wrap` that meant the
+  // wrapped second line ("Built for tradies") inherited the offset
+  // and "BUI" disappeared off the left edge of the viewport. Plain
+  // opacity fade is bulletproof — the element always lands at its
+  // natural x:0 regardless of motion completion. Also pulled the
+  // delay down from 1.35s to 0.95s so the strip appears with the
+  // CTA cascade rather than long after.
   const trustStripAnim = reduce
-    ? { initial: { opacity: 0 }, animate: { opacity: 1 }, transition: { duration: 0.4, delay: 0.75 } }
+    ? { initial: { opacity: 0 }, animate: { opacity: 1 }, transition: { duration: 0.4, delay: 0.6 } }
     : {
-        initial: { opacity: 0, x: -50 },
-        animate: { opacity: 1, x: 0 },
-        transition: { duration: 0.7, delay: 1.35, ease: [0.22, 1, 0.36, 1] as const },
+        initial: { opacity: 0 },
+        animate: { opacity: 1 },
+        transition: { duration: 0.6, delay: 0.95 },
       };
 
   // Phone column — outer wrapper does the slow infinite idle float;
@@ -210,6 +220,14 @@ export function Hero() {
                 survives multi-line wrapping fine — the wipe direction
                 still reads left-to-right because clip-path on a block
                 element operates on its bounding box. */}
+            {/* Wave 19.7 — added real space text nodes between word
+                spans (instead of relying on mr-[0.22em] margin alone)
+                so screen readers and SEO crawlers see "Talk the job"
+                as three words, not "Talkthejob" as one. The Fragment
+                wrapper carries the React key; the space is a sibling
+                text node between motion spans, so visual spacing comes
+                from the browser's natural word-spacing rather than a
+                manual margin. */}
             <motion.span
               variants={lineContainer(0.1)}
               initial="hidden"
@@ -217,13 +235,12 @@ export function Hero() {
               className="block"
             >
               {HERO_LINE_1.map((w, i) => (
-                <motion.span
-                  key={`l1-${i}`}
-                  variants={word}
-                  className="inline-block mr-[0.22em] last:mr-0"
-                >
-                  {w}
-                </motion.span>
+                <Fragment key={`l1-${i}`}>
+                  <motion.span variants={word} className="inline-block">
+                    {w}
+                  </motion.span>
+                  {i < HERO_LINE_1.length - 1 && " "}
+                </Fragment>
               ))}
             </motion.span>
 
@@ -244,13 +261,12 @@ export function Hero() {
               className="block text-white/90"
             >
               {HERO_LINE_3.map((w, i) => (
-                <motion.span
-                  key={`l3-${i}`}
-                  variants={word}
-                  className="inline-block mr-[0.22em] last:mr-0"
-                >
-                  {w}
-                </motion.span>
+                <Fragment key={`l3-${i}`}>
+                  <motion.span variants={word} className="inline-block">
+                    {w}
+                  </motion.span>
+                  {i < HERO_LINE_3.length - 1 && " "}
+                </Fragment>
               ))}
             </motion.span>
           </h1>
