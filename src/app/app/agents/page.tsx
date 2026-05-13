@@ -16,6 +16,7 @@ import { isOwnerEmail } from "@/lib/owner";
 import { AppHeader } from "../_components/AppHeader";
 import { AgentCard } from "./_components/AgentCard";
 import { QuoteReviewAgent } from "../_components/agents/QuoteReviewAgent";
+import { QuoteGenerationAgent } from "../_components/agents/QuoteGenerationAgent";
 import { CustomerReplyAgent } from "../_components/agents/CustomerReplyAgent";
 import { MaterialsTakeoffAgent } from "../_components/agents/MaterialsTakeoffAgent";
 import { PhotoPlanAgent } from "../_components/agents/PhotoPlanAgent";
@@ -91,6 +92,7 @@ export default async function AgentsPage() {
 
         {/* Runnable standalone agents */}
         <section className="mt-6 space-y-6" data-testid="runnable-agents">
+          <QuoteGenerationAgent />
           <CustomerReplyAgent />
           <MaterialsTakeoffAgent />
           <PhotoPlanAgent />
@@ -239,7 +241,8 @@ export default async function AgentsPage() {
             </p>
             <ul className="mt-3 space-y-1.5">
               {[
-                "Quote Builder (voice → quote AI pipeline)",
+                "Quote Builder (voice → quote AI pipeline, on /app/quotes/new)",
+                "Quote Generation Agent (stand-alone, mounted above)",
                 "Quote Review Agent (mounted above)",
                 "Compliance Agent (on quote preview)",
                 "Voice Cleanup Agent (on quote preview)",
