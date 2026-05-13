@@ -37,6 +37,17 @@ export default function AppLayout({
 }) {
   return (
     <div className="t2q-app-canvas min-h-screen overflow-x-hidden lg:grid lg:grid-cols-[24px_1fr_24px]">
+      {/*
+        Wave 19.10 — status-bar safe-area backdrop. A translucent
+        ink-950 strip sits behind the iOS notch / Android cutout so
+        long-scroll pages (e.g. quote preview's terms textarea) don't
+        bleed text through the status bar. Mounted at the /app shell
+        level only — marketing root is unaffected.
+      */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none fixed inset-x-0 top-0 z-50 h-[env(safe-area-inset-top)] bg-ink-950/75 backdrop-blur-sm"
+      />
       {/* Tape-measure brand splash. Renders once per session — the
           sessionStorage check inside the component decides whether to
           play or skip on each /app entry. Server-rendered visible so

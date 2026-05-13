@@ -17,6 +17,13 @@ type Props = {
   publicToken: string | null;
   hasPdf: boolean;
   onSaveBeforeSend?: () => Promise<boolean>;
+  /**
+   * Wave 19.10 — when true, the inline Send button is suppressed so
+   * the StickyActionBar can own the primary send action. Link / PDF
+   * affordances (status pill, public link, copy) still render so the
+   * operator can manage a sent quote without the duplicate trigger.
+   */
+  hideSendButton?: boolean;
 };
 
 type SendState = "idle" | "saving" | "generating" | "sending" | "sent" | "error";
@@ -41,6 +48,7 @@ export function SendQuoteButton({
   publicToken,
   hasPdf,
   onSaveBeforeSend,
+  hideSendButton = false,
 }: Props) {
   const router = useRouter();
   const [state, setState] = useState<SendState>("idle");
@@ -152,7 +160,7 @@ export function SendQuoteButton({
             {"// quote sent"}
           </p>
         )}
-        {!isAccepted && (
+        {!isAccepted && !hideSendButton && (
           <button
             type="button"
             data-testid="send-button"

@@ -4,7 +4,6 @@ import { useMemo, useState, useTransition } from "react";
 import {
   ArrowSquareOut,
   Calculator,
-  FloppyDisk,
   Plus,
   Sparkle,
   Trash,
@@ -29,6 +28,8 @@ import type { MaterialTakeoffResult } from "@/lib/materialCalculator";
 import { saveQuoteChanges } from "../actions";
 import { TakeoffPanel } from "./TakeoffPanel";
 import { SendQuoteButton } from "./SendQuoteButton";
+import { MobileCollapsibleCard } from "./MobileCollapsibleCard";
+import { StickyActionBar } from "./StickyActionBar";
 
 type Props = {
   quoteId: string;
@@ -211,6 +212,34 @@ export function QuoteEditor({
     .map((it, i) => ({ it, i }))
     .filter((x) => x.it.type === "other");
 
+  // Wave 19.10 — summary strings for the mobile-collapsible cards.
+  const materialMissingPrices = materialIndices.filter(
+    (x) => x.it.is_missing_price,
+  ).length;
+  const materialsSummary = [
+    "Materials",
+    `${materialIndices.length} item${materialIndices.length === 1 ? "" : "s"}`,
+    formatCurrency(totals.materials_subtotal, currency),
+    materialMissingPrices > 0
+      ? `(${materialMissingPrices} missing price${
+          materialMissingPrices === 1 ? "" : "s"
+        })`
+      : null,
+  ]
+    .filter((s): s is string => Boolean(s))
+    .join(" · ");
+  const labourSummary = [
+    "Labour",
+    `${labourIndices.length} item${labourIndices.length === 1 ? "" : "s"}`,
+    formatCurrency(totals.labour_subtotal, currency),
+  ].join(" · ");
+  const termsClauseCount = terms
+    .split(/\n\s*\n/)
+    .filter((s) => s.trim().length > 0).length;
+  const termsSummary = `Terms · ${termsClauseCount} clause${
+    termsClauseCount === 1 ? "" : "s"
+  } · tap to view`;
+
   const issueDate = formatIssueDate(createdAt);
   const validUntil = formatIssueDate(validUntilDate(createdAt, 30));
   const number = quoteNumber(quoteId, createdAt);
@@ -323,33 +352,42 @@ export function QuoteEditor({
         isAccepted={isAccepted}
       />
 
-      <ItemsSection
-        title="Materials"
-        accent="brand"
-        rows={materialIndices}
-        currency={currency}
-        libraryById={libraryById}
-        showBadges
-        onUpdate={updateItem}
-        onRemove={removeItem}
-        onAdd={() => addItem("material")}
-        addLabel="Add material"
-        disabled={isAccepted}
-      />
+      {/* Wave 19.10 — Materials section: mobile-collapsible behind a
+          summary line, always-expanded on md+. */}
+      <MobileCollapsibleCard
+        sectionId="materials"
+        summary={materialsSummary}
+      >
+        <ItemsSection
+          title="Materials"
+          accent="brand"
+          rows={materialIndices}
+          currency={currency}
+          libraryById={libraryById}
+          showBadges
+          onUpdate={updateItem}
+          onRemove={removeItem}
+          onAdd={() => addItem("material")}
+          addLabel="Add material"
+          disabled={isAccepted}
+        />
+      </MobileCollapsibleCard>
 
-      <ItemsSection
-        title="Labour"
-        accent="ink"
-        rows={labourIndices}
-        currency={currency}
-        libraryById={libraryById}
-        showBadges={false}
-        onUpdate={updateItem}
-        onRemove={removeItem}
-        onAdd={() => addItem("labour")}
-        addLabel="Add labour"
-        disabled={isAccepted}
-      />
+      <MobileCollapsibleCard sectionId="labour" summary={labourSummary}>
+        <ItemsSection
+          title="Labour"
+          accent="ink"
+          rows={labourIndices}
+          currency={currency}
+          libraryById={libraryById}
+          showBadges={false}
+          onUpdate={updateItem}
+          onRemove={removeItem}
+          onAdd={() => addItem("labour")}
+          addLabel="Add labour"
+          disabled={isAccepted}
+        />
+      </MobileCollapsibleCard>
 
       {otherIndices.length > 0 && (
         <ItemsSection
@@ -397,65 +435,71 @@ export function QuoteEditor({
         />
       </section>
 
-      <section className="t2q-card p-5 sm:p-6">
-        <div className="font-mono text-xs uppercase tracking-[0.2em] text-ink-400">
-          Terms
-        </div>
-        <textarea
-          data-testid="quote-terms"
-          value={terms}
-          onChange={(e) => setTerms(e.target.value)}
-          rows={6}
-          disabled={isAccepted}
-          className="mt-3 block w-full resize-y rounded-sm border border-ink-600 bg-ink-900 px-3 py-2 text-sm text-ink-200 outline-none focus:border-brand disabled:cursor-not-allowed disabled:opacity-60"
-        />
-      </section>
+      {/* Wave 19.10 — Terms: mobile-collapsible behind a clause-count
+          summary, always-expanded on md+. */}
+      <MobileCollapsibleCard sectionId="terms" summary={termsSummary}>
+        <section className="t2q-card p-5 sm:p-6">
+          <div className="font-mono text-xs uppercase tracking-[0.2em] text-ink-400">
+            Terms
+          </div>
+          <textarea
+            data-testid="quote-terms"
+            value={terms}
+            onChange={(e) => setTerms(e.target.value)}
+            rows={6}
+            disabled={isAccepted}
+            className="mt-3 block w-full resize-y rounded-sm border border-ink-600 bg-ink-900 px-3 py-2 text-sm text-ink-200 outline-none focus:border-brand disabled:cursor-not-allowed disabled:opacity-60"
+          />
+        </section>
+      </MobileCollapsibleCard>
 
+      {/* SendQuoteButton keeps the inline link / PDF / copy affordances
+          for sent / viewed / accepted states — but its Send trigger
+          is hidden because StickyActionBar now owns that action. */}
       <SendQuoteButton
         quoteId={quoteId}
         status={quoteStatus}
         publicToken={publicToken}
         hasPdf={hasPdf}
         onSaveBeforeSend={saveBeforeSend}
+        hideSendButton
       />
 
-      <div className="flex flex-col-reverse items-stretch gap-3 border-t border-ink-700 pt-4 sm:flex-row sm:items-center sm:justify-between">
-        <div
-          data-testid="save-status"
-          aria-live="polite"
-          className="font-mono text-xs uppercase tracking-[0.2em]"
-        >
-          {status === "saving" && <span className="text-ink-400">Saving…</span>}
-          {status === "saved" && (
-            <span className="text-brand">
-              {materialsLearned > 0
-                ? `// saved · ${materialsLearned} material${materialsLearned === 1 ? "" : "s"} added to your library`
-                : "// saved"}
-            </span>
-          )}
-          {status === "error" && (
-            <span className="text-red-400">{errorMessage || "Save failed"}</span>
-          )}
-          {status === "idle" && (
-            <span className="text-ink-500">
-              {isAccepted
-                ? "// quote is accepted — edits are read-only"
-                : "// edits are not saved until you click save"}
-            </span>
-          )}
-        </div>
-        <button
-          type="button"
-          data-testid="save-changes"
-          onClick={handleSave}
-          disabled={isPending || isAccepted}
-          className="t2q-btn-ghost disabled:cursor-not-allowed disabled:opacity-50"
-          title={isAccepted ? "Quote already accepted." : undefined}
-        >
-          <FloppyDisk size={18} weight="bold" />
-          {isPending ? "Saving…" : "Save changes"}
-        </button>
+      {/* Save-status feedback strip — small inline pill above the
+          sticky bar so the operator still sees "saved" / errors /
+          materials-learned without the old large bottom row. */}
+      <div
+        data-testid="save-status"
+        aria-live="polite"
+        className="font-mono text-xs uppercase tracking-[0.2em]"
+      >
+        {status === "saving" && <span className="text-ink-400">Saving…</span>}
+        {status === "saved" && (
+          <span className="text-brand">
+            {materialsLearned > 0
+              ? `// saved · ${materialsLearned} material${materialsLearned === 1 ? "" : "s"} added to your library`
+              : "// saved"}
+          </span>
+        )}
+        {status === "error" && (
+          <span className="text-red-400">{errorMessage || "Save failed"}</span>
+        )}
+        {status === "idle" && (
+          <span className="text-ink-500">
+            {isAccepted
+              ? "// quote is accepted — edits are read-only"
+              : "// edits are not saved until you click save"}
+          </span>
+        )}
       </div>
+
+      <StickyActionBar
+        quoteId={quoteId}
+        status={quoteStatus}
+        isPending={isPending}
+        onSave={handleSave}
+        onSaveBeforeSend={saveBeforeSend}
+      />
     </div>
   );
 }

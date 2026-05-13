@@ -28,6 +28,7 @@ import { CompliancePanel } from "./_components/CompliancePanel";
 import { LifecycleCard } from "./_components/LifecycleCard";
 import { CollapsibleSection } from "./_components/CollapsibleSection";
 import { InvoiceDraftCard } from "./_components/InvoiceDraftCard";
+import { ReviewToolsSheet } from "./_components/ReviewToolsSheet";
 import {
   TranscriptPanel,
   type TranscriptPanelData,
@@ -275,9 +276,18 @@ export default async function QuotePreviewPage({
       >
         <div className="mb-8">
           <div className="t2q-section-label mb-3">{"// step 2 of 3"}</div>
-          <h1 className="font-display text-3xl uppercase tracking-tight sm:text-4xl">
-            Review your <span className="text-brand">quote.</span>
-          </h1>
+          <div className="flex flex-wrap items-center gap-3">
+            <h1 className="font-display text-3xl uppercase tracking-tight sm:text-4xl">
+              Review your <span className="text-brand">quote.</span>
+            </h1>
+            {/* Wave 19.10 — status pill in the header so the operator
+                sees the quote's lifecycle stage without scrolling
+                down to the sticky bar. Hivis treatment for `draft`
+                (attention-grabbing); other statuses keep their
+                existing palette via the same map StickyActionBar
+                uses. */}
+            <HeaderStatusPill status={(quote.status ?? "draft") as QuoteStatus} />
+          </div>
           <p className="mt-3 text-sm text-ink-300 sm:text-base">
             Tweak any line, fix the client name, edit the terms — your changes save when you hit save.
           </p>
@@ -323,21 +333,12 @@ export default async function QuotePreviewPage({
               existingInvoice={existingInvoice}
             />
 
-            {/* Wave 14.4 — review tools group, now in a brand-tinted
-                card so it reads as a deliberate "look inside" panel
-                rather than a flat list. Each collapsible has the
-                Eye/EyeClosed affordance via CollapsibleSection. */}
-            <section
-              data-testid="review-tools-section"
-              className="mt-8 rounded-sm border border-brand/40 bg-brand/5 p-4 sm:p-5"
-            >
-              <div className="mb-3 flex flex-wrap items-center gap-3">
-                <p className="t2q-section-label !text-brand">{"// review tools"}</p>
-                <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-200">
-                  Tap any panel to peek inside.
-                </p>
-              </div>
-
+            {/* Wave 19.10 — review tools collapse behind a single
+                "Open review tools" button below md (bottom sheet on
+                tap); render inline on md+. ReviewToolsSheet brings
+                its own brand-tinted shell + header so the explicit
+                <section> wrapper is gone. */}
+            <ReviewToolsSheet>
               <CollapsibleSection
                 id="agent-quote-review"
                 title="Quote Review Agent"
@@ -419,12 +420,68 @@ export default async function QuotePreviewPage({
                   </CollapsibleSection>
                 );
               })()}
-            </section>
+            </ReviewToolsSheet>
           </>
         ) : (
           <QuoteGenerator id={quote.id} />
         )}
       </main>
     </div>
+  );
+}
+
+/**
+ * Wave 19.10 — small status pill rendered next to the page H1 so the
+ * operator sees the quote's lifecycle stage without scrolling. The
+ * `draft` row uses hivis (yellow) to nudge the operator toward the
+ * Send action; other statuses keep their existing palette.
+ */
+function HeaderStatusPill({ status }: { status: QuoteStatus }) {
+  const map: Record<QuoteStatus, { label: string; cls: string }> = {
+    draft: {
+      label: "Draft",
+      cls: "border-hivis/40 bg-hivis/10 text-hivis",
+    },
+    sent: {
+      label: "Sent",
+      cls: "border-blue-500/40 bg-blue-500/10 text-blue-300",
+    },
+    viewed: {
+      label: "Viewed",
+      cls: "border-hivis/40 bg-hivis/10 text-hivis",
+    },
+    accepted: {
+      label: "Accepted",
+      cls: "border-brand/40 bg-brand/10 text-brand",
+    },
+    scheduled: {
+      label: "Scheduled",
+      cls: "border-cyan-500/40 bg-cyan-500/10 text-cyan-300",
+    },
+    in_progress: {
+      label: "In progress",
+      cls: "border-amber-500/40 bg-amber-500/10 text-amber-300",
+    },
+    completed: {
+      label: "Completed",
+      cls: "border-emerald-500/40 bg-emerald-500/10 text-emerald-300",
+    },
+    declined: {
+      label: "Declined",
+      cls: "border-red-500/40 bg-red-500/10 text-red-300",
+    },
+    expired: {
+      label: "Expired",
+      cls: "border-ink-600 bg-ink-800 text-ink-400",
+    },
+  };
+  const pill = map[status] ?? map.draft;
+  return (
+    <span
+      data-testid="header-status-pill"
+      className={`inline-flex items-center rounded-sm border px-2 py-1 font-mono text-[10px] uppercase tracking-[0.2em] ${pill.cls}`}
+    >
+      {pill.label}
+    </span>
   );
 }
