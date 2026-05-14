@@ -13,6 +13,7 @@ import {
 } from "@/lib/quote-readiness";
 import { runComplianceAgent } from "@/lib/agents/compliance";
 import { runInvoiceAgent } from "@/lib/agents/invoice";
+import { detectForgottenCosts } from "@/lib/agents/forgotten-costs";
 import {
   logAgentApprovalNeeded,
   logAgentEvent,
@@ -22,6 +23,7 @@ import { QuoteReadinessCheck } from "../../../_components/QuoteReadinessCheck";
 import { ComplianceAgent } from "../../../_components/agents/ComplianceAgent";
 import { FollowupAgent } from "../../../_components/agents/FollowupAgent";
 import { VoiceCleanupAgent } from "../../../_components/agents/VoiceCleanupAgent";
+import { ForgottenCostsAgent } from "../../../_components/agents/ForgottenCostsAgent";
 import { QuoteGenerator } from "./_components/QuoteGenerator";
 import { QuoteEditor } from "./_components/QuoteEditor";
 import { CompliancePanel } from "./_components/CompliancePanel";
@@ -245,6 +247,23 @@ export default async function QuotePreviewPage({
       /* never break render */
     }
 
+    // 6. Forgotten-Cost Detector — rule-based margin-leak scan over the
+    //    finished quote. Count + total only; no line descriptions.
+    try {
+      const fc = detectForgottenCosts(quoteData);
+      logAgentEvent({
+        agentName: "Forgotten-Cost Detector",
+        quoteId: quote.id,
+        stepName: "scan.complete",
+        status: fc.clean ? "complete" : "running",
+        message: fc.clean
+          ? "No commonly-missed costs flagged"
+          : `${fc.costs.length} possibly-missed cost(s) flagged`,
+      });
+    } catch {
+      /* never break render */
+    }
+
     // 7. Invoice Agent — only emits a log when the quote is completed
     //    and no invoice exists yet (the LifecycleCard's "suggested"
     //    state). Draft only — never sends, never bills.
@@ -348,6 +367,13 @@ export default async function QuotePreviewPage({
                   profile={profile ?? null}
                   expiresAt={quote.expires_at ?? null}
                 />
+              </CollapsibleSection>
+
+              <CollapsibleSection
+                id="agent-forgotten-costs"
+                title="Forgotten-Cost Detector"
+              >
+                <ForgottenCostsAgent quoteData={quoteData} />
               </CollapsibleSection>
 
               <CollapsibleSection

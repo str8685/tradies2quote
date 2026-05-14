@@ -75,7 +75,7 @@ export function ReviewToolsSheet({ children }: Props) {
               Review tools
             </span>
             <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-300">
-              {"// tap to open · 6 panels inside"}
+              {"// tap to open · 7 panels inside"}
             </span>
           </span>
         </span>
