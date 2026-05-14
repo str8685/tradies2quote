@@ -28,7 +28,9 @@ import { CaretDown } from "@phosphor-icons/react";
 interface Props {
   /** Stable id used as the sessionStorage key + aria-controls anchor. */
   sectionId: string;
-  /** Single-line summary rendered on mobile. */
+  /** Big section title — matches the Photo/Plan + Takeoff panel headers. */
+  title: string;
+  /** Single-line detail rendered small under the title on mobile. */
   summary: string;
   /** Visible-on-mobile-only children. */
   children: ReactNode;
@@ -38,6 +40,7 @@ const STORAGE_PREFIX = "t2q-collapse-";
 
 export function MobileCollapsibleCard({
   sectionId,
+  title,
   summary,
   children,
 }: Props) {
@@ -86,11 +89,16 @@ export function MobileCollapsibleCard({
         data-testid={`mc-toggle-${sectionId}`}
         className="flex w-full min-h-[44px] items-center justify-between gap-3 rounded-sm border border-ink-700 bg-ink-900/60 px-4 py-3 text-left transition-colors hover:border-ink-500 md:hidden"
       >
-        <span
-          data-testid={`mc-summary-${sectionId}`}
-          className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-200"
-        >
-          {summary}
+        <span className="min-w-0 flex-1">
+          <span className="block font-display text-lg uppercase tracking-tight text-white">
+            {title}
+          </span>
+          <span
+            data-testid={`mc-summary-${sectionId}`}
+            className="mt-1 block truncate font-mono text-[11px] uppercase tracking-[0.18em] text-ink-400"
+          >
+            {summary}
+          </span>
         </span>
         <CaretDown
           size={18}

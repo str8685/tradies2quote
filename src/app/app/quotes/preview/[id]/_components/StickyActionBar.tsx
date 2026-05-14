@@ -29,9 +29,11 @@ import type { QuoteStatus } from "@/lib/quote-types";
  * sent/viewed/accepted states.
  *
  * Mobile geometry:
- *   - `fixed bottom-[88px]` sits above the 88-px `<MobileBottomNav>`,
- *     which already absorbs the iPhone home-indicator safe-area inset,
- *     so the bar itself doesn't need pb-safe-area padding.
+ *   - Sits flush on top of `<MobileBottomNav>`. That nav is 57px
+ *     (a 56px tile + 1px border-top) plus its own safe-area
+ *     padding-bottom, so this bar's `bottom` mirrors the exact same
+ *     `max(env(safe-area-inset-bottom) - 24px, 4px)` formula — the
+ *     two then read as one connected bottom unit on every device.
  *   - `min-h-[56px]` per the spec.
  *   - z-50 + blur backdrop + ink-950/85 bg so scrolled content
  *     remains legible behind the bar.
@@ -161,16 +163,18 @@ export function StickyActionBar({
       <div
         data-testid="sticky-action-bar"
         className={[
-          // Mobile fixed bar sitting just above the bottom nav (which
-          // already pads for the iPhone home indicator).
-          "fixed inset-x-0 bottom-[88px] z-50 border-t border-ink-700/70 bg-ink-950/85 backdrop-blur-md",
+          // Mobile fixed bar sitting flush on top of the bottom nav.
+          // The nav is 57px (56px tile + 1px border) plus its own
+          // safe-area padding-bottom, so `bottom` mirrors that exact
+          // formula — no floating gap, no overlap, on any device.
+          "fixed inset-x-0 bottom-[calc(57px_+_max(env(safe-area-inset-bottom)_-_24px,4px))] z-50 border-t border-ink-700/70 bg-ink-950/85 backdrop-blur-md",
           // min height 56 per the spec — leaves room for 44-px buttons.
           "min-h-[56px]",
           // On sm+ become a normal inline strip, no fixed positioning.
           "sm:static sm:border-0 sm:bg-transparent sm:backdrop-blur-none",
         ].join(" ")}
       >
-        <div className="mx-auto flex max-w-3xl items-center justify-between gap-2 px-3 py-2 sm:px-0 sm:py-4 sm:border-t sm:border-ink-700">
+        <div className="mx-auto flex max-w-3xl items-center gap-2 px-3 py-2 sm:justify-between sm:px-0 sm:py-4 sm:border-t sm:border-ink-700">
           <span
             data-testid="sticky-status-pill"
             className={`inline-flex shrink-0 items-center rounded-sm border px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.2em] ${pill.cls}`}
@@ -178,16 +182,16 @@ export function StickyActionBar({
             {pill.label}
           </span>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-1 items-center gap-2 sm:flex-none">
             <button
               type="button"
               data-testid="sticky-save-changes"
               onClick={onSave}
               disabled={isPending || isAccepted}
-              className="t2q-btn-ghost min-h-[44px] disabled:cursor-not-allowed disabled:opacity-50"
+              className="t2q-btn-ghost min-h-[44px] min-w-0 flex-1 !px-3 sm:flex-none sm:!px-7 disabled:cursor-not-allowed disabled:opacity-50"
               title={isAccepted ? "Quote already accepted." : undefined}
             >
-              <FloppyDisk size={16} weight="bold" />
+              <FloppyDisk size={16} weight="bold" className="shrink-0" />
               <span className="hidden sm:inline">
                 {isPending ? "Saving…" : "Save changes"}
               </span>
@@ -200,9 +204,9 @@ export function StickyActionBar({
                 data-testid="sticky-send-button"
                 onClick={handleSend}
                 disabled={sendBusy || isPending}
-                className="t2q-btn-primary min-h-[44px] disabled:cursor-not-allowed disabled:opacity-50"
+                className="t2q-btn-primary min-h-[44px] min-w-0 flex-1 !px-3 sm:flex-none sm:!px-7 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                <EnvelopeSimple size={16} weight="bold" />
+                <EnvelopeSimple size={16} weight="bold" className="shrink-0" />
                 <span className="hidden sm:inline">
                   {sendState === "saving"
                     ? "Saving edits…"

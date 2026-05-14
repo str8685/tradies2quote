@@ -258,7 +258,6 @@ export function QuoteEditor({
     (x) => x.it.is_missing_price,
   ).length;
   const materialsSummary = [
-    "Materials",
     `${materialIndices.length} item${materialIndices.length === 1 ? "" : "s"}`,
     formatCurrency(totals.materials_subtotal, currency),
     materialMissingPrices > 0
@@ -270,14 +269,13 @@ export function QuoteEditor({
     .filter((s): s is string => Boolean(s))
     .join(" · ");
   const labourSummary = [
-    "Labour",
     `${labourIndices.length} item${labourIndices.length === 1 ? "" : "s"}`,
     formatCurrency(totals.labour_subtotal, currency),
   ].join(" · ");
   const termsClauseCount = terms
     .split(/\n\s*\n/)
     .filter((s) => s.trim().length > 0).length;
-  const termsSummary = `Terms · ${termsClauseCount} clause${
+  const termsSummary = `${termsClauseCount} clause${
     termsClauseCount === 1 ? "" : "s"
   } · tap to view`;
 
@@ -403,6 +401,7 @@ export function QuoteEditor({
           summary line, always-expanded on md+. */}
       <MobileCollapsibleCard
         sectionId="materials"
+        title="Materials"
         summary={materialsSummary}
       >
         <ItemsSection
@@ -420,7 +419,11 @@ export function QuoteEditor({
         />
       </MobileCollapsibleCard>
 
-      <MobileCollapsibleCard sectionId="labour" summary={labourSummary}>
+      <MobileCollapsibleCard
+        sectionId="labour"
+        title="Labour"
+        summary={labourSummary}
+      >
         <ItemsSection
           title="Labour"
           accent="ink"
@@ -484,7 +487,11 @@ export function QuoteEditor({
 
       {/* Wave 19.10 — Terms: mobile-collapsible behind a clause-count
           summary, always-expanded on md+. */}
-      <MobileCollapsibleCard sectionId="terms" summary={termsSummary}>
+      <MobileCollapsibleCard
+        sectionId="terms"
+        title="Terms"
+        summary={termsSummary}
+      >
         <section className="t2q-card p-5 sm:p-6">
           <div className="font-mono text-xs uppercase tracking-[0.2em] text-ink-400">
             Terms
