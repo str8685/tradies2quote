@@ -32,14 +32,17 @@ export function VoiceCleanupAgent({ transcript }: Props) {
   useEffect(() => {
     if (loggedRef.current || !original) return;
     loggedRef.current = true;
+    const n = result.corrections.length;
     void logClientAgentRun({
       agentName: "Voice Cleanup Agent",
       message: result.changed
-        ? "Transcript cleaned — fillers trimmed, formatting tidied"
+        ? n > 0
+          ? `Transcript cleaned — ${n} NZ-trade correction${n === 1 ? "" : "s"} applied, formatting tidied`
+          : "Transcript cleaned — fillers trimmed, formatting tidied"
         : "Transcript checked — already clean",
       ok: true,
     });
-  }, [original, result.changed]);
+  }, [original, result]);
 
   if (!original) {
     return null;
@@ -62,7 +65,7 @@ export function VoiceCleanupAgent({ transcript }: Props) {
             Voice Cleanup Agent.
           </h2>
           <p className="mt-0.5 font-mono text-[10px] uppercase tracking-[0.25em] text-ink-300">
-            {"// read-only · click apply to copy cleaned text"}
+            {"// trade-aware cleanup · read-only · apply to copy"}
           </p>
         </div>
       </div>
@@ -102,13 +105,59 @@ export function VoiceCleanupAgent({ transcript }: Props) {
         </div>
       </div>
 
+      {result.corrections.length > 0 && (
+        <div className="mt-4">
+          <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-brand">
+            {"// trade corrections"}
+          </p>
+          <ul
+            data-testid="agent-voice-cleanup-corrections"
+            className="mt-2 flex flex-wrap gap-2"
+          >
+            {result.corrections.map((c, i) => (
+              <li
+                key={`${c.index}-${c.before}-${i}`}
+                className="inline-flex items-center gap-1.5 rounded-sm border border-ink-700 bg-ink-900/40 px-2.5 py-1 text-xs"
+              >
+                <span className="text-ink-500 line-through">{c.before}</span>
+                <span className="text-ink-500" aria-hidden="true">
+                  &rarr;
+                </span>
+                <span className="font-medium text-white">{c.after}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {result.clarifications.length > 0 && (
+        <div className="mt-4">
+          <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-hivis">
+            {"// double-check"}
+          </p>
+          <ul
+            data-testid="agent-voice-cleanup-clarifications"
+            className="mt-2 space-y-1.5"
+          >
+            {result.clarifications.map((q) => (
+              <li key={q.id} className="text-xs leading-relaxed text-ink-200">
+                <span className="text-white">{q.question}</span>{" "}
+                <span className="text-ink-400">{q.why}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       <div className="mt-4 flex flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:justify-between">
         <p
           data-testid="agent-voice-cleanup-status"
           className="font-mono text-[10px] uppercase tracking-[0.2em] text-ink-400"
         >
           {result.changed
-            ? "// cleaned version trimmed fillers + tidied formatting"
+            ? result.corrections.length > 0
+              ? `// ${result.corrections.length} trade ${result.corrections.length === 1 ? "fix" : "fixes"} + formatting tidied`
+              : "// fillers trimmed + formatting tidied"
             : "// transcript already clean — no changes needed"}
         </p>
         <div className="flex items-center gap-2 sm:justify-end">

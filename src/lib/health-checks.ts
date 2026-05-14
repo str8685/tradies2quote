@@ -171,7 +171,7 @@ export function getAgentReadiness(): AgentReadiness[] {
       name: "Voice Cleanup Agent",
       status: "ready",
       detail:
-        "Pure rule-based. No AI call; uses regex/heuristics on the saved transcript.",
+        "Pure rule-based. No AI call; trims fillers + corrects NZ-trade spelling (H-classes, GIB, sizes) on the saved transcript.",
     },
     {
       id: "followup",

@@ -20,7 +20,19 @@
  *   6. Insert paragraph breaks before topic-change cue phrases
  *      ("then we", "next", "after that", "as well").
  *   7. Ensure the result ends with a sentence-final punctuation mark.
+ *   8. Trade-aware pass — expand NZ H-treatment classes (h32 → H3.2),
+ *      fix GIB / Pink Batts brand spelling, normalise sizes
+ *      (90 by 45 → 90x45), and surface a corrections list plus any
+ *      ambiguous phrases the cleaner refused to guess. Reuses the
+ *      deterministic (no-LLM) corrector that powers the server-side
+ *      transcript cleanup so the agent and the saved quote agree.
  */
+
+import {
+  applyDeterministicCorrections,
+  type ClarificationItem,
+  type Correction,
+} from "@/lib/transcriptCleanup";
 
 const FILLERS = [
   "um",
@@ -107,6 +119,16 @@ export interface VoiceCleanupResult {
   /** Whether cleanup actually changed anything. Useful for "no change"
    *  UI states. */
   changed: boolean;
+  /**
+   * NZ-trade spelling / format corrections applied by the trade-aware
+   * pass — e.g. "h32" → "H3.2", "jib" → "GIB", "90 by 45" → "90x45".
+   */
+  corrections: Correction[];
+  /**
+   * Ambiguous phrases the cleaner refused to auto-correct (e.g. "pink
+   * bats" next to timber words). The tradie should confirm these.
+   */
+  clarifications: ClarificationItem[];
 }
 
 export function runVoiceCleanup(original: string): VoiceCleanupResult {
@@ -120,10 +142,19 @@ export function runVoiceCleanup(original: string): VoiceCleanupResult {
   s = paragraphBreaks(s);
   s = capitalizeSentences(s);
   s = ensureTerminalPunctuation(s.trim());
+
+  // Trade-aware pass: expand H-classes, fix GIB / Pink Batts spelling,
+  // normalise sizes. Pure, no-LLM, no-I/O — the same corrector the
+  // server-side transcript cleanup uses, so the two never disagree.
+  const trade = applyDeterministicCorrections(s);
+  const cleaned = trade.cleanedTranscript;
+
   return {
-    cleaned: s,
+    cleaned,
     originalLength: src.length,
-    cleanedLength: s.length,
-    changed: s.trim() !== src.trim(),
+    cleanedLength: cleaned.length,
+    changed: cleaned.trim() !== src.trim() || trade.corrections.length > 0,
+    corrections: trade.corrections,
+    clarifications: trade.clarificationQuestions,
   };
 }
