@@ -7,9 +7,9 @@ import {
 
 /**
  * Server-action beacon for the two browser-side agents (Variation,
- * Voice Cleanup). Those agents run as pure functions INSIDE `"use client"`
- * components, so they can't import the server-only logger directly — and
- * their lib files can't either. They call this server action instead.
+ * Voice Cleanup). Those agents run as pure client-side functions, so
+ * they can't import the server-only logger directly — and their lib
+ * files can't either. They call this server action instead.
  *
  * The actual agent work has already happened client-side by the time
  * this is called, so there's no live window to instrument — one call
