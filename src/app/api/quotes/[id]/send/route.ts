@@ -37,6 +37,7 @@ export async function POST(
       "id, user_id, status, quote_data, total_amount, currency, created_at, public_token, pdf_path, expires_at",
     )
     .eq("id", id)
+    .eq("user_id", user.id)
     .single();
   if (qErr || !quote) {
     return NextResponse.json({ error: "not_found" }, { status: 404 });
@@ -120,6 +121,30 @@ export async function POST(
   const number = quoteNumber(quote.id, quote.created_at);
   const totalText = formatCurrency(Number(quote.total_amount) || 0, quote.currency);
 
+  // Persist the durable artifacts — PDF path, public token, expiry —
+  // BEFORE the irreversible email send. If the email then fails, a
+  // retry reuses the SAME token and PDF instead of minting a fresh
+  // link the customer never receives; if this update itself fails,
+  // nothing has been sent yet, so there is no inconsistency.
+  const admin = adminClient();
+  const expires_at =
+    quote.expires_at ??
+    new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+  const { error: preErr } = await admin
+    .from("quotes")
+    .update({ pdf_path: pdfPath, public_token: token, expires_at })
+    .eq("id", quote.id);
+  if (preErr) {
+    console.error("Quote pre-send update failed", preErr);
+    return NextResponse.json(
+      {
+        error: "update_failed",
+        message: "Could not save the quote before sending.",
+      },
+      { status: 500 },
+    );
+  }
+
   const emailResult = await sendQuoteEmail({
     to: validation.resolvedEmail,
     businessName: profile?.business_name || "Your business",
@@ -131,6 +156,8 @@ export async function POST(
     pdfFileName: `${number}.pdf`,
   });
   if (!emailResult.ok) {
+    // Token + PDF are already saved; status stays as-is so the tradie
+    // can safely retry and reuse the same link.
     return NextResponse.json(
       {
         error: emailResult.error,
@@ -143,25 +170,18 @@ export async function POST(
     );
   }
 
-  // Update quote: status=sent, sent_at, pdf_path, public_token (if minted), expires_at default
-  const admin = adminClient();
-  const expires_at =
-    quote.expires_at ??
-    new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+  // Email is out — flip the status to sent.
   const { error: uErr } = await admin
     .from("quotes")
-    .update({
-      status: "sent",
-      sent_at: new Date().toISOString(),
-      pdf_path: pdfPath,
-      public_token: token,
-      expires_at,
-    })
+    .update({ status: "sent", sent_at: new Date().toISOString() })
     .eq("id", quote.id);
   if (uErr) {
-    console.error("Quote update failed", uErr);
+    console.error("Quote status update failed", uErr);
     return NextResponse.json(
-      { error: "update_failed", message: "Email sent but couldn't update quote status." },
+      {
+        error: "update_failed",
+        message: "Email sent but couldn't update quote status.",
+      },
       { status: 500 },
     );
   }

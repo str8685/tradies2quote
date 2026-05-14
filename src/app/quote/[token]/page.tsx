@@ -24,8 +24,14 @@ export default async function PublicQuotePage({
   const { token } = await params;
   const admin = adminClient();
 
-  // Mark viewed (idempotent — RPC no-ops unless first sent → viewed transition)
-  await admin.rpc("mark_quote_viewed", { p_token: token } as never);
+  // Mark viewed (idempotent — RPC no-ops unless first sent → viewed
+  // transition). Best-effort telemetry: a failure here must never take
+  // down the customer's quote view.
+  try {
+    await admin.rpc("mark_quote_viewed", { p_token: token } as never);
+  } catch (e) {
+    console.error("mark_quote_viewed failed", e);
+  }
 
   // Fetch sanitised payload
   const { data, error } = await admin.rpc(
@@ -44,18 +50,41 @@ export default async function PublicQuotePage({
   const isExpired =
     quote.expires_at !== null && new Date(quote.expires_at) < new Date();
 
-  if (isExpired && quote.status !== "accepted") {
+  // A quote that reached or passed acceptance — accepted itself, or any
+  // post-acceptance lifecycle stage — shows the accepted view.
+  const acceptedLike =
+    quote.status === "accepted" ||
+    quote.status === "scheduled" ||
+    quote.status === "in_progress" ||
+    quote.status === "completed";
+
+  if (acceptedLike) {
     return (
       <PageShell>
-        <ExpiredView reason="expired" />
+        <AcceptedView token={token} quote={quote} />
       </PageShell>
     );
   }
 
-  if (quote.status === "accepted") {
+  // Terminal, un-acceptable states: past its valid-until date, or the
+  // tradie marked it declined / expired. Without this branch a declined
+  // or expired-status quote would still render a live accept form.
+  if (isExpired || quote.status === "declined" || quote.status === "expired") {
     return (
       <PageShell>
-        <AcceptedView token={token} quote={quote} />
+        <ExpiredView
+          reason={quote.status === "declined" ? "unavailable" : "expired"}
+        />
+      </PageShell>
+    );
+  }
+
+  // Only `sent` / `viewed` quotes reach the live accept form. Anything
+  // else (e.g. a stray `draft` with a token) is treated as not found.
+  if (quote.status !== "sent" && quote.status !== "viewed") {
+    return (
+      <PageShell>
+        <ExpiredView reason="not_found" />
       </PageShell>
     );
   }

@@ -47,13 +47,24 @@ type SaveStatus = "idle" | "saving" | "saved" | "error";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-function migrateLegacyContact(c: QuoteData["client"]): QuoteData["client"] {
-  if (c.email || c.phone || !c.contact) return c;
-  const legacy = c.contact.trim();
+function migrateLegacyContact(
+  c: QuoteData["client"] | null | undefined,
+): QuoteData["client"] {
+  // Defend against legacy / partial rows where `client` is missing —
+  // without this fallback the editor page crashes on the first
+  // property access below.
+  const safe: QuoteData["client"] = c ?? {
+    name: "",
+    address: null,
+    email: null,
+    phone: null,
+  };
+  if (safe.email || safe.phone || !safe.contact) return safe;
+  const legacy = safe.contact.trim();
   if (EMAIL_RE.test(legacy)) {
-    return { ...c, email: legacy };
+    return { ...safe, email: legacy };
   }
-  return { ...c, phone: legacy };
+  return { ...safe, phone: legacy };
 }
 
 export function QuoteEditor({
@@ -87,7 +98,9 @@ export function QuoteEditor({
   const markupPct = initialData.markup_pct;
   const taxRate = initialData.tax_rate;
   const taxLabel = initialData.tax_label;
-  const currency = initialData.currency;
+  // Fall back to NZD — an empty / invalid currency makes every
+  // Intl.NumberFormat call in the editor throw and crashes the page.
+  const currency = initialData.currency || "NZD";
 
   const totals = useMemo(() => {
     let materials_subtotal = 0;

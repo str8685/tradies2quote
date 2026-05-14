@@ -3,7 +3,7 @@
 import { Warning } from "@phosphor-icons/react/dist/ssr";
 
 type Props = {
-  reason: "expired" | "not_found";
+  reason: "expired" | "not_found" | "unavailable";
 };
 
 const COPY = {
@@ -14,6 +14,10 @@ const COPY = {
   not_found: {
     title: "Quote not found",
     body: "We couldn't find a quote at this link. Double-check the URL or contact the tradie.",
+  },
+  unavailable: {
+    title: "Quote no longer available",
+    body: "This quote has been withdrawn by the tradie. Please get in touch with them for an updated quote.",
   },
 } as const;
 

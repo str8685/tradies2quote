@@ -28,13 +28,19 @@ export async function saveQuoteChanges(
 
   const { data: priorRow } = await supabase
     .from("quotes")
-    .select("quote_data, status")
+    .select("quote_data, status, user_id")
     .eq("id", id)
     .single();
-  if (priorRow?.status === "accepted") {
+  // RLS already scopes this, but check ownership explicitly so a
+  // missing / not-owned quote fails loudly here instead of silently
+  // updating zero rows below and reporting a false success.
+  if (!priorRow || priorRow.user_id !== user.id) {
+    return { error: "Quote not found." };
+  }
+  if (priorRow.status === "accepted") {
     return { error: "Quote already accepted — edits are locked." };
   }
-  const prior = (priorRow?.quote_data ?? null) as QuoteData | null;
+  const prior = (priorRow.quote_data ?? null) as QuoteData | null;
 
   let materials_subtotal = 0;
   let labour_subtotal = 0;
@@ -67,16 +73,23 @@ export async function saveQuoteChanges(
     total,
   };
 
-  const { error: uErr } = await supabase
+  const { data: updatedRows, error: uErr } = await supabase
     .from("quotes")
     .update({
       quote_data: next,
       total_amount: total,
       currency: next.currency,
     })
-    .eq("id", id);
+    .eq("id", id)
+    .select("id");
   if (uErr) {
     console.error("saveQuoteChanges update failed", uErr);
+    return { error: "Could not save changes." };
+  }
+  if (!updatedRows || updatedRows.length === 0) {
+    // RLS blocked the write — zero rows changed but no error raised.
+    // Fail rather than report a save that never happened.
+    console.error("saveQuoteChanges updated 0 rows", { id });
     return { error: "Could not save changes." };
   }
 
