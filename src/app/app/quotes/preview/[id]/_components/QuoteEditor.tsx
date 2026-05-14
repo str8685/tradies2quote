@@ -25,8 +25,10 @@ import type {
 } from "@/lib/quote-types";
 import { matchToLibrary } from "@/lib/materials";
 import type { MaterialTakeoffResult } from "@/lib/materialCalculator";
+import type { PhotoPlanItem } from "@/lib/agents/photo-plan";
 import { saveQuoteChanges } from "../actions";
 import { TakeoffPanel } from "./TakeoffPanel";
+import { PhotoPlanPanel } from "./PhotoPlanPanel";
 import { SendQuoteButton } from "./SendQuoteButton";
 import { MobileCollapsibleCard } from "./MobileCollapsibleCard";
 import { StickyActionBar } from "./StickyActionBar";
@@ -73,6 +75,10 @@ export function QuoteEditor({
     [library],
   );
   const [terms, setTerms] = useState(initialData.terms);
+  // Wave 21 — `notes` lifted into state (was a read-only passthrough of
+  // initialData.notes) so the Photo / Plan panel can append to it and
+  // buildCurrentQuoteData() can persist it on save.
+  const [notes, setNotes] = useState<string[]>(initialData.notes ?? []);
   const [status, setStatus] = useState<SaveStatus>("idle");
   const [errorMessage, setErrorMessage] = useState<string>("");
   const [materialsLearned, setMaterialsLearned] = useState<number>(0);
@@ -163,11 +169,46 @@ export function QuoteEditor({
     ]);
   }
 
+  // Photo / Plan agent → quote. Detected items become draft material
+  // lines, library-matched for price where possible (exactly like the
+  // takeoff handler above). Unlike takeoff, these are APPENDED — a photo
+  // adds to the quote, it doesn't replace the materials list.
+  function handlePhotoPlanItems(detected: PhotoPlanItem[]) {
+    const newItems: QuoteLineItem[] = detected.map((d) => {
+      const match = matchToLibrary(d.label, library);
+      const unit_price =
+        match && match.default_unit_price !== null
+          ? Number(match.default_unit_price)
+          : 0;
+      return {
+        type: "material",
+        description: d.location ? `${d.label} — ${d.location}` : d.label,
+        quantity: 1,
+        unit: "each",
+        unit_price,
+        line_total: round2(unit_price),
+        library_id: match?.id ?? null,
+        is_ai_estimated: false,
+        is_missing_price: !match,
+      };
+    });
+    setItems((prev) => [...prev, ...newItems]);
+  }
+
+  // Photo / Plan agent → quote notes. The quote-note draft + on-site
+  // review flags get appended to the "// review these" box.
+  function handlePhotoPlanNotes(lines: string[]) {
+    const clean = lines.map((l) => l.trim()).filter((l) => l.length > 0);
+    if (clean.length === 0) return;
+    setNotes((prev) => [...prev, ...clean]);
+  }
+
   function buildCurrentQuoteData(): QuoteData {
     return {
       ...initialData,
       client,
       line_items: items,
+      notes,
       terms,
       ...totals,
       markup_pct: markupPct,
@@ -325,7 +366,7 @@ export function QuoteEditor({
         )}
       </section>
 
-      {initialData.notes && initialData.notes.length > 0 && (
+      {notes.length > 0 && (
         <section
           data-testid="quote-notes"
           className="rounded-sm border border-hivis/40 bg-hivis/10 p-5"
@@ -334,7 +375,7 @@ export function QuoteEditor({
             {"// review these"}
           </div>
           <ul className="mt-3 space-y-2 text-sm text-ink-200">
-            {initialData.notes.map((note, i) => (
+            {notes.map((note, i) => (
               <li key={i} className="flex gap-2">
                 <span aria-hidden="true" className="text-hivis">
                   →
@@ -349,6 +390,12 @@ export function QuoteEditor({
       <TakeoffPanel
         onRecalculate={handleTakeoffResult}
         initialInputs={initialData.takeoff_inputs}
+        isAccepted={isAccepted}
+      />
+
+      <PhotoPlanPanel
+        onAddItems={handlePhotoPlanItems}
+        onAddNotes={handlePhotoPlanNotes}
         isAccepted={isAccepted}
       />
 
