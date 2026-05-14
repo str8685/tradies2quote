@@ -48,6 +48,48 @@ export function descriptionMentionsWall(description: string): boolean {
   return WALL_KEYWORDS.some((re) => re.test(description));
 }
 
+/**
+ * Phrases that mean structural / lining work on a framed building wall
+ * — the only case where the 10 wall-classification questions help.
+ */
+const WALL_CONSTRUCTION_KEYWORDS: readonly RegExp[] = [
+  /\b(?:build|building|built|construct|constructing|erect|erecting)\b/i,
+  /\b(?:frame|framing|framed|stud|studs|studding)\b/i,
+  /\b(?:lining|reline|re-?lining|relined|sheet|sheeting|gib|plasterboard)\b/i,
+  /\b(?:clad|cladding|reclad|re-?clad|recladding)\b/i,
+  /\b(?:new wall|partition|extend|extension)\b/i,
+];
+
+/**
+ * Walls the `WallContext` model does NOT describe — retaining walls,
+ * block / concrete walls and fences have no studs, lining or cladding
+ * to classify, so the wall questions never apply to them.
+ */
+const NON_BUILDING_WALL_RE =
+  /\b(?:retaining\s+wall|block\s+wall|concrete\s+wall|fence|fencing)\b/i;
+
+/**
+ * True iff the description is a framed building-wall job that genuinely
+ * needs the wall-classification questions — i.e. work on the STRUCTURE
+ * or LINING of an internal / external framed wall.
+ *
+ * Deliberately strict. The 10 wall questions are noise on:
+ *   - cosmetic / minor-repair jobs (repaint, sand, patch a wall) — they
+ *     have no construction keyword, so this returns false;
+ *   - retaining walls, block / concrete walls, fences — excluded
+ *     explicitly because `WallContext` doesn't model them.
+ *
+ * When this returns false the clarification engine stays silent. The
+ * per-item rules (treatment / insulation / fastener) still run, so a
+ * repaint quote can still get treatment-class warnings where relevant.
+ */
+export function wallJobNeedsClassification(description: string): boolean {
+  if (!description) return false;
+  if (!descriptionMentionsWall(description)) return false;
+  if (NON_BUILDING_WALL_RE.test(description)) return false;
+  return WALL_CONSTRUCTION_KEYWORDS.some((re) => re.test(description));
+}
+
 /** Convenience — what fields on `WallContext` are present (not undefined)? */
 export type KnownWallFields = {
   hasType: boolean;

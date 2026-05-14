@@ -11,7 +11,7 @@
  * come from the per-category rules).
  */
 
-import { descriptionMentionsWall, knownWallFields } from "./classifier";
+import { knownWallFields, wallJobNeedsClassification } from "./classifier";
 import { extractTreatmentClass } from "./treatment-rules";
 import type { ClarificationQuestion, JobContext, RuleOutput } from "./types";
 
@@ -166,7 +166,11 @@ function buildWallQuestions(context: JobContext): ClarificationQuestion[] {
 
 /** Run the clarification engine. Returns a RuleOutput with clarifications. */
 export function runClarificationRules(context: JobContext): RuleOutput {
-  if (!descriptionMentionsWall(context.description)) {
+  // Only genuine framed building-wall construction / lining jobs get the
+  // 10 wall questions. Repaints, minor repairs, retaining walls and
+  // fences mention a wall keyword but do not need classification — they
+  // pass through silently (the per-item rules still run for them).
+  if (!wallJobNeedsClassification(context.description)) {
     return {
       ruleName: "clarification-rules",
       itemUpdates: {},

@@ -10,6 +10,38 @@ describe("runClarificationRules — non-wall jobs are passthrough", () => {
   });
 });
 
+describe("runClarificationRules — over-fire guard (wallJobNeedsClassification)", () => {
+  it("'repaint the exterior weatherboards' → no clarifications (cosmetic, not construction)", () => {
+    const ctx: JobContext = {
+      description:
+        "Repaint the exterior weatherboards, wash down, one coat primer then two top coats",
+    };
+    expect(runClarificationRules(ctx).clarifications).toEqual([]);
+  });
+
+  it("'build a timber retaining wall' → no clarifications (not a framed building wall)", () => {
+    const ctx: JobContext = {
+      description:
+        "Build a timber retaining wall along the back boundary, H4 posts and rails",
+    };
+    expect(runClarificationRules(ctx).clarifications).toEqual([]);
+  });
+
+  it("'patch a crack in the wall' → no clarifications (no construction intent)", () => {
+    const ctx: JobContext = {
+      description: "Patch a crack in the hallway wall and sand it back",
+    };
+    expect(runClarificationRules(ctx).clarifications).toEqual([]);
+  });
+
+  it("'reline the bathroom wall' → still triggers clarifications (genuine lining work)", () => {
+    const ctx: JobContext = {
+      description: "Reline the bathroom wall with new sheets after the leak",
+    };
+    expect(runClarificationRules(ctx).clarifications.length).toBeGreaterThan(0);
+  });
+});
+
 describe("runClarificationRules — bare 'build a wall' triggers all 9 questions (test 10)", () => {
   const bare: JobContext = { description: "build a 6m x 2.7m wall" };
 
