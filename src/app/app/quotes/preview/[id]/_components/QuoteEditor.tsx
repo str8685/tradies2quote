@@ -298,6 +298,7 @@ export function QuoteEditor({
             </div>
             <input
               data-testid="quote-client-name"
+              aria-label="Client name"
               value={clientNameInputValue}
               onChange={(e) =>
                 setClient((c) => ({ ...c, name: e.target.value }))
@@ -311,6 +312,7 @@ export function QuoteEditor({
             />
             <textarea
               data-testid="quote-client-address"
+              aria-label="Site address"
               value={client.address ?? ""}
               onChange={(e) =>
                 setClient((c) => ({ ...c, address: e.target.value || null }))
@@ -323,6 +325,7 @@ export function QuoteEditor({
             <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
               <input
                 data-testid="quote-client-email"
+                aria-label="Client email"
                 type="email"
                 value={client.email ?? ""}
                 onChange={(e) =>
@@ -334,6 +337,7 @@ export function QuoteEditor({
               />
               <input
                 data-testid="quote-client-phone"
+                aria-label="Client phone"
                 type="tel"
                 value={client.phone ?? ""}
                 onChange={(e) =>
@@ -498,6 +502,7 @@ export function QuoteEditor({
           </div>
           <textarea
             data-testid="quote-terms"
+            aria-label="Quote terms"
             value={terms}
             onChange={(e) => setTerms(e.target.value)}
             rows={6}
@@ -648,6 +653,7 @@ function ItemsSection({
               )}
               <div className="flex items-start gap-2">
                 <input
+                  aria-label="Line item description"
                   value={it.description}
                   onChange={(e) =>
                     onUpdate(i, { description: e.target.value })

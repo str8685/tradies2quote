@@ -101,7 +101,9 @@ export function SendQuoteButton({
       setCopyOk(true);
       setTimeout(() => setCopyOk(false), 1500);
     } catch {
-      // ignore
+      // Clipboard API blocked (insecure context / denied permission) —
+      // open the link in a new tab so the operator can still grab it.
+      window.open(acceptUrl, "_blank", "noopener,noreferrer");
     }
   }
 
@@ -117,7 +119,7 @@ export function SendQuoteButton({
             href={`/api/quotes/${quoteId}/pdf`}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 rounded-sm border border-ink-700 bg-ink-800 px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.2em] text-ink-200 hover:border-brand hover:text-brand"
+            className="inline-flex min-h-[44px] items-center gap-1.5 rounded-sm border border-ink-700 bg-ink-800 px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.2em] text-ink-200 hover:border-brand hover:text-brand"
           >
             <FileText size={12} weight="bold" />
             View PDF
@@ -129,7 +131,7 @@ export function SendQuoteButton({
               href={acceptUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 rounded-sm border border-ink-700 bg-ink-800 px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.2em] text-ink-200 hover:border-brand hover:text-brand"
+              className="inline-flex min-h-[44px] items-center gap-1.5 rounded-sm border border-ink-700 bg-ink-800 px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.2em] text-ink-200 hover:border-brand hover:text-brand"
             >
               <ArrowSquareOut size={12} weight="bold" />
               Public link
@@ -137,7 +139,7 @@ export function SendQuoteButton({
             <button
               type="button"
               onClick={copyAcceptLink}
-              className="inline-flex items-center gap-1.5 rounded-sm border border-ink-700 bg-ink-800 px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.2em] text-ink-200 hover:border-brand hover:text-brand"
+              className="inline-flex min-h-[44px] items-center gap-1.5 rounded-sm border border-ink-700 bg-ink-800 px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.2em] text-ink-200 hover:border-brand hover:text-brand"
             >
               {copyOk ? <Check size={12} weight="bold" /> : <Copy size={12} weight="bold" />}
               {copyOk ? "Copied" : "Copy link"}

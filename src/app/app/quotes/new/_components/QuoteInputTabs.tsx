@@ -290,7 +290,7 @@ function VoicePanel({
             <button
               type="button"
               onClick={reset}
-              className="mt-4 text-sm font-mono uppercase tracking-[0.2em] text-brand hover:text-brand-300"
+              className="mt-4 inline-flex min-h-[44px] items-center text-sm font-mono uppercase tracking-[0.2em] text-brand hover:text-brand-300"
             >
               Try again
             </button>
@@ -431,7 +431,7 @@ function TranscriptReview({
         type="button"
         data-testid="voice-redo"
         onClick={onRedo}
-        className="mt-3 text-sm font-mono uppercase tracking-[0.2em] text-ink-300 hover:text-white"
+        className="mt-3 inline-flex min-h-[44px] items-center text-sm font-mono uppercase tracking-[0.2em] text-ink-300 hover:text-white"
       >
         ← {redoLabel}
       </button>
