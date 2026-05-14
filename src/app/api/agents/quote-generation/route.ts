@@ -4,6 +4,10 @@ import {
   runQuoteGenerationAgent,
   type QuoteGenerationInput,
 } from "@/lib/agents/quote-generation";
+import {
+  logAgentRunStart,
+  logAgentRunFinish,
+} from "@/lib/agent-monitor/logger";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -45,6 +49,17 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  const runId = `qgen_${Math.random().toString(16).slice(2, 10)}`;
+  const startedAt = Date.now();
+  logAgentRunStart({
+    agentName: "Quote Generation Agent",
+    runId,
+    stepName: "run.start",
+    status: "running",
+    message: `Generating a quote from a ${transcript.trim().length}-char transcript`,
+    startedAt,
+  });
+
   try {
     const result = await runQuoteGenerationAgent({
       transcript,
@@ -53,9 +68,25 @@ export async function POST(req: NextRequest) {
       markupPct:
         typeof body.markupPct === "number" ? body.markupPct : undefined,
     });
+    logAgentRunFinish({
+      agentName: "Quote Generation Agent",
+      runId,
+      stepName: "run.finish",
+      status: "complete",
+      message: "Quote draft generated",
+      durationMs: Date.now() - startedAt,
+    });
     return NextResponse.json({ ok: true, result });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
+    logAgentRunFinish({
+      agentName: "Quote Generation Agent",
+      runId,
+      stepName: "run.finish",
+      status: "failed",
+      message,
+      durationMs: Date.now() - startedAt,
+    });
     const isConfig = /not configured/i.test(message);
     return NextResponse.json(
       { error: message },

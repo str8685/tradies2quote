@@ -3,6 +3,11 @@ import {
   runFollowupAgent,
   type FollowupContext,
 } from "@/lib/agents/followup";
+import {
+  logAgentRunStart,
+  logAgentRunFinish,
+  newRunId,
+} from "@/lib/agent-monitor/logger";
 import { CopyButton } from "./CopyButton";
 
 /**
@@ -25,6 +30,27 @@ export function FollowupAgent(props: Props) {
   const visible = props.hideInapplicable
     ? messages.filter((m) => m.applies)
     : messages;
+
+  // Telemetry — fire-and-forget, never throws, never blocks the render.
+  try {
+    const runId = newRunId("fup");
+    logAgentRunStart({
+      agentName: "Follow-up Agent",
+      runId,
+      stepName: "run.start",
+      status: "running",
+      message: "Generating follow-up message templates",
+    });
+    logAgentRunFinish({
+      agentName: "Follow-up Agent",
+      runId,
+      stepName: "run.finish",
+      status: "complete",
+      message: `${visible.length} of ${messages.length} follow-up template(s) apply`,
+    });
+  } catch {
+    // Telemetry failures must never break the page render.
+  }
 
   return (
     <section

@@ -4,6 +4,10 @@ import {
   MAX_IMAGE_BYTES,
   runPhotoPlanAgent,
 } from "@/lib/agents/photo-plan";
+import {
+  logAgentRunStart,
+  logAgentRunFinish,
+} from "@/lib/agent-monitor/logger";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -78,15 +82,42 @@ export async function POST(req: NextRequest) {
   const arrayBuf = await file.arrayBuffer();
   const imageBase64 = Buffer.from(arrayBuf).toString("base64");
 
+  const runId = `photo_${Math.random().toString(16).slice(2, 10)}`;
+  const startedAt = Date.now();
+  logAgentRunStart({
+    agentName: "Photo / Plan Reading Agent",
+    runId,
+    stepName: "run.start",
+    status: "running",
+    message: `Reading a ${(file.size / 1024).toFixed(0)} KB ${file.type} image`,
+    startedAt,
+  });
+
   try {
     const result = await runPhotoPlanAgent({
       imageBase64,
       mimeType: file.type,
       hint,
     });
+    logAgentRunFinish({
+      agentName: "Photo / Plan Reading Agent",
+      runId,
+      stepName: "run.finish",
+      status: "complete",
+      message: "Image read complete",
+      durationMs: Date.now() - startedAt,
+    });
     return NextResponse.json({ ok: true, result });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
+    logAgentRunFinish({
+      agentName: "Photo / Plan Reading Agent",
+      runId,
+      stepName: "run.finish",
+      status: "failed",
+      message,
+      durationMs: Date.now() - startedAt,
+    });
     const isConfig = /not configured/i.test(message);
     return NextResponse.json(
       { error: message },

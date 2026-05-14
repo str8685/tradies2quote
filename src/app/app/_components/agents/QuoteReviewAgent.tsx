@@ -14,6 +14,11 @@ import {
   runQuoteReview,
   type ReviewSeverity,
 } from "@/lib/agents/quote-review";
+import {
+  logAgentRunStart,
+  logAgentRunFinish,
+  newRunId,
+} from "@/lib/agent-monitor/logger";
 
 /**
  * Quote Review Agent — server component.
@@ -97,6 +102,30 @@ export async function QuoteReviewAgent() {
 
   const quoteData = (quote.quote_data ?? null) as QuoteData | null;
   const report = runQuoteReview(quoteData, profile ?? null, quote.expires_at);
+
+  // Telemetry — fire-and-forget, never throws, never blocks the render.
+  try {
+    const runId = newRunId("qrev");
+    logAgentRunStart({
+      agentName: "Quote Review Agent",
+      runId,
+      stepName: "run.start",
+      status: "running",
+      message: "Reviewing the latest quote for readiness + compliance",
+      quoteId: quote.id,
+    });
+    logAgentRunFinish({
+      agentName: "Quote Review Agent",
+      runId,
+      stepName: "run.finish",
+      status: "complete",
+      message: `Reviewed — ${report.summary.missing} missing, ${report.summary.warning} warning(s), ${report.summary.info} info`,
+      quoteId: quote.id,
+    });
+  } catch {
+    // Telemetry failures must never break the page render.
+  }
+
   const headline = quoteData?.client?.name?.trim() || "Untitled quote";
   const number = quoteNumber(quote.id, quote.created_at);
 

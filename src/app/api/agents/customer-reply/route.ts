@@ -4,6 +4,10 @@ import {
   runCustomerReplyAgent,
   type CustomerReplyInput,
 } from "@/lib/agents/customer-reply";
+import {
+  logAgentRunStart,
+  logAgentRunFinish,
+} from "@/lib/agent-monitor/logger";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -41,15 +45,42 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  const runId = `creply_${Math.random().toString(16).slice(2, 10)}`;
+  const startedAt = Date.now();
+  logAgentRunStart({
+    agentName: "Customer Reply Agent",
+    runId,
+    stepName: "run.start",
+    status: "running",
+    message: `Drafting a reply to a ${customerMessage.trim().length}-char customer message`,
+    startedAt,
+  });
+
   try {
     const result = await runCustomerReplyAgent({
       customerMessage,
       quote: body.quote ?? null,
       businessName: body.businessName ?? null,
     });
+    logAgentRunFinish({
+      agentName: "Customer Reply Agent",
+      runId,
+      stepName: "run.finish",
+      status: "complete",
+      message: "Reply draft generated",
+      durationMs: Date.now() - startedAt,
+    });
     return NextResponse.json({ ok: true, result });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
+    logAgentRunFinish({
+      agentName: "Customer Reply Agent",
+      runId,
+      stepName: "run.finish",
+      status: "failed",
+      message,
+      durationMs: Date.now() - startedAt,
+    });
     const isConfig = /not configured/i.test(message);
     return NextResponse.json(
       { error: message },

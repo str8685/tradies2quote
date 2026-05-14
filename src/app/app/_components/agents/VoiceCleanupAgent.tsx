@@ -1,8 +1,9 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { Microphone, MagicWand } from "@phosphor-icons/react";
 import { runVoiceCleanup } from "@/lib/agents/voice-cleanup";
+import { logClientAgentRun } from "./_log-run";
 import { CopyButton } from "./CopyButton";
 
 /**
@@ -23,6 +24,22 @@ interface Props {
 export function VoiceCleanupAgent({ transcript }: Props) {
   const original = (transcript ?? "").trim();
   const result = useMemo(() => runVoiceCleanup(original), [original]);
+
+  // Telemetry — log one run to the monitoring dashboard the first time
+  // this component cleans a non-empty transcript. Guarded by a ref so a
+  // changing transcript prop doesn't spam the dashboard.
+  const loggedRef = useRef(false);
+  useEffect(() => {
+    if (loggedRef.current || !original) return;
+    loggedRef.current = true;
+    void logClientAgentRun({
+      agentName: "Voice Cleanup Agent",
+      message: result.changed
+        ? "Transcript cleaned — fillers trimmed, formatting tidied"
+        : "Transcript checked — already clean",
+      ok: true,
+    });
+  }, [original, result.changed]);
 
   if (!original) {
     return null;

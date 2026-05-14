@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Plus,
   X,
@@ -10,6 +10,7 @@ import {
 } from "@phosphor-icons/react";
 import { CopyButton } from "./CopyButton";
 import { runVariationAgent } from "@/lib/agents/variation";
+import { logClientAgentRun } from "./_log-run";
 import type { QuoteData } from "@/lib/quote-types";
 
 /**
@@ -68,6 +69,20 @@ export function VariationAgent() {
       taxRatePct: Number(taxRatePct) || 0,
     });
   }, [clientName, baseTotal, currency, taxRatePct, reason, rows]);
+
+  // Telemetry — log one run to the monitoring dashboard the first time
+  // this produces a usable (blocker-free) variation draft. Guarded by a
+  // ref so edits afterwards don't spam the dashboard.
+  const loggedRef = useRef(false);
+  useEffect(() => {
+    if (loggedRef.current || draft.blockers.length > 0) return;
+    loggedRef.current = true;
+    void logClientAgentRun({
+      agentName: "Variation Agent",
+      message: "Variation draft built — ready for client approval",
+      ok: true,
+    });
+  }, [draft]);
 
   function updateRow(id: string, patch: Partial<LineRow>) {
     setRows((prev) => prev.map((r) => (r.id === id ? { ...r, ...patch } : r)));

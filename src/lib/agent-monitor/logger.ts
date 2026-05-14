@@ -197,8 +197,20 @@ function buildBody(
 }
 
 /* ----------------------------------------------------------------------
- * Public API — exactly the 4 helpers the spec asked for
+ * Public API — event / error / approval helpers, plus the
+ * run.start / run.finish pair that drives the dashboard's Runs view.
  * -------------------------------------------------------------------- */
+
+/**
+ * Mint a run id for correlating a run.start with its run.finish. Lives
+ * here (rather than inlined at call sites) so React Server Components
+ * can get a unique id without tripping the `react-hooks/purity` lint
+ * rule — `Math.random()` is impure and may not be called directly in a
+ * component render body.
+ */
+export function newRunId(prefix: string): string {
+  return `${prefix}_${Math.random().toString(16).slice(2, 10)}`;
+}
 
 /**
  * Log a generic agent event (status check, suggestion surfaced, etc.).
@@ -238,5 +250,30 @@ export function logAgentError(
 export function logAgentApprovalNeeded(input: AgentLogInput): void {
   const body = buildBody("event", { ...input, status: "waiting_approval" });
   body.approval_required = true;
+  send(body);
+}
+
+/**
+ * Mark the START of an agent run. Emits type=run.start so the dashboard
+ * opens a row in its Runs view and starts the clock. Forces
+ * status=running. Pass a `runId` and reuse the exact same value on the
+ * matching `logAgentRunFinish` so the dashboard can pair the two.
+ */
+export function logAgentRunStart(input: AgentLogInput): void {
+  send(buildBody("run.start", { ...input, status: "running" }));
+}
+
+/**
+ * Mark the END of an agent run. Emits type=run.finish so the dashboard
+ * closes the matching run row (paired by `runId`). The caller sets
+ * `status`: "complete" for success, "failed" for a failure. On a
+ * failure the `message` is also forwarded as `error_message` (clamped
+ * to 500 chars) so the failure text surfaces on the dashboard.
+ */
+export function logAgentRunFinish(input: AgentLogInput): void {
+  const body = buildBody("run.finish", input);
+  if (input.status === "failed" && input.message) {
+    body.error_message = clamp(input.message, ERROR_MSG_MAX);
+  }
   send(body);
 }
