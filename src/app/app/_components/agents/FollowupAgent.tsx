@@ -1,4 +1,8 @@
-import { Lifebuoy, WarningOctagon } from "@phosphor-icons/react/dist/ssr";
+import {
+  Lifebuoy,
+  PaperPlaneTilt,
+  WarningOctagon,
+} from "@phosphor-icons/react/dist/ssr";
 import {
   runFollowupAgent,
   type FollowupContext,
@@ -27,9 +31,14 @@ interface Props extends FollowupContext {
 
 export function FollowupAgent(props: Props) {
   const messages = runFollowupAgent(props);
-  const visible = props.hideInapplicable
+  const filtered = props.hideInapplicable
     ? messages.filter((m) => m.applies)
     : messages;
+  // Surface the message the agent recommends sending right now at the
+  // top of the list — that's the whole point of the panel.
+  const visible = [...filtered].sort(
+    (a, b) => Number(b.recommended) - Number(a.recommended),
+  );
 
   // Telemetry — fire-and-forget, never throws, never blocks the render.
   try {
@@ -69,7 +78,7 @@ export function FollowupAgent(props: Props) {
             Follow-up Agent.
           </h2>
           <p className="mt-0.5 font-mono text-[10px] uppercase tracking-[0.25em] text-ink-300">
-            {"// read-only · never sends · copy to paste into email or sms"}
+            {"// read-only · tells you which message to send, and when"}
           </p>
         </div>
       </div>
@@ -88,13 +97,32 @@ export function FollowupAgent(props: Props) {
               key={m.id}
               data-testid={`agent-followup-${m.id}`}
               data-applies={m.applies}
-              className={`rounded-sm border bg-ink-900/40 p-4 ${m.applies ? "border-ink-700" : "border-ink-700/50 opacity-70"}`}
+              data-recommended={m.recommended}
+              className={`rounded-sm border p-4 ${
+                m.recommended
+                  ? "border-brand bg-brand/5"
+                  : m.applies
+                    ? "border-ink-700 bg-ink-900/40"
+                    : "border-ink-700/50 bg-ink-900/40 opacity-70"
+              }`}
             >
+              {m.recommended ? (
+                <p
+                  data-testid="agent-followup-recommended"
+                  className="mb-2 inline-flex items-center gap-1.5 rounded-sm bg-brand px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.2em] text-ink-900"
+                >
+                  <PaperPlaneTilt size={12} weight="bold" />
+                  Send this now
+                </p>
+              ) : null}
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <p className="font-display text-sm uppercase tracking-tight text-white">
                     {m.label}
                   </p>
+                  {m.recommended && m.timingHint ? (
+                    <p className="mt-0.5 text-xs text-brand">{m.timingHint}</p>
+                  ) : null}
                   {!m.applies && m.whyNotApply ? (
                     <p className="mt-0.5 inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.2em] text-ink-400">
                       <WarningOctagon size={12} weight="bold" />

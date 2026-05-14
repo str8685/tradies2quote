@@ -29,6 +29,14 @@ export interface FollowupMessage {
   applies: boolean;
   /** Reason it doesn't apply, when applies=false. */
   whyNotApply?: string;
+  /**
+   * True for the ONE message the tradie should send right now, based on
+   * how long the quote has been sitting. At most one message in the
+   * returned list is `recommended`.
+   */
+  recommended: boolean;
+  /** When `recommended`, a short "why now" line for the panel. */
+  timingHint?: string;
 }
 
 export interface FollowupContext {
@@ -61,6 +69,42 @@ function clientFirst(name: string | null): string {
   return first.length > 0 ? first : "there";
 }
 
+/**
+ * Which follow-up to send right now, given the quote's state + how long
+ * it's been sitting. Returns null when no follow-up is due:
+ *   - the quote isn't `sent` / `viewed` (nothing live to chase),
+ *   - or it was sent less than a day ago (give the client a beat).
+ *
+ * Cadence: day 1–2 a friendly reminder, day 3–6 open the door on price
+ * or scope, day 7+ a direct acceptance nudge.
+ */
+export function recommendedFollowupKind(
+  status: QuoteStatus,
+  daysSinceSent: number | null,
+): FollowupKind | null {
+  if (status !== "sent" && status !== "viewed") return null;
+  if (daysSinceSent === null || daysSinceSent < 1) return null;
+  if (daysSinceSent < 3) return "friendly-reminder";
+  if (daysSinceSent < 7) return "price-clarification";
+  return "acceptance-nudge";
+}
+
+/** Short "why now" line shown on the recommended message. */
+function timingHintFor(kind: FollowupKind, days: number | null): string {
+  const d = days ?? 0;
+  const dayStr = `${d} day${d === 1 ? "" : "s"}`;
+  switch (kind) {
+    case "friendly-reminder":
+      return `Sent ${dayStr} ago — a light nudge is due now.`;
+    case "price-clarification":
+      return `${dayStr} and no decision — time to open the door on price or scope.`;
+    case "acceptance-nudge":
+      return `${dayStr} out — make it easy to say yes before it goes cold.`;
+    default:
+      return "Recommended now.";
+  }
+}
+
 export function runFollowupAgent(ctx: FollowupContext): FollowupMessage[] {
   const days = daysSince(ctx.sentAtIso);
   const totalFmt = formatCurrency(ctx.total, ctx.currency);
@@ -86,6 +130,7 @@ export function runFollowupAgent(ctx: FollowupContext): FollowupMessage[] {
       "",
       sig,
     ].join("\n"),
+    recommended: false,
   };
 
   const priceClarification: FollowupMessage = {
@@ -108,6 +153,7 @@ export function runFollowupAgent(ctx: FollowupContext): FollowupMessage[] {
       "",
       sig,
     ].join("\n"),
+    recommended: false,
   };
 
   const acceptanceNudge: FollowupMessage = {
@@ -128,6 +174,7 @@ export function runFollowupAgent(ctx: FollowupContext): FollowupMessage[] {
       "",
       sig,
     ].join("\n"),
+    recommended: false,
   };
 
   const missingInfo: FollowupMessage = {
@@ -148,12 +195,24 @@ export function runFollowupAgent(ctx: FollowupContext): FollowupMessage[] {
       "",
       sig,
     ].join("\n"),
+    recommended: false,
   };
 
-  return [
+  const messages: FollowupMessage[] = [
     friendlyReminder,
     priceClarification,
     acceptanceNudge,
     missingInfo,
   ];
+
+  // Flag the single message the tradie should send right now. Everything
+  // else stays available — the recommendation just tells them where to
+  // start so follow-up isn't a "did I remember?" guessing game.
+  const recKind = recommendedFollowupKind(ctx.status, days);
+  if (!recKind) return messages;
+  return messages.map((m) =>
+    m.id === recKind
+      ? { ...m, recommended: true, timingHint: timingHintFor(recKind, days) }
+      : m,
+  );
 }
