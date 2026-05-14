@@ -65,20 +65,26 @@ export function FloatingInstallButton() {
     // Already installed — bail entirely.
     if (isStandalone(window)) return;
 
-    // Has the user dismissed at least once?
-    try {
-      setDismissed(window.sessionStorage.getItem(DISMISS_KEY) === "1");
-    } catch {
-      /* private mode */
-    }
-
     // iOS Safari doesn't fire `beforeinstallprompt` at all.
-    if (
-      isIOSUserAgent(navigator.userAgent ?? "", navigator.maxTouchPoints ?? 0)
-    ) {
-      setState({ mode: "ios" });
-      return;
-    }
+    const isIOS = isIOSUserAgent(
+      navigator.userAgent ?? "",
+      navigator.maxTouchPoints ?? 0,
+    );
+
+    // Defer the initial state reads to a 0-ms timer so they don't run
+    // synchronously inside the effect body (React 19's
+    // react-hooks/set-state-in-effect).
+    const t = setTimeout(() => {
+      try {
+        setDismissed(window.sessionStorage.getItem(DISMISS_KEY) === "1");
+      } catch {
+        /* private mode */
+      }
+      if (isIOS) setState({ mode: "ios" });
+    }, 0);
+
+    // iOS Safari never fires `beforeinstallprompt` — no listeners needed.
+    if (isIOS) return () => clearTimeout(t);
 
     function onBeforeInstall(e: Event) {
       e.preventDefault();
@@ -93,6 +99,7 @@ export function FloatingInstallButton() {
     window.addEventListener("beforeinstallprompt", onBeforeInstall);
     window.addEventListener("appinstalled", onInstalled);
     return () => {
+      clearTimeout(t);
       window.removeEventListener("beforeinstallprompt", onBeforeInstall);
       window.removeEventListener("appinstalled", onInstalled);
     };

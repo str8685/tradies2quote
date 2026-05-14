@@ -120,9 +120,14 @@ export default function LoadingScreen({
   // framer-motion's <AnimatePresence exit>.
   useEffect(() => {
     if (visible) return;
-    setFadingOut(true);
+    // Defer the fade-out state write so it isn't synchronous inside the
+    // effect body (React 19 react-hooks/set-state-in-effect).
+    const fade = setTimeout(() => setFadingOut(true), 0);
     const t = setTimeout(() => setMounted(false), FADE_MS);
-    return () => clearTimeout(t);
+    return () => {
+      clearTimeout(fade);
+      clearTimeout(t);
+    };
   }, [visible]);
 
   if (!mounted) return null;

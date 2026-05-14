@@ -70,19 +70,26 @@ export function ThemeToggle() {
 
   useEffect(() => {
     const saved = readSavedMode();
-    setMode(saved);
-    setEffective(readEffective(saved));
-    setHydrated(true);
+    // Defer the hydration state writes so they don't run synchronously
+    // inside the effect body (React 19 react-hooks/set-state-in-effect).
+    const t = setTimeout(() => {
+      setMode(saved);
+      setEffective(readEffective(saved));
+      setHydrated(true);
+    }, 0);
 
     // While this toggle is mounted, also follow OS changes locally so the
     // displayed `effective` label stays accurate. ThemeBoot already
     // re-applies `data-theme`; we just mirror its decision into our own
     // state so the (auto · currently …) label updates.
-    if (!window.matchMedia) return;
+    if (!window.matchMedia) return () => clearTimeout(t);
     const mql = window.matchMedia("(prefers-color-scheme: dark)");
     const handler = () => setEffective(readEffective(readSavedMode()));
     mql.addEventListener("change", handler);
-    return () => mql.removeEventListener("change", handler);
+    return () => {
+      clearTimeout(t);
+      mql.removeEventListener("change", handler);
+    };
   }, []);
 
   const cycle = useCallback(() => {

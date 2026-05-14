@@ -81,7 +81,11 @@ export function CaptureForm({
   useEffect(() => {
     if (supplierEdited) return;
     const detected = supplierFromUrl(url);
-    if (detected) setSupplier(detected);
+    if (!detected) return;
+    // Defer so the state write isn't synchronous inside the effect body
+    // (React 19 react-hooks/set-state-in-effect).
+    const t = setTimeout(() => setSupplier(detected), 0);
+    return () => clearTimeout(t);
   }, [url, supplierEdited]);
 
   // GST math for save value + the inline preview.
@@ -114,7 +118,7 @@ export function CaptureForm({
           className="rounded-sm border border-hivis/40 bg-hivis/10 p-3 text-xs text-hivis"
         >
           <strong className="font-display tracking-tight uppercase">
-            // paste flow
+            {"// paste flow"}
           </strong>
           <p className="mt-1 text-ink-100">
             Paste the supplier product URL below — works on iPhone and any

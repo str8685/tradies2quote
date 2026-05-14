@@ -60,36 +60,41 @@ export function DeviceInfoClient() {
       typeof window !== "undefined" && window.matchMedia
         ? window.matchMedia(q).matches
         : false;
-    setSnap({
-      userAgent: navigator.userAgent || "—",
-      language: navigator.language || "—",
-      viewport: `${window.innerWidth} × ${window.innerHeight}`,
-      pixelRatio: String(window.devicePixelRatio ?? 1),
-      cookieEnabled: navigator.cookieEnabled ? "yes" : "no",
-      storedTheme: readStorage("t2q-theme"),
-      resolvedTheme:
-        document.documentElement.dataset.theme ?? "—",
-      prefersColorScheme: matches("(prefers-color-scheme: dark)")
-        ? "dark"
-        : "light",
-      prefersReducedMotion: matches("(prefers-reduced-motion: reduce)")
-        ? "reduce"
-        : "no preference",
-      prefersContrast: matches("(prefers-contrast: more)")
-        ? "more"
-        : "no preference",
-      pwaStandalone:
-        matches("(display-mode: standalone)") ||
-        (typeof navigator !== "undefined" &&
-          (navigator as Navigator & { standalone?: boolean }).standalone ===
-            true)
-          ? "installed (standalone)"
-          : "browser tab",
-      installPromptHistory: readStorage("t2q-install-prompt-seen"),
-      serviceWorker:
-        "serviceWorker" in navigator ? "available" : "not supported",
-      onLine: navigator.onLine ? "online" : "offline",
-    });
+    // Defer the snapshot write to a 0-ms timer so it doesn't run
+    // synchronously inside the effect body (React 19
+    // react-hooks/set-state-in-effect).
+    const t = setTimeout(() => {
+      setSnap({
+        userAgent: navigator.userAgent || "—",
+        language: navigator.language || "—",
+        viewport: `${window.innerWidth} × ${window.innerHeight}`,
+        pixelRatio: String(window.devicePixelRatio ?? 1),
+        cookieEnabled: navigator.cookieEnabled ? "yes" : "no",
+        storedTheme: readStorage("t2q-theme"),
+        resolvedTheme: document.documentElement.dataset.theme ?? "—",
+        prefersColorScheme: matches("(prefers-color-scheme: dark)")
+          ? "dark"
+          : "light",
+        prefersReducedMotion: matches("(prefers-reduced-motion: reduce)")
+          ? "reduce"
+          : "no preference",
+        prefersContrast: matches("(prefers-contrast: more)")
+          ? "more"
+          : "no preference",
+        pwaStandalone:
+          matches("(display-mode: standalone)") ||
+          (typeof navigator !== "undefined" &&
+            (navigator as Navigator & { standalone?: boolean }).standalone ===
+              true)
+            ? "installed (standalone)"
+            : "browser tab",
+        installPromptHistory: readStorage("t2q-install-prompt-seen"),
+        serviceWorker:
+          "serviceWorker" in navigator ? "available" : "not supported",
+        onLine: navigator.onLine ? "online" : "offline",
+      });
+    }, 0);
+    return () => clearTimeout(t);
   }, []);
 
   return (

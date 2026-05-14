@@ -122,7 +122,7 @@ export function ImportClient() {
               {"// step 1"}
             </p>
             <h2 className="mt-1 font-display text-lg uppercase tracking-tight">
-              Where's the CSV from?
+              Where&apos;s the CSV from?
             </h2>
             <p className="mt-2 text-sm text-ink-300">
               Pick your supplier. We translate their column names automatically — no
@@ -235,7 +235,7 @@ export function ImportClient() {
             </>
           ) : (
             <>
-              You don't need the template for the {activePreset.shortLabel} preset —
+              You don&apos;t need the template for the {activePreset.shortLabel} preset —
               upload the CSV straight from your trade account.
             </>
           )}

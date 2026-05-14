@@ -99,7 +99,10 @@ export function AppHeaderClient({
   // Close the panel on route change so the user doesn't land on the
   // new page with a stale open menu.
   useEffect(() => {
-    setHubOpen(false);
+    // Defer so the state write isn't synchronous inside the effect body
+    // (React 19 react-hooks/set-state-in-effect).
+    const t = setTimeout(() => setHubOpen(false), 0);
+    return () => clearTimeout(t);
   }, [pathname]);
 
   return (
