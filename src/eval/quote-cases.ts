@@ -210,7 +210,7 @@ export const QUOTE_EVAL_CASES: QuoteEvalCase[] = [
   {
     id: "deck-board-replacement",
     description:
-      "Small back deck for a client on Maple Street — looks like about eight of the decking boards are rotted through and need replacing. H3.2 90x19 to match the existing. Reckon two to three hours.",
+      "Small back deck for Dave Thompson on Maple Street — looks like about eight of the decking boards are rotted through and need replacing. H3.2 90x19 to match the existing. Reckon two to three hours.",
     checks: [
       {
         label: "client name extracted (not left as a placeholder)",

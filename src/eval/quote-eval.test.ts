@@ -13,7 +13,7 @@
  * output is a per-case pass list + an overall score you can watch move
  * when you change a prompt.
  */
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 import { buildQuotePrompt } from "@/lib/quote-prompt";
@@ -94,6 +94,19 @@ async function generateQuote(
 /** Per-case score tally for the final summary line. */
 const scoreboard: Array<{ id: string; passed: number; total: number }> = [];
 
+/**
+ * Full human-readable report, mirrored to disk. Vitest 4 buffers test
+ * console.log output in a way that's easy to lose behind pipes and
+ * reporters, so the report is ALSO written to a file you can always
+ * open after a run: quote-eval-report.txt in the repo root.
+ */
+const REPORT_PATH = resolve(process.cwd(), "quote-eval-report.txt");
+const reportLines: string[] = [];
+function emit(line: string): void {
+  reportLines.push(line);
+  console.log(line);
+}
+
 describe.skipIf(!ENABLED)("quote-generation eval", () => {
   const apiKey = resolveApiKey();
 
@@ -132,7 +145,7 @@ describe.skipIf(!ENABLED)("quote-generation eval", () => {
       const report = results
         .map((r) => `    ${r.ok ? "PASS" : "FAIL"}  ${r.label}`)
         .join("\n");
-      console.log(
+      emit(
         `\n  [${evalCase.id}] ${passed}/${results.length} checks passed\n${report}\n`,
       );
 
@@ -156,12 +169,18 @@ describe.skipIf(!ENABLED)("quote-generation eval", () => {
     const totalChecks = scoreboard.reduce((s, c) => s + c.total, 0);
     const pct =
       totalChecks > 0 ? Math.round((totalPassed / totalChecks) * 100) : 0;
-    console.log(
+    emit(
       `\n  ===== QUOTE EVAL SCORE: ${totalPassed}/${totalChecks} (${pct}%) =====`,
     );
     for (const c of scoreboard) {
-      console.log(`    ${c.id}: ${c.passed}/${c.total}`);
+      emit(`    ${c.id}: ${c.passed}/${c.total}`);
     }
-    console.log("");
+    emit("");
+    try {
+      writeFileSync(REPORT_PATH, reportLines.join("\n") + "\n", "utf8");
+      console.log(`  Full report written to ${REPORT_PATH}`);
+    } catch {
+      /* non-fatal — the console output above is the source of truth */
+    }
   });
 });

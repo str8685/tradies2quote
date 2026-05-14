@@ -12,6 +12,7 @@
 
 # testing
 /coverage
+/quote-eval-report.txt
 
 # next.js
 /.next/
