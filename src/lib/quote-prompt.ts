@@ -60,9 +60,84 @@ Scan every value of line_items[].description and notes[]. Replace ALL of the fol
 
 After this scan, your output MUST NOT contain any lowercase "jib" or "gibb" anywhere. The string "GIB" or "GIB-line" should appear in their place.`;
 
+const WORKED_EXAMPLE = `WORKED EXAMPLE — this shows the expected shape and level of itemisation. The settings shown here (NZD, GST 15%, $75/hour labour, 20% markup) are illustrative only — ALWAYS use the tradie's actual settings from the top of this prompt.
+
+Input job description:
+"This one's for Dave over on Maple Street — small back deck, looks like about eight of the deck boards are rotted through. Need to lift those out and put new ones in, H3.2 ninety by nineteen to match. Reckon about three hours."
+
+Correct output:
+{
+  "client": { "name": "Dave", "address": "Maple Street", "email": null, "phone": null },
+  "job_summary": "Replace approximately 8 rotted decking boards on a small back deck, matching the existing H3.2 90x19 profile.",
+  "line_items": [
+    { "type": "material", "description": "Decking timber, H3.2 90x19 (3.6m lengths)", "quantity": 8, "unit": "each", "unit_price": 18.5, "line_total": 148 },
+    { "type": "material", "description": "Stainless decking screws", "quantity": 1, "unit": "lot", "unit_price": 32, "line_total": 32 },
+    { "type": "labour", "description": "Labour — lift rotted boards, cut and fit replacements", "quantity": 3, "unit": "hour", "unit_price": 75, "line_total": 225 }
+  ],
+  "materials_subtotal": 180,
+  "labour_subtotal": 225,
+  "markup_pct": 20,
+  "markup_amount": 36,
+  "subtotal_before_tax": 441,
+  "tax_amount": 66.15,
+  "total": 507.15,
+  "currency": "NZD",
+  "tax_label": "GST",
+  "tax_rate": 15,
+  "terms": "Quote valid 30 days from issue.\\nFinal payment due on completion.\\nVariations to be agreed in writing before work proceeds.\\nExcludes consents and council fees unless specifically noted.",
+  "notes": [
+    "Quantity assumes 8 boards need replacing — confirm the full extent of the rot on site, as adjacent boards may also be affected.",
+    "Assumed the deck joists below are sound — flag for a closer look if any feel spongy underfoot."
+  ]
+}
+
+Note how: the client name and street were pulled from the transcript; materials and labour are separate line items; markup is a separate top-level number, never baked into a line_total; the 50% deposit term is omitted because the job is under $5,000; and the two genuine assumptions are flagged in notes.`;
+
+/** A trimmed past quote — scope + line items only, no client PII. */
+export type PastQuoteSummary = {
+  jobSummary: string;
+  lineItems: Array<{
+    type: string;
+    description: string;
+    quantity: number;
+    unit: string;
+    unit_price: number;
+  }>;
+};
+
 export type BuildPromptOptions = {
   skipTakeoffMaterials?: boolean;
+  /**
+   * A few of the tradie's most recent quotes (scope + line items only).
+   * Shown to the model as a "how this tradie quotes" reference so its
+   * wording, units and pricing lean toward this tradie's real habits.
+   */
+  pastQuotes?: PastQuoteSummary[];
 };
+
+/**
+ * Format a handful of the tradie's recent quotes into a compact
+ * reference block. Returns "" when there are none (e.g. a new tradie).
+ */
+function formatPastQuotesForPrompt(pastQuotes: PastQuoteSummary[]): string {
+  if (pastQuotes.length === 0) return "";
+  const lines = pastQuotes.map((q, i) => {
+    const items = q.lineItems
+      .map(
+        (it) =>
+          `${it.description} (${it.quantity} ${it.unit} @ ${it.unit_price}, ${it.type})`,
+      )
+      .join("; ");
+    return `${i + 1}. ${q.jobSummary}\n   Lines: ${items || "none"}`;
+  });
+  return `HOW THIS TRADIE HAS QUOTED RECENTLY — their last ${
+    pastQuotes.length
+  } quote${
+    pastQuotes.length === 1 ? "" : "s"
+  }, scope + line items only. Use these to match THIS tradie's wording, units, level of itemisation and pricing habits — do NOT copy them as templates:
+
+${lines.join("\n")}`;
+}
 
 export function buildQuotePrompt(
   profile: QuoteProfile,
@@ -109,6 +184,8 @@ For this job, your line_items array MUST NOT include any of those. Generate ONLY
 If you list any of the excluded materials, the calculator will overwrite them — please do not waste tokens on them.`
     : "";
 
+  const pastQuotesBlock = formatPastQuotesForPrompt(options.pastQuotes ?? []);
+
   return `You are a senior estimator helping a ${countryName} tradie produce a professional quote from a voice memo or typed description of a job.
 
 The tradie's settings:
@@ -121,6 +198,7 @@ The tradie's settings:
 ${TRADIE_TERMS}
 
 ${libraryBlock}
+${pastQuotesBlock ? `\n${pastQuotesBlock}\n` : ""}
 ${takeoffExclusionBlock ? `\n${takeoffExclusionBlock}\n` : ""}
 Use ${countryName} spelling and trade vocabulary. Use realistic units (m, m², m³, kg, L, hour, day, each, lot).
 
@@ -140,6 +218,8 @@ Standard terms — include these unless the transcript suggests otherwise:
 - Excludes consents and council fees unless specifically noted
 
 ${JSON_INSTRUCTIONS}
+
+${WORKED_EXAMPLE}
 
 ${FINAL_VALIDATION}`;
 }

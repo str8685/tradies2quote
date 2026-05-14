@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { NZ_DEFAULTS, round2 } from "@/lib/quote-defaults";
-import { buildQuotePrompt } from "@/lib/quote-prompt";
+import { buildQuotePrompt, type PastQuoteSummary } from "@/lib/quote-prompt";
 import { matchToLibrary } from "@/lib/materials";
 import {
   calculateMaterialTakeoff,
@@ -149,11 +149,44 @@ export async function POST(request: NextRequest) {
     last_used_at: r.last_used_at,
   }));
 
+  // Wave 25 — feed the model a few of the tradie's recent quotes so its
+  // wording, units and pricing lean toward how THIS tradie actually
+  // quotes. Scope + line items only — client PII is never included.
+  const { data: pastQuoteRows } = await supabase
+    .from("quotes")
+    .select("quote_data")
+    .eq("user_id", user.id)
+    .neq("id", id)
+    .not("quote_data", "is", null)
+    .order("created_at", { ascending: false })
+    .limit(3);
+  const pastQuotes: PastQuoteSummary[] = (pastQuoteRows ?? [])
+    .map((r): PastQuoteSummary | null => {
+      const qd = r.quote_data as QuoteData | null;
+      if (!qd) return null;
+      return {
+        jobSummary: typeof qd.job_summary === "string" ? qd.job_summary : "",
+        lineItems: (Array.isArray(qd.line_items) ? qd.line_items : [])
+          .slice(0, 12)
+          .map((it) => ({
+            type: it.type,
+            description: it.description,
+            quantity: Number(it.quantity) || 0,
+            unit: it.unit,
+            unit_price: Number(it.unit_price) || 0,
+          })),
+      };
+    })
+    .filter(
+      (q): q is PastQuoteSummary => q !== null && q.jobSummary.length > 0,
+    );
+
   const parsedTakeoff = parseTakeoffDescription(transcript);
   const useCalculator = canRunCalculator(parsedTakeoff);
 
   const systemPrompt = buildQuotePrompt(profile, library, {
     skipTakeoffMaterials: useCalculator,
+    pastQuotes,
   });
 
   const claudeRes = await fetch(ANTHROPIC_URL, {
