@@ -45,11 +45,11 @@ export default async function ResetPasswordPage({
             {/* Wave 12.3 — new Tradies2Quote brand PNG. */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src="/logo-horizontal.png?v=20"
+              src="/logo-horizontal.png?v=21"
               alt="Tradies2Quote"
-              width={380}
-              height={100}
-              className="block h-8 w-auto rounded-sm bg-white px-2 py-1"
+              width={1084}
+              height={512}
+              className="block h-9 w-auto"
             />
           </Link>
         </div>

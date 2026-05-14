@@ -81,11 +81,11 @@ export function AuthSplitShell({
                 white pill. Replaces the old inline Site-Safe Badge. */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src="/logo-mark.png?v=20"
+              src="/logo-mark.png?v=21"
               alt="Tradies2Quote"
-              width={160}
-              height={136}
-              className="block h-7 w-auto rounded-sm bg-white px-1.5 py-0.5"
+              width={1084}
+              height={512}
+              className="block h-8 w-auto"
             />
           </Link>
         </div>
@@ -98,11 +98,11 @@ export function AuthSplitShell({
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src="/logo-horizontal.png?v=20"
+              src="/logo-horizontal.png?v=21"
               alt="Tradies2Quote"
-              width={380}
-              height={100}
-              className="block h-9 w-auto rounded-sm bg-white px-2 py-1"
+              width={1084}
+              height={512}
+              className="block h-10 w-auto"
             />
           </Link>
           <div className="w-full max-w-md mx-auto lg:mx-0">{form}</div>

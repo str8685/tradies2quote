@@ -51,7 +51,7 @@ export function Header() {
               wordmark hides on mobile so the burger menu has room
               to breathe; T2Q alone reads as the brand on a phone
               and TRADIES2QUOTE rejoins it on tablet/desktop. */}
-          <Logo size={36} wordmarkClassName="hidden md:inline" />
+          <Logo size={44} wordmarkClassName="hidden md:inline" />
         </Link>
 
         <nav className="hidden md:flex items-center gap-8" data-testid="nav-primary">

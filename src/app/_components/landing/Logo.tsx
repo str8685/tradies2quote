@@ -1,26 +1,26 @@
 /**
- * Brand mark — Wave 19.11 — the founder's actual T2Q artwork.
+ * Brand mark — Wave 19.12 — transparent T2Q artwork, no white box.
  *
  * History:
  *   - Wave 19.2 swapped every `public/*.png` icon asset to the
  *     founder's uploaded T2Q logo.
- *   - Wave 19.8 then refactored the landing Header, Footer, and
- *     splash to a new SVG `<LogoMark>` that re-drew "T2Q" as plain
- *     Archivo Black <text> — a typographic *approximation*, not the
- *     real custom letterforms. That regressed the brand: the landing
- *     stopped showing the actual logo.
- *   - Wave 19.11 (this) points `<LogoMark>` back at the real PNG
- *     (`/logo-horizontal.png`) so every surface that uses `<Logo>` /
- *     `<LogoMark>` — landing Header, Footer, and the splash screen —
- *     shows the founder's actual artwork again.
+ *   - Wave 19.8 refactored the landing surfaces to an SVG <text>
+ *     approximation — not the real letterforms.
+ *   - Wave 19.11 pointed <LogoMark> back at the real PNG, but the
+ *     source had a baked-in white background, so it needed a white
+ *     pill to stay legible on the dark theme — the "white box".
+ *   - Wave 19.12 (this) regenerates `/logo-horizontal.png` as a
+ *     TRANSPARENT PNG: the T and Q letterforms recoloured light
+ *     (#F5F5F4), the 2 kept orange, the white background dropped to
+ *     alpha 0, and the canvas cropped tight to the glyphs (was 33%
+ *     content + 67% white padding). It now reads cleanly straight on
+ *     the dark site + dark splash with NO pill, and renders large
+ *     because the wasted padding is gone.
  *
- * The PNG has dark letterforms on a transparent background, so the
- * mark sits inside a small white pill to stay legible on the dark
- * site + dark splash. The `?v=20` query busts any copy a browser
- * cached before the wave-19.2 asset swap.
+ * `size` controls HEIGHT; the ~2.12:1 asset aspect sets the width.
+ * `?v=21` busts the wave-19.11 (white-bg) cached copy.
  *
- * `size` controls both width and height — the asset is square. The
- * legacy export name `LogoMark` is preserved so existing imports
+ * The legacy export name `LogoMark` is preserved so existing imports
  * keep working without churn.
  */
 type LogoMarkProps = {
@@ -30,25 +30,21 @@ type LogoMarkProps = {
 };
 
 export function LogoMark({
-  size = 36,
+  size = 40,
   className = "",
   title = "Tradies2Quote",
 }: LogoMarkProps) {
   return (
-    <span
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
       data-testid="logo-mark"
-      className={`inline-flex shrink-0 items-center justify-center rounded-md bg-white p-1 ${className}`}
-      style={{ height: size, width: size }}
-    >
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src="/logo-horizontal.png?v=20"
-        alt={title}
-        width={200}
-        height={200}
-        className="block h-full w-full object-contain"
-      />
-    </span>
+      src="/logo-horizontal.png?v=21"
+      alt={title}
+      width={1084}
+      height={512}
+      className={`block w-auto shrink-0 ${className}`}
+      style={{ height: size }}
+    />
   );
 }
 

@@ -30,11 +30,11 @@ export default function LegalLayout({
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src="/logo-horizontal.png?v=20"
+              src="/logo-horizontal.png?v=21"
               alt="Tradies2Quote"
-              width={380}
-              height={100}
-              className="block h-9 w-auto rounded-md bg-white px-2 py-1 sm:h-10"
+              width={1084}
+              height={512}
+              className="block h-10 w-auto sm:h-11"
             />
           </Link>
           <Link

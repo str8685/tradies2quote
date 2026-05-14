@@ -11,12 +11,11 @@ export function Footer() {
       <div className="max-w-7xl mx-auto px-6 md:px-12">
         <div className="grid md:grid-cols-5 gap-10 pt-8 border-t border-ink-700">
           <div className="md:col-span-2">
-            {/* Wave 19.8 — swapped the legacy logo-horizontal.png +
-                white-pill wrapper for the new <Logo /> SVG lockup.
-                Inherits text-white from the footer for the T/Q letters;
-                the orange 2 is hardcoded in LogoMark. No pill needed
-                because the SVG renders cleanly on the dark footer. */}
-            <Logo size={32} className="text-white" />
+            {/* Wave 19.12 — <Logo> now renders the founder's real
+                transparent T2Q artwork (light letterforms, orange 2)
+                straight on the dark footer — no white pill. text-white
+                still styles the TRADIES2QUOTE wordmark text beside it. */}
+            <Logo size={40} className="text-white" />
             <p className="mt-4 text-ink-400 text-sm max-w-sm">
               Voice in. Quote out. Built by a builder running STR8 Builders in New Zealand.
             </p>

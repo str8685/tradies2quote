@@ -124,11 +124,11 @@ export function AppHeaderClient({
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src="/logo-horizontal.png?v=20"
+              src="/logo-horizontal.png?v=21"
               alt="Tradies2Quote"
-              width={380}
-              height={100}
-              className="block h-6 w-auto rounded-sm bg-white px-1.5 py-0.5 sm:h-8 sm:px-2 sm:py-1"
+              width={1084}
+              height={512}
+              className="block h-7 w-auto sm:h-9"
             />
           </Link>
           {context ? (
