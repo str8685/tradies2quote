@@ -97,7 +97,8 @@ export async function updateMaterial(
       notes: readOptional(formData, "notes"),
       is_ai_estimated: false,
     })
-    .eq("id", id);
+    .eq("id", id)
+    .eq("user_id", user.id);
 
   if (error) {
     if (error.code === "23505") {
@@ -124,7 +125,11 @@ export async function deleteMaterial(
   const id = readField(formData, "id");
   if (!id) return { error: "Missing material id." };
 
-  const { error } = await supabase.from("materials").delete().eq("id", id);
+  const { error } = await supabase
+    .from("materials")
+    .delete()
+    .eq("id", id)
+    .eq("user_id", user.id);
   if (error) {
     console.error("deleteMaterial failed", error);
     return { error: "Could not delete." };

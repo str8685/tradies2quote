@@ -28,6 +28,7 @@ export default async function EditMaterialPage({
       "id, name, unit, default_unit_price, supplier, supplier_url, notes",
     )
     .eq("id", id)
+    .eq("user_id", user.id)
     .single();
   if (error || !material) redirect("/app/materials");
 

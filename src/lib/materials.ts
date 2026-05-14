@@ -151,7 +151,10 @@ export function parseMaterialsCsv(text: string): CsvParseResult {
       invalid.push({ row: i + 1, reason: "Missing unit", raw: lines[i] });
       continue;
     }
-    const price = Number(priceRaw);
+    // Strip currency symbols and thousands separators so merchant
+    // exports like "1,234.50" or "$12.00" parse instead of being
+    // silently rejected. NZ/AU/UK/US/CA all use "." as the decimal.
+    const price = Number(priceRaw.replace(/[$£€,\s]/g, ""));
     if (!Number.isFinite(price) || price < 0) {
       invalid.push({
         row: i + 1,
