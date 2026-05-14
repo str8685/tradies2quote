@@ -1,4 +1,4 @@
-import { defineConfig } from "vitest/config";
+import { configDefaults, defineConfig } from "vitest/config";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
 
@@ -13,5 +13,11 @@ export default defineConfig({
       "server-only": resolve(__dirname, "src/test/server-only-stub.ts"),
       "@": resolve(__dirname, "src"),
     },
+    // `.claude/worktrees/` holds full git-worktree copies of the repo.
+    // Without this exclude, vitest globs their test files too and runs
+    // the whole suite once per worktree — several times slower, and any
+    // failure shows up duplicated per copy. Spread the vitest defaults
+    // so node_modules / dist / config-file exclusions aren't dropped.
+    exclude: [...configDefaults.exclude, "**/.claude/**"],
   },
 });
