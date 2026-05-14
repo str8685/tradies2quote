@@ -81,7 +81,7 @@ export function AuthSplitShell({
                 white pill. Replaces the old inline Site-Safe Badge. */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src="/logo-mark.png"
+              src="/logo-mark.png?v=20"
               alt="Tradies2Quote"
               width={160}
               height={136}
@@ -98,7 +98,7 @@ export function AuthSplitShell({
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src="/logo-horizontal.png"
+              src="/logo-horizontal.png?v=20"
               alt="Tradies2Quote"
               width={380}
               height={100}

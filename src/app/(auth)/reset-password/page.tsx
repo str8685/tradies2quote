@@ -45,7 +45,7 @@ export default async function ResetPasswordPage({
             {/* Wave 12.3 — new Tradies2Quote brand PNG. */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src="/logo-horizontal.png"
+              src="/logo-horizontal.png?v=20"
               alt="Tradies2Quote"
               width={380}
               height={100}

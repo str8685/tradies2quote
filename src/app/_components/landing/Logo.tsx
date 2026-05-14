@@ -1,23 +1,26 @@
 /**
- * Brand mark — Wave 19.8 T2Q wordmark logo.
+ * Brand mark — Wave 19.11 — the founder's actual T2Q artwork.
  *
- * Replaces the original "Site-Safe Badge" (caution-tape ring + ²Q
- * monogram + soundwave bars) with the founder's new logo: T + 2 + Q
- * in heavy display type, the 2 in brand orange, the T and Q in
- * currentColor so they inherit white on the dark theme and ink on
- * light. The old SVG paths are dropped — no caution-tape pattern, no
- * soundwave, no pulsing record dot. The new design reads cleaner at
- * small sizes (header, footer) and matches the new brand asset.
+ * History:
+ *   - Wave 19.2 swapped every `public/*.png` icon asset to the
+ *     founder's uploaded T2Q logo.
+ *   - Wave 19.8 then refactored the landing Header, Footer, and
+ *     splash to a new SVG `<LogoMark>` that re-drew "T2Q" as plain
+ *     Archivo Black <text> — a typographic *approximation*, not the
+ *     real custom letterforms. That regressed the brand: the landing
+ *     stopped showing the actual logo.
+ *   - Wave 19.11 (this) points `<LogoMark>` back at the real PNG
+ *     (`/logo-horizontal.png`) so every surface that uses `<Logo>` /
+ *     `<LogoMark>` — landing Header, Footer, and the splash screen —
+ *     shows the founder's actual artwork again.
  *
- * Aspect is ~1.85:1 (wide). The `size` prop controls HEIGHT; width
- * scales via the viewBox.
+ * The PNG has dark letterforms on a transparent background, so the
+ * mark sits inside a small white pill to stay legible on the dark
+ * site + dark splash. The `?v=20` query busts any copy a browser
+ * cached before the wave-19.2 asset swap.
  *
- * The font reference is the same chain the rest of the site uses for
- * SVG text — Archivo Black is loaded globally in layout.tsx via
- * next/font/google, so by the time any page renders the font is
- * available.
- *
- * The legacy export name `LogoMark` is preserved so existing imports
+ * `size` controls both width and height — the asset is square. The
+ * legacy export name `LogoMark` is preserved so existing imports
  * keep working without churn.
  */
 type LogoMarkProps = {
@@ -31,30 +34,21 @@ export function LogoMark({
   className = "",
   title = "Tradies2Quote",
 }: LogoMarkProps) {
-  const height = size;
-  const width = Math.round(size * 1.85);
   return (
-    <svg
-      width={width}
-      height={height}
-      viewBox="0 0 120 64"
-      role="img"
-      aria-label={title}
-      className={className}
-      xmlns="http://www.w3.org/2000/svg"
+    <span
+      data-testid="logo-mark"
+      className={`inline-flex shrink-0 items-center justify-center rounded-md bg-white p-1 ${className}`}
+      style={{ height: size, width: size }}
     >
-      <text
-        fontFamily="'Archivo Black','Archivo',system-ui,sans-serif"
-        fontSize="64"
-        fontWeight="900"
-        y="54"
-        letterSpacing="-3"
-      >
-        <tspan x="0" fill="currentColor">T</tspan>
-        <tspan dx="-2" fill="#FF5F15">2</tspan>
-        <tspan dx="-3" fill="currentColor">Q</tspan>
-      </text>
-    </svg>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src="/logo-horizontal.png?v=20"
+        alt={title}
+        width={200}
+        height={200}
+        className="block h-full w-full object-contain"
+      />
+    </span>
   );
 }
 
