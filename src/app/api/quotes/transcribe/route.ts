@@ -123,7 +123,18 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const payload = (await transcribeRes.json()) as { text?: string };
+  let payload: { text?: string };
+  try {
+    payload = (await transcribeRes.json()) as { text?: string };
+  } catch {
+    // 200 OK but a non-JSON body (proxy/CDN error page, truncated
+    // stream). Treat it as an upstream failure, not a 500.
+    console.error("Transcription returned a non-JSON 200 body");
+    return NextResponse.json(
+      { error: "Transcription failed. Please try again." },
+      { status: 502 },
+    );
+  }
   const transcript = (payload.text ?? "").trim();
   if (!transcript) {
     return NextResponse.json(

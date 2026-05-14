@@ -223,14 +223,36 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const claudePayload = (await claudeRes.json()) as {
+  let claudePayload: {
     content?: Array<{ type: string; text?: string }>;
     stop_reason?: string;
   };
+  try {
+    claudePayload = await claudeRes.json();
+  } catch {
+    // 200 OK but a non-JSON body — treat as an upstream failure, not a 500.
+    console.error("Claude returned a non-JSON 200 body");
+    return NextResponse.json(
+      { error: "Quote generation failed. Please try again." },
+      { status: 502 },
+    );
+  }
   const text = claudePayload.content?.find((c) => c.type === "text")?.text ?? "";
   if (!text) {
     return NextResponse.json(
       { error: "Empty response from quote model. Please try again." },
+      { status: 502 },
+    );
+  }
+  // A truncated response (`max_tokens`) can never parse as complete
+  // JSON, so a retry just reproduces the failure — surface a distinct,
+  // actionable message instead of the generic "malformed" one.
+  if (claudePayload.stop_reason === "max_tokens") {
+    return NextResponse.json(
+      {
+        error:
+          "This job was too long to quote in one go. Shorten the description or split it into separate quotes.",
+      },
       { status: 502 },
     );
   }
@@ -259,7 +281,28 @@ export async function POST(request: NextRequest) {
   parsed.tax_rate = profile.tax_rate;
   parsed.markup_pct = profile.default_markup_pct;
   parsed.notes = Array.isArray(parsed.notes) ? parsed.notes : [];
-  parsed.line_items = Array.isArray(parsed.line_items) ? parsed.line_items : [];
+  // Sanitise the model's line items: coerce `description`/`unit` to
+  // strings (the matcher lowercases description and would throw on a
+  // missing one) and clamp negative quantities/prices to 0 so a stray
+  // negative can't silently drag the quote total below the real cost.
+  parsed.line_items = (
+    Array.isArray(parsed.line_items) ? parsed.line_items : []
+  ).map((it) => ({
+    ...it,
+    type:
+      it.type === "labour"
+        ? "labour"
+        : it.type === "other"
+          ? "other"
+          : "material",
+    description:
+      typeof it.description === "string"
+        ? it.description
+        : String(it.description ?? ""),
+    unit: typeof it.unit === "string" ? it.unit : "",
+    quantity: Math.max(0, Number(it.quantity) || 0),
+    unit_price: Math.max(0, Number(it.unit_price) || 0),
+  }));
   parsed.client = parsed.client ?? {
     name: "To be confirmed",
     address: null,
@@ -337,6 +380,23 @@ export async function POST(request: NextRequest) {
   }
 
   parsed.line_items = [...calculatorItems, ...aiItems];
+
+  // A quote with no line items is unusable — the editor would open
+  // empty at $0.00 with no warning. Fail loudly so the tradie can
+  // retry with more detail rather than landing on a broken quote.
+  if (parsed.line_items.length === 0) {
+    console.error("Quote generation produced zero line items", {
+      quote_id: id,
+      used_calculator: useCalculator,
+    });
+    return NextResponse.json(
+      {
+        error:
+          "The quote came back empty. Try again with a bit more detail about the job.",
+      },
+      { status: 502 },
+    );
+  }
 
   // Stage 4.3/4.4 — feature-flagged material catalogue enrichment with safe
   // fallback. OFF by default (production): identity passthrough. When

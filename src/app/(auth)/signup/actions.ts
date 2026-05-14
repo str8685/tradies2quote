@@ -22,6 +22,17 @@ export async function signupAction(formData: FormData) {
     redirect(`/signup?error=${encodeURIComponent(error.message)}`);
   }
 
+  // Supabase does NOT return an error for an already-registered email
+  // (deliberate, to prevent account enumeration). Instead it returns a
+  // user with an empty `identities` array and no session. Detect that
+  // and send them to log in, rather than a dead-end "check your inbox"
+  // for a confirmation email that will never arrive.
+  if (data.user && (data.user.identities?.length ?? 0) === 0) {
+    redirect(
+      "/login?message=That%20email%20is%20already%20registered.%20Please%20log%20in.",
+    );
+  }
+
   // With email confirmation OFF, signUp returns a session and the user is
   // already logged in — go straight to the dashboard. With confirmation ON,
   // there is no session and we'd send them to /login with a "check your inbox"
