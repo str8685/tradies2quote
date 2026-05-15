@@ -44,19 +44,6 @@ export async function POST(
   }
 
   const qd = quote.quote_data as QuoteData | null;
-  const debugClient = qd?.client ?? null;
-  console.log("[send-quote] inspect", {
-    quote_id: quote.id,
-    status: quote.status,
-    has_quote_data: qd !== null,
-    has_line_items: Array.isArray(qd?.line_items) && qd.line_items.length > 0,
-    line_item_count: qd?.line_items?.length ?? 0,
-    total_amount: quote.total_amount,
-    client_name: debugClient?.name ?? null,
-    client_email_present: !!(debugClient?.email && debugClient.email.trim().length > 0),
-    client_phone_present: !!(debugClient?.phone && debugClient.phone.trim().length > 0),
-    legacy_contact_present: !!(debugClient?.contact && debugClient.contact.trim().length > 0),
-  });
 
   const validation = validateQuoteForSending({
     status: quote.status,
@@ -64,10 +51,11 @@ export async function POST(
     quote_data: qd,
   });
   if (!validation.ok) {
-    console.log("[send-quote] validation_failed", {
-      quote_id: quote.id,
-      error: validation.error,
-    });
+    // Validation failures are user-actionable (missing email, no line
+    // items, etc.) so they're returned to the client below with a
+    // human-readable message — no server log needed. Errors that ARE
+    // server-side problems (PDF gen, upload, email) still log via
+    // console.error so they surface in Vercel logs.
     return NextResponse.json(
       {
         error: validation.error,
@@ -76,7 +64,6 @@ export async function POST(
       { status: 400 },
     );
   }
-  console.log("[send-quote] validation_ok", { quote_id: quote.id });
 
   const { data: profile } = await supabase
     .from("profiles")

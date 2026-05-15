@@ -7,6 +7,7 @@ import {
   Bug,
   Plus,
   Robot,
+  Warning,
 } from "@phosphor-icons/react/dist/ssr";
 import { createClient } from "@/lib/supabase/server";
 import { getCachedAuthUser } from "@/lib/supabase/auth";
@@ -112,23 +113,39 @@ async function DashboardData({
   // Stats query is intentionally separate from the recent-quotes query
   // so it can scan all the user's non-deleted rows for accurate counts
   // and totals without bloating the recent-list payload.
-  const [{ data: quotes }, { data: statsRows }] = await Promise.all([
-    supabase
-      .from("quotes")
-      .select(
-        "id, status, total_amount, currency, quote_data, created_at, archived_at",
-      )
-      .eq("user_id", userId)
-      .is("deleted_at", null)
-      .is("archived_at", null)
-      .order("created_at", { ascending: false })
-      .limit(DASHBOARD_RECENT_LIMIT),
-    supabase
-      .from("quotes")
-      .select("status, total_amount, currency, created_at")
-      .eq("user_id", userId)
-      .is("deleted_at", null),
-  ]);
+  const [{ data: quotes }, { data: statsRows }, { data: profile }] =
+    await Promise.all([
+      supabase
+        .from("quotes")
+        .select(
+          "id, status, total_amount, currency, quote_data, created_at, archived_at",
+        )
+        .eq("user_id", userId)
+        .is("deleted_at", null)
+        .is("archived_at", null)
+        .order("created_at", { ascending: false })
+        .limit(DASHBOARD_RECENT_LIMIT),
+      supabase
+        .from("quotes")
+        .select("status, total_amount, currency, created_at")
+        .eq("user_id", userId)
+        .is("deleted_at", null),
+      // Wave 36 — fetch just enough of the profile to detect a missing
+      // business name. The banner below tells the operator their quote
+      // PDFs will go out branded "Your business" until they fill it in.
+      // No row exists yet for fresh signups (the upsert in
+      // settings/actions creates one on first save), so `.maybeSingle()`
+      // → null is the common case.
+      supabase
+        .from("profiles")
+        .select("business_name")
+        .eq("id", userId)
+        .maybeSingle(),
+    ]);
+  const businessNameMissing =
+    !profile?.business_name ||
+    (typeof profile.business_name === "string" &&
+      profile.business_name.trim().length === 0);
 
   // Aggregate this user's own quote stats. Pure JS so no extra Postgres
   // RPC needed, and the query already RLS-scopes by user_id.
@@ -159,6 +176,49 @@ async function DashboardData({
 
   return (
     <>
+      {/* Wave 36 — first-run nudge. Quote PDFs and the customer email's
+          `from` line both read "Your business" until `business_name` is
+          filled in on Settings. A fresh signup has no `profiles` row at
+          all (lazy-created on first Settings save), so this banner
+          fires for every new account until they fill it in. Owner-only
+          gating would be wrong here — every tradie sending their first
+          quote benefits from the nudge. Quiet brand styling (not a
+          full alert) since this is friction-removal, not an error. */}
+      {businessNameMissing ? (
+        <Link
+          href="/app/settings"
+          data-testid="dashboard-business-name-banner"
+          className="t2q-premium-card mb-4 flex items-start gap-3 p-4 sm:items-center sm:p-5"
+        >
+          <span
+            aria-hidden="true"
+            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-sm border border-brand/40 bg-brand/10 text-brand"
+          >
+            <Warning size={18} weight="bold" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="font-display text-sm uppercase tracking-tight text-white">
+              Set your business name first.
+            </p>
+            <p className="mt-0.5 text-xs text-ink-300 sm:text-sm">
+              Quote PDFs and emails will read{" "}
+              <span className="text-ink-100">&quot;Your business&quot;</span>{" "}
+              until this is filled in.
+            </p>
+          </div>
+          <span className="hidden items-center gap-1 font-mono text-[10px] uppercase tracking-[0.25em] text-brand sm:inline-flex">
+            Open settings
+            <ArrowRight size={12} weight="bold" />
+          </span>
+          <ArrowRight
+            size={18}
+            weight="bold"
+            className="shrink-0 text-brand sm:hidden"
+            aria-hidden="true"
+          />
+        </Link>
+      ) : null}
+
       {/* Wave 13 — lifecycle stage tiles. Each tile is a real DB
           count for this user, keyed by the same quote_status enum
           the orchestrator drives. Tiles link into /app/quotes with
