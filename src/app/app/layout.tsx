@@ -61,8 +61,14 @@ export default function AppLayout({
       {/* Mobile-only safe-area-top. AppHeader is `hidden sm:block`
           again so the wrapper picks up the iPhone notch / Android
           cutout inset on phones. Desktop gets the inset from the
-          header itself. */}
-      <div className="min-w-0 pt-[env(safe-area-inset-top)] pb-[88px] sm:pt-0 sm:pb-0">
+          header itself.
+
+          Wave 36 — bottom inset bumped from 88px → 112px. The bottom
+          nav bar grows to ~80–96px on tall iOS devices once the
+          home-indicator safe area is in play, and the previous 88px
+          left long forms (Settings especially) clipped under the bar
+          on the last field. 112px = nav max + a 16px breather. */}
+      <div className="min-w-0 pt-[env(safe-area-inset-top)] pb-[112px] sm:pt-0 sm:pb-0">
         {children}
       </div>
       <div aria-hidden="true" className="hidden lg:block" />

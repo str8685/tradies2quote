@@ -3,11 +3,11 @@
 import { useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { Check, FloppyDisk, Warning } from "@phosphor-icons/react";
+import { saveSettings } from "../actions";
 import {
-  saveSettings,
   SAVE_SETTINGS_INITIAL,
   type SaveSettingsState,
-} from "../actions";
+} from "../_state";
 
 /**
  * Editable profile form for `/app/settings`.
@@ -173,6 +173,12 @@ export function SettingsForm({ initial }: Props) {
             name="tax_rate"
             type="number"
             inputMode="decimal"
+            // Wave 36 — `autoComplete="off"` + `data-form-type="other"`
+            // stops mobile browsers (notably iOS Safari) autofilling the
+            // saved phone number / address-line digits into a numeric
+            // settings field, which surfaced as junk like `*1126879`.
+            autoComplete="off"
+            data-form-type="other"
             min={0}
             max={100}
             step={0.1}
@@ -189,6 +195,8 @@ export function SettingsForm({ initial }: Props) {
             name="default_labour_rate"
             type="number"
             inputMode="decimal"
+            autoComplete="off"
+            data-form-type="other"
             min={0}
             step={0.5}
             value={form.default_labour_rate}
@@ -204,6 +212,8 @@ export function SettingsForm({ initial }: Props) {
             name="default_markup_pct"
             type="number"
             inputMode="decimal"
+            autoComplete="off"
+            data-form-type="other"
             min={0}
             max={100}
             step={0.5}

@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import type { SaveSettingsState } from "./_state";
 
 /**
  * Server action that owns the editable Settings form on `/app/settings`.
@@ -20,13 +21,11 @@ import { createClient } from "@/lib/supabase/server";
  *
  * Returns `{ ok: true, savedAt: <iso> }` on success or `{ error: string }`
  * on failure. `useActionState` on the client renders the result.
+ *
+ * The `SaveSettingsState` type and `SAVE_SETTINGS_INITIAL` constant live
+ * in `./_state.ts` — Next 16 forbids non-async exports from `"use server"`
+ * files at runtime.
  */
-export type SaveSettingsState =
-  | { status: "idle" }
-  | { status: "ok"; savedAt: string }
-  | { status: "error"; message: string };
-
-export const SAVE_SETTINGS_INITIAL: SaveSettingsState = { status: "idle" };
 
 /** Trim a FormData entry into a non-empty string or null. */
 function fdString(fd: FormData, key: string): string | null {

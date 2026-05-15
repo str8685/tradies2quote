@@ -5,12 +5,11 @@ import { useFormStatus } from "react-dom";
 import Link from "next/link";
 import { FloppyDisk, Trash } from "@phosphor-icons/react/dist/ssr";
 import {
-  ACTION_INITIAL,
-  type ActionResult,
   createMaterial,
   deleteMaterial,
   updateMaterial,
 } from "../actions";
+import { ACTION_INITIAL, type ActionResult } from "../_state";
 
 type FormValues = {
   id?: string;

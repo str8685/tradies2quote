@@ -3,9 +3,10 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import type { ActionResult } from "./_state";
 
-export type ActionResult = { ok: true } | { error: string };
-export const ACTION_INITIAL: ActionResult = { ok: true };
+// `ActionResult` and `ACTION_INITIAL` live in `./_state.ts` — Next 16
+// forbids non-async exports from `"use server"` files at runtime.
 
 function readField(form: FormData, key: string): string {
   const v = form.get(key);

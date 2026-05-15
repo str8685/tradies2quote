@@ -3,11 +3,8 @@
 import Link from "next/link";
 import { useActionState, useEffect, useState } from "react";
 import { useFormStatus } from "react-dom";
-import {
-  ACTION_INITIAL,
-  type ActionResult,
-  createMaterial,
-} from "../../actions";
+import { createMaterial } from "../../actions";
+import { ACTION_INITIAL, type ActionResult } from "../../_state";
 import { supplierFromUrl } from "../_lib/supplier-from-url";
 
 /**
