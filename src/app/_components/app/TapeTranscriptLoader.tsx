@@ -31,7 +31,7 @@ type Props = {
 export function TapeTranscriptLoader({
   progress,
   label = "// reading transcript",
-  title = "// Claude is reading your transcript…",
+  title = "// T2Q is reading your transcript…",
   body = "Cleaning the words, working out dimensions, flagging compliance risks. Takes ~10s.",
   open = true,
 }: Props) {

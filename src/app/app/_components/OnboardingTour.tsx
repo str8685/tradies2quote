@@ -56,7 +56,7 @@ const STEPS: ReadonlyArray<Step> = [
   },
   {
     title: "Record a quote",
-    body: "Tap the orange Record button on the Quotes tab. Speak naturally — the AI handles materials, labour and markup.",
+    body: "Tap the orange Record button on the Quotes tab. Speak naturally — T2Q handles materials, labour and markup.",
     Icon: Microphone,
     hint: "// no typing required",
   },
@@ -68,7 +68,7 @@ const STEPS: ReadonlyArray<Step> = [
   },
   {
     title: "Materials library",
-    body: "Your prices, your supplier links. Add as you go — the AI learns from your edits and stops guessing.",
+    body: "Your prices, your supplier links. Add as you go — T2Q learns from your edits and stops guessing.",
     Icon: Stack,
     hint: "// the more you add, the smarter it gets",
   },

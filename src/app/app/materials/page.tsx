@@ -40,7 +40,7 @@ export default async function MaterialsPage() {
             Materials <span className="text-brand">library.</span>
           </h1>
           <p className="mt-3 text-sm text-ink-300 sm:text-base">
-            Save your common materials with prices. Quotes will use these instead of AI estimates.
+            Save your common materials with prices. Quotes will use these instead of T2Q estimates.
           </p>
         </div>
 
@@ -209,7 +209,7 @@ async function CaptureSuccessBanner() {
           </p>
           <p className="mt-0.5 text-xs text-ink-300">
             Your library now has one more item. Quotes will use it instead of
-            an AI estimate.
+            a T2Q estimate.
           </p>
         </div>
       </div>

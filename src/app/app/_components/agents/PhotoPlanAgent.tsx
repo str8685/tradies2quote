@@ -222,7 +222,7 @@ export function PhotoPlanAgent() {
                   >
                     <span className="font-semibold text-white">{it.label}</span>
                     <span className="ml-2 font-mono text-[9px] uppercase tracking-[0.2em] text-ink-400">
-                      · {Math.round(it.confidence * 100)}% conf{it.ai_estimated ? " · AI guess" : ""}
+                      · {Math.round(it.confidence * 100)}% conf{it.ai_estimated ? " · T2Q guess" : ""}
                     </span>
                     {(it.location || it.note) && (
                       <div className="mt-1 text-xs text-ink-300">

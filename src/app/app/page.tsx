@@ -327,7 +327,7 @@ async function DashboardData({
           </span>
           <div className="min-w-0 flex-1">
             <p className="font-display text-base uppercase tracking-tight text-white sm:text-lg">
-              AI Agents.
+              T2Q Agents.
             </p>
             {/* Wave 14 — honest subtitle. Previously claimed
                 "automations" we don't run; every agent is owner-

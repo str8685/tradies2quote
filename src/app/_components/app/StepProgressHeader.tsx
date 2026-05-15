@@ -14,7 +14,7 @@
 
 const STEPS = [
   { n: "01", label: "Describe" },
-  { n: "02", label: "AI Review" },
+  { n: "02", label: "T2Q Review" },
   { n: "03", label: "Takeoff" },
   { n: "04", label: "Quote" },
 ];

@@ -769,10 +769,10 @@ function ItemBadge({
         <span
           data-testid="badge-ai"
           className="inline-flex items-center gap-1 rounded-sm bg-hivis/15 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-[0.18em] text-hivis"
-          title="Price came from an AI estimate — confirm before sending"
+          title="Price came from a T2Q estimate — confirm before sending"
         >
           <Sparkle size={10} weight="bold" />
-          AI estimate
+          T2Q estimate
         </span>
       )}
       {isMissingPrice && (

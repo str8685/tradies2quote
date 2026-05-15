@@ -38,7 +38,7 @@ export default async function NewMaterialPage() {
             New <span className="text-brand">material.</span>
           </h1>
           <p className="mt-3 text-sm text-ink-300 sm:text-base">
-            Save once, reuse on every quote. Confirmed prices replace AI estimates.
+            Save once, reuse on every quote. Confirmed prices replace T2Q estimates.
           </p>
         </div>
 

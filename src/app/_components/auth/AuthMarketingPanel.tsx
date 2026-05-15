@@ -72,7 +72,7 @@ const BUILT_FOR = [
 ] as const;
 
 const SAFE = [
-  "Read-only AI agents",
+  "Read-only T2Q agents",
   "No quote sent without you tapping send",
   "No invoice created without your approval",
 ];
@@ -306,12 +306,12 @@ export function AuthMarketingPanel({ kind }: Props) {
           <Tile
             icon={<Microphone size={16} weight="bold" />}
             title="Voice → quote"
-            body="OpenAI Whisper transcription + Claude scope extraction. You stay in the editor."
+            body="T2Q transcribes the voice memo and extracts scope. You stay in the editor."
           />
           <Tile
             icon={<Receipt size={16} weight="bold" />}
             title="Materials library"
-            body="Capture supplier prices once. Quotes reuse them instead of AI estimates."
+            body="Capture supplier prices once. Quotes reuse them instead of T2Q estimates."
           />
         </div>
       </motion.section>

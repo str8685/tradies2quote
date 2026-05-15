@@ -76,10 +76,10 @@ export function MaterialsList({ materials, currency }: Props) {
                     {m.is_ai_estimated && (
                       <span
                         className="inline-flex items-center gap-1 rounded-sm bg-hivis/15 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-[0.18em] text-hivis"
-                        title="Price came from an AI estimate — confirm before relying on it"
+                        title="Price came from a T2Q estimate — confirm before relying on it"
                       >
                         <Sparkle size={10} weight="bold" />
-                        AI
+                        T2Q
                       </span>
                     )}
                   </div>

@@ -106,7 +106,7 @@ export function QuoteWorkflow() {
           </div>
           <div className="text-lg leading-relaxed text-ink-200 lg:col-span-7 lg:pt-4">
             Talk through the job — same way you&apos;d explain it to your
-            apprentice. The AI builds the takeoff, surfaces what to double-check,
+            apprentice. T2Q builds the takeoff, surfaces what to double-check,
             and renders a branded quote PDF you can send before you&apos;ve packed
             up the ute. <span className="text-white">Demo data shown.</span>
           </div>

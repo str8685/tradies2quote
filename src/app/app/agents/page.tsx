@@ -60,7 +60,7 @@ export default async function AgentsPage() {
           <div className="t2q-section-label mb-3">{"// agents · run inline"}</div>
           <div className="flex flex-wrap items-center gap-3">
             <h1 className="font-display text-3xl uppercase tracking-tight sm:text-4xl">
-              AI <span className="text-brand">Agents.</span>
+              T2Q <span className="text-brand">Agents.</span>
             </h1>
             <span
               data-testid="agents-preview-pill"
@@ -241,7 +241,7 @@ export default async function AgentsPage() {
             </p>
             <ul className="mt-3 space-y-1.5">
               {[
-                "Quote Builder (voice → quote AI pipeline, on /app/quotes/new)",
+                "Quote Builder (voice → quote T2Q pipeline, on /app/quotes/new)",
                 "Quote Generation Agent (stand-alone, mounted above)",
                 "Quote Review Agent (mounted above)",
                 "Compliance Agent (on quote preview)",

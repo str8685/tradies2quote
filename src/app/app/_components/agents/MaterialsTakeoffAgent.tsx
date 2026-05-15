@@ -41,7 +41,7 @@ function takeoffToText(result: TakeoffResult): string {
   for (const l of result.lines) {
     const q =
       l.quantity !== null ? `${l.quantity} ${UNIT_LABELS[l.unit ?? "each"] ?? l.unit ?? ""}` : "?";
-    const tag = l.ai_estimated ? " [AI estimate]" : "";
+    const tag = l.ai_estimated ? " [T2Q estimate]" : "";
     const note = l.note ? ` — ${l.note}` : "";
     lines.push(`• ${l.description} (${q})${tag}${note}`);
   }
@@ -205,7 +205,7 @@ export function MaterialsTakeoffAgent() {
                         {l.ai_estimated && (
                           <span className="ml-2 inline-flex items-center gap-1 rounded-sm border border-hivis/40 bg-hivis/10 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.2em] text-hivis">
                             <Sparkle size={9} weight="fill" />
-                            AI estimate
+                            T2Q estimate
                           </span>
                         )}
                         {l.note && (

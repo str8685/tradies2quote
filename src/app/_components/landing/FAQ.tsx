@@ -19,7 +19,7 @@ import { CaretDown } from "@phosphor-icons/react";
 const FAQS = [
   {
     slug: "tech-skill",
-    q: "Do I need to know AI or tech?",
+    q: "Do I need any tech skill to use T2Q?",
     a: "Nope. Open the app, hit the big orange button, talk for 60 seconds, hit send. That's it.",
   },
   {

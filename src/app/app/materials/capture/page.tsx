@@ -74,7 +74,7 @@ export default async function CapturePage({
           <p className="mt-3 text-sm text-ink-300 sm:text-base">
             Paste or share a Mitre 10, Bunnings, ITM, or PlaceMakers product URL.
             Confirm the price and save it to your library — your quotes will use
-            it instead of AI estimates.
+            it instead of T2Q estimates.
           </p>
         </div>
 

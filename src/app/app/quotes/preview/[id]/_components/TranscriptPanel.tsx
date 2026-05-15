@@ -133,7 +133,7 @@ export function TranscriptPanel({ quoteId, transcript }: Props) {
             className="inline-flex items-center gap-1.5 rounded-sm border border-hivis/40 bg-hivis/10 px-2 py-1 font-mono text-[11px] uppercase tracking-[0.18em] text-hivis"
           >
             <WarningCircle size={12} weight="fill" />
-            AI skipped · rules only
+            T2Q skipped · rules only
           </span>
         )}
       </div>

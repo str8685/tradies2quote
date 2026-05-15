@@ -84,7 +84,7 @@ export function CompliancePanel({ quoteId, review, items }: Props) {
         </div>
         <p className="mt-2">
           The compliance review didn&rsquo;t run cleanly for this quote — quote generation succeeded but
-          the AI&rsquo;s assumptions weren&rsquo;t double-checked against the rules engine. Review materials
+          T2Q&rsquo;s assumptions weren&rsquo;t double-checked against the rules engine. Review materials
           manually before sending.
         </p>
       </section>
@@ -160,7 +160,7 @@ export function CompliancePanel({ quoteId, review, items }: Props) {
           </h2>
           <p className="mt-1 text-sm text-ink-300">
             {review.status === "needs_clarification"
-              ? `${summary.clarificationsCount} ${summary.clarificationsCount === 1 ? "question" : "questions"} need answering so the rules engine can confirm code-critical materials. AI estimates aren't being signed off until you confirm.`
+              ? `${summary.clarificationsCount} ${summary.clarificationsCount === 1 ? "question" : "questions"} need answering so the rules engine can confirm code-critical materials. T2Q estimates aren't being signed off until you confirm.`
               : `${summary.warningCounts.warning + summary.warningCounts.blocker} ${summary.warningCounts.blocker > 0 ? "issue(s) including blockers" : "warning(s)"} need review. Quote can still be saved while you decide.`}
           </p>
         </div>

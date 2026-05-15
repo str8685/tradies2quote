@@ -155,7 +155,7 @@ export default async function SettingsPage() {
           </h1>
           <p className="mt-3 text-sm text-ink-300 sm:text-base">
             Business details and quote defaults. Saved values appear on every
-            quote PDF and feed the AI generator.
+            quote PDF and feed the T2Q generator.
           </p>
         </div>
 
