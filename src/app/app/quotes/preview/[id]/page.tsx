@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { redirect } from "next/navigation";
+import { ArrowLeft } from "@phosphor-icons/react/dist/ssr";
 import { createClient } from "@/lib/supabase/server";
 import type { LibraryMaterial, QuoteData, QuoteStatus } from "@/lib/quote-types";
 import { quoteNumber } from "@/lib/quote-defaults";
@@ -294,6 +296,13 @@ export default async function QuotePreviewPage({
         className="mx-auto max-w-3xl px-4 py-10 sm:px-6 sm:py-14"
       >
         <div className="mb-8">
+          <Link
+            href="/app/quotes"
+            className="mb-4 inline-flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-[0.2em] text-ink-400 transition-colors hover:text-ink-100"
+          >
+            <ArrowLeft weight="bold" className="h-3.5 w-3.5" />
+            Back to quotes
+          </Link>
           <div className="t2q-section-label mb-3">{"// step 2 of 3"}</div>
           <div className="flex flex-wrap items-center gap-3">
             <h1 className="font-display text-3xl uppercase tracking-tight sm:text-4xl">
