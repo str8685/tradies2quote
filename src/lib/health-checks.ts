@@ -100,6 +100,33 @@ function checkResend(): HealthCheck {
   };
 }
 
+function checkTwilio(): HealthCheck {
+  const sid = envSet("TWILIO_ACCOUNT_SID");
+  const token = envSet("TWILIO_AUTH_TOKEN");
+  const from = envSet("TWILIO_FROM_NUMBER");
+  if (sid && token && from) {
+    return {
+      id: "twilio",
+      name: "Quote SMS (Twilio)",
+      status: "ok",
+      detail: "Configured",
+    };
+  }
+  const missing = [
+    !sid ? "TWILIO_ACCOUNT_SID" : null,
+    !token ? "TWILIO_AUTH_TOKEN" : null,
+    !from ? "TWILIO_FROM_NUMBER" : null,
+  ]
+    .filter(Boolean)
+    .join(", ");
+  return {
+    id: "twilio",
+    name: "Quote SMS (Twilio)",
+    status: "missing",
+    detail: `Not set: ${missing}`,
+  };
+}
+
 function checkStorage(): HealthCheck {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   if (!supabaseUrl) {
@@ -130,6 +157,7 @@ export async function getAllHealthChecks(): Promise<HealthCheck[]> {
     checkAnthropic(),
     checkTranscription(),
     checkResend(),
+    checkTwilio(),
     checkStorage(),
   ];
 }

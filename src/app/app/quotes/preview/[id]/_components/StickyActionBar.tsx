@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
+  ChatCircleText,
   EnvelopeSimple,
   FloppyDisk,
 } from "@phosphor-icons/react";
@@ -56,6 +57,8 @@ const ERROR_COPY: Record<string, string> = {
   client_name_missing: "Add a client name before sending.",
   client_email_missing: "Add the client's email address before sending.",
   client_email_invalid: "The client email doesn't look valid.",
+  client_phone_missing: "Add the client's phone number before sending an SMS.",
+  client_phone_invalid: "The client phone number doesn't look valid. Use +64...",
   no_line_items: "Add at least one line item before sending.",
   total_zero: "Quote total must be greater than zero.",
   already_accepted: "This quote has already been accepted.",
@@ -63,7 +66,10 @@ const ERROR_COPY: Record<string, string> = {
   pdf_upload_failed: "Could not save the PDF.",
   email_not_configured: "Email isn't configured. Ask your admin to set RESEND_API_KEY.",
   email_from_not_configured: "Email sender isn't configured. Set RESEND_FROM_EMAIL.",
-  update_failed: "Email sent but the quote status couldn't update.",
+  sms_not_configured: "SMS isn't configured. Set TWILIO_ACCOUNT_SID.",
+  sms_token_not_configured: "SMS isn't configured. Set TWILIO_AUTH_TOKEN.",
+  sms_from_not_configured: "SMS isn't configured. Set TWILIO_FROM_NUMBER.",
+  update_failed: "Message sent but the quote status couldn't update.",
 };
 
 const STATUS_PILL: Record<QuoteStatus, { label: string; cls: string }> = {
@@ -87,6 +93,7 @@ export function StickyActionBar({
 }: Props) {
   const router = useRouter();
   const [sendState, setSendState] = useState<SendState>("idle");
+  const [activeChannel, setActiveChannel] = useState<"email" | "sms">("email");
   const [errorMessage, setErrorMessage] = useState("");
 
   const isAccepted = status === "accepted";
@@ -96,7 +103,8 @@ export function StickyActionBar({
     sendState === "generating" ||
     sendState === "sending";
 
-  async function handleSend() {
+  async function sendVia(channel: "email" | "sms") {
+    setActiveChannel(channel);
     setErrorMessage("");
     setSendState("saving");
     const saved = await onSaveBeforeSend();
@@ -107,9 +115,11 @@ export function StickyActionBar({
     }
     setSendState("generating");
     try {
-      const res = await fetch(`/api/quotes/${quoteId}/send`, {
-        method: "POST",
-      });
+      const endpoint =
+        channel === "sms"
+          ? `/api/quotes/${quoteId}/sms`
+          : `/api/quotes/${quoteId}/send`;
+      const res = await fetch(endpoint, { method: "POST" });
       if (!res.ok) {
         const data = (await res.json().catch(() => ({}))) as {
           error?: string;
@@ -129,6 +139,9 @@ export function StickyActionBar({
       setSendState("error");
     }
   }
+
+  const handleSend = () => sendVia("email");
+  const handleSendSms = () => sendVia("sms");
 
   const pill = STATUS_PILL[status] ?? STATUS_PILL.draft;
 
@@ -156,7 +169,11 @@ export function StickyActionBar({
                 : "border-brand bg-brand text-ink-900"
             }`}
           >
-            {sendState === "error" ? errorMessage : "// quote sent"}
+            {sendState === "error"
+              ? errorMessage
+              : activeChannel === "sms"
+                ? "// sms sent"
+                : "// quote sent"}
           </p>
         </div>
       )}
@@ -204,29 +221,58 @@ export function StickyActionBar({
             </button>
 
             {!isAccepted && (
-              <button
-                type="button"
-                data-testid="sticky-send-button"
-                onClick={handleSend}
-                disabled={sendBusy || isPending}
-                className="t2q-btn-primary min-h-[44px] min-w-0 flex-1 !px-3 sm:flex-none sm:!px-7 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                <EnvelopeSimple size={16} weight="bold" className="shrink-0" />
-                <span className="hidden sm:inline">
-                  {sendState === "saving"
-                    ? "Saving edits…"
-                    : sendState === "generating"
-                      ? "Generating PDF…"
-                      : sendState === "sending"
-                        ? "Sending email…"
-                        : isSentOrViewed
-                          ? "Resend quote"
-                          : "Send quote"}
-                </span>
-                <span className="sm:hidden">
-                  {sendBusy ? "Sending…" : isSentOrViewed ? "Resend" : "Send"}
-                </span>
-              </button>
+              <>
+                <button
+                  type="button"
+                  data-testid="sticky-send-button"
+                  onClick={handleSend}
+                  disabled={sendBusy || isPending}
+                  className="t2q-btn-primary min-h-[44px] min-w-0 flex-1 !px-3 sm:flex-none sm:!px-7 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <EnvelopeSimple size={16} weight="bold" className="shrink-0" />
+                  <span className="hidden sm:inline">
+                    {sendBusy && activeChannel === "email"
+                      ? sendState === "saving"
+                        ? "Saving edits…"
+                        : sendState === "generating"
+                          ? "Generating PDF…"
+                          : "Sending email…"
+                      : isSentOrViewed
+                        ? "Resend email"
+                        : "Send email"}
+                  </span>
+                  <span className="sm:hidden">
+                    {sendBusy && activeChannel === "email"
+                      ? "Sending…"
+                      : isSentOrViewed
+                        ? "Resend"
+                        : "Email"}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  data-testid="sticky-send-sms-button"
+                  onClick={handleSendSms}
+                  disabled={sendBusy || isPending}
+                  className="t2q-btn-ghost min-h-[44px] min-w-0 flex-1 !px-3 sm:flex-none sm:!px-7 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <ChatCircleText size={16} weight="bold" className="shrink-0" />
+                  <span className="hidden sm:inline">
+                    {sendBusy && activeChannel === "sms"
+                      ? sendState === "saving"
+                        ? "Saving edits…"
+                        : sendState === "generating"
+                          ? "Generating PDF…"
+                          : "Sending SMS…"
+                      : isSentOrViewed
+                        ? "Resend SMS"
+                        : "Send SMS"}
+                  </span>
+                  <span className="sm:hidden">
+                    {sendBusy && activeChannel === "sms" ? "Sending…" : "SMS"}
+                  </span>
+                </button>
+              </>
             )}
           </div>
         </div>
