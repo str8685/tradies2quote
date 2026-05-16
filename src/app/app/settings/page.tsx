@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { redirect } from "next/navigation";
-import { SignOut } from "@phosphor-icons/react/dist/ssr";
+import { ArrowRight, BookOpen, SignOut } from "@phosphor-icons/react/dist/ssr";
 import { createClient } from "@/lib/supabase/server";
 import { getCachedAuthUser } from "@/lib/supabase/auth";
 import { NZ_DEFAULTS } from "@/lib/quote-defaults";
@@ -158,6 +159,36 @@ export default async function SettingsPage() {
             quote PDF and feed the T2Q generator.
           </p>
         </div>
+
+        {/* Wave 36 — prominent guide link near the top of Settings so
+            users can find the manual without hunting. The OnboardingTour
+            covers first-run; this is the anytime reference. */}
+        <Link
+          href="/app/settings/guide"
+          data-testid="settings-guide-link"
+          className="t2q-premium-card mb-6 flex items-center gap-4 p-4 sm:p-5"
+        >
+          <span
+            aria-hidden="true"
+            className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-sm border border-brand/40 bg-brand/10 text-brand"
+          >
+            <BookOpen size={22} weight="bold" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="font-display text-base uppercase tracking-tight text-white sm:text-lg">
+              How to use T2Q.
+            </p>
+            <p className="mt-0.5 text-sm text-ink-300">
+              Full manual — every feature, what it does, how to use it.
+            </p>
+          </div>
+          <ArrowRight
+            size={18}
+            weight="bold"
+            className="shrink-0 text-brand"
+            aria-hidden="true"
+          />
+        </Link>
 
         {/* Wave 14 — Admin Agent checklist moved here from /app/agents
             (which is now owner-only). Every tradie sees their setup
