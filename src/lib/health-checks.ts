@@ -100,6 +100,19 @@ function checkResend(): HealthCheck {
   };
 }
 
+function checkTrialEmails(): HealthCheck {
+  const r = envStatus("CRON_SECRET");
+  return {
+    id: "trial-emails",
+    name: "Trial / onboarding emails (Vercel Cron)",
+    status: r.status,
+    detail:
+      r.status === "ok"
+        ? "Cron secret configured. Hourly job at /api/cron/trial-emails."
+        : "CRON_SECRET not set — automated trial emails won't fire.",
+  };
+}
+
 function checkTwilio(): HealthCheck {
   const sid = envSet("TWILIO_ACCOUNT_SID");
   const token = envSet("TWILIO_AUTH_TOKEN");
@@ -158,6 +171,7 @@ export async function getAllHealthChecks(): Promise<HealthCheck[]> {
     checkTranscription(),
     checkResend(),
     checkTwilio(),
+    checkTrialEmails(),
     checkStorage(),
   ];
 }
