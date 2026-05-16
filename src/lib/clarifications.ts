@@ -101,12 +101,44 @@ function regexOptionsForId(id: string): string[] {
 }
 
 /**
+ * Hard caps per source — keeps the modal from turning into a 17-question
+ * inquisition when the recording is vague. The LLM prompt is also
+ * tightened (see SUMMARY_SYSTEM_PROMPT in transcriptCleanup.ts) to
+ * only surface quote-critical items, but client-side caps are
+ * defense-in-depth: if a future prompt change or model regression
+ * over-produces, the modal still stays usable.
+ *
+ * Priority (most important first):
+ *   1. Regex homophone hits — uncapped. These are concrete material
+ *      disambiguations (jib/GIB, pink-batts/timber) and each one
+ *      directly changes which line item gets priced. Skipping any
+ *      means a wrong price.
+ *   2. Compliance risks — up to 3. These affect NZ Building Code
+ *      pass/fail; getting them wrong fails inspection.
+ *   3. Missing information — up to 2. Already filtered to
+ *      quote-critical by the prompt (material quantities, labour
+ *      hours, site access).
+ *   4. Material assumptions — up to 2. Lowest-stakes since the
+ *      tradie can spot-check on the review page anyway.
+ *
+ * Total ceiling = regex + 3 + 2 + 2 = however-many-regex + 7. Regex
+ * alone rarely produces more than 2-3 (one per homophone in the
+ * transcript), so the typical worst case is 5-10 questions and
+ * usually 3-5.
+ */
+const MAX_COMPLIANCE = 3;
+const MAX_MISSING = 2;
+const MAX_ASSUMPTIONS = 2;
+
+/**
  * Compose the final list of clarifications shown in the modal.
  *
  * Order is deliberate — regex hits first (most concrete, easiest to
  * answer), then LLM compliance risks (highest-stakes), then missing
  * information (broadest scope), then assumptions (lowest-stakes
- * "did I get this right?" confirmations).
+ * "did I get this right?" confirmations). Each LLM-derived bucket
+ * is capped (see constants above) so the modal stays focused on
+ * what changes the quote price.
  */
 export function buildClarificationsWithOptions(
   input: BuildInput,
@@ -114,7 +146,8 @@ export function buildClarificationsWithOptions(
   const out: Clarification[] = [];
 
   // 1. Regex-pass questions — keep their question + why text, attach
-  //    a known option set if we recognise the id prefix.
+  //    a known option set if we recognise the id prefix. UNCAPPED:
+  //    each regex hit is a concrete material that needs picking.
   for (const q of input.regexQuestions) {
     out.push({
       id: q.id,
@@ -127,10 +160,11 @@ export function buildClarificationsWithOptions(
 
   const s = input.summary;
   if (s) {
-    // 2. Compliance risks — wrap each statement as a confirmation
-    //    prompt with a binary radio set.
+    // 2. Compliance risks — capped at MAX_COMPLIANCE. Highest-stakes
+    //    LLM-derived bucket so it goes first within the LLM tier.
     s.compliance_risks
       .filter((r) => typeof r === "string" && r.trim().length > 0)
+      .slice(0, MAX_COMPLIANCE)
       .forEach((risk, i) => {
         out.push({
           id: `compliance.${i}`,
@@ -141,10 +175,11 @@ export function buildClarificationsWithOptions(
         });
       });
 
-    // 3. Missing information — these are open-ended ("what is X?"),
+    // 3. Missing information — capped at MAX_MISSING. Open-ended,
     //    so default to a free-text answer (empty options).
     s.missing_information
       .filter((m) => typeof m === "string" && m.trim().length > 0)
+      .slice(0, MAX_MISSING)
       .forEach((missing, i) => {
         out.push({
           id: `missing.${i}`,
@@ -155,10 +190,11 @@ export function buildClarificationsWithOptions(
         });
       });
 
-    // 4. Material assumptions — light-touch confirm/deny so the
-    //    tradie can quickly green-light or override.
+    // 4. Material assumptions — capped at MAX_ASSUMPTIONS. Lowest
+    //    priority since the tradie reviews line items anyway.
     s.material_assumptions
       .filter((a) => typeof a === "string" && a.trim().length > 0)
+      .slice(0, MAX_ASSUMPTIONS)
       .forEach((assumption, i) => {
         out.push({
           id: `assumption.${i}`,

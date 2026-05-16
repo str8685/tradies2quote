@@ -315,10 +315,47 @@ Rules:
 - Preserve the user's exact words for client names, site addresses, brands, model names, dimensions, and quantities. Never invent.
 - "surface_context" describes what's being built (wall / floor / roof / deck) — null if unclear.
 - "exposure_context" is internal/external/wet/exposed — null if unclear.
-- "material_assumptions" lists ANY material the user did not name explicitly that the AI is inferring (e.g. "GIB Standard 13mm assumed for ceiling lining"). Empty array when nothing is being assumed.
-- "missing_information" lists facts the AI does not know (e.g. "wall is internal vs external"). Be explicit.
-- "compliance_risks" lists code-critical items the user must confirm before sign-off (treatment class, fastener finish, insulation under H1, etc.).
+
+QUOTE-CRITICAL FILTER — only the next three arrays are surfaced to
+the tradie as questions before the quote is generated. The tradie
+already reviews the line items afterwards, so anything they can
+fix on the review page should NOT appear here. Limit each array to
+the items that will materially change the QUOTE itself
+(price, line count, materials chosen, labour hours, compliance pass/fail).
+
+- "material_assumptions": ONLY include materials where:
+  * The inferred grade/thickness/treatment changes the unit price by
+    20%+ compared to a different reasonable inference (e.g. GIB
+    Standard 13mm vs GIB Aqualine 13mm), OR
+  * The wrong inference would fail NZ Building Code (e.g. assuming
+    H1.2 framing where H3.2 is required).
+  Skip generic confirmations the tradie can spot-check on the line items.
+  Hard limit: 3 items maximum. Pick the highest-stakes ones.
+
+- "missing_information": ONLY include facts that change the quote total:
+  * Material quantities the tradie did not give (e.g. "how many m² of
+    wall lining?", "how many sheets of bracing?").
+  * Labour hours not specified for a major task (e.g. "how long to
+    demolish existing wall?").
+  * Site-access facts that change labour (e.g. "second-storey access
+    via scaffold or ladder?").
+  EXCLUDE: client preferences (paint colour, finish, brand colour),
+  scheduling, site address, client contact, drawings availability,
+  permit/consent status (those go on the quote terms, not the price).
+  Hard limit: 3 items maximum. Phrase each as a direct question
+  ending with "?".
+
+- "compliance_risks": ONLY include items that affect NZ Building
+  Code pass/fail or insurance (treatment class for exposed timber,
+  bracing element under E2/B1, fire-rated GIB where required,
+  insulation R-value under H1, fastener finish under E1/H3+).
+  Skip generic safety reminders. Hard limit: 3 items maximum.
+
 - "confidence" is between 0 and 1 (1 = no ambiguity).
+
+Always under 9 items across the three arrays combined. If the
+recording is clear and quote-ready, return all three arrays empty —
+that's the correct answer and the modal will not open.
 
 If you cannot summarise faithfully, return null for unknown fields and a low confidence — DO NOT guess.`;
 
