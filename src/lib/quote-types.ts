@@ -233,6 +233,21 @@ export type QuoteData = {
    * with `src/lib/transcriptCleanup.ts`. Callers cast on read.
    */
   transcript?: unknown;
+  /**
+   * Wave 36 — customer chat history (Quote-That-Sells-Itself).
+   *
+   * Append-only array of { role, content, timestamp, intent?,
+   * note_to_tradie? } objects. Written by the public
+   * /api/quote/[token]/chat endpoint, read by the tradie's preview
+   * page to surface conversation + actionable notes.
+   *
+   * Stored as `unknown` to avoid coupling the public quote type to
+   * the chat agent's shape. The chat endpoint narrows on read.
+   * Excluded from `get_quote_by_token`'s projection (the customer
+   * already sees their own messages via the running chat UI; they
+   * don't need the persisted log).
+   */
+  chat_history?: unknown;
 };
 
 export type QuoteProfile = {

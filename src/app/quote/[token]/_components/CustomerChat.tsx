@@ -1,0 +1,351 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+import {
+  ChatCircle,
+  PaperPlaneRight,
+  X,
+} from "@phosphor-icons/react";
+
+/**
+ * CustomerChat — Wave 36 — "The Quote That Sells Itself".
+ *
+ * A floating chat bubble that lives at the bottom-right of the
+ * public quote view. The tradie's customer (no T2Q account) opens
+ * the quote, taps the bubble, and gets an AI sales assistant that
+ * knows the quote, the tradie's pricing rules, and what's negotiable.
+ *
+ * Architecture:
+ *   - This is a pure client component.
+ *   - POSTs to /api/quote/[token]/chat with { message, history }
+ *   - The endpoint persists the conversation server-side in
+ *     quote_data.chat_history so the tradie can review it later.
+ *   - History also lives in component state for instant rendering.
+ *
+ * UX notes:
+ *   - Bubble is brand-orange, bottom-right, above the iOS home indicator.
+ *   - Opens a full-screen sheet on mobile (<sm), centered panel on sm+.
+ *   - First-load fetches no history — the customer always starts a
+ *     fresh conversation. Past chats are still persisted so the tradie
+ *     can see them; the customer doesn't need to revisit them.
+ *   - Polite fallback if the agent fails. Customer never sees a 500.
+ */
+
+const TOKEN_KEY_PREFIX = "t2q-chat-seen-";
+
+type Message = {
+  role: "customer" | "assistant";
+  content: string;
+};
+
+type Props = {
+  /** The quote's public token, taken from the page params. */
+  token: string;
+  /** Tradie business name for the welcome line. Optional. */
+  businessName: string | null;
+  /** Customer's name from the quote, for personalised welcome. */
+  clientName: string | null;
+};
+
+const WELCOME_DELAY_MS = 800;
+const MAX_HISTORY_FOR_API = 20;
+
+export function CustomerChat({ token, businessName, clientName }: Props) {
+  const [open, setOpen] = useState(false);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [input, setInput] = useState("");
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [hasSeenWelcome, setHasSeenWelcome] = useState(false);
+  const [hintVisible, setHintVisible] = useState(false);
+
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const inputRef = useRef<HTMLTextAreaElement | null>(null);
+
+  // First-load: drop a friendly welcome message into the chat so the
+  // customer immediately sees the bot can talk. Won't re-show on
+  // subsequent opens within the same session.
+  useEffect(() => {
+    if (hasSeenWelcome) return;
+    const tradie = businessName ?? "the team";
+    const name = clientName ? clientName.split(" ")[0] : "there";
+    const welcome: Message = {
+      role: "assistant",
+      content: `Hi ${name}! I'm an AI assistant for ${tradie}. Ask me anything about this quote — line items, alternatives, timing, terms — and I'll answer using the actual numbers above. If I can't answer, I'll flag it for ${tradie} directly.`,
+    };
+    setMessages([welcome]);
+    setHasSeenWelcome(true);
+  }, [hasSeenWelcome, businessName, clientName]);
+
+  // Tiny hint bubble that nudges customers to tap the chat. Shows on
+  // first page load only, then fades after 8s.
+  useEffect(() => {
+    try {
+      if (window.sessionStorage.getItem(`${TOKEN_KEY_PREFIX}${token}`))
+        return;
+    } catch {
+      /* private mode */
+    }
+    const t = setTimeout(() => setHintVisible(true), 1500);
+    const t2 = setTimeout(() => setHintVisible(false), 1500 + 9000);
+    return () => {
+      clearTimeout(t);
+      clearTimeout(t2);
+    };
+  }, [token]);
+
+  // Auto-scroll to the bottom whenever a new message lands.
+  useEffect(() => {
+    if (!scrollRef.current) return;
+    scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+  }, [messages, sending]);
+
+  // Auto-focus the input when the sheet opens.
+  useEffect(() => {
+    if (open) {
+      try {
+        window.sessionStorage.setItem(`${TOKEN_KEY_PREFIX}${token}`, "1");
+      } catch {
+        /* private mode */
+      }
+      setHintVisible(false);
+      // Defer so the sheet has time to mount + animate.
+      const t = setTimeout(() => inputRef.current?.focus(), 100);
+      return () => clearTimeout(t);
+    }
+  }, [open, token]);
+
+  async function sendMessage() {
+    const trimmed = input.trim();
+    if (!trimmed || sending) return;
+    setError(null);
+
+    const customerMsg: Message = { role: "customer", content: trimmed };
+    const nextMessages = [...messages, customerMsg];
+    setMessages(nextMessages);
+    setInput("");
+    setSending(true);
+
+    // Send up to N prior turns for context, but only the back-and-forth
+    // (skip the auto-welcome greeting — model doesn't need to see it).
+    const historyForApi = nextMessages
+      .slice(1) // drop welcome
+      .slice(-MAX_HISTORY_FOR_API);
+
+    try {
+      const res = await fetch(
+        `/api/quote/${encodeURIComponent(token)}/chat`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            message: trimmed,
+            history: historyForApi.slice(0, -1), // exclude the message we just sent
+          }),
+        },
+      );
+      const data = (await res.json().catch(() => ({}))) as {
+        ok?: boolean;
+        reply?: string;
+        message?: string;
+        error?: string;
+      };
+      if (!res.ok) {
+        setError(
+          data.message ??
+            "Sorry — couldn't reach the assistant. Try again in a moment.",
+        );
+        setSending(false);
+        return;
+      }
+      const reply = data.reply ?? "Thanks — I'll pass that on.";
+      setMessages((prev) => [...prev, { role: "assistant", content: reply }]);
+    } catch {
+      setError("Network error. Check your connection and try again.");
+    } finally {
+      setSending(false);
+    }
+  }
+
+  function onKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    // Enter sends; shift+enter inserts a newline.
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  }
+
+  return (
+    <>
+      {/* Floating launcher pinned bottom-right. Above the home indicator
+          on iOS via the safe-area inset. */}
+      <div
+        className="fixed z-40 right-4 bottom-4 sm:right-6 sm:bottom-6"
+        style={{
+          paddingBottom: "env(safe-area-inset-bottom)",
+        }}
+      >
+        {hintVisible && !open && (
+          <div
+            data-testid="customer-chat-hint"
+            className="mb-2 ml-auto max-w-[16rem] rounded-sm border border-brand/40 bg-ink-950/95 px-3 py-2 text-right shadow-lg backdrop-blur-sm"
+          >
+            <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-brand">
+              {"// got a question?"}
+            </p>
+            <p className="mt-0.5 text-xs text-ink-200">
+              Tap to chat about this quote.
+            </p>
+          </div>
+        )}
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          data-testid="customer-chat-launcher"
+          aria-label="Open chat about this quote"
+          className="inline-flex h-14 w-14 items-center justify-center rounded-full border-2 border-ink-900 bg-brand text-ink-900 shadow-[0_10px_30px_-8px_rgba(255,95,21,0.6)] transition-transform hover:scale-105"
+        >
+          <ChatCircle size={26} weight="fill" />
+        </button>
+      </div>
+
+      {/* Full-screen sheet on mobile, panel on sm+. */}
+      {open && (
+        <div
+          data-testid="customer-chat-sheet"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Chat about this quote"
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 backdrop-blur-sm sm:items-end sm:justify-end sm:p-6"
+          onClick={() => setOpen(false)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="flex h-[88vh] w-full max-w-md flex-col overflow-hidden rounded-t-2xl border border-ink-700 bg-ink-950 shadow-2xl sm:h-[80vh] sm:rounded-2xl"
+          >
+            {/* Header */}
+            <header className="flex items-start justify-between gap-3 border-b border-ink-700 bg-ink-950 px-5 py-4">
+              <div className="min-w-0 flex-1">
+                <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-brand">
+                  {"// chat about this quote"}
+                </p>
+                <h2 className="mt-0.5 font-display text-base uppercase tracking-tight text-white sm:text-lg">
+                  {businessName ?? "Quote assistant"}
+                </h2>
+                <p className="mt-0.5 font-mono text-[10px] uppercase tracking-[0.2em] text-ink-400">
+                  AI · answers in seconds · won&apos;t change pricing without
+                  the tradie
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setOpen(false)}
+                aria-label="Close chat"
+                data-testid="customer-chat-close"
+                className="-mr-1 -mt-1 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-ink-400 hover:text-white"
+              >
+                <X size={16} weight="bold" />
+              </button>
+            </header>
+
+            {/* Message list */}
+            <div
+              ref={scrollRef}
+              data-testid="customer-chat-messages"
+              className="flex-1 space-y-3 overflow-y-auto bg-ink-900 px-4 py-4"
+            >
+              {messages.map((m, i) => (
+                <Bubble key={i} role={m.role} content={m.content} />
+              ))}
+              {sending && <TypingBubble />}
+              {error && (
+                <p
+                  data-testid="customer-chat-error"
+                  className="rounded-sm border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-300"
+                >
+                  {error}
+                </p>
+              )}
+            </div>
+
+            {/* Composer */}
+            <footer className="border-t border-ink-700 bg-ink-950 px-3 py-3 pb-[max(env(safe-area-inset-bottom),12px)]">
+              <div className="flex items-end gap-2">
+                <textarea
+                  ref={inputRef}
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={onKeyDown}
+                  placeholder="Ask anything about this quote…"
+                  data-testid="customer-chat-input"
+                  rows={1}
+                  className="min-h-[44px] max-h-32 flex-1 resize-none rounded-sm border border-ink-600 bg-ink-900 px-3 py-2.5 text-sm text-white placeholder:text-ink-500 outline-none focus:border-brand"
+                />
+                <button
+                  type="button"
+                  onClick={sendMessage}
+                  disabled={!input.trim() || sending}
+                  data-testid="customer-chat-send"
+                  aria-label="Send message"
+                  className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-sm bg-brand text-ink-900 hover:bg-hivis disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <PaperPlaneRight size={18} weight="bold" />
+                </button>
+              </div>
+              <p className="mt-2 font-mono text-[9px] uppercase tracking-[0.2em] text-ink-500">
+                {"// answers powered by ai · the tradie sees this chat"}
+              </p>
+            </footer>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+function Bubble({ role, content }: Message) {
+  const isCustomer = role === "customer";
+  return (
+    <div
+      data-testid={`customer-chat-bubble-${role}`}
+      className={`flex ${isCustomer ? "justify-end" : "justify-start"}`}
+    >
+      <div
+        className={[
+          "max-w-[85%] whitespace-pre-wrap rounded-md px-3 py-2 text-sm",
+          isCustomer
+            ? "bg-brand text-ink-900"
+            : "bg-ink-800 text-ink-100 border border-ink-700",
+        ].join(" ")}
+      >
+        {content}
+      </div>
+    </div>
+  );
+}
+
+function TypingBubble() {
+  return (
+    <div
+      data-testid="customer-chat-typing"
+      className="flex justify-start"
+      aria-label="Assistant is typing"
+    >
+      <div className="inline-flex items-center gap-1.5 rounded-md border border-ink-700 bg-ink-800 px-3 py-2.5">
+        <Dot delay="0ms" />
+        <Dot delay="160ms" />
+        <Dot delay="320ms" />
+      </div>
+    </div>
+  );
+}
+
+function Dot({ delay }: { delay: string }) {
+  return (
+    <span
+      aria-hidden="true"
+      className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-ink-300"
+      style={{ animationDelay: delay }}
+    />
+  );
+}

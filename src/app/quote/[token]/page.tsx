@@ -5,6 +5,7 @@ import { PublicQuoteSummary } from "./_components/PublicQuoteSummary";
 import { AcceptForm } from "./_components/AcceptForm";
 import { AcceptedView } from "./_components/AcceptedView";
 import { ExpiredView } from "./_components/ExpiredView";
+import { CustomerChat } from "./_components/CustomerChat";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -93,6 +94,15 @@ export default async function PublicQuotePage({
     <PageShell>
       <PublicQuoteSummary token={token} quote={quote} />
       <AcceptForm token={token} quote={quote} />
+      {/* Wave 36 — "The Quote That Sells Itself" chat bubble. Only on
+          live (sent/viewed) quotes — the API gates this server-side
+          too, but rendering nothing on terminal states keeps the
+          accepted/expired views uncluttered. */}
+      <CustomerChat
+        token={token}
+        businessName={quote.business_name}
+        clientName={quote.client.name}
+      />
     </PageShell>
   );
 }

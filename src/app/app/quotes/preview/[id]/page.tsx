@@ -37,6 +37,7 @@ import {
   TranscriptPanel,
   type TranscriptPanelData,
 } from "./_components/TranscriptPanel";
+import { CustomerChatPanel } from "./_components/CustomerChatPanel";
 
 export const metadata: Metadata = {
   title: "Quote preview",
@@ -374,6 +375,21 @@ export default async function QuotePreviewPage({
                 its own brand-tinted shell + header so the explicit
                 <section> wrapper is gone. */}
             <ReviewToolsSheet>
+              {/* Wave 36 — customer chat thread first inside the
+                  review tools. Tradies need to see customer questions
+                  + actionable AI-flagged notes BEFORE the other
+                  agents (compliance, readiness, etc.) because the
+                  customer's voice is the strongest signal in the
+                  pipeline. CollapsibleSection so the read-only thread
+                  stays out of the way when there's no chat. */}
+              <CollapsibleSection
+                id="agent-customer-chat"
+                title="Customer chat"
+                defaultOpen
+              >
+                <CustomerChatPanel quoteData={quoteData} />
+              </CollapsibleSection>
+
               <CollapsibleSection
                 id="agent-quote-review"
                 title="Quote Review Agent"
