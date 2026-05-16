@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   ArrowSquareOut,
@@ -115,15 +116,18 @@ export function SendQuoteButton({
       <div className="flex flex-wrap items-center gap-2">
         <StatusPill status={status} />
         {hasPdf && (
-          <a
-            href={`/api/quotes/${quoteId}/pdf`}
-            target="_blank"
-            rel="noopener noreferrer"
+          // Wave 36 — link to the in-app PDF wrapper page (back button +
+          // iframe) instead of the raw binary route. Same-tab navigation
+          // so the browser's back button + the wrapper's "Back to quote"
+          // header both work; was target="_blank" which on iOS Safari
+          // showed the native PDF viewer with no obvious way back.
+          <Link
+            href={`/app/quotes/preview/${quoteId}/pdf`}
             className="inline-flex min-h-[44px] items-center gap-1.5 rounded-sm border border-ink-700 bg-ink-800 px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.2em] text-ink-200 hover:border-brand hover:text-brand"
           >
             <FileText size={12} weight="bold" />
             View PDF
-          </a>
+          </Link>
         )}
         {publicToken && acceptUrl && (
           <>

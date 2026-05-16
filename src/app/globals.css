@@ -894,6 +894,23 @@ h1, h2, h3, h4, h5 {
   box-shadow: 0 -4px 16px -6px rgba(0, 0, 0, 0.10) !important;
 }
 
+/* Wave 36 — LogoMark legibility on light mode.
+
+   The /logo-horizontal.png asset has T + Q recoloured to a light
+   #F5F5F4 (so they pop on the dark site). On light mode the page
+   background drops to a cream #EEEDE6 — close enough to the logo's
+   light pixels that the T and Q vanish and only the orange `2`
+   remains visible (see the BUILD YOUR ACCOUNT screenshot reported
+   by the user). Wrapping the mark in a small dark chip on light
+   mode only restores contrast without us having to ship a separate
+   dark-T+Q PNG variant. Dark mode is untouched. */
+[data-theme="light"] [data-testid="logo-mark"] {
+  background-color: #0A0A0A;
+  padding: 4px 8px;
+  border-radius: 6px;
+  box-sizing: content-box;
+}
+
 /* =========================================================================
    WAVE 10 — Light-mode readability fixes for the in-app surfaces.
    Targets the specific Tailwind utility classes the /app/* pages use
