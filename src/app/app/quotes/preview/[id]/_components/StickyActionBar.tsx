@@ -135,24 +135,25 @@ export function StickyActionBar({
   return (
     <>
       {/* Inline error / sent message — anchored ABOVE the bar so it
-          doesn't clip into the action row on a narrow phone. */}
+          doesn't clip into the action row on a narrow phone.
+          Wave 36 — solid backgrounds (was bg-red-500/10 + bg-brand/10
+          which are mostly transparent and blended into the cream
+          light-mode page behind, making the banner look like it was
+          overlapping the metadata grid). Solid red / solid brand reads
+          as a real banner on both themes and never bleeds. */}
       {(sendState === "error" || sendState === "sent") && (
         <div
           aria-live="polite"
-          className={`fixed inset-x-0 z-50 mx-auto max-w-3xl px-4 sm:static sm:max-w-none sm:px-0 ${
-            sendState === "error"
-              ? "bottom-[150px] sm:bottom-auto"
-              : "bottom-[150px] sm:bottom-auto"
-          }`}
+          className="fixed inset-x-0 bottom-[150px] z-50 mx-auto max-w-3xl px-4 sm:static sm:bottom-auto sm:max-w-none sm:px-0"
         >
           <p
             data-testid={
               sendState === "error" ? "sticky-send-error" : "sticky-send-ok"
             }
-            className={`rounded-sm border px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.18em] ${
+            className={`rounded-sm border px-3 py-2 font-mono text-[11px] uppercase tracking-[0.18em] shadow-lg ${
               sendState === "error"
-                ? "border-red-500/40 bg-red-500/10 text-red-300"
-                : "border-brand/40 bg-brand/10 text-brand"
+                ? "border-red-600 bg-red-600 text-white"
+                : "border-brand bg-brand text-ink-900"
             }`}
           >
             {sendState === "error" ? errorMessage : "// quote sent"}
@@ -167,7 +168,11 @@ export function StickyActionBar({
           // The nav is 57px (56px tile + 1px border) plus its own
           // safe-area padding-bottom, so `bottom` mirrors that exact
           // formula — no floating gap, no overlap, on any device.
-          "fixed inset-x-0 bottom-[calc(57px_+_max(env(safe-area-inset-bottom)_-_24px,4px))] z-50 border-t border-ink-700/70 bg-ink-950/85 backdrop-blur-md",
+          // Wave 36 — solid bg (was bg-ink-950/85). 85%-alpha was
+          // letting page content show through on light mode, which
+          // read as a floating translucent strip; solid + shadow now
+          // reads as a locked-in toolbar.
+          "fixed inset-x-0 bottom-[calc(57px_+_max(env(safe-area-inset-bottom)_-_24px,4px))] z-50 border-t border-ink-700/70 bg-ink-950 shadow-[0_-4px_12px_-4px_rgba(0,0,0,0.35)]",
           // min height 56 per the spec — leaves room for 44-px buttons.
           "min-h-[56px]",
           // On sm+ become a normal inline strip, no fixed positioning.

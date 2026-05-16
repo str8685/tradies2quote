@@ -16,7 +16,20 @@ export async function signupAction(formData: FormData) {
   }
 
   const supabase = await createClient();
-  const { data, error } = await supabase.auth.signUp({ email, password });
+
+  // CRITICAL — pass `emailRedirectTo` explicitly so the confirmation
+  // link in the signup email points at production. Without this,
+  // Supabase falls back to the project's "Site URL" setting (default
+  // `http://localhost:3000`), which produces the dreaded "Safari can't
+  // open the page because it couldn't connect to the server" when a
+  // real user taps the link on their phone. NEXT_PUBLIC_APP_URL is set
+  // in Vercel → Environment Variables to https://tradies2quote.com.
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: { emailRedirectTo: `${appUrl}/auth/callback` },
+  });
 
   if (error) {
     redirect(`/signup?error=${encodeURIComponent(error.message)}`);

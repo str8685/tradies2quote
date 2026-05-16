@@ -48,14 +48,22 @@ type State =
   | { mode: "ios" };
 
 export function FloatingInstallButton() {
-  // Wave 19.7 — hide on the marketing landing. The pill was anchored
-  // bottom-right and on mobile sat directly on top of the hero "Get
-  // beta access" CTA, creating a tap-collision risk. The InstallNudge
-  // toast lower on the page already nudges PWA install for landing
-  // visitors; the floating pill is more useful inside /app where it
-  // stops covering primary CTAs.
+  // Wave 36 — restrict to /app/* only. The pill should ONLY appear for
+  // signed-in tradies inside the product. Specifically NOT on:
+  //   - "/" — marketing landing (InstallNudge handles that)
+  //   - /quote/[token] — the client-facing public quote view (the
+  //     tradie's CUSTOMER is the visitor here; offering them to install
+  //     the tradie's quoting app is wrong and looked like spam over the
+  //     quote total in the screenshot)
+  //   - /login, /signup, /forgot-password, /reset-password — auth pages
+  //     (we want focus on the form, not an install pill)
+  //   - /privacy, /terms, /support — legal pages
+  //   - /auth/callback — transient OAuth handoff
+  // Inverting the condition is safer than maintaining a deny-list: any
+  // new public route added later automatically inherits the right
+  // behaviour (no install pill until they sign in and enter the app).
   const pathname = usePathname();
-  const isMarketingLanding = pathname === "/";
+  const isInsideApp = pathname?.startsWith("/app") ?? false;
 
   const [state, setState] = useState<State>({ mode: "hidden" });
   const [showIOSSheet, setShowIOSSheet] = useState(false);
@@ -131,7 +139,7 @@ export function FloatingInstallButton() {
   }, []);
 
   if (state.mode === "hidden") return null;
-  if (isMarketingLanding) return null;
+  if (!isInsideApp) return null;
 
   return (
     <>

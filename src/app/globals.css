@@ -863,10 +863,15 @@ h1, h2, h3, h4, h5 {
   right: 0;
   display: flex;
   align-items: stretch;
-  background: rgba(10, 10, 10, 0.92);
+  /* Wave 36 — fully opaque + drop shadow. Was 92%-alpha with a
+     backdrop blur, which read as a floating glass strip on light
+     mode (content underneath was visibly bleeding through). The
+     spec calls for a "locked" anchored nav, so the blur and
+     transparency are gone and a subtle top-edge shadow now reads as
+     a real layer boundary. */
+  background: #0A0A0A;
   border-top: 1px solid #1F1F1F;
-  backdrop-filter: blur(12px) saturate(140%);
-  -webkit-backdrop-filter: blur(12px) saturate(140%);
+  box-shadow: 0 -4px 16px -6px rgba(0, 0, 0, 0.45);
   padding-bottom: max(env(safe-area-inset-bottom, 0px) - 24px, 4px);
   z-index: 40;
 }
@@ -882,8 +887,11 @@ h1, h2, h3, h4, h5 {
   }
 }
 [data-theme="light"] .t2q-bottomnav-bar {
-  background: rgba(255, 255, 255, 0.92) !important;
+  /* Wave 36 — fully opaque for light mode too. Was 92% which let
+     the cream page bleed through and read as a floating strip. */
+  background: #FFFFFF !important;
   border-top-color: #D8D7CE !important;
+  box-shadow: 0 -4px 16px -6px rgba(0, 0, 0, 0.10) !important;
 }
 
 /* =========================================================================

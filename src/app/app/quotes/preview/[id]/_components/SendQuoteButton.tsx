@@ -152,13 +152,15 @@ export function SendQuoteButton({
         {state === "error" && (
           <p
             data-testid="send-error"
-            className="rounded-sm border border-red-500/40 bg-red-500/10 px-2.5 py-1.5 font-mono text-[11px] uppercase tracking-[0.18em] text-red-300"
+            // Wave 36 — solid background. Transparent 10%-alpha shells
+            // were invisible on the cream light-mode page.
+            className="rounded-sm border border-red-600 bg-red-600 px-2.5 py-1.5 font-mono text-[11px] uppercase tracking-[0.18em] text-white shadow"
           >
             {errorMessage}
           </p>
         )}
         {state === "sent" && (
-          <p className="rounded-sm border border-brand/40 bg-brand/10 px-2.5 py-1.5 font-mono text-[11px] uppercase tracking-[0.18em] text-brand">
+          <p className="rounded-sm border border-brand bg-brand px-2.5 py-1.5 font-mono text-[11px] uppercase tracking-[0.18em] text-ink-900 shadow">
             {"// quote sent"}
           </p>
         )}
