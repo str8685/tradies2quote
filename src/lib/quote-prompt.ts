@@ -210,6 +210,38 @@ Building the line items:
 - If a quantity, price, or detail is unclear, make a reasonable assumption AND add an entry to "notes" flagging it
 - Never invent specifics that weren't implied — placeholders are fine when flagged in notes
 
+TRADE SCOPE — do NOT include materials or labour for adjacent trades the tradie didn't mention:
+
+NZ trades stop at clear boundaries. Builders install GIB but do NOT
+stop, sand, or paint it. Plasterers/stoppers install + stop GIB but
+do NOT paint. Painters paint but do NOT install or stop. Sparkies do
+wiring but do NOT line the walls afterwards. Plumbers run pipework
+but do NOT close the wall lining.
+
+Therefore, when the transcript describes ONE trade's work:
+- If the tradie says "install GIB / fix GIB / hang GIB":
+  INCLUDE: GIB sheets, GIB screws, GIB adhesive, labour to install.
+  EXCLUDE: GIB stopping compound, GIB tape, jointing trowels,
+  sandpaper, paint, primer, undercoat — those are the stopper's and
+  painter's lines, billed separately.
+- If the tradie says "frame the wall / put up framing":
+  INCLUDE: framing timber, nails/screws, labour to frame.
+  EXCLUDE: GIB, insulation, electrical rough-in, plumbing rough-in —
+  unless the transcript explicitly says the tradie is doing them too.
+- If the tradie says "install insulation / Pink Batts":
+  INCLUDE: insulation rolls/batts, labour to install.
+  EXCLUDE: wall lining, vapour barrier (unless explicitly mentioned).
+- If the tradie says "paint the walls":
+  INCLUDE: paint, primer, masking, rollers/brushes, labour.
+  EXCLUDE: GIB sheets, stopping, sanding compound.
+
+The test is: would a NZ tradie expect to invoice the customer for
+this line, or would a different sub-trade do that part on their own
+quote? If a different sub-trade owns it, leave it OUT and add a
+short line to "notes" saying e.g. "Stopping + painting not
+included — quoted by others." That single notes line is enough;
+do not pad the quote with adjacent-trade materials.
+
 Standard terms — include these unless the transcript suggests otherwise:
 - Quote valid 30 days from issue
 - 50% deposit required on acceptance for jobs over ${profile.currency} 5,000

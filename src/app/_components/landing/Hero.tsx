@@ -6,6 +6,7 @@ import { Fragment, useRef } from "react";
 import { FileText, Receipt, ArrowRight, Check } from "@phosphor-icons/react";
 import TapeProgress from "./TapeProgress";
 import { Magnetic } from "./Magnetic";
+import InstallPWAButton from "./InstallPWAButton";
 
 // Wave 19.3 — Hero motion amplification.
 //
@@ -300,11 +301,29 @@ export function Hero() {
             >
               See how it works <ArrowRight size={20} weight="bold" />
             </a>
+            {/* Wave 36 — visible "Install on phone" CTA on the landing.
+                The InstallNudge toast is snoozable + user-dismissable so
+                some users never see it; an explicit hero-row button
+                guarantees the path is discoverable. On Chromium it
+                fires the native install prompt; on iOS Safari it opens
+                an Add-to-Home-Screen instruction sheet (since iOS
+                doesn't expose beforeinstallprompt for PWAs). The
+                button renders nothing when the app is already
+                installed (standalone display-mode) so the row stays
+                clean for return visitors. */}
+            <InstallPWAButton variant="hero" />
           </motion.div>
 
+          {/* Wave 36 — trust strip was overflowing the iPhone screen
+              ("NO CREDIT CARD · CANCEL ANYTIME" running off the right
+              edge). Cause: gap-6 (24px) + 0.18em letter-spacing +
+              text-xs over 3 long uppercase phrases. flex-wrap was set
+              but each phrase + tracking made the row too wide to wrap
+              gracefully. Fix: tighter spacing + smaller text on
+              mobile; original desktop sizing kept behind sm:. */}
           <motion.div
             {...trustStripAnim}
-            className="mt-10 flex flex-wrap items-center gap-6 text-ink-300 font-mono text-xs uppercase tracking-[0.18em]"
+            className="mt-10 flex flex-wrap items-center gap-x-3 gap-y-2 text-ink-300 font-mono text-[10px] uppercase tracking-[0.12em] sm:gap-x-6 sm:gap-y-3 sm:text-xs sm:tracking-[0.18em]"
           >
             <span>No credit card</span>
             <span aria-hidden="true" className="w-1 h-1 rounded-full bg-ink-500" />

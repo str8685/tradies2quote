@@ -78,6 +78,27 @@ const AGENT_TARGET_ID: Record<AgentName, string> = {
 
 function openAgentSection(targetId: string) {
   if (typeof document === "undefined") return;
+
+  // Wave 36 — the agent sections live inside <ReviewToolsSheet>. On
+  // md+ that's an inline <section> already in the DOM. On <md
+  // (mobile) it's a slide-up sheet that ONLY mounts its children
+  // when the sheet is open — so `getElementById` returns null on a
+  // first click and the button looked broken.
+  //
+  // Strategy:
+  //   - Desktop (md+): the element is in the DOM, scroll/open it
+  //     directly like before.
+  //   - Mobile (<md): fire a window-level custom event the sheet
+  //     listens for; the sheet handles its own open() AND the
+  //     post-mount scroll into view of the target collapsible.
+  const isMobile = window.matchMedia("(max-width: 767px)").matches;
+  if (isMobile) {
+    window.dispatchEvent(
+      new CustomEvent("t2q:open-review-tool", { detail: { targetId } }),
+    );
+    return;
+  }
+
   const el = document.getElementById(targetId);
   if (!el) return;
   if (el instanceof HTMLDetailsElement) el.open = true;

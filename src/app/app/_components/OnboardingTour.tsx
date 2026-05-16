@@ -3,9 +3,14 @@
 import { useEffect, useState } from "react";
 import {
   ArrowRight,
+  DownloadSimple,
+  EnvelopeSimple,
+  Gear,
   House,
   ListBullets,
   Microphone,
+  PencilSimple,
+  Question,
   Stack,
   UserCircle,
   X,
@@ -47,35 +52,67 @@ interface Step {
   hint?: string;
 }
 
+// Wave 36 — expanded tour from 5 steps to 9 with concrete "tap THIS,
+// do THAT" guidance per step. Each step now points to a specific
+// piece of the UI by referencing the same icon the live nav uses,
+// names the exact button label, and explains what happens after the
+// tap. The flow walks a first-time tradie from settings → recording
+// → modal → review → send → install, so they finish the tour ready
+// to ship their first real quote without having to guess where
+// anything lives.
 const STEPS: ReadonlyArray<Step> = [
   {
-    title: "Welcome to Tradies²Quote",
-    body: "Voice-first quoting for tradies. Record a job in plain English, get a tidy quote in under a minute.",
+    title: "Welcome to T2Q",
+    body: "Talk through a job for 60 seconds, get a branded quote PDF ready to email — before you've packed up the ute. This tour shows you every step. Tap Next to start.",
     Icon: House,
-    hint: "// 5 quick tips before you start",
+    hint: "// 9 quick tips before your first quote",
+  },
+  {
+    title: "Set up your business first",
+    body: "Tap the orange ‘Me’ circle in the bottom-right corner, then Settings. Fill in your business name, phone, address, GST number, labour rate and markup. These appear on every quote PDF you send — clients won't trust a quote from ‘Your Business’.",
+    Icon: Gear,
+    hint: "// the dashboard nudges you if business name is missing",
   },
   {
     title: "Record a quote",
-    body: "Tap the orange Record button on the Quotes tab. Speak naturally — T2Q handles materials, labour and markup.",
+    body: "Tap the orange Record button on the Quotes tab and just talk: client name + contact, the site, what's being done, rough materials and how long. Speak naturally — ‘a bit of jib on the ceiling’ works. T2Q handles the materials, labour rate and markup.",
     Icon: Microphone,
-    hint: "// no typing required",
+    hint: "// no script needed, talk like you're briefing your apprentice",
   },
   {
-    title: "Quotes list",
-    body: "All your quotes live here, grouped by stage: draft, sent, viewed, accepted, scheduled, completed. Tap any one to review or send.",
-    Icon: ListBullets,
-    hint: "// your pipeline at a glance",
+    title: "T2Q asks before guessing",
+    body: "After you tap Continue, T2Q reviews your recording and pops up questions for anything it's not 100% sure about — usually 3–5 multi-choice questions (e.g. GIB Standard 10mm vs 13mm?). Pick an option per question, or tap ‘Skip the rest’ once you've answered the important ones.",
+    Icon: Question,
+    hint: "// stops the AI from inventing prices on guesses",
+  },
+  {
+    title: "Review and edit your quote",
+    body: "T2Q drops you on the editor. Every line, price, quantity and client field is editable. Look for the yellow ‘MISSING PRICE’ and red flag pills — those are the lines that need your eye before sending. Tap any line to tweak it.",
+    Icon: PencilSimple,
+    hint: "// nothing sends until you tap Send",
+  },
+  {
+    title: "Send the quote",
+    body: "Hit the orange Send button. T2Q generates a branded PDF, emails it to your client, and gives them a one-tap ‘Accept Quote’ button. The status flips to Sent → Viewed → Accepted as your client interacts with it.",
+    Icon: EnvelopeSimple,
+    hint: "// the email comes from hello@tradies2quote.com",
   },
   {
     title: "Materials library",
-    body: "Your prices, your supplier links. Add as you go — T2Q learns from your edits and stops guessing.",
+    body: "Tap the Materials tab to save the prices you actually use. The more you add, the smarter T2Q gets — quotes use your real supplier prices instead of estimates. You can paste a Mitre 10 / PlaceMakers / Bunnings / ITM URL and T2Q will fill in the rest.",
     Icon: Stack,
-    hint: "// the more you add, the smarter it gets",
+    hint: "// confirmed prices replace T2Q estimates",
   },
   {
-    title: "The Me tile",
-    body: "Bottom-right circle. Profile, business details, quote defaults, clients, sign out — and your avatar photo.",
-    Icon: UserCircle,
+    title: "Your pipeline at a glance",
+    body: "The Quotes tab shows every quote grouped by stage: Draft → Sent → Viewed → Accepted → Scheduled → In progress → Completed. Tap any tile on your dashboard to filter the list by that stage.",
+    Icon: ListBullets,
+    hint: "// archive old quotes from the ⋯ menu on any row",
+  },
+  {
+    title: "Install on your phone",
+    body: "Tap Share in Safari (the square with the up-arrow), then ‘Add to Home Screen’. T2Q opens like a real app from your home screen — no Safari bar, full screen, faster. Or tap the orange ‘Install app’ button at the bottom of any /app page.",
+    Icon: DownloadSimple,
     hint: "// you're set — start with your first quote",
   },
 ];

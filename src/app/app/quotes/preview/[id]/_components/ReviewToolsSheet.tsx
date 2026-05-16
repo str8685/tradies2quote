@@ -53,6 +53,32 @@ export function ReviewToolsSheet({ children }: Props) {
     return () => window.removeEventListener("keydown", onKey);
   }, [open]);
 
+  // Wave 36 — listen for "open this specific review tool" events the
+  // LifecycleCard's Suggested-Agent button fires on mobile. The sheet
+  // opens itself, then after two animation frames (so the children
+  // have mounted + painted) finds the requested collapsible by id,
+  // opens it, and scrolls it into view. Without this, tapping
+  // "Open →" on the Quote Review Agent card did nothing on mobile
+  // because the target id wasn't in the DOM yet.
+  useEffect(() => {
+    function onOpenTool(e: Event) {
+      const detail = (e as CustomEvent<{ targetId?: string }>).detail;
+      if (!detail?.targetId) return;
+      setOpen(true);
+      // Double RAF — first frame opens the sheet, second frame is
+      // after the sheet's children have committed and painted.
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          const el = document.getElementById(detail.targetId!);
+          if (el instanceof HTMLDetailsElement) el.open = true;
+          el?.scrollIntoView({ behavior: "smooth", block: "start" });
+        });
+      });
+    }
+    window.addEventListener("t2q:open-review-tool", onOpenTool);
+    return () => window.removeEventListener("t2q:open-review-tool", onOpenTool);
+  }, []);
+
   function onBackdropKey(e: KeyboardEvent<HTMLDivElement>) {
     if (e.key === "Escape") setOpen(false);
   }
