@@ -1,8 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useFormStatus } from "react-dom";
 import { createDraftQuote } from "../actions";
+import type { Clarification } from "@/lib/clarifications";
+import {
+  ClarificationModal,
+  type ClarificationAnswer,
+} from "./ClarificationModal";
 
 type Tab = "voice" | "type";
 type VoiceState = "idle" | "recording" | "processing" | "error";
@@ -439,38 +443,153 @@ function TranscriptReview({
   );
 }
 
-function ContinueRow({ text, minLength }: { text: string; minLength: number }) {
-  const ready = text.trim().length >= minLength;
-  return (
-    <form
-      action={createDraftQuote}
-      className="mt-6 flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between"
-    >
-      <input type="hidden" name="transcript" value={text} />
-      <p className="font-mono text-xs uppercase tracking-[0.2em] text-ink-500">
-        {"// step 2: t2q builds the quote"}
-      </p>
-      <ContinueButton ready={ready} />
-    </form>
-  );
+/**
+ * ContinueRow — Wave 36 — now wraps the original "Continue" form
+ * submission with a clarification modal step.
+ *
+ * Flow:
+ *   1. Tradie clicks Continue → button shows "Checking…"
+ *   2. POST /api/quotes/cleanup with the transcript text
+ *   3. If the cleanup returned ≥1 clarification question:
+ *      open <ClarificationModal>. Each question is shown with
+ *      radio-button options (or a free-text input).
+ *   4. After the modal completes, append the answers to the
+ *      transcript as a clearly labelled "[Additional details]"
+ *      block, write the enriched value into the hidden input, then
+ *      programmatically submit the existing <form> so the unchanged
+ *      `createDraftQuote` server action runs against the enriched
+ *      transcript.
+ *   5. If cleanup fails / times out / returns no questions, skip
+ *      the modal entirely and submit the original transcript. The
+ *      server-side cleanup inside /api/quotes/generate still runs
+ *      as a safety net, so nothing is lost.
+ *
+ * Graceful degradation is the rule: an LLM hiccup must NEVER block
+ * quote generation. The modal is an enhancement, not a gate.
+ */
+type ContinueStep = "idle" | "cleaning" | "asking" | "submitting" | "error";
+
+function appendAnswersToTranscript(
+  base: string,
+  questions: Clarification[],
+  answers: ClarificationAnswer[],
+): string {
+  const lines: string[] = [];
+  for (const a of answers) {
+    if (a.answer === null) continue;
+    const q = questions.find((qq) => qq.id === a.questionId);
+    if (!q) continue;
+    lines.push(`- ${q.question} → ${a.answer}`);
+  }
+  if (lines.length === 0) return base;
+  return `${base}\n\n[Additional details confirmed by the tradie:]\n${lines.join("\n")}`;
 }
 
-function ContinueButton({ ready }: { ready: boolean }) {
-  const { pending } = useFormStatus();
-  const disabled = !ready || pending;
-  return (
-    <button
-      type="submit"
-      data-testid="continue-button"
-      disabled={disabled}
-      title={
-        ready
-          ? "Generate a quote from your description."
-          : "Add a description to continue."
+function ContinueRow({ text, minLength }: { text: string; minLength: number }) {
+  const ready = text.trim().length >= minLength;
+  const formRef = useRef<HTMLFormElement | null>(null);
+  const transcriptInputRef = useRef<HTMLInputElement | null>(null);
+  const [step, setStep] = useState<ContinueStep>("idle");
+  const [questions, setQuestions] = useState<Clarification[]>([]);
+
+  function submitForm(enrichedTranscript: string) {
+    if (!formRef.current || !transcriptInputRef.current) return;
+    transcriptInputRef.current.value = enrichedTranscript;
+    setStep("submitting");
+    formRef.current.requestSubmit();
+  }
+
+  async function startContinue() {
+    if (!ready || step !== "idle") return;
+    setStep("cleaning");
+    try {
+      const res = await fetch("/api/quotes/cleanup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ transcript: text }),
+      });
+      if (!res.ok) {
+        // Cleanup endpoint refused (auth, validation, server) — fall
+        // through to direct submission. Generation pipeline still has
+        // its own cleanup inside.
+        submitForm(text);
+        return;
       }
-      className="t2q-btn-primary disabled:cursor-not-allowed disabled:opacity-40"
-    >
-      {pending ? "Saving…" : "Continue →"}
-    </button>
+      const data = (await res.json()) as { questions?: Clarification[] };
+      const qs = Array.isArray(data.questions) ? data.questions : [];
+      if (qs.length === 0) {
+        submitForm(text);
+        return;
+      }
+      setQuestions(qs);
+      setStep("asking");
+    } catch {
+      // Network / parse error — same fallback.
+      submitForm(text);
+    }
+  }
+
+  function handleModalComplete(answers: ClarificationAnswer[]) {
+    const enriched = appendAnswersToTranscript(text, questions, answers);
+    setQuestions([]);
+    submitForm(enriched);
+  }
+
+  function handleModalCancel() {
+    // Cancel = "generate without answering". The cleanup-suggested
+    // questions remain in the LLM's view via the server-side cleanup
+    // pass inside the generate route, so the quote is still made.
+    setQuestions([]);
+    submitForm(text);
+  }
+
+  const busy = step !== "idle";
+  const label =
+    step === "cleaning"
+      ? "Checking…"
+      : step === "asking"
+        ? "Waiting on you…"
+        : step === "submitting"
+          ? "Saving…"
+          : "Continue →";
+
+  return (
+    <>
+      <form
+        ref={formRef}
+        action={createDraftQuote}
+        className="mt-6 flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between"
+      >
+        <input
+          ref={transcriptInputRef}
+          type="hidden"
+          name="transcript"
+          defaultValue={text}
+        />
+        <p className="font-mono text-xs uppercase tracking-[0.2em] text-ink-500">
+          {"// step 2: t2q builds the quote"}
+        </p>
+        <button
+          type="button"
+          onClick={startContinue}
+          disabled={!ready || busy}
+          data-testid="continue-button"
+          title={
+            ready
+              ? "Generate a quote from your description."
+              : "Add a description to continue."
+          }
+          className="t2q-btn-primary disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          {label}
+        </button>
+      </form>
+      <ClarificationModal
+        open={step === "asking" && questions.length > 0}
+        questions={questions}
+        onComplete={handleModalComplete}
+        onCancel={handleModalCancel}
+      />
+    </>
   );
 }
