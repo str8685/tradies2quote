@@ -46,6 +46,12 @@ html {
   scroll-behavior: smooth;
   background: #0A0A0A;
   color-scheme: dark;
+  /* Wave 36 — kill iOS Safari's rubber-band bounce + accidental
+     pull-to-refresh. Stops the page from feeling like it's floating
+     off-screen when scrolling past the top or bottom of content.
+     `none` is stricter than `contain` — also prevents scroll-chain
+     from inner containers leaking into the page. */
+  overscroll-behavior: none;
 }
 
 body {
@@ -55,6 +61,28 @@ body {
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
   font-feature-settings: "ss01" on, "cv11" on;
+  /* Same as html — defense in depth. iOS Safari sometimes only
+     honours overscroll-behavior on the body when the html one is
+     overridden by some other rule. Setting both is cheap. */
+  overscroll-behavior: none;
+}
+
+/* Wave 36 — anywhere we declared `min-h-screen` (=100vh), use the
+   dynamic viewport height (100dvh) instead when the browser supports
+   it. The static 100vh on iOS Safari is "tallest possible viewport"
+   — bigger than the visible area when the URL bar is showing, so
+   content underneath ends up clipped or causes layout shifts when
+   the URL bar slides in/out. 100dvh tracks the CURRENT viewport,
+   which is what we want for an app shell that should always exactly
+   fit the screen. The @supports gate keeps older browsers (no dvh)
+   on the legacy 100vh fallback. */
+@supports (height: 100dvh) {
+  .min-h-screen {
+    min-height: 100dvh !important;
+  }
+  .h-screen {
+    height: 100dvh !important;
+  }
 }
 
 ::selection { background: #FF5F15; color: #0A0A0A; }
