@@ -480,17 +480,40 @@ export default async function QuotePreviewPage({
 }
 
 /**
- * Wave 36 — server-rendered top-of-page banner that surfaces transcript
- * clarification questions the cleanup layer flagged but the AI
- * still answered with its best guess. Lives in page.tsx (not its
- * own component file) because it's a thin presentational helper
- * and the parent already reads quoteData.
+ * Wave 36 — server-rendered top-of-page banner that surfaces FOUR
+ * different signals from the transcript cleanup pass, all of which
+ * mean "T2Q wasn't 100% sure and took its best guess":
  *
- * Defensive: `quoteData.transcript` is typed as `unknown` (see the
- * type's comment in quote-types.ts — kept unknown to avoid a
- * circular import with transcriptCleanup.ts). We narrow it here
- * with a guard so a missing / malformed transcript object is a
- * silent no-op, never a crash.
+ *   1. clarification_questions — NZ-tradie homophone ambiguities
+ *      from the deterministic regex pass ("jib" without context,
+ *      "pink batts" vs timber battens, etc.). Has a structured
+ *      {question, why} shape.
+ *
+ *   2. summary.material_assumptions — materials the LLM inferred
+ *      WITHOUT the tradie naming them ("GIB Standard 13mm assumed
+ *      for ceiling lining"). Plain string list.
+ *
+ *   3. summary.missing_information — facts the LLM didn't have
+ *      ("wall is internal vs external", "spacing of stud framing").
+ *      Plain string list.
+ *
+ *   4. summary.compliance_risks — code-critical items the LLM is
+ *      asking the tradie to confirm before sign-off ("H3.2 treatment
+ *      class required for exposed framing"). Plain string list.
+ *
+ * Why all four in one banner: each one means the same thing to the
+ * operator ("I need to double-check this before sending"), and the
+ * deterministic homophone list (1) alone has very narrow coverage —
+ * surfacing (2)/(3)/(4) catches the cases the regex misses.
+ *
+ * Defensive: `quoteData.transcript` is typed as `unknown` in
+ * quote-types.ts (kept unknown to avoid a circular import with
+ * transcriptCleanup.ts). Every accessor below narrows it with a
+ * type guard so a missing / malformed / partial transcript object
+ * is a silent no-op, never a crash. No collision with the existing
+ * <TranscriptPanel> inside the Review Tools sheet — that component
+ * still reads the same fields but renders a more detailed view; the
+ * banner is the at-a-glance summary at the top of the page.
  */
 type ClarificationQuestion = {
   id: string;
@@ -498,27 +521,74 @@ type ClarificationQuestion = {
   why: string;
 };
 
-function extractClarifications(
-  quoteData: QuoteData,
-): ClarificationQuestion[] {
+type ExtractedSignals = {
+  questions: ClarificationQuestion[];
+  assumptions: string[];
+  missing: string[];
+  risks: string[];
+};
+
+function extractAllSignals(quoteData: QuoteData): ExtractedSignals {
+  const empty: ExtractedSignals = {
+    questions: [],
+    assumptions: [],
+    missing: [],
+    risks: [],
+  };
   const t = quoteData.transcript;
-  if (!t || typeof t !== "object") return [];
-  const questions = (t as { clarification_questions?: unknown })
-    .clarification_questions;
-  if (!Array.isArray(questions)) return [];
-  return questions.filter(
-    (q): q is ClarificationQuestion =>
-      typeof q === "object" &&
-      q !== null &&
-      typeof (q as ClarificationQuestion).id === "string" &&
-      typeof (q as ClarificationQuestion).question === "string" &&
-      typeof (q as ClarificationQuestion).why === "string",
-  );
+  if (!t || typeof t !== "object") return empty;
+
+  const tObj = t as {
+    clarification_questions?: unknown;
+    summary?: unknown;
+  };
+
+  // Source 1 — structured clarification questions (regex pass).
+  const rawQs = tObj.clarification_questions;
+  const questions: ClarificationQuestion[] = Array.isArray(rawQs)
+    ? rawQs.filter(
+        (q): q is ClarificationQuestion =>
+          typeof q === "object" &&
+          q !== null &&
+          typeof (q as ClarificationQuestion).id === "string" &&
+          typeof (q as ClarificationQuestion).question === "string" &&
+          typeof (q as ClarificationQuestion).why === "string",
+      )
+    : [];
+
+  // Sources 2/3/4 — LLM summary string arrays.
+  let assumptions: string[] = [];
+  let missing: string[] = [];
+  let risks: string[] = [];
+  const summary = tObj.summary;
+  if (summary && typeof summary === "object") {
+    const s = summary as {
+      material_assumptions?: unknown;
+      missing_information?: unknown;
+      compliance_risks?: unknown;
+    };
+    const pickStrings = (v: unknown): string[] =>
+      Array.isArray(v)
+        ? v
+            .filter((x): x is string => typeof x === "string")
+            .map((x) => x.trim())
+            .filter((x) => x.length > 0)
+        : [];
+    assumptions = pickStrings(s.material_assumptions);
+    missing = pickStrings(s.missing_information);
+    risks = pickStrings(s.compliance_risks);
+  }
+
+  return { questions, assumptions, missing, risks };
 }
 
 function ClarificationsBanner({ quoteData }: { quoteData: QuoteData }) {
-  const items = extractClarifications(quoteData);
-  if (items.length === 0) return null;
+  const { questions, assumptions, missing, risks } =
+    extractAllSignals(quoteData);
+  const totalCount =
+    questions.length + assumptions.length + missing.length + risks.length;
+  if (totalCount === 0) return null;
+
   return (
     <section
       data-testid="preview-clarifications-banner"
@@ -526,7 +596,7 @@ function ClarificationsBanner({ quoteData }: { quoteData: QuoteData }) {
       // box inside the editor so the operator's eye already associates
       // the colour with "things to check before sending".
       className="mb-6 rounded-sm border border-hivis/50 bg-hivis/10 p-4 sm:p-5"
-      aria-label="AI clarification questions"
+      aria-label="Things T2Q wasn't sure about"
     >
       <div className="flex items-start gap-3 sm:items-center">
         <span
@@ -537,8 +607,8 @@ function ClarificationsBanner({ quoteData }: { quoteData: QuoteData }) {
         </span>
         <div className="min-w-0 flex-1">
           <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-hivis">
-            {`// t2q wasn't sure · ${items.length} ${
-              items.length === 1 ? "question" : "questions"
+            {`// t2q wasn't sure · ${totalCount} ${
+              totalCount === 1 ? "thing to check" : "things to check"
             }`}
           </p>
           <p className="mt-1 text-sm text-ink-100 sm:text-base">
@@ -547,20 +617,92 @@ function ClarificationsBanner({ quoteData }: { quoteData: QuoteData }) {
           </p>
         </div>
       </div>
-      <ul className="mt-3 space-y-2.5 border-t border-hivis/30 pt-3 text-sm text-ink-200">
-        {items.map((q) => (
-          <li key={q.id} className="flex gap-2">
+
+      <div className="mt-3 space-y-4 border-t border-hivis/30 pt-3">
+        {questions.length > 0 && (
+          <SignalSection
+            testId="banner-section-questions"
+            title="Unclear phrases"
+            items={questions.map((q) => ({
+              key: q.id,
+              primary: q.question,
+              secondary: q.why,
+            }))}
+          />
+        )}
+        {assumptions.length > 0 && (
+          <SignalSection
+            testId="banner-section-assumptions"
+            title="T2Q assumed"
+            items={assumptions.map((a, i) => ({
+              key: `assumption.${i}`,
+              primary: a,
+            }))}
+          />
+        )}
+        {missing.length > 0 && (
+          <SignalSection
+            testId="banner-section-missing"
+            title="Info T2Q didn't have"
+            items={missing.map((m, i) => ({
+              key: `missing.${i}`,
+              primary: m,
+            }))}
+          />
+        )}
+        {risks.length > 0 && (
+          <SignalSection
+            testId="banner-section-risks"
+            title="Code-critical to confirm"
+            items={risks.map((r, i) => ({
+              key: `risk.${i}`,
+              primary: r,
+            }))}
+          />
+        )}
+      </div>
+    </section>
+  );
+}
+
+/**
+ * Sub-section of the clarifications banner — one header + a list of
+ * items. Pure presentational. Items with `secondary` text get a
+ * two-line render; assumption / missing-info / compliance-risk items
+ * have just a `primary` string. Keeps the banner compact on mobile.
+ */
+function SignalSection({
+  testId,
+  title,
+  items,
+}: {
+  testId: string;
+  title: string;
+  items: Array<{ key: string; primary: string; secondary?: string }>;
+}) {
+  return (
+    <div data-testid={testId}>
+      <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-hivis/80">
+        {`// ${title}`}
+      </p>
+      <ul className="mt-1.5 space-y-1.5 text-sm text-ink-200">
+        {items.map((it) => (
+          <li key={it.key} className="flex gap-2">
             <span aria-hidden="true" className="text-hivis">
               →
             </span>
             <div className="min-w-0 flex-1">
-              <p className="font-semibold text-white">{q.question}</p>
-              <p className="mt-0.5 text-xs text-ink-300 sm:text-sm">{q.why}</p>
+              <p className="text-white">{it.primary}</p>
+              {it.secondary && (
+                <p className="mt-0.5 text-xs text-ink-300 sm:text-sm">
+                  {it.secondary}
+                </p>
+              )}
             </div>
           </li>
         ))}
       </ul>
-    </section>
+    </div>
   );
 }
 
