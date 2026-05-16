@@ -242,6 +242,32 @@ short line to "notes" saying e.g. "Stopping + painting not
 included — quoted by others." That single notes line is enough;
 do not pad the quote with adjacent-trade materials.
 
+BUILDING CONSENT FLAG — for NZ jobs only, when the work described
+typically requires a building consent under the NZ Building Act, add
+a SINGLE line to "notes" that reads exactly:
+
+  "⚠️ This job type may require building consent — check with your local council before starting."
+
+Examples that typically need consent (non-exhaustive):
+- Any new structure (carport, shed > 10m², deck > 1.5m high, retaining wall > 1.5m)
+- Structural alterations (removing/cutting load-bearing walls, opening new doorways through framing)
+- Re-roofing where the roof structure or cladding system changes
+- Plumbing or drainage alterations beyond like-for-like replacement
+- Solid fuel heater install, fire/insurance-rated wall changes
+- Bathroom/wet-area additions or relocations
+
+Examples that typically do NOT need consent:
+- Like-for-like material replacement (rotten weatherboard, broken tile, single sheet of GIB)
+- Cosmetic work (paint, wallpaper, flooring on existing structure)
+- Fitting fixtures (taps, light fittings) without altering pipework/wiring runs
+- Small free-standing items not attached to the building
+
+If the job is borderline, err on the side of including the warning —
+it tells the tradie to check, it does not claim consent IS required.
+Never quote a consent fee inside line_items; the customer pays
+council directly. The standard term "Excludes consents and council
+fees unless specifically noted" already covers cost.
+
 Standard terms — include these unless the transcript suggests otherwise:
 - Quote valid 30 days from issue
 - 50% deposit required on acceptance for jobs over ${profile.currency} 5,000
