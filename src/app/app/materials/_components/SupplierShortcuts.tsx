@@ -1,4 +1,5 @@
-import { ArrowSquareOut } from "@phosphor-icons/react/dist/ssr";
+import Link from "next/link";
+import { ArrowRight } from "@phosphor-icons/react/dist/ssr";
 
 const SUPPLIERS = [
   { name: "Mitre 10", url: "https://www.mitre10.co.nz" },
@@ -7,6 +8,13 @@ const SUPPLIERS = [
   { name: "PlaceMakers", url: "https://www.placemakers.co.nz" },
 ] as const;
 
+/**
+ * Quick-launch supplier tiles on /app/materials.
+ *
+ * Now points at the in-app supplier browser (/app/suppliers) instead
+ * of opening the supplier in a new tab — that's where the AI product
+ * extractor lives.
+ */
 export function SupplierShortcuts() {
   return (
     <section
@@ -22,24 +30,22 @@ export function SupplierShortcuts() {
       </p>
       <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
         {SUPPLIERS.map((s) => (
-          <a
+          <Link
             key={s.name}
-            href={s.url}
-            target="_blank"
-            rel="noopener noreferrer"
+            href={`/app/suppliers?url=${encodeURIComponent(s.url)}`}
             data-testid={`supplier-${s.name.toLowerCase().replace(/\s+/g, "-")}`}
             className="group flex items-center justify-between gap-2 rounded-sm border border-ink-700 bg-ink-800 px-3 py-2.5 transition-transform hover:-translate-y-[2px] hover:border-brand"
           >
             <span className="font-display text-xs uppercase tracking-tight text-white sm:text-sm">
               {s.name}
             </span>
-            <ArrowSquareOut
+            <ArrowRight
               size={14}
               weight="bold"
               className="text-ink-400 group-hover:text-brand"
               aria-hidden="true"
             />
-          </a>
+          </Link>
         ))}
       </div>
     </section>
