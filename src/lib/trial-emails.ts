@@ -16,7 +16,12 @@ import "server-only";
  *   trial_day_0      — 7 days after signup (T)
  *   trial_plus_3     — 10 days after signup (T+3)
  *
- * Windows are 1-hour wide so the hourly cron picks each user up exactly once.
+ * Vercel Hobby caps cron at once-per-day, so the scheduler runs daily.
+ * `kindForUser` returns the MOST-RECENT kind the user qualifies for; the
+ * dedup ledger (`lifecycle_emails` unique on user_id+kind) makes the job
+ * idempotent so re-runs and missed-day catch-ups never double-send. A user
+ * who sits in the 24h-to-3day band for two days only ever gets the
+ * onboarding_24h email once.
  */
 
 const RESEND_URL = "https://api.resend.com/emails";
@@ -40,12 +45,12 @@ export const EMAIL_KINDS: readonly EmailKind[] = [
 ] as const;
 
 /**
- * How many hours after signup each email's 1-hour window opens.
- * Window = [offset, offset + 1h). A user signed up at 14:32 hits the
- * onboarding_24h slot when the 14:00 cron run sees them at 14:00 the
- * next day (32 min into the window).
+ * How many hours after signup each email becomes eligible to send.
+ * A user is "in band" for a kind from this hour onwards until the NEXT
+ * kind's threshold opens — the dedup ledger then guarantees at-most-
+ * once delivery across the entire band.
  */
-const WINDOW_OFFSET_HOURS: Record<EmailKind, number> = {
+const KIND_THRESHOLD_HOURS: Record<EmailKind, number> = {
   onboarding_24h: 24,
   onboarding_3day: 3 * 24,
   trial_minus_2: (TRIAL_DAYS - 2) * 24,
@@ -64,9 +69,15 @@ export function requiresZeroSentQuotes(kind: EmailKind): boolean {
 }
 
 /**
- * Returns the EmailKind the user is currently inside the window for, or
- * null if no window is open right now. Each user can only be inside one
- * window per hourly run (the windows are spaced 24h+ apart).
+ * Returns the most-recent EmailKind the user qualifies for, or null if
+ * they're younger than 24h. The caller is expected to consult the dedup
+ * ledger and skip if this kind was already sent — meaning users only
+ * ever receive each kind once across the entire eligibility band.
+ *
+ * Picking "most recent" matters for resilience: if the daily cron is
+ * down for a couple of days, a user who skipped the 24h slot still gets
+ * their most-relevant message on the next successful run, instead of
+ * being pinned to an outdated onboarding nudge.
  *
  * `now` is injected so tests don't depend on wall clock.
  */
@@ -75,9 +86,10 @@ export function kindForUser(
   now: Date = new Date(),
 ): EmailKind | null {
   const elapsedHours = (now.getTime() - signedUpAt.getTime()) / HOUR_MS;
-  for (const kind of EMAIL_KINDS) {
-    const start = WINDOW_OFFSET_HOURS[kind];
-    if (elapsedHours >= start && elapsedHours < start + 1) {
+  // Walk the kinds in reverse so the latest-eligible threshold wins.
+  for (let i = EMAIL_KINDS.length - 1; i >= 0; i--) {
+    const kind = EMAIL_KINDS[i];
+    if (elapsedHours >= KIND_THRESHOLD_HOURS[kind]) {
       return kind;
     }
   }

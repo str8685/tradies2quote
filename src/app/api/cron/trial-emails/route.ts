@@ -64,12 +64,12 @@ async function handle(request: NextRequest): Promise<NextResponse> {
     errors: [],
   };
 
-  // Only consider users whose signup falls inside the widest window —
-  // i.e. signed up between the start of trial_plus_3 (+10d +1h) and 23h
-  // ago. Anyone outside that range can't match any kind, so we don't
-  // even pull them.
-  const maxAgeHours = (10 + 1) * 24; // trial_plus_3 window upper bound
-  const minAgeHours = 23; // onboarding_24h window lower bound
+  // Only consider users who have crossed the 24h threshold (the earliest
+  // kind opens at 24h) and are within ~30 days of signup (anything older
+  // either got every kind already — dedup will skip — or is a long-since
+  // churned user we don't want to keep paging through).
+  const maxAgeHours = 30 * 24;
+  const minAgeHours = 24;
   const minCreatedAt = new Date(now.getTime() - maxAgeHours * 60 * 60 * 1000);
   const maxCreatedAt = new Date(now.getTime() - minAgeHours * 60 * 60 * 1000);
 
