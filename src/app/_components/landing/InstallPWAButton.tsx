@@ -121,7 +121,7 @@ export default function InstallPWAButton({
           variant === "hero"
             ? `t2q-btn-primary ${className}`
             : variant === "icon"
-              ? `inline-flex h-10 w-10 items-center justify-center rounded-sm border-2 border-ink-600 text-white transition-colors hover:border-brand hover:text-brand ${className}`
+              ? `inline-flex h-10 w-10 items-center justify-center rounded-sm border-2 border-brand bg-brand text-ink-900 transition-colors hover:bg-hivis hover:border-hivis ${className}`
               : `inline-flex items-center gap-2 h-10 px-4 border-2 border-ink-600 hover:border-brand text-white font-mono text-xs uppercase tracking-[0.2em] transition-colors rounded-sm ${className}`
         }
       >
