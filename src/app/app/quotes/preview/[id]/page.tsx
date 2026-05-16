@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ArrowLeft } from "@phosphor-icons/react/dist/ssr";
+import { ArrowLeft, WarningCircle } from "@phosphor-icons/react/dist/ssr";
 import { createClient } from "@/lib/supabase/server";
 import type { LibraryMaterial, QuoteData, QuoteStatus } from "@/lib/quote-types";
 import { quoteNumber } from "@/lib/quote-defaults";
@@ -337,6 +337,20 @@ export default async function QuotePreviewPage({
               invoiceExists={existingInvoice !== null}
             />
 
+            {/* Wave 36 — surface transcript clarifications at the top of
+                the page (was buried inside the Transcript collapsible
+                under Review Tools). When the cleanup layer flagged
+                ambiguous phrases ("standard board" → 10mm or 13mm?,
+                "a few sheets" → how many?), the tradie should see them
+                BEFORE skimming the line items, so they can catch
+                AI guesses while reviewing — not after they've already
+                hit Send. Each item shows the question + the reason it
+                was flagged so the fix is obvious. Stays as a passive
+                banner (not a blocking modal) — the proper interactive
+                resolution flow lives in a future wave that gates
+                generation on these answers up-front. */}
+            <ClarificationsBanner quoteData={quoteData} />
+
             {/* Wave 13.1 — the editor is the primary work surface and
                 now sits second so it's above the fold once the user
                 scrolls past the lifecycle status. Everything below is
@@ -462,6 +476,91 @@ export default async function QuotePreviewPage({
         )}
       </main>
     </div>
+  );
+}
+
+/**
+ * Wave 36 — server-rendered top-of-page banner that surfaces transcript
+ * clarification questions the cleanup layer flagged but the AI
+ * still answered with its best guess. Lives in page.tsx (not its
+ * own component file) because it's a thin presentational helper
+ * and the parent already reads quoteData.
+ *
+ * Defensive: `quoteData.transcript` is typed as `unknown` (see the
+ * type's comment in quote-types.ts — kept unknown to avoid a
+ * circular import with transcriptCleanup.ts). We narrow it here
+ * with a guard so a missing / malformed transcript object is a
+ * silent no-op, never a crash.
+ */
+type ClarificationQuestion = {
+  id: string;
+  question: string;
+  why: string;
+};
+
+function extractClarifications(
+  quoteData: QuoteData,
+): ClarificationQuestion[] {
+  const t = quoteData.transcript;
+  if (!t || typeof t !== "object") return [];
+  const questions = (t as { clarification_questions?: unknown })
+    .clarification_questions;
+  if (!Array.isArray(questions)) return [];
+  return questions.filter(
+    (q): q is ClarificationQuestion =>
+      typeof q === "object" &&
+      q !== null &&
+      typeof (q as ClarificationQuestion).id === "string" &&
+      typeof (q as ClarificationQuestion).question === "string" &&
+      typeof (q as ClarificationQuestion).why === "string",
+  );
+}
+
+function ClarificationsBanner({ quoteData }: { quoteData: QuoteData }) {
+  const items = extractClarifications(quoteData);
+  if (items.length === 0) return null;
+  return (
+    <section
+      data-testid="preview-clarifications-banner"
+      // Hivis treatment matches the existing "// review these" notes
+      // box inside the editor so the operator's eye already associates
+      // the colour with "things to check before sending".
+      className="mb-6 rounded-sm border border-hivis/50 bg-hivis/10 p-4 sm:p-5"
+      aria-label="AI clarification questions"
+    >
+      <div className="flex items-start gap-3 sm:items-center">
+        <span
+          aria-hidden="true"
+          className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-sm border border-hivis/40 bg-hivis/15 text-hivis"
+        >
+          <WarningCircle size={16} weight="bold" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-hivis">
+            {`// t2q wasn't sure · ${items.length} ${
+              items.length === 1 ? "question" : "questions"
+            }`}
+          </p>
+          <p className="mt-1 text-sm text-ink-100 sm:text-base">
+            Double-check the matching line items below before sending —
+            T2Q took its best guess on these.
+          </p>
+        </div>
+      </div>
+      <ul className="mt-3 space-y-2.5 border-t border-hivis/30 pt-3 text-sm text-ink-200">
+        {items.map((q) => (
+          <li key={q.id} className="flex gap-2">
+            <span aria-hidden="true" className="text-hivis">
+              →
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="font-semibold text-white">{q.question}</p>
+              <p className="mt-0.5 text-xs text-ink-300 sm:text-sm">{q.why}</p>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
 
