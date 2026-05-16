@@ -448,7 +448,7 @@ function ContinueRow({ text, minLength }: { text: string; minLength: number }) {
     >
       <input type="hidden" name="transcript" value={text} />
       <p className="font-mono text-xs uppercase tracking-[0.2em] text-ink-500">
-        {"// step 2: claude builds the quote"}
+        {"// step 2: t2q builds the quote"}
       </p>
       <ContinueButton ready={ready} />
     </form>
