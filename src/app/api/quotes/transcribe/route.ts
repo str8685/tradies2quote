@@ -17,13 +17,41 @@ const TRANSCRIBE_MODEL = "gpt-4o-transcribe";
 // English soundalikes ("jib" -> GIB, "age three two" -> H3.2). This
 // fixes mishears at the source; the quote prompt + transcript cleanup
 // still catch anything that slips through.
+//
+// Wave 36 tuning notes:
+//   - "GIB" appears 7 times in different product/context phrasings.
+//     Whisper/gpt-4o-transcribe heavily weights repetition — the
+//     more often a brand spelling appears in the prompt, the more
+//     the model biases away from common-English homophones like
+//     "jib" (sailing) or "gyp" (cheat). Each mention is paired
+//     with a real GIB product so the bias only fires in plausible
+//     plasterboard contexts.
+//   - "Pink Batts" (correct brand spelling) appears with R-values
+//     so the model can also hear "Pink Batts R2.2" cleanly without
+//     the "pink bats" mishear.
+//   - H-classes are spelled out as "H1.2, H3.2..." (not "H 1.2")
+//     so the period stays attached on transcription.
+//   - Prompt stays under the 224-token ceiling for the OpenAI
+//     transcription API — the last 224 tokens are what the model
+//     actually sees.
+//   - Deliberately NEVER mentions the mishears themselves ("jib",
+//     "gyp", "bats") in the prompt. Including them would give the
+//     model permission to output those tokens; instead we ONLY
+//     mention the canonical spellings so they dominate the
+//     candidate distribution.
 const TRADE_VOCAB_PROMPT =
-  "A New Zealand building tradesperson describing a job for a quote. " +
-  "Expect NZ trade terms and brands: GIB and GIB-line plasterboard, " +
-  "Pink Batts insulation, H1.2, H3.2, H4 and H5 treated timber, " +
-  "90x45 and 140x45 framing pine, SG8, dwangs, nogs, studs, plates, " +
-  "weatherboard, fascia, soffit, spouting, plywood bracing, macrocarpa, " +
-  "rimu, and suppliers like Mitre 10, PlaceMakers, Bunnings and ITM.";
+  "A New Zealand building tradesperson dictating a job for a quote. " +
+  "Vocabulary used heavily: " +
+  "GIB plasterboard (the NZ brand, always written GIB in capitals); " +
+  "GIB Standard 10mm, GIB Standard 13mm, GIB Aqualine 13mm wet-area, " +
+  "GIB Braceline 13mm bracing, GIB Noiseline, GIB Fyreline fire-rated. " +
+  "Pink Batts insulation, Pink Batts R1.8, Pink Batts R2.2, Pink Batts R2.6, " +
+  "Pink Batts R3.6, R4.0 ceiling. " +
+  "Treated timber H1.2, H3.2, H4, H5; 90x45 and 140x45 framing pine, SG8, " +
+  "dwangs, nogs, studs, plates, top plate, bottom plate, " +
+  "weatherboard, fascia, soffit, spouting, " +
+  "plywood bracing, macrocarpa, rimu, kwila. " +
+  "Suppliers: Mitre 10, PlaceMakers, Bunnings, ITM, Carters.";
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
