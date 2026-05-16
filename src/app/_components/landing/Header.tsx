@@ -5,10 +5,16 @@ import { useEffect, useState } from "react";
 import { List, X } from "@phosphor-icons/react";
 import { ThemeToggle } from "./ThemeToggle";
 import { Logo } from "./Logo";
+import InstallPWAButton from "./InstallPWAButton";
 
 // Wave 12.3 — InstallPWAButton removed from the landing top bar.
-// The floating Install pill at <FloatingInstallButton /> (mounted in
-// src/app/layout.tsx) carries this CTA across the whole site now.
+// Wave 36 — re-added in a compact "icon" variant pinned next to the
+// hamburger button on mobile so the install path is discoverable
+// from the very first frame of the landing. Tap fires the same
+// component's instruction modal (iOS Add-to-Home-Screen steps on
+// Safari, native install prompt on Android Chrome/Edge). Hidden on
+// md+ since the desktop hero already carries an explicit
+// "Install on phone" CTA.
 
 const LINKS = [
   { href: "#how", label: "How it works" },
@@ -85,18 +91,21 @@ export function Header() {
           </Link>
         </div>
 
-        <button
-          className="md:hidden text-white"
-          data-testid="nav-mobile-toggle"
-          onClick={() => setOpen((o) => !o)}
-          aria-label="menu"
-        >
-          {open ? (
-            <X size={24} weight="bold" />
-          ) : (
-            <List size={24} weight="bold" />
-          )}
-        </button>
+        <div className="flex items-center gap-2 md:hidden">
+          <InstallPWAButton variant="icon" />
+          <button
+            className="text-white"
+            data-testid="nav-mobile-toggle"
+            onClick={() => setOpen((o) => !o)}
+            aria-label="menu"
+          >
+            {open ? (
+              <X size={24} weight="bold" />
+            ) : (
+              <List size={24} weight="bold" />
+            )}
+          </button>
+        </div>
       </div>
 
       {open && (

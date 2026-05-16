@@ -22,7 +22,15 @@ import {
  */
 
 type Props = {
-  variant?: "nav" | "hero";
+  /**
+   * - "hero":  full-width primary CTA used in the landing hero row
+   * - "nav":   medium ghost-style button with text + icon (legacy)
+   * - "icon":  Wave 36 — compact 40x40 square that only shows the
+   *            download icon. Designed to sit next to the mobile
+   *            hamburger menu in the landing header. Still opens
+   *            the same iOS/Android instructions modal on click.
+   */
+  variant?: "nav" | "hero" | "icon";
   className?: string;
 };
 
@@ -107,18 +115,29 @@ export default function InstallPWAButton({
         type="button"
         onClick={handleClick}
         data-testid="install-pwa-button"
+        aria-label="Install app on phone"
+        title="Install app on phone"
         className={
           variant === "hero"
             ? `t2q-btn-primary ${className}`
-            : `inline-flex items-center gap-2 h-10 px-4 border-2 border-ink-600 hover:border-brand text-white font-mono text-xs uppercase tracking-[0.2em] transition-colors rounded-sm ${className}`
+            : variant === "icon"
+              ? `inline-flex h-10 w-10 items-center justify-center rounded-sm border-2 border-ink-600 text-white transition-colors hover:border-brand hover:text-brand ${className}`
+              : `inline-flex items-center gap-2 h-10 px-4 border-2 border-ink-600 hover:border-brand text-white font-mono text-xs uppercase tracking-[0.2em] transition-colors rounded-sm ${className}`
         }
       >
         {variant === "hero" ? (
+          <>
+            <DownloadSimple size={20} weight="bold" />
+            <span>Install on phone</span>
+          </>
+        ) : variant === "icon" ? (
           <DownloadSimple size={20} weight="bold" />
         ) : (
-          <DeviceMobile size={16} weight="bold" className="text-brand" />
+          <>
+            <DeviceMobile size={16} weight="bold" className="text-brand" />
+            <span>Install app</span>
+          </>
         )}
-        <span>{variant === "hero" ? "Install on phone" : "Install app"}</span>
       </button>
       {showIosHelp && (
         <IosHelp platform={platform} onClose={() => setShowIosHelp(false)} />
