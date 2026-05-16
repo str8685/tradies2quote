@@ -162,6 +162,29 @@ export function ClarificationModal({
     setIndex((i) => i - 1);
   }
 
+  /**
+   * "Skip the rest" — keep every answer collected so far (including
+   * the one currently in-flight on the visible question, if any),
+   * fill the remaining questions with null answers, and complete the
+   * flow immediately. Used when the tradie has answered the
+   * material/labour-critical questions early and the rest feel like
+   * noise.
+   */
+  function handleSkipRest() {
+    const resolvedCurrent = resolveAnswer(currentAnswer);
+    const built: ClarificationAnswer[] = questions.map((q, i) => {
+      if (i < index) {
+        const prior = answers[q.id] ?? { picked: null, text: "" };
+        return { questionId: q.id, answer: resolveAnswer(prior) };
+      }
+      if (i === index) {
+        return { questionId: q.id, answer: resolvedCurrent };
+      }
+      return { questionId: q.id, answer: null };
+    });
+    onComplete(built);
+  }
+
   function handlePick(option: string) {
     setAnswers((prev) => ({
       ...prev,
@@ -292,6 +315,27 @@ export function ClarificationModal({
             </div>
           )}
         </div>
+
+        {/* "Skip the rest" — only meaningful when there are remaining
+            questions after the current one. Sits ABOVE the primary
+            footer row so it's a clear "I'm done, build the quote"
+            escape hatch without crowding the Back / Skip / Continue
+            buttons. Treated as: keep every answer so far (including
+            anything selected on the visible question), null the rest,
+            complete immediately. */}
+        {!isLast && (
+          <div className="border-t border-ink-800 bg-ink-950 px-4 py-2 sm:px-6">
+            <button
+              type="button"
+              onClick={handleSkipRest}
+              data-testid="clarification-skip-rest"
+              className="inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.2em] text-ink-300 hover:text-brand"
+            >
+              {`Skip the rest · build with what I've answered (${total - index - 1} left)`}
+              <CaretRight size={10} weight="bold" />
+            </button>
+          </div>
+        )}
 
         {/* Footer */}
         <footer className="flex items-center justify-between gap-2 border-t border-ink-700 bg-ink-950 px-4 py-3 pb-[max(env(safe-area-inset-bottom),12px)] sm:px-6">
