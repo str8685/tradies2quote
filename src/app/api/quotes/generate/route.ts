@@ -72,6 +72,7 @@ export async function POST(request: NextRequest) {
   const sub = await getSubscriptionStatus({
     userId: user.id,
     signedUpAt: new Date(user.created_at ?? Date.now()),
+    email: user.email,
   });
   if (!canWrite(sub)) {
     return NextResponse.json(

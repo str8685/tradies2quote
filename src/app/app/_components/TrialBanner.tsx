@@ -30,6 +30,7 @@ export async function TrialBanner() {
   const sub = await getSubscriptionStatus({
     userId: user.id,
     signedUpAt,
+    email: user.email,
   });
 
   if (sub.state === "paid") return null;

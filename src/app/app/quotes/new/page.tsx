@@ -26,6 +26,7 @@ export default async function NewQuotePage() {
   const sub = await getSubscriptionStatus({
     userId: user.id,
     signedUpAt: new Date(user.created_at ?? Date.now()),
+    email: user.email,
   });
   if (!canWrite(sub)) {
     redirect("/app/upgrade?from=new-quote");

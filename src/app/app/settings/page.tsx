@@ -207,6 +207,7 @@ export default async function SettingsPage() {
           status={await getSubscriptionStatus({
             userId: user.id,
             signedUpAt: new Date(user.created_at ?? Date.now()),
+            email: user.email,
           })}
           stripeConfigured={isStripeConfigured()}
         />

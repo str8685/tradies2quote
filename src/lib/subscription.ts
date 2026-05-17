@@ -1,6 +1,7 @@
 import "server-only";
 import { adminClient } from "@/lib/supabase/admin";
 import { isStripeConfigured } from "@/lib/stripe-client";
+import { isOwnerEmail } from "@/lib/owner";
 
 /**
  * The single source of truth for "what tier is this user on?"
@@ -53,13 +54,32 @@ export interface SubscriptionStatus {
 export async function getSubscriptionStatus(args: {
   userId: string;
   signedUpAt: Date;
+  /** The auth user's email. Used purely to short-circuit the paywall
+   *  for the project owner — see isOwnerEmail. Optional so older
+   *  callers that don't pass it fall back to normal billing rules. */
+  email?: string | null;
 }): Promise<SubscriptionStatus> {
-  const { userId, signedUpAt } = args;
+  const { userId, signedUpAt, email } = args;
   const trialEndsAt = new Date(signedUpAt.getTime() + TRIAL_DAYS * DAY_MS);
   const now = new Date();
   const trialMsLeft = trialEndsAt.getTime() - now.getTime();
   const trialDaysLeft = Math.ceil(trialMsLeft / DAY_MS);
   const inTrial = trialMsLeft > 0;
+
+  // Project owner never gets billed. Reports as "paid" so the trial
+  // banner stays hidden, the upgrade page redirects them out, and the
+  // /app/quotes/new gate never blocks. Cheaper than wiring a hard-coded
+  // Stripe subscription for the operator's account.
+  if (isOwnerEmail(email)) {
+    return {
+      state: "paid",
+      trialEndsAt,
+      trialDaysLeft: null,
+      currentPeriodEnd: null,
+      stripeCustomerId: null,
+      stripeSubscriptionStatus: "owner_bypass",
+    };
+  }
 
   // No Stripe configured = everyone is on a permanent trial. Lets the
   // app run end-to-end during development before keys are wired.

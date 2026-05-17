@@ -132,9 +132,9 @@ const OWNER_ITEMS: ReadonlyArray<HubLink> = [
     ownerOnly: true,
   },
   {
-    href: "https://685agents.vercel.app/monitor/flow",
-    label: "Monitor dashboard",
-    caption: "External agent telemetry",
+    href: "/app/agents/monitor",
+    label: "Agent monitor",
+    caption: "Live runs + events + AI triage",
     Icon: Pulse,
     ownerOnly: true,
   },

@@ -47,6 +47,7 @@ export default async function UpgradePage({
   const sub = await getSubscriptionStatus({
     userId: user.id,
     signedUpAt,
+    email: user.email,
   });
 
   // Already paying? Send them to settings → "Manage subscription" link.
