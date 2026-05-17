@@ -23,6 +23,7 @@ const TIERS = [
     tag: "For 1-man bands",
     price: 29,
     highlight: false,
+    comingSoon: false,
     features: [
       "Unlimited quotes & invoices",
       "1 user account",
@@ -37,6 +38,11 @@ const TIERS = [
     tag: "Most tradies pick this",
     price: 79,
     highlight: true,
+    // Multi-user features (shared client list, 5-user accounts) aren't
+    // built yet — selling Crew today would mean refunds. Stamp the card
+    // as Coming Soon so the offer stays visible but the CTA shifts to
+    // a soft "notify me" instead of a hard checkout.
+    comingSoon: true,
     features: [
       "Everything in Solo",
       "Up to 5 users",
@@ -51,6 +57,7 @@ const TIERS = [
     tag: "Small crews + GCs",
     price: 199,
     highlight: false,
+    comingSoon: true,
     features: [
       "Everything in Crew",
       "Up to 20 users",
@@ -93,7 +100,7 @@ export function Pricing() {
                 t.highlight
                   ? "border-brand bg-ink-800 t2q-shadow-brutal"
                   : "border-ink-600 bg-ink-800/70"
-              } rounded-sm`}
+              } rounded-sm ${t.comingSoon ? "opacity-75" : ""}`}
               innerClassName="p-8 md:p-10 flex flex-col h-full relative"
               maxTiltX={8}
               maxTiltY={10}
@@ -103,6 +110,20 @@ export function Pricing() {
               {t.highlight && (
                 <div className="absolute -top-3 left-6 bg-hivis text-ink-900 font-display text-xs px-3 py-1 uppercase tracking-tight flex items-center gap-1.5 z-10">
                   <Lightning size={12} weight="fill" /> Most popular
+                </div>
+              )}
+              {/* COMING SOON stamp — diagonal brutalist badge top-right
+                  for tiers that aren't yet sellable (multi-user features
+                  not built). The angle + double-border + uppercase font
+                  reads as a rubber stamp without leaning on imagery. */}
+              {t.comingSoon && (
+                <div
+                  data-testid={`pricing-coming-soon-${t.slug}`}
+                  aria-label="Coming soon"
+                  className="absolute -top-3 -right-3 z-20 rotate-[8deg] border-2 border-brand bg-ink-900/90 px-3 py-1.5 font-display text-xs uppercase tracking-tight text-brand shadow-lg"
+                >
+                  <span className="block leading-none">Coming</span>
+                  <span className="block leading-none">Soon</span>
                 </div>
               )}
               <div className="flex items-baseline justify-between">
@@ -123,13 +144,17 @@ export function Pricing() {
                   </li>
                 ))}
               </ul>
-              <Magnetic strength={0.18} className="mt-8 w-full">
+              <Magnetic strength={t.comingSoon ? 0 : 0.18} className="mt-8 w-full">
+                {/* Coming-soon tiers still link to /signup so a tradie
+                    who picks Crew or Builder lands on the same trial
+                    flow. The CTA copy shifts to set the expectation
+                    that the multi-user features aren't live yet. */}
                 <Link
                   href="/signup"
                   data-testid={`pricing-cta-${t.slug}`}
-                  className={`${t.highlight ? "t2q-btn-primary" : "t2q-btn-ghost"} w-full`}
+                  className={`${t.highlight && !t.comingSoon ? "t2q-btn-primary" : "t2q-btn-ghost"} w-full`}
                 >
-                  Join the beta
+                  {t.comingSoon ? "Notify me when ready" : "Join the beta"}
                 </Link>
               </Magnetic>
             </TiltCard>
