@@ -113,10 +113,14 @@ export async function getSubscriptionStatus(args: {
   }
 
   // No Stripe configured = everyone is on a permanent trial. Lets the
-  // app run end-to-end during development before keys are wired.
+  // app run end-to-end during development before keys are wired. The
+  // ternary was previously `inTrial ? "trialing" : "trialing"` — both
+  // branches returned the same value, which was just a bug. The real
+  // semantic was always "permanent trial in dev", so the state is
+  // hard-coded to "trialing" now.
   if (!isStripeConfigured()) {
     return {
-      state: inTrial ? "trialing" : "trialing", // permanent trial
+      state: "trialing",
       trialEndsAt,
       trialDaysLeft: inTrial ? trialDaysLeft : 0,
       currentPeriodEnd: null,
