@@ -78,32 +78,16 @@ export const metadata: Metadata = {
   },
   category: "business",
   // PWA — `app/manifest.ts` is auto-served at `/manifest.webmanifest` and the
-  // <link rel="manifest"> is auto-injected by Next 16; we just declare icon
-  // links and iOS-specific meta tags here.
-  //
-  // Wave 10.3 — point all icon paths at the new T2Q mark PNGs generated
-  // from `public/logo-mark.png`. The legacy Emergent SVG files are kept
-  // on disk for safety but no longer referenced from metadata.
-  // Wave 10.4 — `?v=22` cache-bust forces desktop browsers (which
-  // cache favicons hard, often forever) to refetch the icon files after
-  // the Wave 10.3 mark swap. Drop the query on the next favicon change.
-  icons: {
-    icon: [
-      { url: "/favicon.ico?v=22", sizes: "any" },
-      { url: "/favicon-16x16.png?v=22", type: "image/png", sizes: "16x16" },
-      { url: "/favicon-32x32.png?v=22", type: "image/png", sizes: "32x32" },
-      { url: "/icon-192.png?v=22", type: "image/png", sizes: "192x192" },
-      { url: "/icon-512.png?v=22", type: "image/png", sizes: "512x512" },
-    ],
-    apple: [
-      {
-        url: "/apple-touch-icon.png?v=22",
-        type: "image/png",
-        sizes: "180x180",
-      },
-    ],
-    shortcut: [{ url: "/favicon.ico?v=22" }],
-  },
+  // Favicons are owned by Next.js's file convention — see
+  // `src/app/icon.svg`, `src/app/icon.ico`, `src/app/apple-icon.png`.
+  // Next emits `<link rel="icon" href="/icon?<hash>">` etc. with a
+  // content hash, which is the only cache-buster Chrome respects (its
+  // favicon cache ignores ?v= query strings on the original URL). The
+  // manual `metadata.icons` block that used to live here pointed at
+  // /favicon.ico?v=NN and got bypassed by Chrome's sticky cache.
+  // <link rel="manifest"> is auto-injected by Next 16; iOS-specific
+  // meta tags (apple-mobile-web-app-*) follow below. Favicon links are
+  // emitted from the file-convention files in src/app/, not from here.
   appleWebApp: {
     // Tells iOS this site can run as a standalone home-screen app.
     capable: true,

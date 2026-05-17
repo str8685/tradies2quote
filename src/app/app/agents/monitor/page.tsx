@@ -5,6 +5,7 @@ import {
   Clock,
   Info,
   Pause,
+  Users,
   Warning,
   XCircle,
 } from "@phosphor-icons/react/dist/ssr";
@@ -12,6 +13,7 @@ import { createClient } from "@/lib/supabase/server";
 import { adminClient } from "@/lib/supabase/admin";
 import { isOwnerEmail } from "@/lib/owner";
 import { AppHeader } from "../../_components/AppHeader";
+import { DiagnoseButton } from "./_components/DiagnoseButton";
 
 export const metadata: Metadata = {
   title: "Agent monitor",
@@ -43,7 +45,7 @@ export default async function AgentMonitorPage() {
   if (!isOwnerEmail(user.email)) notFound();
 
   const admin = adminClient();
-  const [runsRes, eventsRes] = await Promise.all([
+  const [runsRes, eventsRes, usersRes] = await Promise.all([
     admin
       .from("agent_runs")
       .select(
@@ -58,12 +60,26 @@ export default async function AgentMonitorPage() {
       )
       .order("created_at", { ascending: false })
       .limit(100),
+    // `auth.admin.listUsers` pages 1000 at a time. The MVP user base
+    // fits in one page for a long time; if it grows we can paginate or
+    // sort here instead of fetching everything and slicing.
+    admin.auth.admin.listUsers({ page: 1, perPage: 1000 }),
   ]);
 
   const runs = runsRes.data ?? [];
   const events = eventsRes.data ?? [];
   const runsError = runsRes.error?.message;
   const eventsError = eventsRes.error?.message;
+  const usersError = usersRes.error?.message;
+  // Most-recently-active first. Users who've never signed in (rare —
+  // happens when invite flow stalls) sort last by created_at desc.
+  const users = (usersRes.data?.users ?? [])
+    .slice()
+    .sort((a, b) => {
+      const aT = a.last_sign_in_at ?? a.created_at ?? "";
+      const bT = b.last_sign_in_at ?? b.created_at ?? "";
+      return bT.localeCompare(aT);
+    });
 
   // Quick KPIs — counts grouped by status, useful at a glance.
   const counts = runs.reduce(
@@ -188,12 +204,96 @@ export default async function AgentMonitorPage() {
                         {r.quote_id ? ` · quote ${r.quote_id.slice(0, 8)}` : ""}
                       </p>
                     </div>
-                    <span
-                      className={`inline-flex shrink-0 items-center rounded-sm border px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.2em] ${statusPill(r.status)}`}
-                    >
-                      {r.status}
-                    </span>
+                    <div className="flex shrink-0 flex-col items-end gap-1.5">
+                      <span
+                        className={`inline-flex items-center rounded-sm border px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.2em] ${statusPill(r.status)}`}
+                      >
+                        {r.status}
+                      </span>
+                      {/* Diagnose available on anything that failed,
+                          or anything still claiming to be running long
+                          after it should have finished (5+ min). The
+                          two cases the operator actually wants help
+                          with — everything else is fine. */}
+                      {(r.status === "failed" ||
+                        (r.status === "running" &&
+                          isStale(r.started_at, 5))) && (
+                        <DiagnoseButton runId={r.run_id} />
+                      )}
+                    </div>
                   </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+
+        {/* Users — who's signed up, who's logging in. Reads
+            auth.users via the service-role admin API so even users
+            with no public.profiles row appear. PII is intentional
+            here: the dashboard is owner-only. */}
+        <section
+          aria-label="Recent users"
+          data-testid="monitor-users"
+          className="t2q-premium-card-static mb-8 p-5 sm:p-7"
+        >
+          <div className="flex items-baseline justify-between">
+            <h2 className="font-display text-lg uppercase tracking-tight text-white sm:text-xl">
+              <Users
+                size={18}
+                weight="bold"
+                className="inline -mt-1 mr-1.5 text-brand"
+              />
+              Users <span className="text-ink-400">({users.length})</span>
+            </h2>
+            <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-ink-400">
+              sorted by last activity
+            </span>
+          </div>
+
+          {usersError && (
+            <p
+              data-testid="monitor-users-error"
+              className="mt-4 rounded-sm border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-300"
+            >
+              Could not load users: {usersError}
+            </p>
+          )}
+
+          {!usersError && users.length === 0 && (
+            <p
+              data-testid="monitor-users-empty"
+              className="mt-5 text-sm text-ink-300"
+            >
+              No users yet.
+            </p>
+          )}
+
+          {users.length > 0 && (
+            <ul className="mt-5 space-y-3">
+              {users.map((u) => (
+                <li
+                  key={u.id}
+                  data-testid={`monitor-user-${u.id}`}
+                  className="flex items-start gap-3 border-b border-ink-700/60 pb-3 last:border-b-0 last:pb-0"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-display text-sm uppercase tracking-tight text-white">
+                      {u.email ?? "—"}
+                    </p>
+                    <p className="mt-0.5 font-mono text-[10px] uppercase tracking-[0.2em] text-ink-300">
+                      Signed up {relativeTime(u.created_at)}
+                      {u.last_sign_in_at
+                        ? ` · Last seen ${relativeTime(u.last_sign_in_at)}`
+                        : " · Never signed in"}
+                      {u.email_confirmed_at ? "" : " · Email unconfirmed"}
+                    </p>
+                  </div>
+                  {u.last_sign_in_at && isWithin(u.last_sign_in_at, 24 * 60) && (
+                    <span className="inline-flex shrink-0 items-center rounded-sm border border-brand/40 bg-brand/10 px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.2em] text-brand">
+                      active
+                    </span>
+                  )}
                 </li>
               ))}
             </ul>
@@ -370,4 +470,25 @@ function humanDuration(ms: number): string {
   if (ms < 1000) return `${ms}ms`;
   if (ms < 60_000) return `${(ms / 1000).toFixed(1)}s`;
   return `${Math.round(ms / 60_000)}m`;
+}
+
+function relativeTime(iso: string | null | undefined): string {
+  if (!iso) return "—";
+  const then = new Date(iso).getTime();
+  const now = Date.now();
+  const diffSec = Math.round((now - then) / 1000);
+  if (diffSec < 60) return `${diffSec}s ago`;
+  if (diffSec < 3600) return `${Math.round(diffSec / 60)}m ago`;
+  if (diffSec < 86_400) return `${Math.round(diffSec / 3600)}h ago`;
+  return `${Math.round(diffSec / 86_400)}d ago`;
+}
+
+function isWithin(iso: string | null | undefined, minutes: number): boolean {
+  if (!iso) return false;
+  return Date.now() - new Date(iso).getTime() < minutes * 60 * 1000;
+}
+
+function isStale(iso: string | null | undefined, minutes: number): boolean {
+  if (!iso) return false;
+  return Date.now() - new Date(iso).getTime() > minutes * 60 * 1000;
 }
