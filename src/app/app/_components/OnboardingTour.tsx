@@ -125,14 +125,22 @@ function ensureStyleTag() {
 
 /** All possible tour steps. Steps whose anchors don't exist on the
  *  current page are filtered out at runtime before driving the tour,
- *  so the user never sees a missing-anchor flash. */
+ *  so the user never sees a missing-anchor flash.
+ *
+ *  Earlier revisions also pointed at the bottom-nav tabs (Quotes,
+ *  Materials, Me), but the 320px popover couldn't fit above a 50px
+ *  bottom-nav button on a 390px iPhone and Driver.js fell back to
+ *  parking the tooltip in the top-left, pointing at nothing. Those
+ *  steps were dropped — the bottom nav is self-evident enough that
+ *  losing the coachmarks is the right trade for a tour that actually
+ *  works on every viewport. */
 const ALL_STEPS: ReadonlyArray<DriveStep> = [
   {
     // Welcome step — no element, popover renders centered.
     popover: {
       title: "Welcome to T2Q",
       description:
-        "Talk through a job for 60 seconds and get a branded quote PDF — before you've packed up the ute. Quick tour: 6 stops.",
+        "Talk through a job for 60 seconds and get a branded quote PDF — before you've packed up the ute. Quick tour: 4 stops.",
       showButtons: ["next", "close"],
       nextBtnText: "Start tour →",
     },
@@ -158,44 +166,11 @@ const ALL_STEPS: ReadonlyArray<DriveStep> = [
     },
   },
   {
-    element:
-      '[data-testid="app-bottom-nav-quotes"], [data-testid="app-header-tab-quotes"]',
-    popover: {
-      title: "All your quotes",
-      description:
-        "The Quotes tab lists every quote you've created with its current stage. Edit, send, archive, or jump back into any one.",
-      side: "top",
-      align: "center",
-    },
-  },
-  {
-    element:
-      '[data-testid="app-bottom-nav-materials"], [data-testid="app-header-tab-materials"]',
-    popover: {
-      title: "Materials library",
-      description:
-        "Save the prices you actually charge. Paste a Mitre 10 / PlaceMakers / Bunnings / ITM URL and T2Q fills in the rest. The more you add, the more accurate your quotes.",
-      side: "top",
-      align: "center",
-    },
-  },
-  {
-    element:
-      '[data-testid="app-bottom-nav-me"], [data-testid="app-header-avatar"]',
-    popover: {
-      title: "Set up your business",
-      description:
-        "Open the Me menu to set your business name, phone, address, GST number, labour rate and markup. These appear on every PDF — clients won't trust a quote from 'Your Business'.",
-      side: "top",
-      align: "end",
-    },
-  },
-  {
     // Final wrap-up step — no element, popover renders centered.
     popover: {
       title: "You're set",
       description:
-        "Tip: tap 'Install app' at the bottom of any /app page (or Share → Add to Home Screen in Safari) to open T2Q like a real app. Settings → User guide has the full manual.",
+        "To open T2Q without the browser bar, add it to your home screen: tap the Share icon in Safari → Add to Home Screen. Full manual: Me → Settings → User guide.",
       showButtons: ["previous", "close"],
       doneBtnText: "Get started",
     },

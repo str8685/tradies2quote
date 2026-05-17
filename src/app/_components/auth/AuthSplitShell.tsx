@@ -75,17 +75,20 @@ export function AuthSplitShell({
           <Link
             href="/"
             aria-label="tradies2Quote home"
-            className="lg:hidden inline-flex"
+            className="lg:hidden inline-flex items-center justify-center rounded-md bg-ink-950 px-2 py-1.5"
           >
-            {/* Wave 12.3 — new Tradies2Quote brand mark on a small
-                white pill. Replaces the old inline Site-Safe Badge. */}
+            {/* The brand mark's T and Q glyphs are near-white. On the
+                cream light-mode auth shell that left only the orange
+                "2" visible — the T and Q vanished into the background.
+                The dark pill wrapper restores contrast in either
+                theme without needing a separate asset. */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src="/logo-mark.png?v=21"
               alt="Tradies2Quote"
               width={1084}
               height={512}
-              className="block h-8 w-auto"
+              className="block h-7 w-auto"
             />
           </Link>
         </div>
