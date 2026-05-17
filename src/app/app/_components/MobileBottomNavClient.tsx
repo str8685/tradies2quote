@@ -8,6 +8,7 @@ import type { Icon } from "@phosphor-icons/react";
 import {
   House,
   ListBullets,
+  Receipt,
   Robot,
   Stack,
 } from "@phosphor-icons/react";
@@ -59,6 +60,7 @@ const TILES: ReadonlyArray<{
 }> = [
   { href: "/app", label: "Home", icon: House, ownerOnly: false },
   { href: "/app/quotes", label: "Quotes", icon: ListBullets, ownerOnly: false },
+  { href: "/app/invoices", label: "Invoices", icon: Receipt, ownerOnly: false },
   { href: "/app/materials", label: "Materials", icon: Stack, ownerOnly: false },
   // Wave 13: Agents owner-only.
   { href: "/app/agents", label: "Agents", icon: Robot, ownerOnly: true },

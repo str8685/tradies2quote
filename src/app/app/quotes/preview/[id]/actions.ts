@@ -380,3 +380,65 @@ export async function createInvoiceFromQuote(
 
   return { ok: true, id: data as string };
 }
+
+/* -------------------------------------------------------------------------
+ * Mark invoice paid.
+ *
+ * Flips invoices.status → 'paid' and stamps paid_at = now. Scoped to
+ * the caller's own invoices via the user-scoped Supabase client + an
+ * explicit user_id match — the same defence-in-depth pattern the rest
+ * of /app uses (RLS is on, but the explicit eq is what proves intent
+ * to a reader of this code).
+ * ------------------------------------------------------------------------- */
+
+export type MarkPaidResult =
+  | { ok: true; invoice_id: string; paid_at: string }
+  | { error: string };
+
+export async function markInvoicePaid(
+  invoiceId: string,
+): Promise<MarkPaidResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const paidAt = new Date().toISOString();
+
+  // Update via the user-scoped client so RLS enforces ownership and we
+  // don't need a service-role bypass for what is fundamentally an
+  // owner-initiated state flip. The `eq("user_id")` is belt-and-braces.
+  const { data, error } = await supabase
+    .from("invoices")
+    .update({ status: "paid", paid_at: paidAt })
+    .eq("id", invoiceId)
+    .eq("user_id", user.id)
+    .is("deleted_at", null)
+    .select("id, quote_id")
+    .single();
+
+  if (error) {
+    console.error("markInvoicePaid failed", error);
+    return { error: error.message ?? "Could not mark the invoice paid." };
+  }
+  if (!data) {
+    return { error: "Invoice not found." };
+  }
+
+  // Refresh every surface the invoice can appear on so the "paid"
+  // pill flips immediately without a manual reload.
+  revalidatePath(`/app/quotes/preview/${data.quote_id}`);
+  revalidatePath("/app/invoices");
+  revalidatePath("/app");
+
+  logAgentEvent({
+    agentName: "Invoice Agent",
+    quoteId: data.quote_id,
+    stepName: "mark_paid",
+    status: "complete",
+    message: "Invoice marked as paid",
+  });
+
+  return { ok: true, invoice_id: data.id, paid_at: paidAt };
+}

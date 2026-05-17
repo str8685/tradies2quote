@@ -1,0 +1,338 @@
+import type { Metadata } from "next";
+import Link from "next/link";
+import { redirect } from "next/navigation";
+import {
+  ArrowSquareOut,
+  Receipt,
+} from "@phosphor-icons/react/dist/ssr";
+import { createClient } from "@/lib/supabase/server";
+import { formatCurrency } from "@/lib/quote-defaults";
+import type { InvoiceStatus } from "@/lib/types/invoice";
+import { AppHeader } from "../_components/AppHeader";
+
+export const metadata: Metadata = {
+  title: "Invoices",
+};
+
+export const dynamic = "force-dynamic";
+
+/**
+ * /app/invoices — full list of the tradie's invoices.
+ *
+ * Server-rendered, no client filtering yet (volume is low at MVP
+ * stage). Supports a `?status=` query param so the dashboard's
+ * invoice tiles can deep-link straight to "Sent" or "Overdue".
+ *
+ * Excludes soft-deleted rows. Ordered most-recent-created first so
+ * the freshest draft / sent invoice sits at the top.
+ */
+
+const VALID_STATUSES: readonly InvoiceStatus[] = [
+  "draft",
+  "sent",
+  "paid",
+  "overdue",
+  "cancelled",
+];
+
+function parseStatus(raw: string | undefined): InvoiceStatus | null {
+  if (!raw) return null;
+  return (VALID_STATUSES as readonly string[]).includes(raw)
+    ? (raw as InvoiceStatus)
+    : null;
+}
+
+export default async function InvoicesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ status?: string }>;
+}) {
+  const { status: statusRaw } = await searchParams;
+  const statusFilter = parseStatus(statusRaw);
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  // Pull invoices + the linked quote's snapshot (for the client name).
+  // The invoices.invoice_data jsonb also has the client name embedded,
+  // but a normal lookup keeps the row shape predictable for the table.
+  let query = supabase
+    .from("invoices")
+    .select(
+      "id, invoice_number, status, total_amount, currency, due_date, created_at, sent_at, paid_at, quote_id, invoice_data",
+    )
+    .eq("user_id", user.id)
+    .is("deleted_at", null)
+    .order("created_at", { ascending: false })
+    .limit(200);
+
+  if (statusFilter) {
+    query = query.eq("status", statusFilter);
+  }
+
+  const { data: invoices, error } = await query;
+  if (error) {
+    console.error("InvoicesPage query failed", error);
+  }
+
+  const rows = invoices ?? [];
+
+  // KPI buckets — independent of the filter so the strip always shows
+  // the full pipeline (clicking a tile narrows the table below).
+  const { data: allInvoices } = await supabase
+    .from("invoices")
+    .select("status")
+    .eq("user_id", user.id)
+    .is("deleted_at", null);
+
+  const counts = (allInvoices ?? []).reduce(
+    (acc, r) => {
+      acc[r.status as InvoiceStatus] =
+        (acc[r.status as InvoiceStatus] ?? 0) + 1;
+      return acc;
+    },
+    {} as Record<InvoiceStatus, number>,
+  );
+
+  return (
+    <div className="min-h-screen text-white">
+      <AppHeader context="Invoices" />
+
+      <main className="mx-auto max-w-5xl px-4 py-10 sm:px-6 sm:py-14">
+        <div className="mb-8">
+          <div className="t2q-section-label mb-3">{"// invoices"}</div>
+          <h1 className="font-display text-3xl uppercase tracking-tight sm:text-4xl">
+            Money in.
+          </h1>
+          <p className="mt-3 text-sm text-ink-300 sm:text-base">
+            Every invoice you've ever drafted, sent or marked paid.
+            Filter by status with the tiles below.
+          </p>
+        </div>
+
+        {/* KPI tiles double as filter chips. Clicking re-renders the
+            page with ?status=<key>; the Active tile clears the filter. */}
+        <nav
+          aria-label="Filter invoices by status"
+          data-testid="invoice-filter-tiles"
+          className="mb-8 grid grid-cols-3 gap-3 sm:grid-cols-6"
+        >
+          <FilterTile
+            label="All"
+            value={(allInvoices ?? []).length}
+            href="/app/invoices"
+            active={statusFilter === null}
+          />
+          <FilterTile
+            label="Draft"
+            value={counts.draft ?? 0}
+            href="/app/invoices?status=draft"
+            active={statusFilter === "draft"}
+            tone="muted"
+          />
+          <FilterTile
+            label="Sent"
+            value={counts.sent ?? 0}
+            href="/app/invoices?status=sent"
+            active={statusFilter === "sent"}
+            tone="info"
+          />
+          <FilterTile
+            label="Paid"
+            value={counts.paid ?? 0}
+            href="/app/invoices?status=paid"
+            active={statusFilter === "paid"}
+            tone="paid"
+          />
+          <FilterTile
+            label="Overdue"
+            value={counts.overdue ?? 0}
+            href="/app/invoices?status=overdue"
+            active={statusFilter === "overdue"}
+            tone="error"
+          />
+          <FilterTile
+            label="Cancelled"
+            value={counts.cancelled ?? 0}
+            href="/app/invoices?status=cancelled"
+            active={statusFilter === "cancelled"}
+            tone="muted"
+          />
+        </nav>
+
+        <section
+          aria-label="Invoice list"
+          data-testid="invoices-table"
+          className="t2q-premium-card-static p-5 sm:p-7"
+        >
+          {rows.length === 0 ? (
+            <div className="py-8 text-center">
+              <Receipt
+                size={28}
+                weight="duotone"
+                className="mx-auto mb-3 text-ink-500"
+              />
+              <p className="font-display text-base uppercase tracking-tight text-white">
+                {statusFilter ? `No ${statusFilter} invoices.` : "No invoices yet."}
+              </p>
+              <p className="mt-1 text-sm text-ink-300">
+                {statusFilter
+                  ? "Switch filter or"
+                  : "Complete a job and"}{" "}
+                <Link
+                  href="/app/quotes"
+                  className="text-brand underline-offset-4 hover:underline"
+                >
+                  open a quote
+                </Link>{" "}
+                to draft an invoice from it.
+              </p>
+            </div>
+          ) : (
+            <ul className="space-y-3">
+              {rows.map((inv) => {
+                const snapshot = (inv.invoice_data ?? {}) as {
+                  client?: { name?: string };
+                };
+                const clientName = snapshot.client?.name?.trim() || "—";
+                return (
+                  <li
+                    key={inv.id}
+                    data-testid={`invoice-row-${inv.id}`}
+                    data-invoice-status={inv.status}
+                    className="border-b border-ink-700/60 pb-3 last:border-b-0 last:pb-0"
+                  >
+                    <Link
+                      href={`/app/quotes/preview/${inv.quote_id}#agent-invoice`}
+                      className="group flex items-start gap-3 hover:opacity-95"
+                    >
+                      <Receipt
+                        size={18}
+                        weight="bold"
+                        className="mt-0.5 shrink-0 text-brand"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                          <p className="font-display text-sm uppercase tracking-tight text-white sm:text-base">
+                            {inv.invoice_number}
+                          </p>
+                          <p className="truncate text-sm text-ink-200">
+                            {clientName}
+                          </p>
+                        </div>
+                        <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.2em] text-ink-400">
+                          {formatRelativeOrDate(inv.created_at)} ·{" "}
+                          {inv.status === "paid" && inv.paid_at
+                            ? `Paid ${formatRelativeOrDate(inv.paid_at)}`
+                            : inv.status === "sent" && inv.sent_at
+                              ? `Sent ${formatRelativeOrDate(inv.sent_at)}`
+                              : `Due ${formatDueLabel(inv.due_date)}`}
+                        </p>
+                      </div>
+                      <div className="flex shrink-0 flex-col items-end gap-1.5">
+                        <span className="font-display text-base text-white sm:text-lg">
+                          {formatCurrency(inv.total_amount, inv.currency)}
+                        </span>
+                        <span
+                          className={`inline-flex items-center rounded-sm border px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.2em] ${statusPill(inv.status as InvoiceStatus)}`}
+                        >
+                          {inv.status}
+                        </span>
+                      </div>
+                      <ArrowSquareOut
+                        size={14}
+                        weight="bold"
+                        className="mt-1 ml-1 hidden shrink-0 text-ink-400 group-hover:text-brand sm:block"
+                      />
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </section>
+      </main>
+    </div>
+  );
+}
+
+function FilterTile({
+  label,
+  value,
+  href,
+  active,
+  tone = "neutral",
+}: {
+  label: string;
+  value: number;
+  href: string;
+  active: boolean;
+  tone?: "neutral" | "info" | "paid" | "muted" | "error";
+}) {
+  const toneCls = {
+    neutral: "border-brand/40 bg-brand/10 text-brand",
+    info: "border-blue-500/40 bg-blue-500/10 text-blue-300",
+    paid: "border-emerald-500/40 bg-emerald-500/10 text-emerald-300",
+    muted: "border-ink-600 bg-ink-800 text-ink-300",
+    error: "border-red-500/40 bg-red-500/10 text-red-300",
+  }[tone];
+  const ring = active ? "ring-2 ring-brand ring-offset-2 ring-offset-ink-950" : "";
+  return (
+    <Link
+      href={href}
+      data-testid={`invoice-filter-${label.toLowerCase()}`}
+      className={`rounded-sm border px-4 py-3 ${toneCls} ${ring} transition-opacity hover:opacity-90`}
+    >
+      <p className="font-display text-2xl tracking-tight text-white">{value}</p>
+      <p className="mt-0.5 font-mono text-[10px] uppercase tracking-[0.2em]">
+        {label}
+      </p>
+    </Link>
+  );
+}
+
+function statusPill(status: InvoiceStatus): string {
+  switch (status) {
+    case "draft":
+      return "border-ink-600 bg-ink-800 text-ink-200";
+    case "sent":
+      return "border-blue-500/40 bg-blue-500/10 text-blue-300";
+    case "paid":
+      return "border-emerald-500/40 bg-emerald-500/10 text-emerald-300";
+    case "overdue":
+      return "border-red-500/40 bg-red-500/10 text-red-300";
+    case "cancelled":
+      return "border-ink-600 bg-ink-800 text-ink-400";
+  }
+}
+
+function formatDueLabel(iso: string): string {
+  const t = Date.parse(iso);
+  if (Number.isNaN(t)) return "—";
+  const days = Math.round((t - Date.now()) / (1000 * 60 * 60 * 24));
+  if (days < 0)
+    return `${Math.abs(days)}d overdue`;
+  if (days === 0) return "today";
+  if (days === 1) return "tomorrow";
+  if (days < 14) return `in ${days}d`;
+  return new Date(iso).toLocaleDateString("en-NZ", {
+    day: "numeric",
+    month: "short",
+  });
+}
+
+function formatRelativeOrDate(iso: string): string {
+  const then = new Date(iso).getTime();
+  const diffSec = (Date.now() - then) / 1000;
+  if (diffSec < 60) return "just now";
+  if (diffSec < 3600) return `${Math.round(diffSec / 60)}m ago`;
+  if (diffSec < 86_400) return `${Math.round(diffSec / 3600)}h ago`;
+  if (diffSec < 7 * 86_400) return `${Math.round(diffSec / 86_400)}d ago`;
+  return new Date(iso).toLocaleDateString("en-NZ", {
+    day: "numeric",
+    month: "short",
+  });
+}

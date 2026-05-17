@@ -1,8 +1,11 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import {
   ArrowRight,
+  Check,
+  EnvelopeSimple,
   FileText,
   Info,
   Receipt,
@@ -12,7 +15,7 @@ import { formatCurrency } from "@/lib/quote-defaults";
 import type { QuoteData, QuoteStatus } from "@/lib/quote-types";
 import type { InvoiceStatus, InvoiceSummary } from "@/lib/types/invoice";
 import { runInvoiceAgent } from "@/lib/agents/invoice";
-import { createInvoiceFromQuote } from "../actions";
+import { createInvoiceFromQuote, markInvoicePaid } from "../actions";
 
 /**
  * Wave 14 — Invoice draft card.
@@ -109,13 +112,64 @@ export function InvoiceDraftCard({
 
       <p className="mt-5 inline-flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.2em] text-ink-300">
         <Info size={12} weight="bold" />
-        Drafts are stored in your records. No email or PDF is sent — that ships in Wave 15.
+        Drafts live in your records. Send by email + PDF; mark paid when the money lands.
       </p>
     </section>
   );
 }
 
 function ExistingInvoiceBody({ invoice }: { invoice: InvoiceSummary }) {
+  const router = useRouter();
+  const [sendState, setSendState] = useState<
+    "idle" | "sending" | "sent" | "error"
+  >("idle");
+  const [paidState, setPaidState] = useState<
+    "idle" | "saving" | "saved" | "error"
+  >("idle");
+  const [actionError, setActionError] = useState<string | null>(null);
+
+  const isDraft = invoice.status === "draft";
+  const isSent = invoice.status === "sent" || invoice.status === "overdue";
+  const isPaid = invoice.status === "paid";
+  const isCancelled = invoice.status === "cancelled";
+
+  async function handleSend() {
+    setActionError(null);
+    setSendState("sending");
+    try {
+      const res = await fetch(`/api/invoices/${invoice.id}/send`, {
+        method: "POST",
+      });
+      if (!res.ok) {
+        const data = (await res.json().catch(() => ({}))) as {
+          error?: string;
+          message?: string;
+        };
+        setActionError(data.message ?? "Could not send the invoice.");
+        setSendState("error");
+        return;
+      }
+      setSendState("sent");
+      router.refresh();
+    } catch {
+      setActionError("Network error. Please try again.");
+      setSendState("error");
+    }
+  }
+
+  async function handleMarkPaid() {
+    setActionError(null);
+    setPaidState("saving");
+    const res = await markInvoicePaid(invoice.id);
+    if ("error" in res) {
+      setActionError(res.error);
+      setPaidState("error");
+      return;
+    }
+    setPaidState("saved");
+    router.refresh();
+  }
+
   return (
     <>
       <h2
@@ -126,12 +180,70 @@ function ExistingInvoiceBody({ invoice }: { invoice: InvoiceSummary }) {
         {invoice.invoice_number}
       </h2>
       <p className="mt-2 text-sm text-ink-200">
-        Draft invoice created — total{" "}
+        Total{" "}
         <span className="font-display text-brand">
           {formatCurrency(invoice.total_amount, invoice.currency)}
         </span>
-        . Due {formatDueDate(invoice.due_date)}.
+        {isPaid ? " · Paid in full" : ` · Due ${formatDueDate(invoice.due_date)}`}
+        {isSent && invoice.status === "sent"
+          ? " · Sent to client"
+          : ""}
       </p>
+
+      {!isCancelled && !isPaid && (
+        <div className="mt-5 flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            data-testid="invoice-send-button"
+            onClick={handleSend}
+            disabled={sendState === "sending"}
+            className="t2q-btn-primary inline-flex h-11 items-center gap-2 px-5 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <EnvelopeSimple size={16} weight="bold" />
+            {sendState === "sending"
+              ? "Sending…"
+              : isDraft
+                ? "Send invoice"
+                : "Resend invoice"}
+          </button>
+          <button
+            type="button"
+            data-testid="invoice-mark-paid-button"
+            onClick={handleMarkPaid}
+            disabled={paidState === "saving"}
+            className="t2q-btn-ghost inline-flex h-11 items-center gap-2 px-5 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Check size={16} weight="bold" />
+            {paidState === "saving" ? "Marking…" : "Mark as paid"}
+          </button>
+        </div>
+      )}
+
+      {sendState === "sent" && (
+        <p
+          data-testid="invoice-send-ok"
+          className="mt-3 inline-flex items-center rounded-sm border border-brand bg-brand px-2.5 py-1.5 font-mono text-[11px] uppercase tracking-[0.18em] text-ink-900"
+        >
+          {"// invoice sent"}
+        </p>
+      )}
+      {paidState === "saved" && (
+        <p
+          data-testid="invoice-paid-ok"
+          className="mt-3 inline-flex items-center rounded-sm border border-emerald-500/40 bg-emerald-500/10 px-2.5 py-1.5 font-mono text-[11px] uppercase tracking-[0.18em] text-emerald-300"
+        >
+          {"// marked paid"}
+        </p>
+      )}
+      {actionError && (
+        <p
+          data-testid="invoice-action-error"
+          role="alert"
+          className="mt-3 rounded-sm border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-300"
+        >
+          {actionError}
+        </p>
+      )}
     </>
   );
 }
