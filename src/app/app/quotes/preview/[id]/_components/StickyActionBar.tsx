@@ -207,20 +207,27 @@ export function StickyActionBar({
             {pill.label}
           </span>
 
-          <div className="flex flex-1 items-center gap-2 sm:flex-none">
+          {/* Mobile: icon-only square 44px tap-targets so 3 actions
+              + the status pill (when shown) ALWAYS fit on a 360px screen.
+              Each button gets an aria-label for screen readers and a
+              title for desktop hover; visible labels only appear from
+              sm: upward. This is the definitive overflow fix — earlier
+              attempts with mobile text labels kept getting clipped on
+              narrow viewports when status text grew (e.g. "Resend"). */}
+          <div className="flex flex-1 items-center justify-end gap-2 sm:flex-none">
             <button
               type="button"
               data-testid="sticky-save-changes"
               onClick={onSave}
               disabled={isPending || isAccepted}
-              className="t2q-btn-ghost min-h-[44px] min-w-0 flex-1 !px-3 sm:flex-none sm:!px-7 disabled:cursor-not-allowed disabled:opacity-50"
-              title={isAccepted ? "Quote already accepted." : undefined}
+              aria-label={isPending ? "Saving" : "Save changes"}
+              title={isAccepted ? "Quote already accepted." : isPending ? "Saving…" : "Save changes"}
+              className="t2q-btn-ghost min-h-[44px] min-w-[44px] !px-0 sm:flex-none sm:min-w-0 sm:!px-7 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <FloppyDisk size={16} weight="bold" className="shrink-0" />
               <span className="hidden sm:inline">
                 {isPending ? "Saving…" : "Save changes"}
               </span>
-              <span className="sm:hidden">{isPending ? "Saving…" : "Save"}</span>
             </button>
 
             {!isAccepted && (
@@ -230,7 +237,21 @@ export function StickyActionBar({
                   data-testid="sticky-send-button"
                   onClick={handleSend}
                   disabled={sendBusy || isPending}
-                  className="t2q-btn-primary min-h-[44px] min-w-0 flex-1 !px-3 sm:flex-none sm:!px-7 disabled:cursor-not-allowed disabled:opacity-50"
+                  aria-label={
+                    sendBusy && activeChannel === "email"
+                      ? "Sending email"
+                      : isSentOrViewed
+                        ? "Resend email"
+                        : "Send email"
+                  }
+                  title={
+                    sendBusy && activeChannel === "email"
+                      ? "Sending email…"
+                      : isSentOrViewed
+                        ? "Resend email"
+                        : "Send email"
+                  }
+                  className="t2q-btn-primary min-h-[44px] min-w-[44px] !px-0 sm:flex-none sm:min-w-0 sm:!px-7 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <EnvelopeSimple size={16} weight="bold" className="shrink-0" />
                   <span className="hidden sm:inline">
@@ -244,20 +265,27 @@ export function StickyActionBar({
                         ? "Resend email"
                         : "Send email"}
                   </span>
-                  <span className="sm:hidden">
-                    {sendBusy && activeChannel === "email"
-                      ? "Sending…"
-                      : isSentOrViewed
-                        ? "Resend"
-                        : "Email"}
-                  </span>
                 </button>
                 <button
                   type="button"
                   data-testid="sticky-send-sms-button"
                   onClick={handleSendSms}
                   disabled={sendBusy || isPending}
-                  className="t2q-btn-ghost min-h-[44px] min-w-0 flex-1 !px-3 sm:flex-none sm:!px-7 disabled:cursor-not-allowed disabled:opacity-50"
+                  aria-label={
+                    sendBusy && activeChannel === "sms"
+                      ? "Sending SMS"
+                      : isSentOrViewed
+                        ? "Resend SMS"
+                        : "Send SMS"
+                  }
+                  title={
+                    sendBusy && activeChannel === "sms"
+                      ? "Sending SMS…"
+                      : isSentOrViewed
+                        ? "Resend SMS"
+                        : "Send SMS"
+                  }
+                  className="t2q-btn-ghost min-h-[44px] min-w-[44px] !px-0 sm:flex-none sm:min-w-0 sm:!px-7 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <ChatCircleText size={16} weight="bold" className="shrink-0" />
                   <span className="hidden sm:inline">
@@ -270,9 +298,6 @@ export function StickyActionBar({
                       : isSentOrViewed
                         ? "Resend SMS"
                         : "Send SMS"}
-                  </span>
-                  <span className="sm:hidden">
-                    {sendBusy && activeChannel === "sms" ? "Sending…" : "SMS"}
                   </span>
                 </button>
               </>

@@ -227,14 +227,15 @@ export function CustomerChat({ token, businessName, clientName }: Props) {
             <header className="flex items-start justify-between gap-3 border-b border-ink-700 bg-ink-950 px-5 py-4">
               <div className="min-w-0 flex-1">
                 <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-brand">
-                  {"// chat about this quote"}
+                  {"// t2q · chat about this quote"}
                 </p>
                 <h2 className="mt-0.5 font-display text-base uppercase tracking-tight text-white sm:text-lg">
-                  {businessName ?? "Quote assistant"}
+                  T2Q
                 </h2>
                 <p className="mt-0.5 font-mono text-[10px] uppercase tracking-[0.2em] text-ink-400">
-                  AI · answers in seconds · won&apos;t change pricing without
-                  the tradie
+                  {businessName
+                    ? `${businessName} · answers in seconds · won't change pricing without the tradie`
+                    : "Answers in seconds · won't change pricing without the tradie"}
                 </p>
               </div>
               <button
@@ -270,7 +271,13 @@ export function CustomerChat({ token, businessName, clientName }: Props) {
 
             {/* Composer */}
             <footer className="border-t border-ink-700 bg-ink-950 px-3 py-3 pb-[max(env(safe-area-inset-bottom),12px)]">
-              <div className="flex items-end gap-2">
+              {/* `min-w-0` on the inner flex AND the textarea is the
+                  classic flexbox-shrink fix: without it, the textarea's
+                  intrinsic min-content (sized to the long placeholder
+                  string) pushes the 44px Send button off-screen on
+                  narrow phones. With it, the textarea collapses to fill
+                  whatever's left after the button takes its 44px. */}
+              <div className="flex min-w-0 items-end gap-2">
                 <textarea
                   ref={inputRef}
                   value={input}
@@ -279,7 +286,7 @@ export function CustomerChat({ token, businessName, clientName }: Props) {
                   placeholder="Ask anything about this quote…"
                   data-testid="customer-chat-input"
                   rows={1}
-                  className="min-h-[44px] max-h-32 flex-1 resize-none rounded-sm border border-ink-600 bg-ink-900 px-3 py-2.5 text-sm text-white placeholder:text-ink-500 outline-none focus:border-brand"
+                  className="min-h-[44px] max-h-32 min-w-0 flex-1 resize-none rounded-sm border border-ink-600 bg-ink-900 px-3 py-2.5 text-sm text-white placeholder:text-ink-500 outline-none focus:border-brand"
                 />
                 <button
                   type="button"
@@ -293,7 +300,7 @@ export function CustomerChat({ token, businessName, clientName }: Props) {
                 </button>
               </div>
               <p className="mt-2 font-mono text-[9px] uppercase tracking-[0.2em] text-ink-500">
-                {"// answers powered by ai · the tradie sees this chat"}
+                {"// answers powered by t2q · the tradie sees this chat"}
               </p>
             </footer>
           </div>

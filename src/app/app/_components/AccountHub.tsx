@@ -231,18 +231,22 @@ export function AccountHub({
       ) : null}
 
       <form action="/auth/signout" method="POST" className="mt-5">
+        {/* Solid destructive colours so the button reads clearly in
+            both themes. The earlier red-200 on red-500/5 (5% opacity)
+            rendered as ghost-pink on the cream light-mode card and
+            looked disabled. */}
         <button
           type="submit"
           data-testid="account-hub-sign-out"
-          className="flex w-full items-center gap-3 rounded-sm border border-red-500/40 bg-red-500/5 px-4 py-3 text-left hover:border-red-500/70 hover:bg-red-500/10"
+          className="flex w-full items-center gap-3 rounded-sm border border-red-600 bg-red-600 px-4 py-3 text-left text-white shadow-sm hover:bg-red-700 hover:border-red-700"
         >
           <SignOut
             size={16}
             weight="bold"
-            className="text-red-300"
+            className="text-white"
             aria-hidden="true"
           />
-          <span className="font-display text-sm uppercase tracking-tight text-red-200">
+          <span className="font-display text-sm uppercase tracking-tight text-white">
             Sign out
           </span>
         </button>
