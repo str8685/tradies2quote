@@ -33,6 +33,32 @@ export async function TrialBanner() {
     email: user.email,
   });
 
+  // Beta window — universal free access, render a celebratory banner
+  // so the tradie (and their mates) know payments are paused. Self-
+  // expires when BETA_FREE_UNTIL passes.
+  if (sub.betaFreeUntil) {
+    const endsLabel = sub.betaFreeUntil.toLocaleDateString("en-NZ", {
+      day: "numeric",
+      month: "short",
+    });
+    return (
+      <div
+        data-testid="beta-banner"
+        className="border-b border-brand/40 bg-brand/10 px-4 py-2.5 sm:px-6"
+      >
+        <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-2">
+          <p className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.18em] text-brand">
+            <Lightning size={14} weight="bold" />
+            Beta open — free for everyone until {endsLabel}
+          </p>
+          <span className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-300">
+            Send the link to your mates
+          </span>
+        </div>
+      </div>
+    );
+  }
+
   if (sub.state === "paid") return null;
 
   // Show big red banner for expired users (they're locked out of

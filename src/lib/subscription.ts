@@ -42,6 +42,10 @@ export interface SubscriptionStatus {
   /** Raw Stripe status string ("active", "trialing", "past_due", etc).
    *  null when user has never started a subscription. */
   stripeSubscriptionStatus: string | null;
+  /** If a project-wide free beta window is active (BETA_FREE_UNTIL env
+   *  var set to a future ISO date), this is the date it ends. Tradies
+   *  see a banner "Beta — free until <date>" until that timestamp. */
+  betaFreeUntil: Date | null;
 }
 
 /**
@@ -66,6 +70,18 @@ export async function getSubscriptionStatus(args: {
   const trialDaysLeft = Math.ceil(trialMsLeft / DAY_MS);
   const inTrial = trialMsLeft > 0;
 
+  // BETA_FREE_UNTIL — temporary free-for-all window. Lets the operator
+  // invite mates to test without anyone tripping the paywall, and self-
+  // expires when the date passes so the paywall comes back without a
+  // manual flip. ISO date string (e.g. "2026-06-01" or full ISO).
+  // Invalid / past dates fall through silently to normal billing rules.
+  const betaFreeUntilRaw = process.env.BETA_FREE_UNTIL;
+  const betaFreeUntil =
+    betaFreeUntilRaw && !Number.isNaN(Date.parse(betaFreeUntilRaw))
+      ? new Date(betaFreeUntilRaw)
+      : null;
+  const betaActive = betaFreeUntil !== null && now < betaFreeUntil;
+
   // Project owner never gets billed. Reports as "paid" so the trial
   // banner stays hidden, the upgrade page redirects them out, and the
   // /app/quotes/new gate never blocks. Cheaper than wiring a hard-coded
@@ -78,6 +94,21 @@ export async function getSubscriptionStatus(args: {
       currentPeriodEnd: null,
       stripeCustomerId: null,
       stripeSubscriptionStatus: "owner_bypass",
+      betaFreeUntil: betaActive ? betaFreeUntil : null,
+    };
+  }
+
+  // Beta window applies to everyone else too — treat them as paid so
+  // there's no friction during invite-mates testing.
+  if (betaActive) {
+    return {
+      state: "paid",
+      trialEndsAt,
+      trialDaysLeft: null,
+      currentPeriodEnd: betaFreeUntil,
+      stripeCustomerId: null,
+      stripeSubscriptionStatus: "beta_free",
+      betaFreeUntil,
     };
   }
 
@@ -91,6 +122,7 @@ export async function getSubscriptionStatus(args: {
       currentPeriodEnd: null,
       stripeCustomerId: null,
       stripeSubscriptionStatus: null,
+      betaFreeUntil: null,
     };
   }
 
@@ -132,6 +164,7 @@ export async function getSubscriptionStatus(args: {
       currentPeriodEnd: periodEnd,
       stripeCustomerId: sub?.stripe_customer_id ?? null,
       stripeSubscriptionStatus: subStatus,
+      betaFreeUntil: null,
     };
   }
 
@@ -142,6 +175,7 @@ export async function getSubscriptionStatus(args: {
     currentPeriodEnd: periodEnd,
     stripeCustomerId: sub?.stripe_customer_id ?? null,
     stripeSubscriptionStatus: subStatus,
+    betaFreeUntil: null,
   };
 }
 
