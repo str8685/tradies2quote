@@ -5,6 +5,7 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import {
   ArrowClockwise,
   ArrowSquareOut,
+  ClipboardText,
   Plus,
   Spinner,
   Storefront,
@@ -88,6 +89,38 @@ export function SupplierBrowser({ initialUrl }: { initialUrl: string }) {
     setIframeLoaded(false);
     setIframeKey((k) => k + 1);
   }, []);
+
+  // iOS Safari doesn't implement Web Share Target (so T2Q can't appear
+  // in the iOS share sheet). The practical fallback: tradie taps "Open
+  // in browser" → Safari opens supplier page → tradie Shares → Copy →
+  // switches back here → hits this paste button. The Clipboard API is
+  // supported on iOS Safari 13.1+ but requires a user gesture, so this
+  // MUST be a click handler (not auto-detected).
+  const [pasteError, setPasteError] = useState<string | null>(null);
+  const handlePasteUrl = useCallback(async () => {
+    setPasteError(null);
+    try {
+      const text = await navigator.clipboard.readText();
+      const trimmed = text.trim();
+      if (!trimmed) {
+        setPasteError(
+          "Clipboard is empty. Copy a supplier product link first, then come back.",
+        );
+        return;
+      }
+      if (!/^https?:\/\//i.test(trimmed)) {
+        setPasteError(
+          "That doesn't look like a URL. Copy a supplier product link first.",
+        );
+        return;
+      }
+      navigate(trimmed);
+    } catch {
+      setPasteError(
+        "Couldn't read your clipboard. Paste the URL into the field below instead.",
+      );
+    }
+  }, [navigate]);
 
   const onSubmitUrl = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -235,6 +268,30 @@ export function SupplierBrowser({ initialUrl }: { initialUrl: string }) {
             );
           })}
         </div>
+      </div>
+
+      {/* Paste-from-clipboard CTA. Lives just above the URL bar so the
+          two paths (paste vs type) sit side-by-side. Primary action for
+          iOS users coming back from Safari with a copied product URL. */}
+      <div className="mb-3">
+        <button
+          type="button"
+          onClick={handlePasteUrl}
+          data-testid="supplier-paste-clipboard"
+          className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-sm border-2 border-dashed border-brand/50 bg-brand/5 px-4 font-display text-xs uppercase tracking-tight text-brand transition-colors hover:border-brand hover:bg-brand/10 sm:w-auto sm:text-sm"
+        >
+          <ClipboardText size={16} weight="bold" />
+          Paste URL from clipboard
+        </button>
+        {pasteError && (
+          <p
+            role="alert"
+            data-testid="supplier-paste-error"
+            className="mt-2 text-xs text-red-300"
+          >
+            {pasteError}
+          </p>
+        )}
       </div>
 
       <form
