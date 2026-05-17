@@ -113,6 +113,33 @@ function checkTrialEmails(): HealthCheck {
   };
 }
 
+function checkStripe(): HealthCheck {
+  const sk = envSet("STRIPE_SECRET_KEY");
+  const wh = envSet("STRIPE_WEBHOOK_SECRET");
+  const price = envSet("STRIPE_PRICE_ID");
+  if (sk && wh && price) {
+    return {
+      id: "stripe",
+      name: "Subscriptions (Stripe)",
+      status: "ok",
+      detail: "Secret key, webhook secret and price id are configured.",
+    };
+  }
+  const missing = [
+    !sk ? "STRIPE_SECRET_KEY" : null,
+    !wh ? "STRIPE_WEBHOOK_SECRET" : null,
+    !price ? "STRIPE_PRICE_ID" : null,
+  ]
+    .filter(Boolean)
+    .join(", ");
+  return {
+    id: "stripe",
+    name: "Subscriptions (Stripe)",
+    status: "missing",
+    detail: `Not set: ${missing}`,
+  };
+}
+
 function checkTwilio(): HealthCheck {
   const sid = envSet("TWILIO_ACCOUNT_SID");
   const token = envSet("TWILIO_AUTH_TOKEN");
@@ -172,6 +199,7 @@ export async function getAllHealthChecks(): Promise<HealthCheck[]> {
     checkResend(),
     checkTwilio(),
     checkTrialEmails(),
+    checkStripe(),
     checkStorage(),
   ];
 }

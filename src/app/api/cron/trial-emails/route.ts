@@ -11,6 +11,21 @@ import {
   type EmailKind,
 } from "@/lib/trial-emails";
 
+/** Stripe subscription statuses that mean "user has paid access". A
+ *  paid user must NEVER receive trial-expiry warnings — those go out
+ *  for trial users only. */
+const PAID_STATUSES = new Set(["active", "trialing", "past_due"]);
+
+/** Kinds that warn about trial expiry. Paid users skip these. The
+ *  earlier "onboarding" kinds still go out to paid users because they
+ *  haven't necessarily sent a first quote — those are activation
+ *  nudges, not billing nudges. */
+const TRIAL_EXPIRY_KINDS: ReadonlySet<EmailKind> = new Set([
+  "trial_minus_2",
+  "trial_day_0",
+  "trial_plus_3",
+]);
+
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 // Vercel cron jobs are cancelled at 60s on Hobby. Sending 5 transactional
@@ -122,6 +137,26 @@ async function handle(request: NextRequest): Promise<NextResponse> {
       if (existing) {
         counters.alreadySent += 1;
         continue;
+      }
+
+      // Trial-expiry kinds skip users with an active Stripe sub —
+      // we already promised them in the email copy that subscribing
+      // saves them from the "trial ends" warnings.
+      if (TRIAL_EXPIRY_KINDS.has(kind)) {
+        const { data: sub } = await admin
+          .from("subscriptions")
+          .select("status")
+          .eq("user_id", user.id)
+          .maybeSingle();
+        if (sub?.status && PAID_STATUSES.has(sub.status)) {
+          // Record a dedup row so we don't re-check every day until
+          // the window ends.
+          await admin
+            .from("lifecycle_emails")
+            .insert({ user_id: user.id, kind, provider_message_id: null });
+          counters.alreadySent += 1;
+          continue;
+        }
       }
 
       // Onboarding kinds skip users who've already sent a quote.

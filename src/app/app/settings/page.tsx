@@ -12,9 +12,12 @@ import {
   type AdminProfileSnapshot,
 } from "@/lib/agents/admin";
 import { logAgentEvent } from "@/lib/agent-monitor/logger";
+import { isStripeConfigured } from "@/lib/stripe-client";
+import { getSubscriptionStatus } from "@/lib/subscription";
 import { AppHeader } from "../_components/AppHeader";
 import { AdminChecklistPanel } from "../_components/agents/AdminChecklistPanel";
 import { SettingsForm, type SettingsInitial } from "./_components/SettingsForm";
+import { SubscriptionPanel } from "./_components/SubscriptionPanel";
 
 export const metadata: Metadata = {
   title: "Settings",
@@ -197,6 +200,16 @@ export default async function SettingsPage() {
         <AdminChecklistPanel profile={adminProfile} clients={adminClients} />
 
         <SettingsForm initial={initial} />
+
+        {/* Billing + subscription. Reads server-side so the panel
+            reflects the exact current state without a client round-trip. */}
+        <SubscriptionPanel
+          status={await getSubscriptionStatus({
+            userId: user.id,
+            signedUpAt: new Date(user.created_at ?? Date.now()),
+          })}
+          stripeConfigured={isStripeConfigured()}
+        />
 
         {/* Sign out lives here instead of the app header so the mobile
             top bar can stay compact. Signed-in email is shown for

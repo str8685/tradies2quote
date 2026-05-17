@@ -27,6 +27,7 @@ import type {
   QuoteProfile,
   TakeoffInputsSnapshot,
 } from "@/lib/quote-types";
+import { canWrite, getSubscriptionStatus } from "@/lib/subscription";
 
 const TAKEOFF_MATERIAL_PATTERNS: RegExp[] = [
   /\bstuds?\b/i,
@@ -62,6 +63,26 @@ export async function POST(request: NextRequest) {
   } = await supabase.auth.getUser();
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  // Defence-in-depth gate. The /app/quotes/new page already redirects
+  // expired-trial users to /app/upgrade, but a determined client could
+  // POST here directly with an existing quote id and slip through the
+  // page redirect. Refusing at the API layer closes the gap.
+  const sub = await getSubscriptionStatus({
+    userId: user.id,
+    signedUpAt: new Date(user.created_at ?? Date.now()),
+  });
+  if (!canWrite(sub)) {
+    return NextResponse.json(
+      {
+        error: "trial_expired",
+        message:
+          "Your free trial has ended. Subscribe to keep generating new quotes.",
+        upgrade_url: "/app/upgrade",
+      },
+      { status: 402 },
+    );
   }
 
   const apiKey = process.env.ANTHROPIC_API_KEY;

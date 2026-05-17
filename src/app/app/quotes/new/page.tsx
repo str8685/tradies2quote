@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { canWrite, getSubscriptionStatus } from "@/lib/subscription";
 import { AppHeader } from "../../_components/AppHeader";
 import { QuoteInputTabs } from "./_components/QuoteInputTabs";
 
@@ -16,6 +17,18 @@ export default async function NewQuotePage() {
 
   if (!user) {
     redirect("/login");
+  }
+
+  // Trial-expired users land on the upgrade page instead of the
+  // recorder. They can still view + send existing quotes (those pages
+  // don't gate), so this is the single chokepoint that enforces the
+  // read-only contract my trial-end emails promised.
+  const sub = await getSubscriptionStatus({
+    userId: user.id,
+    signedUpAt: new Date(user.created_at ?? Date.now()),
+  });
+  if (!canWrite(sub)) {
+    redirect("/app/upgrade?from=new-quote");
   }
 
   return (

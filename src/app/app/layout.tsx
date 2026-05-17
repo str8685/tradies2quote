@@ -2,6 +2,7 @@ import { SideMeasureTape } from "../_components/app/SideMeasureTape";
 import LoadingScreen from "../_components/landing/LoadingScreen";
 import { MobileBottomNav } from "./_components/MobileBottomNav";
 import { OnboardingTourGate } from "./_components/OnboardingTourGate";
+import { TrialBanner } from "./_components/TrialBanner";
 
 /**
  * Visual layout for /app/* routes.
@@ -69,6 +70,10 @@ export default function AppLayout({
           left long forms (Settings especially) clipped under the bar
           on the last field. 112px = nav max + a 16px breather. */}
       <div className="min-w-0 pt-[env(safe-area-inset-top)] pb-[112px] sm:pt-0 sm:pb-0">
+        {/* Trial / expired upgrade banner. Server-rendered: renders
+            nothing for paid users or users still well inside their
+            trial; surfaces only when there's something to act on. */}
+        <TrialBanner />
         {children}
       </div>
       <div aria-hidden="true" className="hidden lg:block" />
