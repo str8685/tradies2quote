@@ -1,8 +1,15 @@
 import "server-only";
 
+import { adminClient } from "@/lib/supabase/admin";
+
 /**
- * Server-only logger that posts agent events to the external monitoring
- * dashboard at AGENT_DASHBOARD_URL (the 685agents project).
+ * Server-only logger that records agent events to the in-app monitoring
+ * tables (`public.agent_events` + `public.agent_runs`). Read by the
+ * owner-only dashboard at `/app/agents/monitor`.
+ *
+ * Earlier revisions POSTed to an external dashboard (685agents project)
+ * via AGENT_DASHBOARD_URL / AGENT_DASHBOARD_SECRET — that project never
+ * shipped, and the t2q app now owns the dashboard end-to-end.
  *
  * Hard rules — every change must preserve these:
  *  1. Server-only. The `import "server-only"` at the top makes the
@@ -10,19 +17,22 @@ import "server-only";
  *     component, and Vitest stubs it for tests.
  *  2. Never throws. Every helper returns void and swallows all errors —
  *     a failed log MUST NOT break the request that triggered it.
- *  3. No-op when env vars are missing. AGENT_DASHBOARD_URL and
- *     AGENT_DASHBOARD_SECRET both have to be present (and the secret
- *     must be ≥16 chars to match the dashboard's check) or the helper
- *     short-circuits with no network call.
+ *  3. No-op when Supabase isn't configured. The admin client throws if
+ *     SUPABASE_SERVICE_ROLE_KEY is missing; that throw is caught and
+ *     silently dropped — telemetry is operator-only, never load-bearing.
  *  4. PII safe. The caller may pass extra fields (userId, metadata,
- *     startedAt, finishedAt) but only an allow-listed subset is
- *     forwarded. Anything else is silently dropped server-side.
- *  5. Fire and forget. The helpers do NOT return a Promise. We use
- *     `keepalive: true` so Vercel's serverless runtime allows the
- *     request to finish after the response is sent, and a 1 s timeout
- *     so a slow dashboard can never block a page render.
- *  6. No retries. No batching. No queue. If this becomes a bottleneck
- *     a follow-up wave will add a queue.
+ *     startedAt, finishedAt) but only an allow-listed subset reaches
+ *     the database. Anything else is silently dropped.
+ *  5. Fire and forget. The helpers do NOT return a Promise. The insert
+ *     promise is started but never awaited — `.then()` swallows both
+ *     success and failure so a slow Supabase round-trip can never
+ *     block a page render. Vercel's serverless runtime continues the
+ *     request until the function's maxDuration; the typical insert
+ *     completes in under 50ms so it almost always lands before the
+ *     function exits.
+ *  6. No retries. No batching. No queue. If telemetry volume grows
+ *     past what a synchronous insert can absorb, a follow-up wave
+ *     adds a queue.
  */
 
 export type AgentLogStatus =
@@ -34,11 +44,12 @@ export type AgentLogStatus =
 
 /**
  * The input the wiring code passes in. Several fields are accepted but
- * deliberately NOT transmitted (see PII allow-list inside `send`):
+ * deliberately NOT written to the database (see PII allow-list inside
+ * `send`):
  *   - userId         → dropped
  *   - metadata       → dropped
- *   - startedAt      → dropped (server stamps its own timestamp)
- *   - finishedAt     → dropped
+ *   - startedAt      → dropped (Supabase stamps its own created_at)
+ *   - finishedAt     → dropped (server stamps its own at run.finish time)
  *   - durationMs     → folded into the human-readable message
  */
 export interface AgentLogInput {
@@ -66,10 +77,7 @@ export interface AgentLogInput {
   durationMs?: number;
 }
 
-const PROJECT_SLUG = "tradies2quote";
-const ENDPOINT_PATH = "/api/ingest/agent-event";
-const HEADER_NAME = "x-agent-dashboard-secret";
-const REQUEST_TIMEOUT_MS = 1000;
+type EventType = "event" | "error" | "run.start" | "run.finish";
 
 const SHORT_MSG_MAX = 280;
 const ERROR_MSG_MAX = 500;
@@ -96,70 +104,154 @@ function formatDuration(ms: number): string {
   return `${Math.round(ms / 60_000)}m`;
 }
 
-function envOk(): { url: string; secret: string } | null {
-  const url = process.env.AGENT_DASHBOARD_URL;
-  const secret = process.env.AGENT_DASHBOARD_SECRET;
-  if (!url || !secret || secret.length < 16) return null;
-  return { url: url.replace(/\/+$/, ""), secret };
+/** Looks like a UUID? quote_id and user_id columns are uuid-typed, so
+ * inserting an arbitrary string would 22P02-fail. Callers occasionally
+ * pass non-UUID identifiers (especially in tests), so we coerce to null
+ * for anything that doesn't match the canonical 8-4-4-4-12 hex shape.
+ */
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+function uuidOrNull(s: string | undefined): string | null {
+  if (!s) return null;
+  return UUID_RE.test(s.trim()) ? s.trim() : null;
 }
 
-/**
- * The wire body. Mirrors the dashboard's IngestEventInput allow-list —
- * if the field isn't here, it won't reach the dashboard.
- */
-interface IngestBody {
-  project: string;
-  type: "event" | "error" | "run.start" | "run.finish";
+interface NormalizedLog {
+  type: EventType;
   agent: string;
   status: AgentLogStatus;
-  action?: string;
-  run_id?: string;
-  message?: string;
-  quote_id?: string;
-  error_message?: string;
-  approval_required?: boolean;
+  runId: string | null;
+  stepName: string | null;
+  message: string | null;
+  errorMessage: string | null;
+  quoteId: string | null;
+  approvalRequired: boolean;
 }
 
 /**
- * The actual transmit. Always fire-and-forget — no awaitable return.
+ * Build the database row from a caller's AgentLogInput. The allow-list
+ * is enforced here — every field on the row has to be picked
+ * explicitly, which means new fields can never accidentally leak from
+ * a future callsite that adds a property.
+ */
+function normalize(type: EventType, input: AgentLogInput): NormalizedLog {
+  const messageWithDuration =
+    input.durationMs !== undefined
+      ? input.message
+        ? `${input.message} · ${formatDuration(input.durationMs)}`
+        : formatDuration(input.durationMs)
+      : input.message;
+  return {
+    type,
+    agent: clamp(input.agentName, AGENT_NAME_MAX) ?? "Unknown Agent",
+    status: input.status,
+    runId: clamp(input.runId, RUN_ID_MAX) ?? null,
+    stepName: clamp(input.stepName, ACTION_TYPE_MAX) ?? null,
+    message: clamp(messageWithDuration, SHORT_MSG_MAX) ?? null,
+    errorMessage: null,
+    quoteId: uuidOrNull(clamp(input.quoteId, QUOTE_ID_MAX)),
+    approvalRequired: false,
+  };
+}
+
+/**
+ * The actual write. Always fire-and-forget — no awaitable return.
  * Synchronous errors are caught and turned into console.warn so the
  * caller can never have a try/catch around this function trip on a log
  * failure.
  */
-function send(body: IngestBody): void {
+function send(log: NormalizedLog): void {
   try {
-    const env = envOk();
-    if (!env) return;
-    const url = `${env.url}${ENDPOINT_PATH}`;
-    // AbortController + setTimeout (rather than AbortSignal.timeout)
-    // keeps this compatible with older Node runtimes that lack the
-    // static. setTimeout returns NodeJS.Timeout in node + number in
-    // edge; the void return type works on both.
-    const ctrl = new AbortController();
-    const t = setTimeout(() => ctrl.abort(), REQUEST_TIMEOUT_MS);
-    fetch(url, {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        [HEADER_NAME]: env.secret,
-      },
-      body: JSON.stringify(body),
-      // keepalive lets Vercel's serverless runtime continue the
-      // request after the page response has been sent, which is what
-      // makes fire-and-forget safe on Lambda-backed deployments.
-      keepalive: true,
-      signal: ctrl.signal,
-    })
-      .then(() => clearTimeout(t))
-      .catch((err: unknown) => {
-        clearTimeout(t);
-        // Never throw. Operator-only telemetry; one bad log line
-        // cannot be allowed to break a quote-preview render.
-        console.warn(
-          "[agent-monitor] dashboard log failed:",
-          err instanceof Error ? err.message : String(err),
-        );
+    const admin = adminClient();
+
+    // 1. Append-only event row, always written.
+    admin
+      .from("agent_events")
+      .insert({
+        run_id: log.runId,
+        agent_name: log.agent,
+        event_type: log.type,
+        status: log.status,
+        step: log.stepName,
+        message: log.message,
+        quote_id: log.quoteId,
+        // user_id intentionally NOT written — PII allow-list.
+        // metadata intentionally NOT written — PII allow-list.
+      })
+      .then(({ error }) => {
+        if (error) {
+          console.warn("[agent-monitor] event insert failed:", error.message);
+        }
       });
+
+    // 2. Run lifecycle: upsert on run.start, update on run.finish.
+    //    Both keyed by the unique run_id. Without a run_id there's no
+    //    way to correlate, so the run-table write is skipped — the
+    //    event row above still lands.
+    if (log.type === "run.start" && log.runId) {
+      admin
+        .from("agent_runs")
+        .upsert(
+          {
+            run_id: log.runId,
+            agent_name: log.agent,
+            status: log.status,
+            quote_id: log.quoteId,
+            last_step: log.stepName,
+            last_message: log.message,
+            approval_required: log.approvalRequired,
+          },
+          { onConflict: "run_id" },
+        )
+        .then(({ error }) => {
+          if (error) {
+            console.warn(
+              "[agent-monitor] run upsert failed:",
+              error.message,
+            );
+          }
+        });
+    } else if (log.type === "run.finish" && log.runId) {
+      admin
+        .from("agent_runs")
+        .update({
+          status: log.status,
+          finished_at: new Date().toISOString(),
+          last_step: log.stepName,
+          last_message: log.message,
+          error_message: log.errorMessage,
+        })
+        .eq("run_id", log.runId)
+        .then(({ error }) => {
+          if (error) {
+            console.warn(
+              "[agent-monitor] run update failed:",
+              error.message,
+            );
+          }
+        });
+    } else if (log.type === "event" && log.runId) {
+      // Mid-run heartbeat — refresh the run's last_step/last_message so
+      // the dashboard's Runs view reflects current progress even before
+      // run.finish lands. Status stays whatever the run.start set; we
+      // only patch the cosmetic fields.
+      admin
+        .from("agent_runs")
+        .update({
+          last_step: log.stepName,
+          last_message: log.message,
+          approval_required: log.approvalRequired,
+        })
+        .eq("run_id", log.runId)
+        .then(({ error }) => {
+          if (error) {
+            console.warn(
+              "[agent-monitor] run heartbeat failed:",
+              error.message,
+            );
+          }
+        });
+    }
   } catch (err) {
     console.warn(
       "[agent-monitor] log threw synchronously:",
@@ -168,37 +260,10 @@ function send(body: IngestBody): void {
   }
 }
 
-/**
- * Build the wire body from a caller's AgentLogInput. The allow-list is
- * enforced here — every field on the body has to be picked explicitly,
- * which means new fields can never accidentally leak from a future
- * callsite that adds a property.
- */
-function buildBody(
-  type: IngestBody["type"],
-  input: AgentLogInput,
-): IngestBody {
-  const messageWithDuration =
-    input.durationMs !== undefined
-      ? input.message
-        ? `${input.message} · ${formatDuration(input.durationMs)}`
-        : formatDuration(input.durationMs)
-      : input.message;
-  return {
-    project: PROJECT_SLUG,
-    type,
-    agent: clamp(input.agentName, AGENT_NAME_MAX) ?? "Unknown Agent",
-    status: input.status,
-    action: clamp(input.stepName, ACTION_TYPE_MAX),
-    run_id: clamp(input.runId, RUN_ID_MAX),
-    quote_id: clamp(input.quoteId, QUOTE_ID_MAX),
-    message: clamp(messageWithDuration, SHORT_MSG_MAX),
-  };
-}
-
 /* ----------------------------------------------------------------------
  * Public API — event / error / approval helpers, plus the
  * run.start / run.finish pair that drives the dashboard's Runs view.
+ * Same shape as before; existing callers don't need to change.
  * -------------------------------------------------------------------- */
 
 /**
@@ -214,10 +279,9 @@ export function newRunId(prefix: string): string {
 
 /**
  * Log a generic agent event (status check, suggestion surfaced, etc.).
- * Lands in the dashboard's `monitor_agent_events` table.
  */
 export function logAgentEvent(input: AgentLogInput): void {
-  send(buildBody("event", input));
+  send(normalize("event", input));
 }
 
 /**
@@ -226,31 +290,31 @@ export function logAgentEvent(input: AgentLogInput): void {
  * events by `run_id` if you pass one through.
  */
 export function logAgentStep(input: AgentLogInput): void {
-  send(buildBody("event", input));
+  send(normalize("event", input));
 }
 
 /**
- * Log an error. Forces status=failed and type=error so the dashboard
- * also writes a row into `monitor_agent_errors`. The full message is
- * used as the dashboard's `error_message` (clamped to 500 chars).
+ * Log an error. Forces status=failed and type=error. The full message
+ * is also stored on the run's `error_message` column (clamped to 500
+ * chars) so the dashboard's Runs view surfaces failure text inline.
  */
 export function logAgentError(
   input: AgentLogInput & { message: string },
 ): void {
-  const body = buildBody("error", { ...input, status: "failed" });
-  body.error_message = clamp(input.message, ERROR_MSG_MAX);
-  send(body);
+  const log = normalize("error", { ...input, status: "failed" });
+  log.errorMessage = clamp(input.message, ERROR_MSG_MAX) ?? null;
+  send(log);
 }
 
 /**
  * Log "owner approval needed". Forces status=waiting_approval and
- * sets approval_required=true so the dashboard surfaces it on the
- * Owner-approval KPI.
+ * sets approval_required=true so the dashboard can highlight runs
+ * blocked on a human.
  */
 export function logAgentApprovalNeeded(input: AgentLogInput): void {
-  const body = buildBody("event", { ...input, status: "waiting_approval" });
-  body.approval_required = true;
-  send(body);
+  const log = normalize("event", { ...input, status: "waiting_approval" });
+  log.approvalRequired = true;
+  send(log);
 }
 
 /**
@@ -260,20 +324,20 @@ export function logAgentApprovalNeeded(input: AgentLogInput): void {
  * matching `logAgentRunFinish` so the dashboard can pair the two.
  */
 export function logAgentRunStart(input: AgentLogInput): void {
-  send(buildBody("run.start", { ...input, status: "running" }));
+  send(normalize("run.start", { ...input, status: "running" }));
 }
 
 /**
  * Mark the END of an agent run. Emits type=run.finish so the dashboard
  * closes the matching run row (paired by `runId`). The caller sets
  * `status`: "complete" for success, "failed" for a failure. On a
- * failure the `message` is also forwarded as `error_message` (clamped
+ * failure the `message` is also written as `error_message` (clamped
  * to 500 chars) so the failure text surfaces on the dashboard.
  */
 export function logAgentRunFinish(input: AgentLogInput): void {
-  const body = buildBody("run.finish", input);
+  const log = normalize("run.finish", input);
   if (input.status === "failed" && input.message) {
-    body.error_message = clamp(input.message, ERROR_MSG_MAX);
+    log.errorMessage = clamp(input.message, ERROR_MSG_MAX) ?? null;
   }
-  send(body);
+  send(log);
 }

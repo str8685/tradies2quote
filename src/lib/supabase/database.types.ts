@@ -14,6 +14,111 @@ export type Database = {
   }
   public: {
     Tables: {
+      agent_events: {
+        Row: {
+          agent_name: string
+          created_at: string
+          event_type: string
+          handoff_from: string | null
+          handoff_to: string | null
+          id: string
+          message: string | null
+          metadata: Json | null
+          progress_pct: number | null
+          quote_id: string | null
+          run_id: string | null
+          status: string
+          step: string | null
+          user_id: string | null
+        }
+        Insert: {
+          agent_name: string
+          created_at?: string
+          event_type: string
+          handoff_from?: string | null
+          handoff_to?: string | null
+          id?: string
+          message?: string | null
+          metadata?: Json | null
+          progress_pct?: number | null
+          quote_id?: string | null
+          run_id?: string | null
+          status: string
+          step?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          agent_name?: string
+          created_at?: string
+          event_type?: string
+          handoff_from?: string | null
+          handoff_to?: string | null
+          id?: string
+          message?: string | null
+          metadata?: Json | null
+          progress_pct?: number | null
+          quote_id?: string | null
+          run_id?: string | null
+          status?: string
+          step?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      agent_runs: {
+        Row: {
+          agent_name: string
+          approval_required: boolean
+          duration_ms: number | null
+          error_message: string | null
+          finished_at: string | null
+          handoff_from: string | null
+          handoff_to: string | null
+          id: string
+          last_message: string | null
+          last_step: string | null
+          quote_id: string | null
+          run_id: string
+          started_at: string
+          status: string
+          user_id: string | null
+        }
+        Insert: {
+          agent_name: string
+          approval_required?: boolean
+          duration_ms?: number | null
+          error_message?: string | null
+          finished_at?: string | null
+          handoff_from?: string | null
+          handoff_to?: string | null
+          id?: string
+          last_message?: string | null
+          last_step?: string | null
+          quote_id?: string | null
+          run_id: string
+          started_at?: string
+          status: string
+          user_id?: string | null
+        }
+        Update: {
+          agent_name?: string
+          approval_required?: boolean
+          duration_ms?: number | null
+          error_message?: string | null
+          finished_at?: string | null
+          handoff_from?: string | null
+          handoff_to?: string | null
+          id?: string
+          last_message?: string | null
+          last_step?: string | null
+          quote_id?: string | null
+          run_id?: string
+          started_at?: string
+          status?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       clients: {
         Row: {
           address: string | null
