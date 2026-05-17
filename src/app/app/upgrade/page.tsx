@@ -114,7 +114,7 @@ export default async function UpgradePage({
           </h2>
           <p className="mt-3 flex items-baseline gap-2">
             <span className="font-display text-4xl text-brand sm:text-5xl">
-              $19
+              $29
             </span>
             <span className="font-mono text-xs uppercase tracking-[0.2em] text-ink-300">
               NZD / month · incl. GST

@@ -55,7 +55,7 @@ export function CheckoutButton() {
           </>
         ) : (
           <>
-            Subscribe — $19/mo
+            Subscribe — $29/mo
             <ArrowRight size={16} weight="bold" />
           </>
         )}

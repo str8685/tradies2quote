@@ -42,7 +42,7 @@ export function SubscriptionPanel({
           tradies2Quote Pro
         </h2>
         <p className="mt-1 text-sm text-ink-300">
-          $19 NZD / month · {renewalLabel}
+          $29 NZD / month · {renewalLabel}
         </p>
         <div className="mt-4">
           <ManageBillingButton />
@@ -89,7 +89,7 @@ export function SubscriptionPanel({
             className="t2q-btn-primary inline-flex h-11 items-center gap-2 px-5"
           >
             <CreditCard size={16} weight="bold" />
-            Subscribe — $19/mo
+            Subscribe — $29/mo
             <ArrowRight size={14} weight="bold" />
           </Link>
         ) : (
