@@ -1,9 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
-  ArrowClockwise,
   ArrowSquareOut,
   ClipboardText,
   Plus,
@@ -71,10 +70,7 @@ function normaliseUrl(raw: string): string {
 export function SupplierBrowser({ initialUrl }: { initialUrl: string }) {
   const [inputUrl, setInputUrl] = useState(initialUrl);
   const [loadedUrl, setLoadedUrl] = useState(initialUrl);
-  const [iframeLoaded, setIframeLoaded] = useState(false);
-  const [iframeKey, setIframeKey] = useState(0);
   const [phase, setPhase] = useState<Phase>({ state: "idle" });
-  const iframeRef = useRef<HTMLIFrameElement | null>(null);
 
   const detectedSupplier = useMemo(
     () => (loadedUrl ? supplierFromUrl(loadedUrl) : null),
@@ -86,8 +82,6 @@ export function SupplierBrowser({ initialUrl }: { initialUrl: string }) {
     if (!next) return;
     setLoadedUrl(next);
     setInputUrl(next);
-    setIframeLoaded(false);
-    setIframeKey((k) => k + 1);
   }, []);
 
   // iOS Safari doesn't implement Web Share Target (so T2Q can't appear
@@ -125,11 +119,6 @@ export function SupplierBrowser({ initialUrl }: { initialUrl: string }) {
   const onSubmitUrl = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     navigate(inputUrl);
-  };
-
-  const reloadIframe = () => {
-    setIframeLoaded(false);
-    setIframeKey((k) => k + 1);
   };
 
   const onAddToMaterials = async () => {
@@ -218,14 +207,6 @@ export function SupplierBrowser({ initialUrl }: { initialUrl: string }) {
     setPhase({ state: "saved", name: final.name });
   };
 
-  // Major NZ retailers (Placemakers, Bunnings, Mitre 10, ITM) set
-  // X-Frame-Options: DENY, so the iframe loads but renders blank — and
-  // iframeLoaded still flips true on the empty response. The earlier
-  // condition only showed the "open in browser" escape BEFORE load
-  // finished, which meant for blocked sites the hint disappeared the
-  // moment it was actually needed. Now: whenever a URL is loaded, the
-  // hint is available so the tradie always has a way out.
-  const showBlockedHint = Boolean(loadedUrl);
 
   return (
     <main className="mx-auto w-full max-w-3xl px-3 pb-32 pt-4 sm:px-6 sm:pt-8">
@@ -245,28 +226,32 @@ export function SupplierBrowser({ initialUrl }: { initialUrl: string }) {
         <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-ink-400">
           {"// shortcuts"}
         </p>
+        {/* Supplier shortcuts open in a NEW TAB (Safari on iOS). The old
+            in-app iframe approach hit X-Frame-Options walls on every major
+            NZ retailer — Placemakers/Bunnings/Mitre10/ITM/Noel Leeming all
+            DENY iframing. Now the tradie taps a supplier, browses the
+            product in Safari, copies the URL via Share, then comes back
+            and uses the "Paste URL from clipboard" button below. */}
         <div className="mt-2 -mx-3 flex gap-2 overflow-x-auto px-3 pb-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0">
-          {SUPPLIER_SHORTCUTS.map((s) => {
-            const active = loadedUrl.startsWith(s.url);
-            return (
-              <button
-                key={s.name}
-                type="button"
-                onClick={() => navigate(s.url)}
-                data-testid={`supplier-shortcut-${s.name.toLowerCase().replace(/\s+/g, "-")}`}
-                aria-pressed={active}
-                className={[
-                  "inline-flex shrink-0 items-center gap-1.5 rounded-sm border px-3 py-2 font-display text-[11px] uppercase tracking-tight transition-colors sm:text-xs",
-                  active
-                    ? "border-brand bg-brand text-ink-900"
-                    : "border-ink-700 bg-ink-800 text-white hover:border-brand",
-                ].join(" ")}
-              >
-                <Storefront size={14} weight="bold" aria-hidden="true" />
-                {s.name}
-              </button>
-            );
-          })}
+          {SUPPLIER_SHORTCUTS.map((s) => (
+            <a
+              key={s.name}
+              href={s.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              data-testid={`supplier-shortcut-${s.name.toLowerCase().replace(/\s+/g, "-")}`}
+              className="inline-flex shrink-0 items-center gap-1.5 rounded-sm border border-ink-700 bg-ink-800 px-3 py-2 font-display text-[11px] uppercase tracking-tight text-white transition-colors hover:border-brand sm:text-xs"
+            >
+              <Storefront size={14} weight="bold" aria-hidden="true" />
+              {s.name}
+              <ArrowSquareOut
+                size={11}
+                weight="bold"
+                aria-hidden="true"
+                className="text-ink-400"
+              />
+            </a>
+          ))}
         </div>
       </div>
 
@@ -319,74 +304,64 @@ export function SupplierBrowser({ initialUrl }: { initialUrl: string }) {
         >
           Go
         </button>
-        {loadedUrl && (
-          <button
-            type="button"
-            onClick={reloadIframe}
-            aria-label="Reload"
-            data-testid="supplier-url-reload"
-            className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-sm border border-ink-700 bg-ink-800 text-ink-200 transition-colors hover:border-brand hover:text-brand"
-          >
-            <ArrowClockwise size={16} weight="bold" aria-hidden="true" />
-          </button>
-        )}
       </form>
 
-      <div className="mt-3 overflow-hidden rounded-sm border border-ink-700 bg-ink-950">
+      {/* No iframe anymore — major NZ retailers all block embedding via
+          X-Frame-Options. Instead we just confirm which URL is queued
+          for extraction. Tradie taps Add to Materials to extract +
+          save. */}
+      <div
+        data-testid="supplier-url-card"
+        className="mt-3 rounded-sm border border-ink-700 bg-ink-950 p-4 sm:p-5"
+      >
         {loadedUrl ? (
-          <div className="relative">
-            <iframe
-              key={iframeKey}
-              ref={iframeRef}
-              src={loadedUrl}
-              title="Supplier site"
-              data-testid="supplier-iframe"
-              onLoad={() => setIframeLoaded(true)}
-              sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox"
-              referrerPolicy="no-referrer"
-              className="block h-[60vh] w-full bg-white sm:h-[65vh]"
-            />
-            {showBlockedHint && (
-              <div
-                role="status"
-                data-testid="supplier-blocked-hint"
-                className="pointer-events-none absolute inset-x-0 bottom-0 z-10 bg-ink-950/95 px-3 py-2 text-center text-[11px] text-ink-300"
-              >
-                <span className="pointer-events-auto">
-                  Page blank or won&apos;t load?{" "}
-                  <a
-                    href={loadedUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="font-mono uppercase tracking-[0.2em] text-brand underline decoration-dotted"
-                  >
-                    Open in browser
-                    <ArrowSquareOut
-                      size={11}
-                      weight="bold"
-                      className="ml-1 inline-block"
-                      aria-hidden="true"
-                    />
-                  </a>{" "}
-                  — many supplier sites block in-app browsing. Paste the
-                  product URL back here, then tap +.
-                </span>
-              </div>
+          <>
+            <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-brand">
+              {"// queued for extraction"}
+            </p>
+            {detectedSupplier && (
+              <p className="mt-2 font-display text-sm uppercase tracking-tight text-white">
+                {detectedSupplier}
+              </p>
             )}
-          </div>
+            <p className="mt-1 break-all font-mono text-xs text-ink-200">
+              {loadedUrl}
+            </p>
+            <a
+              href={loadedUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              data-testid="supplier-open-in-browser"
+              className="mt-3 inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.2em] text-brand underline decoration-dotted underline-offset-2 hover:text-hivis"
+            >
+              Open in browser to confirm
+              <ArrowSquareOut
+                size={11}
+                weight="bold"
+                aria-hidden="true"
+              />
+            </a>
+            <p className="mt-3 text-xs text-ink-400">
+              Tap{" "}
+              <span className="font-display uppercase tracking-tight text-brand">
+                Add to Materials
+              </span>{" "}
+              below to pull the product name + price.
+            </p>
+          </>
         ) : (
           <div
             data-testid="supplier-empty"
-            className="grid h-[40vh] place-items-center px-6 text-center text-ink-300"
+            className="py-6 text-center text-ink-300"
           >
-            <div>
-              <div className="font-mono text-[10px] uppercase tracking-[0.25em] text-ink-500">
-                {"// no site loaded"}
-              </div>
-              <p className="mt-2 text-sm">
-                Pick a supplier above or paste a product URL to start.
-              </p>
-            </div>
+            <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-ink-500">
+              {"// nothing queued"}
+            </p>
+            <p className="mt-2 text-sm">
+              Tap a supplier above — opens in Safari. Browse to the
+              product, hit Share → Copy, come back, then{" "}
+              <span className="text-brand">Paste URL from clipboard</span>.
+            </p>
           </div>
         )}
       </div>

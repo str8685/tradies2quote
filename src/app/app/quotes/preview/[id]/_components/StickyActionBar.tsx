@@ -207,27 +207,25 @@ export function StickyActionBar({
             {pill.label}
           </span>
 
-          {/* Mobile: icon-only square 44px tap-targets so 3 actions
-              + the status pill (when shown) ALWAYS fit on a 360px screen.
-              Each button gets an aria-label for screen readers and a
-              title for desktop hover; visible labels only appear from
-              sm: upward. This is the definitive overflow fix — earlier
-              attempts with mobile text labels kept getting clipped on
-              narrow viewports when status text grew (e.g. "Resend"). */}
-          <div className="flex flex-1 items-center justify-end gap-2 sm:flex-none">
+          {/* Mobile: short labels ALWAYS visible next to each icon so
+              the tradie reads "Save / Email / Text" at a glance instead
+              of decoding 3 similar-looking icons. Earlier icon-only
+              treatment hit a clarity problem (user feedback: "tradies
+              don't know what's what"). Labels are short — "Text"
+              instead of "SMS" because that's what NZ tradies actually
+              call it. min-h-[44px] keeps the iOS tap-target spec. */}
+          <div className="flex flex-1 items-center justify-end gap-1.5 sm:flex-none sm:gap-2">
             <button
               type="button"
               data-testid="sticky-save-changes"
               onClick={onSave}
               disabled={isPending || isAccepted}
-              aria-label={isPending ? "Saving" : "Save changes"}
-              title={isAccepted ? "Quote already accepted." : isPending ? "Saving…" : "Save changes"}
-              className="t2q-btn-ghost min-h-[44px] min-w-[44px] !px-0 sm:flex-none sm:min-w-0 sm:!px-7 disabled:cursor-not-allowed disabled:opacity-50"
+              title={isAccepted ? "Quote already accepted." : "Save changes"}
+              className="t2q-btn-ghost min-h-[44px] flex-1 !px-2 sm:flex-none sm:!px-7 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <FloppyDisk size={16} weight="bold" className="shrink-0" />
-              <span className="hidden sm:inline">
-                {isPending ? "Saving…" : "Save changes"}
-              </span>
+              <span>{isPending ? "Saving" : "Save"}</span>
+              <span className="hidden sm:inline">{isPending ? "…" : " changes"}</span>
             </button>
 
             {!isAccepted && (
@@ -237,13 +235,6 @@ export function StickyActionBar({
                   data-testid="sticky-send-button"
                   onClick={handleSend}
                   disabled={sendBusy || isPending}
-                  aria-label={
-                    sendBusy && activeChannel === "email"
-                      ? "Sending email"
-                      : isSentOrViewed
-                        ? "Resend email"
-                        : "Send email"
-                  }
                   title={
                     sendBusy && activeChannel === "email"
                       ? "Sending email…"
@@ -251,19 +242,15 @@ export function StickyActionBar({
                         ? "Resend email"
                         : "Send email"
                   }
-                  className="t2q-btn-primary min-h-[44px] min-w-[44px] !px-0 sm:flex-none sm:min-w-0 sm:!px-7 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="t2q-btn-primary min-h-[44px] flex-1 !px-2 sm:flex-none sm:!px-7 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <EnvelopeSimple size={16} weight="bold" className="shrink-0" />
-                  <span className="hidden sm:inline">
+                  <span>
                     {sendBusy && activeChannel === "email"
-                      ? sendState === "saving"
-                        ? "Saving edits…"
-                        : sendState === "generating"
-                          ? "Generating PDF…"
-                          : "Sending email…"
+                      ? "Sending"
                       : isSentOrViewed
-                        ? "Resend email"
-                        : "Send email"}
+                        ? "Resend"
+                        : "Email"}
                   </span>
                 </button>
                 <button
@@ -273,31 +260,27 @@ export function StickyActionBar({
                   disabled={sendBusy || isPending}
                   aria-label={
                     sendBusy && activeChannel === "sms"
-                      ? "Sending SMS"
+                      ? "Sending text"
                       : isSentOrViewed
-                        ? "Resend SMS"
-                        : "Send SMS"
+                        ? "Resend text"
+                        : "Send text"
                   }
                   title={
                     sendBusy && activeChannel === "sms"
-                      ? "Sending SMS…"
+                      ? "Sending text…"
                       : isSentOrViewed
-                        ? "Resend SMS"
-                        : "Send SMS"
+                        ? "Resend text"
+                        : "Send text"
                   }
-                  className="t2q-btn-ghost min-h-[44px] min-w-[44px] !px-0 sm:flex-none sm:min-w-0 sm:!px-7 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="t2q-btn-ghost min-h-[44px] flex-1 !px-2 sm:flex-none sm:!px-7 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <ChatCircleText size={16} weight="bold" className="shrink-0" />
-                  <span className="hidden sm:inline">
+                  <span>
                     {sendBusy && activeChannel === "sms"
-                      ? sendState === "saving"
-                        ? "Saving edits…"
-                        : sendState === "generating"
-                          ? "Generating PDF…"
-                          : "Sending SMS…"
+                      ? "Sending"
                       : isSentOrViewed
-                        ? "Resend SMS"
-                        : "Send SMS"}
+                        ? "Resend"
+                        : "Text"}
                   </span>
                 </button>
               </>
