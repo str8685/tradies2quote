@@ -197,9 +197,12 @@ export function StickyActionBar({
         ].join(" ")}
       >
         <div className="mx-auto flex max-w-3xl items-center gap-2 px-3 py-2 sm:justify-between sm:px-0 sm:py-4 sm:border-t sm:border-ink-700">
+          {/* Status pill hidden on mobile — the same pill is rendered
+              inside the page above, and the third action button (SMS)
+              left no horizontal room. Shows again from sm: upward. */}
           <span
             data-testid="sticky-status-pill"
-            className={`inline-flex shrink-0 items-center rounded-sm border px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.2em] ${pill.cls}`}
+            className={`hidden sm:inline-flex shrink-0 items-center rounded-sm border px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.2em] ${pill.cls}`}
           >
             {pill.label}
           </span>
