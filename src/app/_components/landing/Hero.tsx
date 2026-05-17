@@ -259,7 +259,7 @@ export function Hero() {
               variants={lineContainer(0.95)}
               initial="hidden"
               animate="visible"
-              className="block text-white/90"
+              className="block text-ink-900"
             >
               {HERO_LINE_3.map((w, i) => (
                 <Fragment key={`l3-${i}`}>
