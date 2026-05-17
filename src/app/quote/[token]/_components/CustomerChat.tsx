@@ -221,7 +221,14 @@ export function CustomerChat({ token, businessName, clientName }: Props) {
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="flex h-[88vh] w-full max-w-md flex-col overflow-hidden rounded-t-2xl border border-ink-700 bg-ink-950 shadow-2xl sm:h-[80vh] sm:rounded-2xl"
+            // `max-w-[100vw]` is the belt to the `max-w-md` braces — in
+            // some in-app browsers (Outlook, Gmail, Messenger) the
+            // visible viewport is narrower than the document viewport,
+            // and `w-full` then resolves wider than the user can see.
+            // Clamping to 100vw guarantees the panel never extends past
+            // the user-visible area, which kept the send button off-
+            // screen on narrow embedded browsers.
+            className="flex h-[88vh] w-full max-w-[min(28rem,100vw)] flex-col overflow-hidden rounded-t-2xl border border-ink-700 bg-ink-950 shadow-2xl sm:h-[80vh] sm:rounded-2xl"
           >
             {/* Header */}
             <header className="flex items-start justify-between gap-3 border-b border-ink-700 bg-ink-950 px-5 py-4">

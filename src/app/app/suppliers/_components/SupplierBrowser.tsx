@@ -185,7 +185,14 @@ export function SupplierBrowser({ initialUrl }: { initialUrl: string }) {
     setPhase({ state: "saved", name: final.name });
   };
 
-  const showBlockedHint = loadedUrl && iframeLoaded === false;
+  // Major NZ retailers (Placemakers, Bunnings, Mitre 10, ITM) set
+  // X-Frame-Options: DENY, so the iframe loads but renders blank — and
+  // iframeLoaded still flips true on the empty response. The earlier
+  // condition only showed the "open in browser" escape BEFORE load
+  // finished, which meant for blocked sites the hint disappeared the
+  // moment it was actually needed. Now: whenever a URL is loaded, the
+  // hint is available so the tradie always has a way out.
+  const showBlockedHint = Boolean(loadedUrl);
 
   return (
     <main className="mx-auto w-full max-w-3xl px-3 pb-32 pt-4 sm:px-6 sm:pt-8">
@@ -327,8 +334,13 @@ export function SupplierBrowser({ initialUrl }: { initialUrl: string }) {
         )}
       </div>
 
+      {/* "Add to Materials" bar sits ABOVE the mobile bottom nav. The
+          nav is a fixed 57px strip (plus safe-area inset) at z-40, so
+          this bar mirrors the StickyActionBar pattern: bottom-offset
+          accounts for the nav, z-index sits above it. Without this the
+          button was hidden behind the nav and unreachable. */}
       <div
-        className="fixed inset-x-0 bottom-0 z-30 px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-3 sm:px-6"
+        className="fixed inset-x-0 z-50 px-4 pt-3 sm:px-6 bottom-[calc(57px_+_max(env(safe-area-inset-bottom)_-_24px,4px))] sm:bottom-0 sm:pb-[calc(env(safe-area-inset-bottom)+1rem)]"
         style={{
           background:
             "linear-gradient(to top, rgba(10,10,10,0.95) 50%, rgba(10,10,10,0))",
