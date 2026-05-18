@@ -209,10 +209,54 @@ export function OnboardingTour() {
   useEffect(() => {
     ensureStyleTag();
 
-    // 300ms delay so the dashboard's tape-measure splash has time to
-    // clear and the anchored elements have settled into their final
-    // positions before Driver.js measures them.
-    const t = setTimeout(() => {
+    // Cancellation flag — set by the cleanup function below. Replaces
+    // the previous single setTimeout / clearTimeout pattern because we
+    // now schedule several timers in sequence (poll loop + settle
+    // delay + driver kick-off) and they all need to bail if the
+    // component unmounts mid-wait.
+    let cancelled = false;
+    const timers = new Set<ReturnType<typeof setTimeout>>();
+    const schedule = (fn: () => void, ms: number) => {
+      const t = setTimeout(() => {
+        timers.delete(t);
+        if (!cancelled) fn();
+      }, ms);
+      timers.add(t);
+    };
+
+    /**
+     * Wait until the LoadingScreen (data-testid="loading-screen") is
+     * gone from the DOM before firing. Previously this was a fixed
+     * 300ms delay, which fires inside the 5s tape-measure splash on
+     * first /app entry — Driver.js highlights elements behind the
+     * splash that the user can't see. Polling the DOM covers both
+     * cases:
+     *   - First visit: splash plays ~5s → polls until it unmounts → fire
+     *   - Returning visit (splash skipped via sessionStorage): element
+     *     never appears → polls fall through immediately → fire after
+     *     the settle delay
+     * Hard ceiling of 10s so a bug in the splash can't permanently
+     * block the tour.
+     */
+    const POLL_INTERVAL_MS = 200;
+    const MAX_WAIT_MS = 10_000;
+    const SETTLE_AFTER_SPLASH_MS = 350;
+    const startedAt = Date.now();
+
+    const waitForSplash = () => {
+      if (cancelled) return;
+      const splash = document.querySelector(
+        '[data-testid="loading-screen"]',
+      );
+      const elapsed = Date.now() - startedAt;
+      if (!splash || elapsed > MAX_WAIT_MS) {
+        schedule(kickOff, SETTLE_AFTER_SPLASH_MS);
+        return;
+      }
+      schedule(waitForSplash, POLL_INTERVAL_MS);
+    };
+
+    const kickOff = () => {
       try {
         // Filter steps to only those whose element exists in the DOM
         // right now. Welcome + final steps have no element and always
@@ -258,10 +302,14 @@ export function OnboardingTour() {
         // stuck with a broken state on reload.
         markDone();
       }
-    }, 300);
+    };
+
+    waitForSplash();
 
     return () => {
-      clearTimeout(t);
+      cancelled = true;
+      timers.forEach((t) => clearTimeout(t));
+      timers.clear();
     };
   }, []);
 
