@@ -788,6 +788,159 @@ h1, h2, h3, h4, h5 {
     0 10px 24px -16px rgba(10, 10, 10, 0.10);
 }
 
+/* ─── "Pro" opt-in design system ─────────────────────────────────────────
+   Wave 38 — premium polish POC. Softer corners, quieter borders, deeper
+   drop shadows. Used on the Dashboard first as a direction check before
+   propagating to the rest of the /app/* surface. Brand colours unchanged.
+
+   Pro principles:
+     - radius bumped 0.125rem → 0.625rem (sharp → App-Store soft)
+     - borders use rgba(white,0.06) instead of solid grey so the cards
+       feel like surfaces lit from above instead of slabs
+     - shadows are wider + softer (less brutal slab, more iOS panel)
+     - eyebrow labels lose 30% of their ink so the EYEBROW chatter quiets
+       down and the real content reads first
+     - buttons keep brutalist colour blocking but the corner radius +
+       inner highlight + drop shadow on hover make taps feel responsive
+   Everything still opts-in via class name; nothing here breaks the
+   existing `.t2q-card`, `.t2q-premium-card`, `.t2q-btn-primary` chain. */
+
+.t2q-card-pro {
+  position: relative;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.035) 0%, rgba(255, 255, 255, 0) 60%),
+    #181818;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 0.625rem;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 1px 2px rgba(0, 0, 0, 0.18),
+    0 8px 32px -12px rgba(0, 0, 0, 0.45);
+}
+.t2q-card-pro-hover {
+  transition: border-color 200ms ease, box-shadow 240ms ease, transform 220ms ease;
+}
+@media (hover: hover) {
+  .t2q-card-pro-hover:hover {
+    border-color: rgba(255, 95, 21, 0.28);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.07),
+      0 1px 2px rgba(0, 0, 0, 0.2),
+      0 18px 48px -16px rgba(255, 95, 21, 0.18),
+      0 24px 56px -28px rgba(0, 0, 0, 0.55);
+    transform: translateY(-1px);
+  }
+}
+@media (hover: none), (prefers-reduced-motion: reduce) {
+  .t2q-card-pro-hover { transition: none; }
+}
+[data-theme="light"] .t2q-card-pro {
+  background:
+    linear-gradient(180deg, #FFFFFF 0%, #FBFAF6 100%);
+  border-color: rgba(10, 10, 10, 0.08);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 1px 2px rgba(10, 10, 10, 0.04),
+    0 8px 32px -12px rgba(10, 10, 10, 0.12);
+}
+
+.t2q-section-label-pro {
+  font-family: var(--font-ibm-plex-mono), ui-monospace, monospace;
+  font-size: 0.625rem;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.42);
+}
+[data-theme="light"] .t2q-section-label-pro {
+  color: rgba(10, 10, 10, 0.45);
+}
+
+.t2q-btn-primary-pro {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  height: 2.75rem;
+  padding: 0 1.125rem;
+  background: #FF5F15;
+  color: #111111;
+  border-radius: 0.5rem;
+  font-family: 'Archivo Black', system-ui, sans-serif;
+  font-size: 0.9375rem;
+  letter-spacing: -0.005em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  transition: background-color 150ms ease, transform 120ms ease, box-shadow 200ms ease;
+}
+.t2q-btn-primary-pro:hover {
+  background: #FF7233;
+  transform: translateY(-1px);
+  box-shadow:
+    0 6px 18px -6px rgba(255, 95, 21, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25);
+}
+.t2q-btn-primary-pro:active {
+  transform: translateY(0);
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+
+.t2q-btn-ghost-pro {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  height: 2.75rem;
+  padding: 0 1.125rem;
+  background: transparent;
+  color: #F5F5F5;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 0.5rem;
+  font-family: 'Archivo Black', system-ui, sans-serif;
+  font-size: 0.9375rem;
+  letter-spacing: -0.005em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  transition: border-color 150ms ease, background-color 150ms ease, color 150ms ease;
+}
+.t2q-btn-ghost-pro:hover {
+  border-color: rgba(255, 95, 21, 0.55);
+  background: rgba(255, 95, 21, 0.06);
+  color: #FF5F15;
+}
+[data-theme="light"] .t2q-btn-ghost-pro {
+  color: #0A0A0A;
+  border-color: rgba(10, 10, 10, 0.12);
+}
+[data-theme="light"] .t2q-btn-ghost-pro:hover {
+  border-color: rgba(255, 95, 21, 0.55);
+  background: rgba(255, 95, 21, 0.07);
+  color: #C04A0A;
+}
+
+/* Stage tile pro variant — softer corners, quieter borders, used inline
+   from page.tsx for the dashboard's pipeline grid. */
+.t2q-stage-tile-pro {
+  border-radius: 0.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.02);
+  transition: border-color 150ms ease, background-color 150ms ease, transform 120ms ease;
+}
+.t2q-stage-tile-pro:hover {
+  border-color: rgba(255, 95, 21, 0.35);
+  background: rgba(255, 95, 21, 0.06);
+  transform: translateY(-1px);
+}
+[data-theme="light"] .t2q-stage-tile-pro {
+  border-color: rgba(10, 10, 10, 0.08);
+  background: rgba(10, 10, 10, 0.02);
+}
+
 /* ─── Nav tabs ───────────────────────────────────────────────────────────
    Used by AppHeader (desktop) and MobileBottomNav (mobile). The active
    indicator pivots on `aria-current="page"` which Next's <Link> sets when

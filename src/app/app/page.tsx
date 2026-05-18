@@ -72,9 +72,9 @@ export default async function DashboardPage() {
       <AppHeader />
 
       <main className="mx-auto max-w-3xl px-4 py-10 sm:px-6 sm:py-14">
-        <div className="mb-6">
-          <div className="t2q-section-label mb-3">{"// dashboard"}</div>
-          <h1 className="font-display text-3xl uppercase tracking-tight sm:text-4xl">
+        <div className="mb-7 sm:mb-8">
+          <div className="t2q-section-label-pro mb-2.5">{"// dashboard"}</div>
+          <h1 className="font-display text-[2rem] leading-[1.05] uppercase tracking-tight sm:text-[2.5rem]">
             Welcome, <span className="text-brand">{username}.</span>
           </h1>
         </div>
@@ -188,11 +188,11 @@ async function DashboardData({
         <Link
           href="/app/settings"
           data-testid="dashboard-business-name-banner"
-          className="t2q-premium-card mb-4 flex items-start gap-3 p-4 sm:items-center sm:p-5"
+          className="t2q-card-pro t2q-card-pro-hover mb-5 flex items-start gap-3 p-4 sm:items-center sm:p-5"
         >
           <span
             aria-hidden="true"
-            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-sm border border-brand/40 bg-brand/10 text-brand"
+            className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-brand/30 bg-brand/10 text-brand"
           >
             <Warning size={18} weight="bold" />
           </span>
@@ -229,12 +229,10 @@ async function DashboardData({
       <section
         data-testid="dashboard-stats"
         aria-label="Pipeline by lifecycle stage"
-        className="t2q-premium-card-static mb-6 p-4 sm:p-5"
+        className="t2q-card-pro mb-7 p-5 sm:p-6"
       >
         <div className="flex items-center justify-between gap-3">
-          <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-ink-300">
-            {"// pipeline"}
-          </p>
+          <p className="t2q-section-label-pro">{"// pipeline"}</p>
         </div>
         {stats.totalQuotes === 0 ? (
           /* Empty pipeline used to render a grid of zero-count tiles
@@ -271,7 +269,7 @@ async function DashboardData({
 
             {/* Secondary KPI strip — keeps the Wave 10.5 honest numbers
                 without competing with the stage tiles. */}
-            <div className="mt-4 grid grid-cols-2 gap-3 border-t border-ink-700/60 pt-4">
+            <div className="mt-5 grid grid-cols-2 gap-3 border-t border-white/5 pt-5">
               <SecondaryStat
                 label="Quotes this month"
                 value={stats.thisMonth.toLocaleString()}
@@ -289,18 +287,18 @@ async function DashboardData({
       <div className="flex flex-col-reverse items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between">
         <p
           data-testid="dashboard-recent-label"
-          className="font-mono text-xs uppercase tracking-[0.2em] text-ink-500"
+          className="t2q-section-label-pro"
         >
           {`// ${recent.length} recent quote${recent.length === 1 ? "" : "s"}`}
         </p>
         <div className="flex gap-2">
-          <Link href="/app/materials" className="t2q-btn-ghost">
+          <Link href="/app/materials" className="t2q-btn-ghost-pro">
             Materials
           </Link>
           <Link
             href="/app/quotes/new"
             data-testid="dashboard-new-quote"
-            className="t2q-btn-primary"
+            className="t2q-btn-primary-pro"
           >
             <Plus size={18} weight="bold" />
             New quote
@@ -317,11 +315,11 @@ async function DashboardData({
         <Link
           href="/app/agents"
           data-testid="dashboard-agents-card"
-          className="t2q-premium-card mt-6 flex items-center gap-4 p-4 sm:p-5"
+          className="t2q-card-pro t2q-card-pro-hover mt-7 flex items-center gap-4 p-4 sm:p-5"
         >
           <span
             aria-hidden="true"
-            className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-sm border border-brand/40 bg-brand/10 text-brand"
+            className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-lg border border-brand/30 bg-brand/10 text-brand"
           >
             <Robot size={22} weight="bold" />
           </span>
@@ -351,11 +349,11 @@ async function DashboardData({
         </Link>
       ) : null}
 
-      <section className="mt-6">
+      <section className="mt-5">
         {recent.length === 0 ? (
           <div
             data-testid="dashboard-empty"
-            className="t2q-premium-card-static flex flex-col items-center gap-3 p-10 text-center"
+            className="t2q-card-pro flex flex-col items-center gap-3 p-10 text-center"
           >
             <p className="font-display text-lg uppercase tracking-tight text-white">
               No quotes yet.
@@ -367,7 +365,7 @@ async function DashboardData({
             <Link
               href="/app/quotes/new"
               data-testid="dashboard-empty-cta"
-              className="t2q-btn-primary mt-2"
+              className="t2q-btn-primary-pro mt-2"
             >
               <Plus size={18} weight="bold" />
               Start your first quote
@@ -503,13 +501,12 @@ function StageTile({
       href={`/app/quotes?stage=${stage}`}
       data-testid={`stage-tile-${stage}`}
       data-count={count}
-      // Wave 15.3 — mobile compaction. Tighter padding + smaller
-      // count font on phones; desktop visuals unchanged via sm:
-      // overrides.
-      className={`group flex flex-col gap-0.5 rounded-sm border px-2.5 py-2 transition-colors sm:gap-1 sm:px-3 sm:py-3 ${
+      // Wave 38 — pro stage tile. Softer corners (rounded-lg), quieter
+      // borders via white/black alpha, gentle hover lift.
+      className={`group flex flex-col gap-0.5 rounded-lg border px-2.5 py-2.5 transition-all sm:gap-1 sm:px-3 sm:py-3 ${
         active
-          ? "border-ink-700/60 bg-ink-900/40 hover:border-brand/60 hover:bg-brand/5"
-          : "border-ink-800 bg-ink-900/20 text-ink-500 hover:border-ink-600"
+          ? "border-white/[0.06] bg-white/[0.02] hover:border-brand/40 hover:bg-brand/[0.06] hover:-translate-y-px"
+          : "border-white/[0.04] bg-white/[0.01] text-ink-500 hover:border-white/[0.08]"
       }`}
     >
       <p
@@ -517,7 +514,7 @@ function StageTile({
       >
         {count}
       </p>
-      <p className="font-mono text-[9px] uppercase tracking-[0.18em] text-ink-300 sm:text-[10px] sm:tracking-[0.2em]">
+      <p className="font-mono text-[9px] uppercase tracking-[0.18em] text-ink-400 sm:text-[10px] sm:tracking-[0.2em]">
         {label}
       </p>
     </Link>
@@ -537,7 +534,7 @@ function SecondaryStat({
   return (
     <div
       data-testid={`stat-${label.toLowerCase().replace(/\s+/g, "-")}`}
-      className="rounded-sm border border-ink-700/60 bg-ink-900/40 px-3 py-3"
+      className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-3.5 py-3"
     >
       <p
         className={`font-display tabular-nums leading-none ${tone === "brand" ? "text-brand" : "text-white"} text-lg sm:text-xl`}
