@@ -1,11 +1,53 @@
-import type { MaterialTakeoffInput } from "./materialCalculator";
+import {
+  calculateCladdingTakeoff,
+  calculateDeckTakeoff,
+  calculateMaterialTakeoff,
+  calculateSubfloorTakeoff,
+  type CladdingTakeoffInput,
+  type DeckTakeoffInput,
+  type MaterialTakeoffInput,
+  type MaterialTakeoffResult,
+  type SubfloorTakeoffInput,
+} from "./materialCalculator";
 
-export type ParsedTakeoffResult = {
-  input: Partial<MaterialTakeoffInput>;
+/**
+ * What kind of job the operator described in voice/text.
+ * - "wall":     internal wall framing (the original takeoff)
+ * - "deck":     external decking (bearers, joists, boards, piles)
+ * - "cladding": exterior weatherboard on a wall
+ * - "subfloor": floor framing under the house
+ * - "unknown":  no clear signal — falls back to no calculator run
+ */
+export type TakeoffType =
+  | "wall"
+  | "deck"
+  | "cladding"
+  | "subfloor"
+  | "unknown";
+
+interface ParsedTakeoffBase {
   missingFields: string[];
   assumptions: string[];
   confidence: number;
-};
+}
+
+/**
+ * Discriminated union: the `type` field narrows `input` to the right
+ * shape automatically, so callers can do `if (r.type === "deck")` and
+ * TS will know `r.input` is `Partial<DeckTakeoffInput>`.
+ */
+export type ParsedTakeoffResult =
+  | (ParsedTakeoffBase & { type: "wall"; input: Partial<MaterialTakeoffInput> })
+  | (ParsedTakeoffBase & { type: "deck"; input: Partial<DeckTakeoffInput> })
+  | (ParsedTakeoffBase & {
+      type: "cladding";
+      input: Partial<CladdingTakeoffInput>;
+    })
+  | (ParsedTakeoffBase & {
+      type: "subfloor";
+      input: Partial<SubfloorTakeoffInput>;
+    })
+  | (ParsedTakeoffBase & { type: "unknown"; input: Record<string, never> });
 
 const NUMBER_WORDS: Record<string, number> = {
   one: 1,
@@ -137,9 +179,256 @@ export type ParseOptions = {
   applyDefaults?: boolean;
 };
 
+/**
+ * Pick the takeoff type from a voice/text description.
+ *
+ * The order of the checks matters — "subfloor" is checked before
+ * "deck" because every subfloor is also a deck-shaped structure
+ * (joists/bearers/piles) and the subfloor keyword should win when
+ * present. Similarly "cladding" is checked before "wall" because
+ * "cladding on a 6m wall" is a cladding job, not a framing job.
+ *
+ * Returns "unknown" when nothing matches; the caller falls back to
+ * the AI quote generator instead of a calculator.
+ */
+export function detectTakeoffType(description: string): TakeoffType {
+  const text = (description ?? "").toLowerCase();
+  if (/\bsub[-\s]?floor\b|\bfloor\s+framing\b|\bfloor\s+joists?\b/.test(text)) {
+    return "subfloor";
+  }
+  if (/\bclad(ding)?\b|\bweatherboards?\b|\bsiding\b/.test(text)) {
+    return "cladding";
+  }
+  if (/\bdeck(ing|s)?\b/.test(text)) {
+    return "deck";
+  }
+  if (/\bwall\b|\bgib\b|\bplasterboard\b|\bframing\b|\bstuds?\b/.test(text)) {
+    return "wall";
+  }
+  return "unknown";
+}
+
+/**
+ * Pull "L by W" dimensions from a description.
+ *
+ * Handles every common spoken/typed shorthand:
+ *   "6m by 3m", "6 by 3", "6m × 3m", "6m x 3m", "6 metres by 3 metres",
+ *   "6×3", "deck 6 by 3", "I'm doing a 4 m x 2 m deck"
+ *
+ * Returns the larger number as `lengthM`, the smaller as `widthM`. NZ
+ * residential convention: long side = length, short side = width. The
+ * downstream calculators run joists across width and decking along
+ * length — flipping the two would silently swap joist orientation.
+ */
+function extractRectangle(
+  text: string,
+): { lengthM: number; widthM: number } | undefined {
+  const re =
+    /(\d+(?:\.\d+)?)\s*(?:m|metres?)?\s*(?:by|x|×|\*)\s*(\d+(?:\.\d+)?)\s*(?:m|metres?)?/i;
+  const m = text.match(re);
+  if (!m) return undefined;
+  const a = Number(m[1]);
+  const b = Number(m[2]);
+  if (!Number.isFinite(a) || !Number.isFinite(b) || a <= 0 || b <= 0) {
+    return undefined;
+  }
+  return { lengthM: Math.max(a, b), widthM: Math.min(a, b) };
+}
+
+function extractJoistSpacingMm(text: string): number | undefined {
+  // "450mm centres", "joists at 450mm", "joist centres 600"
+  const re =
+    /(\d{3})\s*mm\s*(?:centres|centers|cc|c\/c|spacing)|joist(?:\s+centres?|\s+spacing)?\s+(\d{3})\s*mm/i;
+  const m = text.match(re);
+  if (!m) return undefined;
+  const n = Number(m[1] ?? m[2]);
+  return Number.isFinite(n) ? n : undefined;
+}
+
+function extractIncludePiles(text: string): boolean | undefined {
+  if (/\bno\s+piles?\b|\bground[-\s]?level\b/i.test(text)) return false;
+  if (/\bon\s+piles?\b|\bpile\s+spacing\b|\braised\b/i.test(text)) return true;
+  return undefined;
+}
+
+function parseDeckDescription(
+  description: string,
+  options: ParseOptions,
+): ParsedTakeoffResult {
+  const { applyDefaults = true } = options;
+  const text = description ?? "";
+  const input: Partial<DeckTakeoffInput> = {};
+  const assumptions: string[] = [];
+  const missingFields: string[] = [];
+
+  const dims = extractRectangle(text);
+  if (dims) {
+    input.deckLengthM = dims.lengthM;
+    input.deckWidthM = dims.widthM;
+  }
+
+  const joistSpacing = extractJoistSpacingMm(text);
+  if (joistSpacing !== undefined) {
+    input.joistSpacingMm = joistSpacing;
+  } else if (applyDefaults) {
+    input.joistSpacingMm = 450;
+    assumptions.push("Used default joist spacing of 450mm centres.");
+  }
+
+  const piles = extractIncludePiles(text);
+  if (piles !== undefined) input.includePiles = piles;
+
+  const waste = extractWastePercent(text);
+  if (waste !== undefined) input.wastePercent = waste;
+  else if (applyDefaults) input.wastePercent = 10;
+
+  if (input.deckLengthM === undefined || input.deckWidthM === undefined) {
+    missingFields.push("Deck length and width.");
+  }
+
+  let confidence = 0;
+  if (input.deckLengthM !== undefined) confidence += 0.5;
+  if (input.deckWidthM !== undefined) confidence += 0.3;
+  if (joistSpacing !== undefined) confidence += 0.1;
+  if (piles !== undefined) confidence += 0.1;
+  confidence = Math.min(1, Math.round(confidence * 100) / 100);
+
+  return {
+    type: "deck",
+    input,
+    missingFields,
+    assumptions,
+    confidence,
+  };
+}
+
+function parseCladdingDescription(
+  description: string,
+  options: ParseOptions,
+): ParsedTakeoffResult {
+  const { applyDefaults = true } = options;
+  const text = description ?? "";
+  const input: Partial<CladdingTakeoffInput> = {};
+  const assumptions: string[] = [];
+  const missingFields: string[] = [];
+
+  const wallLength = extractWallLength(text);
+  if (wallLength !== undefined) input.wallLengthM = wallLength;
+
+  const wallHeight = extractWallHeight(text);
+  if (wallHeight !== undefined) {
+    input.wallHeightM = wallHeight;
+  } else if (applyDefaults) {
+    input.wallHeightM = 2.4;
+    assumptions.push("Used default wall height of 2.4m.");
+  }
+
+  // Openings — count windows + doors, estimate area from defaults.
+  const doors = extractCount(text, "door");
+  const windows = extractCount(text, "window");
+  const numberOfOpenings = (doors ?? 0) + (windows ?? 0);
+  if (numberOfOpenings > 0) {
+    input.numberOfOpenings = numberOfOpenings;
+    // Estimate opening area: doors 0.82×2.04 = 1.67m², windows 1.2×1.2 = 1.44m²
+    const estimatedArea =
+      (doors ?? 0) * 1.67 + (windows ?? 0) * 1.44;
+    input.openingAreaM2 = Math.round(estimatedArea * 100) / 100;
+    if (applyDefaults) {
+      assumptions.push(
+        `Estimated opening area from ${doors ?? 0} door(s) + ${windows ?? 0} window(s) at standard sizes.`,
+      );
+    }
+  }
+
+  const waste = extractWastePercent(text);
+  if (waste !== undefined) input.wastePercent = waste;
+  else if (applyDefaults) input.wastePercent = 10;
+
+  if (input.wallLengthM === undefined) {
+    missingFields.push("Wall length.");
+  }
+
+  let confidence = 0;
+  if (input.wallLengthM !== undefined) confidence += 0.5;
+  if (wallHeight !== undefined) confidence += 0.2;
+  if (numberOfOpenings > 0) confidence += 0.2;
+  confidence = Math.min(1, Math.round(confidence * 100) / 100);
+
+  return {
+    type: "cladding",
+    input,
+    missingFields,
+    assumptions,
+    confidence,
+  };
+}
+
+function parseSubfloorDescription(
+  description: string,
+  options: ParseOptions,
+): ParsedTakeoffResult {
+  const { applyDefaults = true } = options;
+  const text = description ?? "";
+  const input: Partial<SubfloorTakeoffInput> = {};
+  const assumptions: string[] = [];
+  const missingFields: string[] = [];
+
+  const dims = extractRectangle(text);
+  if (dims) {
+    input.floorLengthM = dims.lengthM;
+    input.floorWidthM = dims.widthM;
+  }
+
+  const joistSpacing = extractJoistSpacingMm(text);
+  if (joistSpacing !== undefined) {
+    input.joistSpacingMm = joistSpacing;
+  } else if (applyDefaults) {
+    input.joistSpacingMm = 450;
+    assumptions.push("Used default joist spacing of 450mm centres.");
+  }
+
+  const waste = extractWastePercent(text);
+  if (waste !== undefined) input.wastePercent = waste;
+  else if (applyDefaults) input.wastePercent = 10;
+
+  if (input.floorLengthM === undefined || input.floorWidthM === undefined) {
+    missingFields.push("Floor length and width.");
+  }
+
+  let confidence = 0;
+  if (input.floorLengthM !== undefined) confidence += 0.5;
+  if (input.floorWidthM !== undefined) confidence += 0.3;
+  if (joistSpacing !== undefined) confidence += 0.2;
+  confidence = Math.min(1, Math.round(confidence * 100) / 100);
+
+  return {
+    type: "subfloor",
+    input,
+    missingFields,
+    assumptions,
+    confidence,
+  };
+}
+
 export function parseTakeoffDescription(
   description: string,
   options: ParseOptions = {},
+): ParsedTakeoffResult {
+  const type = detectTakeoffType(description);
+  if (type === "deck") return parseDeckDescription(description, options);
+  if (type === "cladding") {
+    return parseCladdingDescription(description, options);
+  }
+  if (type === "subfloor") return parseSubfloorDescription(description, options);
+  // Fall through to the original wall framing parser for type === "wall"
+  // or "unknown" (the unknown branch produces an empty wall result which
+  // canRunCalculator rejects, so the route falls back to the AI generator).
+  return parseWallDescription(description, options);
+}
+
+function parseWallDescription(
+  description: string,
+  options: ParseOptions,
 ): ParsedTakeoffResult {
   const { applyDefaults = true } = options;
   const text = description ?? "";
@@ -217,15 +506,74 @@ export function parseTakeoffDescription(
   if (architraves !== undefined) confidence += 0.025;
   confidence = Math.min(1, Math.round(confidence * 100) / 100);
 
-  return { input, missingFields, assumptions, confidence };
+  return {
+    type: "wall",
+    input,
+    missingFields,
+    assumptions,
+    confidence,
+  };
 }
 
+/**
+ * Dispatch on type: do we have enough parsed input to actually run a
+ * calculator, or do we need to fall back to AI generation?
+ */
 export function canRunCalculator(parsed: ParsedTakeoffResult): boolean {
+  if (parsed.type === "deck") {
+    const i = parsed.input as Partial<DeckTakeoffInput>;
+    return (
+      i.deckLengthM !== undefined &&
+      i.deckLengthM > 0 &&
+      i.deckWidthM !== undefined &&
+      i.deckWidthM > 0
+    );
+  }
+  if (parsed.type === "cladding") {
+    const i = parsed.input as Partial<CladdingTakeoffInput>;
+    return (
+      i.wallLengthM !== undefined &&
+      i.wallLengthM > 0 &&
+      i.wallHeightM !== undefined &&
+      i.wallHeightM > 0
+    );
+  }
+  if (parsed.type === "subfloor") {
+    const i = parsed.input as Partial<SubfloorTakeoffInput>;
+    return (
+      i.floorLengthM !== undefined &&
+      i.floorLengthM > 0 &&
+      i.floorWidthM !== undefined &&
+      i.floorWidthM > 0
+    );
+  }
+  // wall (original) — need length + height + gibSides
+  const i = parsed.input as Partial<MaterialTakeoffInput>;
   return (
-    parsed.input.wallLengthM !== undefined &&
-    parsed.input.wallLengthM > 0 &&
-    parsed.input.wallHeightM !== undefined &&
-    parsed.input.wallHeightM > 0 &&
-    parsed.input.gibSides !== undefined
+    i.wallLengthM !== undefined &&
+    i.wallLengthM > 0 &&
+    i.wallHeightM !== undefined &&
+    i.wallHeightM > 0 &&
+    i.gibSides !== undefined
   );
+}
+
+/**
+ * Single entry point the route calls: parse → run the matching
+ * calculator → return the unified result. Returns null when the
+ * parsed result doesn't have enough to run (caller falls back to AI
+ * generation).
+ */
+export function runTakeoff(parsed: ParsedTakeoffResult): MaterialTakeoffResult | null {
+  if (!canRunCalculator(parsed)) return null;
+  if (parsed.type === "deck") {
+    return calculateDeckTakeoff(parsed.input as DeckTakeoffInput);
+  }
+  if (parsed.type === "cladding") {
+    return calculateCladdingTakeoff(parsed.input as CladdingTakeoffInput);
+  }
+  if (parsed.type === "subfloor") {
+    return calculateSubfloorTakeoff(parsed.input as SubfloorTakeoffInput);
+  }
+  return calculateMaterialTakeoff(parsed.input as MaterialTakeoffInput);
 }

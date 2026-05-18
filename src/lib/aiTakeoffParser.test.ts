@@ -2,72 +2,90 @@ import { describe, expect, it } from "vitest";
 import {
   canRunCalculator,
   parseTakeoffDescription,
+  type ParsedTakeoffResult,
 } from "./aiTakeoffParser";
-import { calculateMaterialTakeoff } from "./materialCalculator";
+import {
+  calculateMaterialTakeoff,
+  type MaterialTakeoffInput,
+} from "./materialCalculator";
+
+/**
+ * The parsed result is a discriminated union — TS needs the `type`
+ * field to narrow `input`. These tests all hit the wall-framing path,
+ * so this helper does the narrowing in one place.
+ */
+function wallInput(
+  r: ParsedTakeoffResult,
+): Partial<MaterialTakeoffInput> {
+  if (r.type !== "wall") {
+    throw new Error(`expected type="wall", got "${r.type}"`);
+  }
+  return r.input;
+}
 
 describe("parseTakeoffDescription", () => {
   it("extracts the canonical example", () => {
     const r = parseTakeoffDescription(
       "Replace GIB in a 4m wall, 2.4m high, GIB both sides, one door, pink batts, skirting.",
     );
-    expect(r.input.wallLengthM).toBe(4);
-    expect(r.input.wallHeightM).toBe(2.4);
-    expect(r.input.gibSides).toBe(2);
-    expect(r.input.numberOfDoors).toBe(1);
-    expect(r.input.includeInsulation).toBe(true);
-    expect(r.input.includeSkirting).toBe(true);
+    expect(wallInput(r).wallLengthM).toBe(4);
+    expect(wallInput(r).wallHeightM).toBe(2.4);
+    expect(wallInput(r).gibSides).toBe(2);
+    expect(wallInput(r).numberOfDoors).toBe(1);
+    expect(wallInput(r).includeInsulation).toBe(true);
+    expect(wallInput(r).includeSkirting).toBe(true);
     expect(r.missingFields).toEqual([]);
     expect(r.confidence).toBeGreaterThan(0.8);
   });
 
   it('extracts wall length from "wall length 5m"', () => {
     const r = parseTakeoffDescription("wall length 5m");
-    expect(r.input.wallLengthM).toBe(5);
+    expect(wallInput(r).wallLengthM).toBe(5);
   });
 
   it('extracts wall length from "5 metre wall"', () => {
     const r = parseTakeoffDescription("5 metre wall, GIB both sides");
-    expect(r.input.wallLengthM).toBe(5);
+    expect(wallInput(r).wallLengthM).toBe(5);
   });
 
   it("extracts stud spacing 600mm centres", () => {
     const r = parseTakeoffDescription(
       "4m wall, 2.4m high, 600mm centres, both sides",
     );
-    expect(r.input.studSpacingMm).toBe(600);
+    expect(wallInput(r).studSpacingMm).toBe(600);
   });
 
   it("extracts stud spacing 400 centres", () => {
     const r = parseTakeoffDescription(
       "3m wall, 2.4m high, 400 centres, both sides",
     );
-    expect(r.input.studSpacingMm).toBe(400);
+    expect(wallInput(r).studSpacingMm).toBe(400);
   });
 
   it('extracts windows from "two windows"', () => {
     const r = parseTakeoffDescription(
       "4m wall, 2.4m high, two windows, both sides",
     );
-    expect(r.input.numberOfWindows).toBe(2);
+    expect(wallInput(r).numberOfWindows).toBe(2);
   });
 
   it('extracts gibSides=1 from "GIB one side"', () => {
     const r = parseTakeoffDescription(
       "4m wall, 2.4m high, GIB one side only",
     );
-    expect(r.input.gibSides).toBe(1);
+    expect(wallInput(r).gibSides).toBe(1);
   });
 
   it('extracts gibSides=2 from "two sides"', () => {
     const r = parseTakeoffDescription("4m wall, 2.4m high, two sides");
-    expect(r.input.gibSides).toBe(2);
+    expect(wallInput(r).gibSides).toBe(2);
   });
 
   it('handles "no insulation" → false', () => {
     const r = parseTakeoffDescription(
       "4m wall, 2.4m high, both sides, no insulation",
     );
-    expect(r.input.includeInsulation).toBe(false);
+    expect(wallInput(r).includeInsulation).toBe(false);
   });
 
   it("flags wallLength as missing when absent", () => {
@@ -82,7 +100,7 @@ describe("parseTakeoffDescription", () => {
 
   it("uses default wall height with assumption when missing", () => {
     const r = parseTakeoffDescription("4m wall, both sides");
-    expect(r.input.wallHeightM).toBe(2.4);
+    expect(wallInput(r).wallHeightM).toBe(2.4);
     expect(r.assumptions).toContain("Used default wall height of 2.4m.");
     expect(r.missingFields).not.toContain("Wall height.");
   });
@@ -91,7 +109,7 @@ describe("parseTakeoffDescription", () => {
     const r = parseTakeoffDescription("4m wall, both sides", {
       applyDefaults: false,
     });
-    expect(r.input.wallHeightM).toBeUndefined();
+    expect(wallInput(r).wallHeightM).toBeUndefined();
     expect(r.missingFields).toContain("Wall height.");
   });
 
@@ -126,10 +144,167 @@ describe("parseTakeoffDescription", () => {
   });
 });
 
+describe("detectTakeoffType + per-type parsers", () => {
+  it("voice 'I'm doing a 6 by 3 deck' → deck, 6×3", async () => {
+    const { detectTakeoffType } = await import("./aiTakeoffParser");
+    expect(detectTakeoffType("I'm doing a 6 by 3 deck")).toBe("deck");
+    const r = parseTakeoffDescription("I'm doing a 6 by 3 deck");
+    expect(r.type).toBe("deck");
+    if (r.type !== "deck") throw new Error("not deck");
+    expect(r.input.deckLengthM).toBe(6);
+    expect(r.input.deckWidthM).toBe(3);
+    expect(canRunCalculator(r)).toBe(true);
+  });
+
+  it("'build a 4m × 2m deck' → deck, 4×2", () => {
+    const r = parseTakeoffDescription("build a 4m × 2m deck");
+    expect(r.type).toBe("deck");
+    if (r.type !== "deck") throw new Error("not deck");
+    expect(r.input.deckLengthM).toBe(4);
+    expect(r.input.deckWidthM).toBe(2);
+  });
+
+  it("'decking 6 x 3' uses 'x' separator", () => {
+    const r = parseTakeoffDescription("decking 6 x 3");
+    expect(r.type).toBe("deck");
+    if (r.type !== "deck") throw new Error("not deck");
+    expect(r.input.deckLengthM).toBe(6);
+    expect(r.input.deckWidthM).toBe(3);
+  });
+
+  it("orders dimensions so length ≥ width regardless of input order", () => {
+    const r = parseTakeoffDescription("3 by 6 deck");
+    expect(r.type).toBe("deck");
+    if (r.type !== "deck") throw new Error("not deck");
+    expect(r.input.deckLengthM).toBe(6);
+    expect(r.input.deckWidthM).toBe(3);
+  });
+
+  it("'no piles' sets includePiles=false", () => {
+    const r = parseTakeoffDescription("6 by 3 deck, ground level, no piles");
+    if (r.type !== "deck") throw new Error("not deck");
+    expect(r.input.includePiles).toBe(false);
+  });
+
+  it("'cladding a 6m wall, 2.4m high' → cladding", () => {
+    const r = parseTakeoffDescription(
+      "Cladding a 6m wall, 2.4m high, no openings",
+    );
+    expect(r.type).toBe("cladding");
+    if (r.type !== "cladding") throw new Error("not cladding");
+    expect(r.input.wallLengthM).toBe(6);
+    expect(r.input.wallHeightM).toBe(2.4);
+    expect(canRunCalculator(r)).toBe(true);
+  });
+
+  it("'weatherboards on 12m wall, 2 windows' → cladding with openings", () => {
+    const r = parseTakeoffDescription(
+      "Weatherboards on 12m wall, 2.4m high, two windows",
+    );
+    expect(r.type).toBe("cladding");
+    if (r.type !== "cladding") throw new Error("not cladding");
+    expect(r.input.wallLengthM).toBe(12);
+    expect(r.input.numberOfOpenings).toBe(2);
+    // 2 windows × 1.44 m² = 2.88
+    expect(r.input.openingAreaM2).toBeCloseTo(2.88, 2);
+  });
+
+  it("'8 by 6 subfloor' → subfloor 8×6", () => {
+    const r = parseTakeoffDescription("8 by 6 subfloor");
+    expect(r.type).toBe("subfloor");
+    if (r.type !== "subfloor") throw new Error("not subfloor");
+    expect(r.input.floorLengthM).toBe(8);
+    expect(r.input.floorWidthM).toBe(6);
+    expect(canRunCalculator(r)).toBe(true);
+  });
+
+  it("'floor framing 4×3' also detects subfloor", () => {
+    const r = parseTakeoffDescription("Floor framing 4 × 3");
+    expect(r.type).toBe("subfloor");
+    if (r.type !== "subfloor") throw new Error("not subfloor");
+    expect(r.input.floorLengthM).toBe(4);
+    expect(r.input.floorWidthM).toBe(3);
+  });
+
+  it("ambiguous description with no clear job type → wall (legacy)", () => {
+    const r = parseTakeoffDescription("4m of GIB, both sides");
+    expect(r.type).toBe("wall");
+  });
+
+  it("'deck' wins over 'wall' when both keywords appear", () => {
+    const r = parseTakeoffDescription("6 by 3 deck against the back wall");
+    expect(r.type).toBe("deck");
+  });
+
+  it("'subfloor' wins over 'deck' when both appear", () => {
+    const r = parseTakeoffDescription(
+      "8 by 6 subfloor — same as a deck structure",
+    );
+    expect(r.type).toBe("subfloor");
+  });
+
+  it("'cladding' wins over 'wall' when both appear", () => {
+    const r = parseTakeoffDescription("cladding the 6m wall");
+    expect(r.type).toBe("cladding");
+  });
+});
+
+describe("runTakeoff", () => {
+  it("dispatches deck → deck calculator", async () => {
+    const { runTakeoff } = await import("./aiTakeoffParser");
+    const r = parseTakeoffDescription("6 by 3 deck");
+    const result = runTakeoff(r);
+    expect(result).not.toBeNull();
+    // The deck calculator's specific signature: includes joist-hangers
+    expect(
+      result?.materials.some((m) => m.id === "joist-hangers"),
+    ).toBe(true);
+  });
+
+  it("dispatches cladding → cladding calculator", async () => {
+    const { runTakeoff } = await import("./aiTakeoffParser");
+    const r = parseTakeoffDescription("cladding 6m wall, 2.4m high");
+    const result = runTakeoff(r);
+    expect(result).not.toBeNull();
+    expect(
+      result?.materials.some((m) => m.id === "cladding-boards"),
+    ).toBe(true);
+  });
+
+  it("dispatches subfloor → subfloor calculator", async () => {
+    const { runTakeoff } = await import("./aiTakeoffParser");
+    const r = parseTakeoffDescription("8 by 6 subfloor");
+    const result = runTakeoff(r);
+    expect(result).not.toBeNull();
+    expect(
+      result?.materials.some((m) => m.id === "subfloor-joists"),
+    ).toBe(true);
+  });
+
+  it("dispatches wall → wall calculator", async () => {
+    const { runTakeoff } = await import("./aiTakeoffParser");
+    const r = parseTakeoffDescription(
+      "4m wall, 2.4m high, both sides GIB",
+    );
+    const result = runTakeoff(r);
+    expect(result).not.toBeNull();
+    expect(result?.materials.some((m) => m.id === "studs-90x45")).toBe(
+      true,
+    );
+  });
+
+  it("returns null when there's not enough to run", async () => {
+    const { runTakeoff } = await import("./aiTakeoffParser");
+    const r = parseTakeoffDescription("doing a deck job");
+    expect(runTakeoff(r)).toBeNull();
+  });
+});
+
 describe("canRunCalculator", () => {
   it("requires wallLengthM, wallHeightM, gibSides", () => {
     expect(
       canRunCalculator({
+        type: "wall",
         input: {},
         missingFields: [],
         assumptions: [],
@@ -138,6 +313,7 @@ describe("canRunCalculator", () => {
     ).toBe(false);
     expect(
       canRunCalculator({
+        type: "wall",
         input: { wallLengthM: 4, wallHeightM: 2.4 },
         missingFields: [],
         assumptions: [],
@@ -146,6 +322,7 @@ describe("canRunCalculator", () => {
     ).toBe(false);
     expect(
       canRunCalculator({
+        type: "wall",
         input: { wallLengthM: 4, wallHeightM: 2.4, gibSides: 2 },
         missingFields: [],
         assumptions: [],

@@ -4,12 +4,9 @@ import { NZ_DEFAULTS, round2 } from "@/lib/quote-defaults";
 import { buildQuotePrompt, type PastQuoteSummary } from "@/lib/quote-prompt";
 import { matchToLibrary } from "@/lib/materials";
 import {
-  calculateMaterialTakeoff,
-  type MaterialTakeoffInput,
-} from "@/lib/materialCalculator";
-import {
   canRunCalculator,
   parseTakeoffDescription,
+  runTakeoff,
 } from "@/lib/aiTakeoffParser";
 import {
   materialMatchingEnabledFromEnv,
@@ -30,6 +27,7 @@ import type {
 import { canWrite, getSubscriptionStatus } from "@/lib/subscription";
 
 const TAKEOFF_MATERIAL_PATTERNS: RegExp[] = [
+  // Wall framing
   /\bstuds?\b/i,
   /\bplates?\b/i,
   /\bnogs?\b/i,
@@ -43,6 +41,22 @@ const TAKEOFF_MATERIAL_PATTERNS: RegExp[] = [
   /\bframing\s+nails?\b/i,
   /\bframing\s+(?:pine|timber)\b/i,
   /\b90\s*[x×]\s*45\b/i,
+  // Deck / subfloor — joists, bearers, piles, decking boards, hangers
+  /\bjoists?\b/i,
+  /\bbearers?\b/i,
+  /\bpiles?\b/i,
+  /\bdeck(ing)?\s+(?:boards?|screws?|nails?)\b/i,
+  /\bjoist\s+hangers?\b/i,
+  /\b200\s*[x×]\s*(?:50|100)\b/i,
+  // Cladding
+  /\bweatherboards?\b/i,
+  /\bcavity\s+battens?\b/i,
+  /\bbuilding\s+wrap\b/i,
+  /\bflashings?\b/i,
+  /\bcladding\s+(?:nails?|boards?)\b/i,
+  // Subfloor flooring
+  /\b(structural\s+)?plywood\b/i,
+  /\bsubfloor\s+screws?\b/i,
 ];
 
 function looksLikeTakeoffMaterial(description: string): boolean {
@@ -336,10 +350,17 @@ export async function POST(request: NextRequest) {
   const calculatorItems: QuoteLineItem[] = [];
 
   if (useCalculator) {
-    const calc = calculateMaterialTakeoff(
-      parsedTakeoff.input as MaterialTakeoffInput,
-    );
-    for (const m of calc.materials) {
+    const calc = runTakeoff(parsedTakeoff);
+    if (!calc) {
+      // Defensive — canRunCalculator returned true so this branch
+      // should never fire, but if it does we just skip the calculator
+      // and let the AI generate the line items.
+      console.warn(
+        "useCalculator=true but runTakeoff returned null",
+        parsedTakeoff.type,
+      );
+    }
+    for (const m of calc?.materials ?? []) {
       const match = matchToLibrary(m.name, library);
       const matchedPrice =
         match && match.default_unit_price !== null
