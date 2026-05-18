@@ -52,11 +52,11 @@ export default async function QuotePdfPage({
 
   return (
     <div className="fixed inset-0 flex flex-col bg-ink-950 text-white">
-      <header className="flex items-center justify-between border-b border-ink-700 bg-ink-950 px-4 py-3 pt-[max(env(safe-area-inset-top),12px)] sm:px-6">
+      <header className="flex items-center justify-between gap-3 border-b border-ink-700 bg-ink-950 px-3 py-3 pt-[max(env(safe-area-inset-top),12px)] sm:px-6">
         <Link
           href={`/app/quotes/preview/${id}`}
           data-testid="pdf-back"
-          className="inline-flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.2em] text-ink-200 hover:text-brand"
+          className="t2q-btn-back"
         >
           <ArrowLeft size={14} weight="bold" />
           Back to quote
@@ -65,12 +65,19 @@ export default async function QuotePdfPage({
           {"// pdf preview"}
         </span>
       </header>
-      <iframe
-        data-testid="pdf-iframe"
-        src={`/api/quotes/${id}/pdf`}
-        title="Quote PDF"
-        className="flex-1 w-full border-0 bg-white"
-      />
+      {/* Wrapper has overflow-auto so a PDF wider than the visible
+          viewport (A4/Letter native size on mobile) can be swiped
+          horizontally inside the iframe area instead of forcing
+          page-level horizontal scroll — and so iOS pinch-to-zoom
+          works without the wrapper page rearranging. */}
+      <div className="flex-1 overflow-auto bg-white">
+        <iframe
+          data-testid="pdf-iframe"
+          src={`/api/quotes/${id}/pdf`}
+          title="Quote PDF"
+          className="h-full w-full border-0 bg-white"
+        />
+      </div>
     </div>
   );
 }

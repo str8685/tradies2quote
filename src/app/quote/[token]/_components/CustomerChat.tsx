@@ -209,26 +209,32 @@ export function CustomerChat({ token, businessName, clientName }: Props) {
         </button>
       </div>
 
-      {/* Full-screen sheet on mobile, panel on sm+. */}
+      {/* Full-screen sheet on mobile, panel on sm+.
+          `overflow-hidden` on the backdrop is the real fix for the
+          Send-button-off-screen bug: `fixed inset-0` anchors the
+          backdrop to the visible viewport, and `overflow-hidden`
+          forces every descendant (the sheet, the footer, the flex
+          row, the Send button) to fit inside it. Previously the
+          sheet's `max-w-[min(28rem,100vw)]` could resolve wider than
+          the visible viewport on iOS when document-width exceeded
+          viewport-width (PDF iframe, wide tables, etc.), and the
+          Send button would land off the right edge. */}
       {open && (
         <div
           data-testid="customer-chat-sheet"
           role="dialog"
           aria-modal="true"
           aria-label="Chat about this quote"
-          className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 backdrop-blur-sm sm:items-end sm:justify-end sm:p-6"
+          className="fixed inset-0 z-50 flex items-end justify-center overflow-hidden bg-black/70 backdrop-blur-sm sm:items-end sm:justify-end sm:p-6"
           onClick={() => setOpen(false)}
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            // `max-w-[100vw]` is the belt to the `max-w-md` braces — in
-            // some in-app browsers (Outlook, Gmail, Messenger) the
-            // visible viewport is narrower than the document viewport,
-            // and `w-full` then resolves wider than the user can see.
-            // Clamping to 100vw guarantees the panel never extends past
-            // the user-visible area, which kept the send button off-
-            // screen on narrow embedded browsers.
-            className="flex h-[88vh] w-full max-w-[min(28rem,100vw)] flex-col overflow-hidden overflow-x-hidden rounded-t-2xl border border-ink-700 bg-ink-950 shadow-2xl sm:h-[80vh] sm:rounded-2xl"
+            // w-full + max-w-md scoped to the backdrop (which is exactly
+            // viewport-sized thanks to fixed inset-0 + overflow-hidden
+            // above), so the sheet never exceeds visible width. No
+            // more 100vw arithmetic that the iOS quirk can mess with.
+            className="flex h-[88vh] w-full max-w-md flex-col overflow-hidden overflow-x-hidden rounded-t-2xl border border-ink-700 bg-ink-950 shadow-2xl sm:h-[80vh] sm:rounded-2xl"
           >
             {/* Header */}
             <header className="flex items-start justify-between gap-3 border-b border-ink-700 bg-ink-950 px-5 py-4">

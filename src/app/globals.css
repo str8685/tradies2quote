@@ -923,6 +923,46 @@ h1, h2, h3, h4, h5 {
   color: #C04A0A;
 }
 
+/* "Back" button utility — orange-bordered chip used at the top of any
+   in-app view that needs a noticeable return path (PDF preview, agent
+   monitor, settings sub-pages). Lives separately from the generic
+   ghost button so its style can be tuned without affecting every
+   secondary CTA. */
+.t2q-btn-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  height: 2.5rem;
+  padding: 0 0.875rem;
+  border-radius: 0.5rem;
+  border: 1.5px solid rgba(255, 95, 21, 0.55);
+  background: rgba(255, 95, 21, 0.08);
+  color: #FF5F15;
+  font-family: var(--font-ibm-plex-mono), ui-monospace, monospace;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease, transform 120ms ease;
+}
+.t2q-btn-back:hover {
+  background: rgba(255, 95, 21, 0.18);
+  border-color: #FF5F15;
+  color: #FFFFFF;
+  transform: translateY(-1px);
+}
+.t2q-btn-back:active {
+  transform: translateY(0);
+}
+[data-theme="light"] .t2q-btn-back {
+  color: #C04A0A;
+  border-color: rgba(255, 95, 21, 0.6);
+}
+[data-theme="light"] .t2q-btn-back:hover {
+  background: rgba(255, 95, 21, 0.12);
+  color: #0A0A0A;
+}
+
 /* Stage tile pro variant — softer corners, quieter borders, used inline
    from page.tsx for the dashboard's pipeline grid. */
 .t2q-stage-tile-pro {

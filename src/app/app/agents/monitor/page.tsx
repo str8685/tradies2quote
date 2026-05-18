@@ -103,7 +103,7 @@ export default async function AgentMonitorPage() {
         <Link
           href="/app/settings"
           data-testid="monitor-back-to-settings"
-          className="mb-4 inline-flex h-9 items-center gap-1.5 rounded-sm border border-white/[0.06] bg-white/[0.02] px-3 font-mono text-[10px] uppercase tracking-[0.25em] text-ink-300 transition-colors hover:border-brand/40 hover:text-brand"
+          className="t2q-btn-back mb-4"
         >
           <ArrowLeft size={13} weight="bold" />
           Settings

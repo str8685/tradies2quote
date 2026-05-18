@@ -297,10 +297,7 @@ export default async function QuotePreviewPage({
         className="mx-auto max-w-3xl px-4 py-10 sm:px-6 sm:py-14"
       >
         <div className="mb-8">
-          <Link
-            href="/app/quotes"
-            className="mb-4 inline-flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-[0.2em] text-ink-400 transition-colors hover:text-ink-100"
-          >
+          <Link href="/app/quotes" className="t2q-btn-back mb-4">
             <ArrowLeft weight="bold" className="h-3.5 w-3.5" />
             Back to quotes
           </Link>
