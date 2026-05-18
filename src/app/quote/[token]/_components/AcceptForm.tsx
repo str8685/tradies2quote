@@ -66,7 +66,7 @@ export function AcceptForm({ token, quote }: Props) {
     <form
       onSubmit={handleSubmit}
       data-testid="accept-form"
-      className="t2q-card space-y-4 p-5 sm:p-6"
+      className="t2q-card-pro space-y-4 p-5 sm:p-6"
     >
       <div>
         <h2 className="font-display text-xl uppercase tracking-tight">
@@ -130,7 +130,7 @@ export function AcceptForm({ token, quote }: Props) {
         type="submit"
         data-testid="accept-submit"
         disabled={submitting}
-        className="t2q-btn-primary w-full disabled:cursor-not-allowed disabled:opacity-50"
+        className="t2q-btn-primary-pro w-full disabled:cursor-not-allowed disabled:opacity-50"
       >
         <CheckCircle size={18} weight="bold" />
         {submitting ? "Accepting…" : "Accept and sign"}

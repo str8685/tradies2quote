@@ -35,7 +35,7 @@ export default async function MaterialsPage() {
 
       <main className="mx-auto max-w-3xl px-4 py-10 sm:px-6 sm:py-14">
         <div className="mb-4">
-          <div className="t2q-section-label mb-3">{"// your library"}</div>
+          <div className="t2q-section-label-pro mb-3">{"// your library"}</div>
           <h1 className="font-display text-3xl uppercase tracking-tight sm:text-4xl">
             Materials <span className="text-brand">library.</span>
           </h1>
@@ -48,7 +48,7 @@ export default async function MaterialsPage() {
 
         <section
           data-testid="materials-capture-nudge"
-          className="t2q-premium-card-static mt-6 p-4 sm:p-5"
+          className="t2q-card-pro mt-6 p-4 sm:p-5"
           aria-labelledby="materials-capture-nudge-title"
         >
           <div className="font-mono text-[10px] uppercase tracking-[0.25em] text-brand">
@@ -71,7 +71,7 @@ export default async function MaterialsPage() {
             <Link
               href="/app/materials/capture"
               data-testid="materials-capture-link"
-              className="t2q-btn-primary inline-flex h-11 px-5"
+              className="t2q-btn-primary-pro inline-flex h-11 px-5"
             >
               <Plus size={18} weight="bold" />
               Capture supplier product
@@ -146,7 +146,7 @@ async function MaterialsBody({ userId }: { userId: string }) {
           <Link
             href="/app/materials/import"
             data-testid="materials-import-link"
-            className="t2q-btn-ghost"
+            className="t2q-btn-ghost-pro"
           >
             <Upload size={18} weight="bold" />
             Import CSV
@@ -154,7 +154,7 @@ async function MaterialsBody({ userId }: { userId: string }) {
           <Link
             href="/app/materials/new"
             data-testid="materials-add-link"
-            className="t2q-btn-primary"
+            className="t2q-btn-primary-pro"
           >
             <Plus size={18} weight="bold" />
             Add material

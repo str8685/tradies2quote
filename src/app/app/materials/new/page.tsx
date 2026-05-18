@@ -33,7 +33,7 @@ export default async function NewMaterialPage() {
 
       <main className="mx-auto max-w-2xl px-4 py-10 sm:px-6 sm:py-14">
         <div className="mb-8">
-          <div className="t2q-section-label mb-3">{"// add to library"}</div>
+          <div className="t2q-section-label-pro mb-3">{"// add to library"}</div>
           <h1 className="font-display text-3xl uppercase tracking-tight sm:text-4xl">
             New <span className="text-brand">material.</span>
           </h1>
@@ -42,7 +42,7 @@ export default async function NewMaterialPage() {
           </p>
         </div>
 
-        <section className="t2q-card p-5 sm:p-6">
+        <section className="t2q-card-pro p-5 sm:p-6">
           <MaterialForm mode="create" />
         </section>
       </main>

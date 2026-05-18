@@ -74,11 +74,11 @@ export function InvoiceDraftCard({
       id="agent-invoice"
       data-testid="invoice-draft-card"
       aria-labelledby="invoice-draft-heading"
-      className="t2q-premium-card-static mt-6 p-5 sm:p-6"
+      className="t2q-card-pro mt-6 p-5 sm:p-6"
     >
       <div className="flex flex-wrap items-center gap-2">
         <Receipt size={16} weight="bold" className="text-brand" />
-        <span className="t2q-section-label">{"// invoice"}</span>
+        <span className="t2q-section-label-pro">{"// invoice"}</span>
         {existingInvoice ? (
           <span
             data-testid="invoice-status-pill"
@@ -197,7 +197,7 @@ function ExistingInvoiceBody({ invoice }: { invoice: InvoiceSummary }) {
             data-testid="invoice-send-button"
             onClick={handleSend}
             disabled={sendState === "sending"}
-            className="t2q-btn-primary inline-flex h-11 items-center gap-2 px-5 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="t2q-btn-primary-pro inline-flex h-11 items-center gap-2 px-5 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <EnvelopeSimple size={16} weight="bold" />
             {sendState === "sending"
@@ -211,7 +211,7 @@ function ExistingInvoiceBody({ invoice }: { invoice: InvoiceSummary }) {
             data-testid="invoice-mark-paid-button"
             onClick={handleMarkPaid}
             disabled={paidState === "saving"}
-            className="t2q-btn-ghost inline-flex h-11 items-center gap-2 px-5 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="t2q-btn-ghost-pro inline-flex h-11 items-center gap-2 px-5 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Check size={16} weight="bold" />
             {paidState === "saving" ? "Marking…" : "Mark as paid"}
@@ -321,7 +321,7 @@ function DraftPreviewBody({
           data-testid="invoice-create-button"
           onClick={onCreate}
           disabled={pending || !canCreate}
-          className="t2q-btn-primary inline-flex h-11 items-center gap-2 px-5 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="t2q-btn-primary-pro inline-flex h-11 items-center gap-2 px-5 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {pending ? (
             "Creating draft…"

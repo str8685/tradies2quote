@@ -100,7 +100,7 @@ export default async function InvoicesPage({
 
       <main className="mx-auto max-w-5xl px-4 py-10 sm:px-6 sm:py-14">
         <div className="mb-8">
-          <div className="t2q-section-label mb-3">{"// invoices"}</div>
+          <div className="t2q-section-label-pro mb-3">{"// invoices"}</div>
           <h1 className="font-display text-3xl uppercase tracking-tight sm:text-4xl">
             Money in.
           </h1>
@@ -163,7 +163,7 @@ export default async function InvoicesPage({
         <section
           aria-label="Invoice list"
           data-testid="invoices-table"
-          className="t2q-premium-card-static p-5 sm:p-7"
+          className="t2q-card-pro p-5 sm:p-7"
         >
           {rows.length === 0 ? (
             <div className="py-8 text-center">

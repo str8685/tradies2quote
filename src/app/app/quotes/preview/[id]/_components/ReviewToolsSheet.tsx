@@ -116,7 +116,7 @@ export function ReviewToolsSheet({ children }: Props) {
         className="mt-8 hidden rounded-sm border border-brand/40 bg-brand/5 p-4 sm:p-5 md:block"
       >
         <div className="mb-3 flex flex-wrap items-center gap-3">
-          <p className="t2q-section-label !text-brand">{"// review tools"}</p>
+          <p className="t2q-section-label-pro !text-brand">{"// review tools"}</p>
           <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-200">
             Quote-bound agents.
           </p>
@@ -138,7 +138,7 @@ export function ReviewToolsSheet({ children }: Props) {
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="t2q-card flex max-h-[90vh] w-full flex-col rounded-b-none rounded-t-md border-b-0 border-brand/40 bg-ink-950 pb-[env(safe-area-inset-bottom)]"
+            className="t2q-card-pro flex max-h-[90vh] w-full flex-col rounded-b-none rounded-t-md border-b-0 border-brand/40 bg-ink-950 pb-[env(safe-area-inset-bottom)]"
           >
             <div className="flex items-center justify-between gap-3 border-b border-ink-700 px-4 py-3">
               <div className="flex items-center gap-2">

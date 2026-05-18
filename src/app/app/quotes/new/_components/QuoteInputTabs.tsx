@@ -254,7 +254,7 @@ function VoicePanel({
       role="tabpanel"
       aria-labelledby="tab-voice"
       data-testid="panel-voice"
-      className="t2q-card p-6 sm:p-8"
+      className="t2q-card-pro p-6 sm:p-8"
     >
       {transcript ? (
         <TranscriptReview
@@ -374,7 +374,7 @@ function TypePanel({
       role="tabpanel"
       aria-labelledby="tab-type"
       data-testid="panel-type"
-      className="t2q-card p-6 sm:p-8"
+      className="t2q-card-pro p-6 sm:p-8"
     >
       <label
         htmlFor="type-input"
@@ -579,7 +579,7 @@ function ContinueRow({ text, minLength }: { text: string; minLength: number }) {
               ? "Generate a quote from your description."
               : "Add a description to continue."
           }
-          className="t2q-btn-primary disabled:cursor-not-allowed disabled:opacity-40"
+          className="t2q-btn-primary-pro disabled:cursor-not-allowed disabled:opacity-40"
         >
           {label}
         </button>

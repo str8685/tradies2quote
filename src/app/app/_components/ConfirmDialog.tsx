@@ -66,7 +66,7 @@ export function ConfirmDialog({
         if (e.target === dialogRef.current && !busy) onCancel();
       }}
     >
-      <div onClick={(e) => e.stopPropagation()} className="t2q-premium-card-static p-5">
+      <div onClick={(e) => e.stopPropagation()} className="t2q-card-pro p-5">
         <div className="flex items-start justify-between gap-3">
           <h3 className="font-display text-lg uppercase tracking-tight text-white">
             {title}
@@ -88,7 +88,7 @@ export function ConfirmDialog({
             onClick={onCancel}
             disabled={busy}
             data-testid="confirm-cancel"
-            className="t2q-btn-ghost inline-flex h-10 items-center justify-center px-4 disabled:opacity-50"
+            className="t2q-btn-ghost-pro inline-flex h-10 items-center justify-center px-4 disabled:opacity-50"
           >
             Cancel
           </button>
@@ -100,7 +100,7 @@ export function ConfirmDialog({
             className={
               confirmTone === "destructive"
                 ? "inline-flex h-10 items-center justify-center rounded-sm border border-red-500/60 bg-red-500/15 px-4 font-display text-sm uppercase tracking-tight text-red-200 transition-colors hover:bg-red-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
-                : "t2q-btn-primary inline-flex h-10 items-center justify-center px-4 disabled:cursor-not-allowed disabled:opacity-50"
+                : "t2q-btn-primary-pro inline-flex h-10 items-center justify-center px-4 disabled:cursor-not-allowed disabled:opacity-50"
             }
           >
             {busy ? "Working…" : confirmLabel}

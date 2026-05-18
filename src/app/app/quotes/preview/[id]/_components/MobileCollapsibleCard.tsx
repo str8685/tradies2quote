@@ -8,7 +8,7 @@ import { CaretDown } from "@phosphor-icons/react";
  *
  * Below md:
  *   - Renders a flat summary row (44-px+ tap target) with a chevron.
- *   - Body (children — typically an existing `t2q-card` section) is
+ *   - Body (children — typically an existing `t2q-card-pro` section) is
  *     hidden until the user taps the row open.
  *   - State persists in sessionStorage so a reload keeps the operator
  *     where they were.
@@ -17,7 +17,7 @@ import { CaretDown } from "@phosphor-icons/react";
  *   - The summary row is hidden via `md:hidden`. Children render
  *     directly as the always-visible card they already are.
  *
- * Crucially this component is NOT itself a `t2q-card`. The children
+ * Crucially this component is NOT itself a `t2q-card-pro`. The children
  * keep their existing card styling, so wrapping legacy sections does
  * not create card-in-card visuals. On mobile we render one flat
  * summary bar, then either zero or one card below it.

@@ -312,7 +312,7 @@ export function CaptureForm({
             onClick={() => setConfirming(true)}
             disabled={!canConfirm}
             data-testid="capture-review"
-            className="t2q-btn-primary h-11 px-5 disabled:cursor-not-allowed disabled:opacity-50"
+            className="t2q-btn-primary-pro h-11 px-5 disabled:cursor-not-allowed disabled:opacity-50"
           >
             Review and save →
           </button>
@@ -327,7 +327,7 @@ export function CaptureForm({
           data-testid="capture-confirm-dialog"
           className="fixed inset-0 z-50 grid place-items-center bg-black/70 p-4"
         >
-          <div className="t2q-card w-full max-w-md p-5 sm:p-6">
+          <div className="t2q-card-pro w-full max-w-md p-5 sm:p-6">
             <h2
               id="capture-confirm-title"
               className="font-display text-xl uppercase tracking-tight"
@@ -401,7 +401,7 @@ function SaveButton() {
       type="submit"
       disabled={pending}
       data-testid="capture-confirm-save"
-      className="t2q-btn-primary h-11 px-5 disabled:cursor-not-allowed disabled:opacity-60"
+      className="t2q-btn-primary-pro h-11 px-5 disabled:cursor-not-allowed disabled:opacity-60"
     >
       {pending ? "Saving…" : "Add to materials"}
     </button>
@@ -422,7 +422,7 @@ function Section({
   return (
     <section
       data-testid={testId}
-      className="t2q-card space-y-4 p-5 sm:space-y-5 sm:p-6"
+      className="t2q-card-pro space-y-4 p-5 sm:space-y-5 sm:p-6"
     >
       <header>
         <div className="font-mono text-[10px] uppercase tracking-[0.25em] text-brand">

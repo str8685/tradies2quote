@@ -142,10 +142,10 @@ export function LifecycleCard({
       data-testid="lifecycle-card"
       data-stage={status}
       aria-labelledby="lifecycle-card-heading"
-      className="t2q-premium-card-static mb-6 p-5 sm:p-6"
+      className="t2q-card-pro mb-6 p-5 sm:p-6"
     >
       <div className="flex flex-wrap items-center gap-2">
-        <span className="t2q-section-label">{"// lifecycle"}</span>
+        <span className="t2q-section-label-pro">{"// lifecycle"}</span>
         <span
           data-testid="lifecycle-stage-pill"
           className={`inline-flex items-center rounded-sm border px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.2em] ${stagePillStyle(status)}`}
@@ -200,7 +200,7 @@ export function LifecycleCard({
               data-testid={`lifecycle-action-${out.nextAction.action}`}
               disabled={pending}
               onClick={() => run(() => actionFor(out.nextAction!.action)(quoteId))}
-              className="t2q-btn-primary inline-flex h-11 items-center gap-2 px-5"
+              className="t2q-btn-primary-pro inline-flex h-11 items-center gap-2 px-5"
             >
               {pending ? "Working…" : out.nextAction.buttonLabel}
               {!pending ? <ArrowRight size={16} weight="bold" /> : null}

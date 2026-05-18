@@ -149,7 +149,7 @@ export function QuotesListClient({ rows, isHub = false }: Props) {
           <Link
             href="/app/quotes/new"
             data-testid="quotes-new-quote"
-            className="t2q-btn-primary inline-flex h-11 items-center justify-center gap-2 px-5"
+            className="t2q-btn-primary-pro inline-flex h-11 items-center justify-center gap-2 px-5"
           >
             <Plus size={18} weight="bold" />
             New quote
@@ -205,7 +205,7 @@ export function QuotesListClient({ rows, isHub = false }: Props) {
             <li
               key={q.id}
               data-testid={`quote-row-${q.id}`}
-              className="t2q-premium-card relative"
+              className="t2q-card-pro t2q-card-pro-hover relative"
             >
               <div className="flex items-stretch gap-2 p-3">
                 <Link
@@ -262,7 +262,7 @@ export function QuotesListClient({ rows, isHub = false }: Props) {
             type="button"
             data-testid="quotes-load-more"
             onClick={() => setVisible((n) => n + PAGE_SIZE)}
-            className="t2q-btn-ghost inline-flex h-11 items-center justify-center px-5"
+            className="t2q-btn-ghost-pro inline-flex h-11 items-center justify-center px-5"
           >
             Load {Math.min(PAGE_SIZE, filtered.length - slice.length)} more
           </button>

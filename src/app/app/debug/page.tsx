@@ -58,7 +58,7 @@ export default async function DebugPage() {
 
       <main className="mx-auto max-w-3xl px-4 py-10 sm:px-6 sm:py-14">
         <div className="mb-8">
-          <div className="t2q-section-label mb-3">{"// owner"}</div>
+          <div className="t2q-section-label-pro mb-3">{"// owner"}</div>
           <h1 className="font-display text-3xl uppercase tracking-tight sm:text-4xl">
             App health.
           </h1>
@@ -72,7 +72,7 @@ export default async function DebugPage() {
         <section
           aria-label="Service health"
           data-testid="debug-services"
-          className="t2q-premium-card-static mb-8 p-5 sm:p-7"
+          className="t2q-card-pro mb-8 p-5 sm:p-7"
         >
           <h2 className="font-display text-lg uppercase tracking-tight text-white sm:text-xl">
             Services.
@@ -107,7 +107,7 @@ export default async function DebugPage() {
         <section
           aria-label="Build"
           data-testid="debug-build"
-          className="t2q-premium-card-static mb-8 p-5 sm:p-7"
+          className="t2q-card-pro mb-8 p-5 sm:p-7"
         >
           <h2 className="font-display text-lg uppercase tracking-tight text-white sm:text-xl">
             Build.
@@ -141,7 +141,7 @@ export default async function DebugPage() {
         <section
           aria-label="Session"
           data-testid="debug-session"
-          className="t2q-premium-card-static mb-8 p-5 sm:p-7"
+          className="t2q-card-pro mb-8 p-5 sm:p-7"
         >
           <h2 className="font-display text-lg uppercase tracking-tight text-white sm:text-xl">
             Session.
@@ -176,7 +176,7 @@ export default async function DebugPage() {
         <section
           aria-label="Agents"
           data-testid="debug-agents"
-          className="t2q-premium-card-static mb-8 p-5 sm:p-7"
+          className="t2q-card-pro mb-8 p-5 sm:p-7"
         >
           <h2 className="font-display text-lg uppercase tracking-tight text-white sm:text-xl">
             Agents.

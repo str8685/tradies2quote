@@ -51,7 +51,7 @@ export function VoiceCleanupAgent({ transcript }: Props) {
   return (
     <section
       data-testid="agent-voice-cleanup"
-      className="t2q-premium-card-static mb-6 p-5 sm:p-6"
+      className="t2q-card-pro mb-6 p-5 sm:p-6"
     >
       <div className="flex items-center gap-3">
         <span

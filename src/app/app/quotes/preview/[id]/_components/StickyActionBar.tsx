@@ -221,7 +221,7 @@ export function StickyActionBar({
               onClick={onSave}
               disabled={isPending || isAccepted}
               title={isAccepted ? "Quote already accepted." : "Save changes"}
-              className="t2q-btn-ghost min-h-[44px] flex-1 !px-2 sm:flex-none sm:!px-7 disabled:cursor-not-allowed disabled:opacity-50"
+              className="t2q-btn-ghost-pro min-h-[44px] flex-1 !px-2 sm:flex-none sm:!px-7 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <FloppyDisk size={16} weight="bold" className="shrink-0" />
               <span>{isPending ? "Saving" : "Save"}</span>
@@ -242,7 +242,7 @@ export function StickyActionBar({
                         ? "Resend email"
                         : "Send email"
                   }
-                  className="t2q-btn-primary min-h-[44px] flex-1 !px-2 sm:flex-none sm:!px-7 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="t2q-btn-primary-pro min-h-[44px] flex-1 !px-2 sm:flex-none sm:!px-7 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <EnvelopeSimple size={16} weight="bold" className="shrink-0" />
                   <span>
@@ -272,7 +272,7 @@ export function StickyActionBar({
                         ? "Resend text"
                         : "Send text"
                   }
-                  className="t2q-btn-ghost min-h-[44px] flex-1 !px-2 sm:flex-none sm:!px-7 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="t2q-btn-ghost-pro min-h-[44px] flex-1 !px-2 sm:flex-none sm:!px-7 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <ChatCircleText size={16} weight="bold" className="shrink-0" />
                   <span>

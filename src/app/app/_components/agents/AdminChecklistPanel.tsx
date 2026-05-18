@@ -38,10 +38,10 @@ export function AdminChecklistPanel({ profile, clients }: Props) {
     <section
       data-testid="admin-checklist-panel"
       aria-label="Business setup checklist"
-      className="t2q-premium-card-static mb-6 p-5 sm:p-6"
+      className="t2q-card-pro mb-6 p-5 sm:p-6"
     >
       <div className="flex flex-wrap items-center gap-2">
-        <span className="t2q-section-label">{"// business setup"}</span>
+        <span className="t2q-section-label-pro">{"// business setup"}</span>
         <span
           data-testid="admin-checklist-summary"
           className={`ml-auto inline-flex items-center rounded-sm border px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.2em] ${summaryPill(summary.status)}`}

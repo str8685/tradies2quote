@@ -304,7 +304,7 @@ export default async function QuotePreviewPage({
             <ArrowLeft weight="bold" className="h-3.5 w-3.5" />
             Back to quotes
           </Link>
-          <div className="t2q-section-label mb-3">{"// step 2 of 3"}</div>
+          <div className="t2q-section-label-pro mb-3">{"// step 2 of 3"}</div>
           <div className="flex flex-wrap items-center gap-3">
             <h1 className="font-display text-3xl uppercase tracking-tight sm:text-4xl">
               Review your <span className="text-brand">quote.</span>

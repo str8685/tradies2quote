@@ -32,11 +32,11 @@ export function SubscriptionPanel({
     return (
       <section
         data-testid="settings-billing-paid"
-        className="t2q-premium-card-static mt-6 p-5 sm:p-6"
+        className="t2q-card-pro mt-6 p-5 sm:p-6"
       >
         <div className="flex items-center gap-2">
           <CheckCircle size={18} weight="fill" className="text-brand" />
-          <p className="t2q-section-label !text-brand">{"// pro"}</p>
+          <p className="t2q-section-label-pro !text-brand">{"// pro"}</p>
         </div>
         <h2 className="mt-2 font-display text-xl uppercase tracking-tight text-white">
           tradies2Quote Pro
@@ -55,7 +55,7 @@ export function SubscriptionPanel({
   return (
     <section
       data-testid={`settings-billing-${status.state}`}
-      className={`t2q-premium-card-static mt-6 p-5 sm:p-6 ${isExpired ? "border-red-500/40" : ""}`}
+      className={`t2q-card-pro mt-6 p-5 sm:p-6 ${isExpired ? "border-red-500/40" : ""}`}
     >
       <div className="flex items-center gap-2">
         <Lightning
@@ -64,7 +64,7 @@ export function SubscriptionPanel({
           className={isExpired ? "text-red-300" : "text-hivis"}
         />
         <p
-          className={`t2q-section-label ${isExpired ? "!text-red-300" : "!text-hivis"}`}
+          className={`t2q-section-label-pro ${isExpired ? "!text-red-300" : "!text-hivis"}`}
         >
           {isExpired ? "// trial ended" : "// trial"}
         </p>
@@ -86,7 +86,7 @@ export function SubscriptionPanel({
           <Link
             href="/app/upgrade"
             data-testid="settings-billing-upgrade-link"
-            className="t2q-btn-primary inline-flex h-11 items-center gap-2 px-5"
+            className="t2q-btn-primary-pro inline-flex h-11 items-center gap-2 px-5"
           >
             <CreditCard size={16} weight="bold" />
             Subscribe — $29/mo

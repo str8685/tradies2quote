@@ -53,7 +53,7 @@ export default function NotFound() {
           <Link
             href="/"
             data-testid="not-found-home"
-            className="t2q-btn-primary inline-flex h-11 items-center justify-center gap-2 px-5"
+            className="t2q-btn-primary-pro inline-flex h-11 items-center justify-center gap-2 px-5"
           >
             <ArrowLeft size={16} weight="bold" />
             Back to home
@@ -61,7 +61,7 @@ export default function NotFound() {
           <Link
             href="/app"
             data-testid="not-found-dashboard"
-            className="t2q-btn-ghost inline-flex h-11 items-center justify-center gap-2 px-5"
+            className="t2q-btn-ghost-pro inline-flex h-11 items-center justify-center gap-2 px-5"
           >
             <House size={16} weight="bold" />
             Go to dashboard

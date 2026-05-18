@@ -34,7 +34,7 @@ export default function RootError({
   return (
     <div className="min-h-screen text-white">
       <main className="mx-auto max-w-3xl px-4 py-20 sm:px-6">
-        <div className="t2q-premium-card-static p-6 sm:p-10">
+        <div className="t2q-card-pro p-6 sm:p-10">
           <span
             aria-hidden="true"
             className="inline-flex h-12 w-12 items-center justify-center rounded-sm border border-red-500/40 bg-red-500/10 text-red-300"
@@ -61,7 +61,7 @@ export default function RootError({
               type="button"
               onClick={() => reset()}
               data-testid="root-error-retry"
-              className="t2q-btn-primary inline-flex h-11 items-center justify-center gap-2 px-5"
+              className="t2q-btn-primary-pro inline-flex h-11 items-center justify-center gap-2 px-5"
             >
               <ArrowClockwise size={16} weight="bold" />
               Try again
@@ -69,7 +69,7 @@ export default function RootError({
             <Link
               href="/"
               data-testid="root-error-home"
-              className="t2q-btn-ghost inline-flex h-11 items-center justify-center gap-2 px-5"
+              className="t2q-btn-ghost-pro inline-flex h-11 items-center justify-center gap-2 px-5"
             >
               <ArrowLeft size={16} weight="bold" />
               Back to home

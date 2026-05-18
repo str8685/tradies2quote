@@ -34,7 +34,7 @@ export default function TermsPage() {
   return (
     <article className="bg-ink-900">
       <div className="max-w-3xl mx-auto px-6 md:px-12 py-16 md:py-24">
-        <div className="t2q-section-label mb-4">{"// legal · terms"}</div>
+        <div className="t2q-section-label-pro mb-4">{"// legal · terms"}</div>
         <h1 className="font-display text-4xl sm:text-5xl uppercase tracking-tight text-white">
           Terms of <span className="text-brand">Service</span>
         </h1>

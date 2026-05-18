@@ -137,12 +137,12 @@ export function InstallAppButton() {
           onClick={() => setShowIOSModal(false)}
         >
           <div
-            className="t2q-card w-full max-w-sm border border-ink-700 bg-ink-950 p-5"
+            className="t2q-card-pro w-full max-w-sm border border-ink-700 bg-ink-950 p-5"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-3 flex items-start justify-between gap-2">
               <div>
-                <p className="t2q-section-label">{"// install"}</p>
+                <p className="t2q-section-label-pro">{"// install"}</p>
                 <h2
                   id="install-ios-title"
                   className="mt-1 font-display text-lg uppercase tracking-tight"
@@ -194,7 +194,7 @@ export function InstallAppButton() {
             <button
               type="button"
               onClick={() => setShowIOSModal(false)}
-              className="t2q-btn-primary mt-5 w-full justify-center"
+              className="t2q-btn-primary-pro mt-5 w-full justify-center"
             >
               Got it
             </button>

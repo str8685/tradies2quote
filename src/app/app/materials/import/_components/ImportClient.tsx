@@ -114,7 +114,7 @@ export function ImportClient() {
           tradies on our template see no behaviour change. */}
       <section
         data-testid="import-supplier-preset"
-        className="t2q-card p-5 sm:p-6"
+        className="t2q-card-pro p-5 sm:p-6"
       >
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
@@ -205,7 +205,7 @@ export function ImportClient() {
         </div>
       </section>
 
-      <section className="t2q-card p-5 sm:p-6">
+      <section className="t2q-card-pro p-5 sm:p-6">
         <div className="flex items-center justify-between gap-3">
           <div>
             <p className="font-mono text-xs uppercase tracking-[0.2em] text-ink-400">
@@ -221,7 +221,7 @@ export function ImportClient() {
             href="/materials-template.csv"
             download
             data-testid="csv-template-download"
-            className="t2q-btn-ghost"
+            className="t2q-btn-ghost-pro"
           >
             <Download size={18} weight="bold" />
             Template
@@ -242,7 +242,7 @@ export function ImportClient() {
         </p>
       </section>
 
-      <section className="t2q-card p-5 sm:p-6">
+      <section className="t2q-card-pro p-5 sm:p-6">
         <p className="font-mono text-xs uppercase tracking-[0.2em] text-ink-400">
           {"// step 3"}
         </p>
@@ -278,7 +278,7 @@ export function ImportClient() {
       </section>
 
       {parsed && (
-        <section className="t2q-card p-5 sm:p-6">
+        <section className="t2q-card-pro p-5 sm:p-6">
           <p className="font-mono text-xs uppercase tracking-[0.2em] text-ink-400">
             {"// step 4"}
           </p>
@@ -377,7 +377,7 @@ export function ImportClient() {
                 data-testid="csv-import-confirm"
                 disabled={parsed.valid.length === 0 || isPending}
                 onClick={handleImport}
-                className="t2q-btn-primary disabled:cursor-not-allowed disabled:opacity-50"
+                className="t2q-btn-primary-pro disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {isPending
                   ? "Importing…"

@@ -88,7 +88,7 @@ export function PhotoPlanAgent() {
   return (
     <section
       data-testid="photo-plan-agent"
-      className="t2q-premium-card-static p-5 sm:p-6"
+      className="t2q-card-pro p-5 sm:p-6"
     >
       <div className="flex items-start gap-3">
         <span className="inline-flex h-10 w-10 items-center justify-center rounded-sm border border-brand/40 bg-brand/10 text-brand">

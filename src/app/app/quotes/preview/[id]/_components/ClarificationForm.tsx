@@ -48,7 +48,7 @@ export function ClarificationForm({
       }}
       className="space-y-4 rounded-sm border border-ink-700 bg-ink-900/60 p-3"
     >
-      <p className="t2q-section-label">{"// answer to finalise materials"}</p>
+      <p className="t2q-section-label-pro">{"// answer to finalise materials"}</p>
       <ol className="space-y-4">
         {questions.map((q, idx) => {
           const value = answers[q.id] ?? "";
@@ -109,7 +109,7 @@ export function ClarificationForm({
           type="submit"
           data-testid="clarification-submit"
           disabled={!allAnswered || submitting}
-          className="t2q-btn-primary disabled:cursor-not-allowed disabled:opacity-50"
+          className="t2q-btn-primary-pro disabled:cursor-not-allowed disabled:opacity-50"
         >
           {submitting ? "Saving…" : "Save answers"}
         </button>

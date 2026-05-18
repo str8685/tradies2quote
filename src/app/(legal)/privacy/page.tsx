@@ -28,7 +28,7 @@ export default function PrivacyPage() {
   return (
     <article className="bg-ink-900">
       <div className="max-w-3xl mx-auto px-6 md:px-12 py-16 md:py-24">
-        <div className="t2q-section-label mb-4">{"// legal · privacy"}</div>
+        <div className="t2q-section-label-pro mb-4">{"// legal · privacy"}</div>
         <h1 className="font-display text-4xl sm:text-5xl uppercase tracking-tight text-white">
           Privacy <span className="text-brand">Policy</span>
         </h1>

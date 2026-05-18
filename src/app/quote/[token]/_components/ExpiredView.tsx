@@ -26,7 +26,7 @@ export function ExpiredView({ reason }: Props) {
   return (
     <section
       data-testid={`expired-${reason}`}
-      className="t2q-card p-6 sm:p-8 text-center"
+      className="t2q-card-pro p-6 sm:p-8 text-center"
     >
       <Warning
         size={32}

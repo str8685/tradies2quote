@@ -19,7 +19,7 @@ export function PublicQuoteSummary({ token, quote }: Props) {
 
   return (
     <section data-testid="public-quote-summary" className="space-y-6">
-      <header className="t2q-card p-5 sm:p-6">
+      <header className="t2q-card-pro p-5 sm:p-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <p className="font-mono text-xs uppercase tracking-[0.2em] text-ink-400">
@@ -94,7 +94,7 @@ export function PublicQuoteSummary({ token, quote }: Props) {
         <Section title="Other" items={other} currency={quote.currency} />
       )}
 
-      <section className="t2q-card p-5 sm:p-6">
+      <section className="t2q-card-pro p-5 sm:p-6">
         <Row label="Materials subtotal" value={formatCurrency(quote.materials_subtotal, quote.currency)} />
         <Row label={`Markup`} value={formatCurrency(quote.markup_amount, quote.currency)} />
         <Row label="Labour subtotal" value={formatCurrency(quote.labour_subtotal, quote.currency)} />
@@ -104,7 +104,7 @@ export function PublicQuoteSummary({ token, quote }: Props) {
       </section>
 
       {quote.terms && (
-        <section className="t2q-card p-5 sm:p-6">
+        <section className="t2q-card-pro p-5 sm:p-6">
           <p className="font-mono text-xs uppercase tracking-[0.2em] text-ink-400">
             Terms
           </p>
@@ -128,7 +128,7 @@ function Section({
 }) {
   if (items.length === 0) return null;
   return (
-    <section className="t2q-card p-5 sm:p-6">
+    <section className="t2q-card-pro p-5 sm:p-6">
       <h3 className="font-display text-base uppercase tracking-tight text-brand">
         {title}
       </h3>

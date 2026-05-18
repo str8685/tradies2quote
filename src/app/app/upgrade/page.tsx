@@ -64,7 +64,7 @@ export default async function UpgradePage({
 
       <main className="mx-auto max-w-3xl px-4 py-10 sm:px-6 sm:py-14">
         <div className="mb-8">
-          <div className="t2q-section-label mb-3">{"// upgrade"}</div>
+          <div className="t2q-section-label-pro mb-3">{"// upgrade"}</div>
           <h1 className="font-display text-3xl uppercase tracking-tight sm:text-4xl">
             {sub.state === "expired"
               ? "Your trial ended."
@@ -104,11 +104,11 @@ export default async function UpgradePage({
         <section
           aria-label="Plan"
           data-testid="upgrade-plan-card"
-          className="t2q-premium-card-static p-6 sm:p-8"
+          className="t2q-card-pro p-6 sm:p-8"
         >
           <div className="flex items-baseline gap-2">
             <Sparkle size={18} weight="fill" className="text-brand" />
-            <p className="t2q-section-label !text-brand">{"// pro"}</p>
+            <p className="t2q-section-label-pro !text-brand">{"// pro"}</p>
           </div>
           <h2 className="mt-2 font-display text-2xl uppercase tracking-tight text-white sm:text-3xl">
             tradies2Quote Pro

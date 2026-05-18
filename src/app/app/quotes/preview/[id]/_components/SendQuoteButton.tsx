@@ -192,7 +192,7 @@ export function SendQuoteButton({
                 state === "generating" ||
                 state === "sending"
               }
-              className="t2q-btn-primary disabled:cursor-not-allowed disabled:opacity-50"
+              className="t2q-btn-primary-pro disabled:cursor-not-allowed disabled:opacity-50"
             >
               <EnvelopeSimple size={18} weight="bold" />
               {state !== "idle" && state !== "error" && state !== "sent" && activeChannel === "email"
@@ -214,7 +214,7 @@ export function SendQuoteButton({
                 state === "generating" ||
                 state === "sending"
               }
-              className="t2q-btn-ghost disabled:cursor-not-allowed disabled:opacity-50"
+              className="t2q-btn-ghost-pro disabled:cursor-not-allowed disabled:opacity-50"
             >
               <ChatCircleText size={18} weight="bold" />
               {state !== "idle" && state !== "error" && state !== "sent" && activeChannel === "sms"

@@ -152,7 +152,7 @@ export function CompliancePanel({ quoteId, review, items }: Props) {
           />
         )}
         <div className="min-w-0 flex-1">
-          <p className="t2q-section-label">{"// compliance review"}</p>
+          <p className="t2q-section-label-pro">{"// compliance review"}</p>
           <h2 className="mt-1 font-display text-lg uppercase tracking-tight">
             {review.status === "needs_clarification"
               ? "Needs clarification before send."
@@ -224,7 +224,7 @@ function WarningSection({
 }) {
   return (
     <div className="rounded-sm border border-ink-700 bg-ink-900/60 p-3">
-      <p className="t2q-section-label mb-2">{`// ${title.toLowerCase()}`}</p>
+      <p className="t2q-section-label-pro mb-2">{`// ${title.toLowerCase()}`}</p>
       <ul className="space-y-2">
         {warnings.map((w, i) => {
           const li =
@@ -262,7 +262,7 @@ function PerLineMetadataSection({ items }: { items: ComplianceLineItem[] }) {
 
   return (
     <div className="rounded-sm border border-ink-700 bg-ink-900/60 p-3">
-      <p className="t2q-section-label mb-2">{"// per-line review"}</p>
+      <p className="t2q-section-label-pro mb-2">{"// per-line review"}</p>
       <ul className="space-y-2">
         {linesWithMeta.map((li, i) => (
           <li

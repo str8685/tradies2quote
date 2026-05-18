@@ -42,7 +42,7 @@ export default async function ClientsPage() {
 
       <main className="mx-auto max-w-3xl px-4 py-10 sm:px-6 sm:py-14">
         <div className="mb-8">
-          <div className="t2q-section-label mb-3">{"// your client list"}</div>
+          <div className="t2q-section-label-pro mb-3">{"// your client list"}</div>
           <h1 className="font-display text-3xl uppercase tracking-tight sm:text-4xl">
             Clients.
           </h1>
@@ -72,7 +72,7 @@ export default async function ClientsPage() {
           <Link
             href="/app/quotes/new"
             data-testid="clients-new-quote"
-            className="t2q-btn-primary"
+            className="t2q-btn-primary-pro"
           >
             <Plus size={18} weight="bold" />
             New quote
@@ -81,7 +81,7 @@ export default async function ClientsPage() {
 
         <div
           data-testid="clients-empty-state"
-          className="t2q-premium-card-static mt-10 px-8 py-16 text-center"
+          className="t2q-card-pro mt-10 px-8 py-16 text-center"
         >
           <UsersThree
             size={48}
@@ -98,7 +98,7 @@ export default async function ClientsPage() {
           <Link
             href="/app/quotes/new"
             data-testid="clients-empty-cta"
-            className="t2q-btn-primary mt-8"
+            className="t2q-btn-primary-pro mt-8"
           >
             <Plus size={18} weight="bold" />
             Start your first quote

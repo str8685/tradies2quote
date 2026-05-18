@@ -363,7 +363,7 @@ export function ClarificationModal({
               onClick={handleContinue}
               disabled={!canAdvance}
               data-testid="clarification-continue"
-              className="t2q-btn-primary !h-11 disabled:cursor-not-allowed disabled:opacity-50"
+              className="t2q-btn-primary-pro !h-11 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {isLast ? "Generate quote" : "Continue"}
               <CaretRight size={14} weight="bold" />

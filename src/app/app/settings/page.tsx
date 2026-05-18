@@ -153,7 +153,7 @@ export default async function SettingsPage() {
 
       <main className="mx-auto max-w-3xl px-4 py-10 sm:px-6 sm:py-14">
         <div className="mb-10">
-          <div className="t2q-section-label mb-3">{"// your tools"}</div>
+          <div className="t2q-section-label-pro mb-3">{"// your tools"}</div>
           <h1 className="font-display text-3xl uppercase tracking-tight sm:text-4xl">
             Settings.
           </h1>
@@ -169,7 +169,7 @@ export default async function SettingsPage() {
         <Link
           href="/app/settings/guide"
           data-testid="settings-guide-link"
-          className="t2q-premium-card mb-6 flex items-center gap-4 p-4 sm:p-5"
+          className="t2q-card-pro t2q-card-pro-hover mb-6 flex items-center gap-4 p-4 sm:p-5"
         >
           <span
             aria-hidden="true"
@@ -217,7 +217,7 @@ export default async function SettingsPage() {
             context so the user knows whose session they're ending. */}
         <section
           data-testid="settings-sign-out-block"
-          className="t2q-premium-card-static mt-10 flex flex-col items-start gap-3 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6"
+          className="t2q-card-pro mt-10 flex flex-col items-start gap-3 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6"
         >
           <div className="min-w-0">
             <p className="font-display text-sm uppercase tracking-tight text-white">

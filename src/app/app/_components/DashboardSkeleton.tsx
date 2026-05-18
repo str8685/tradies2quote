@@ -21,7 +21,7 @@ export function DashboardSkeleton() {
     >
       {/* Pipeline stats card. Mirrors the real card's padding +
           border so we don't get a 4px shift when data lands. */}
-      <section className="t2q-premium-card-static mb-6 p-4 sm:p-5">
+      <section className="t2q-card-pro mb-6 p-4 sm:p-5">
         <div className="flex items-center justify-between gap-3">
           <div className="h-3 w-24 rounded-sm bg-ink-700" />
         </div>

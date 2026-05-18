@@ -303,7 +303,7 @@ export function QuoteEditor({
 
   return (
     <div className="space-y-6">
-      <section className="t2q-card p-5 sm:p-6">
+      <section className="t2q-card-pro p-5 sm:p-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex-1">
             <div className="font-mono text-xs uppercase tracking-[0.2em] text-ink-400">
@@ -472,7 +472,7 @@ export function QuoteEditor({
         />
       )}
 
-      <section data-testid="quote-totals" className="t2q-card p-5 sm:p-6">
+      <section data-testid="quote-totals" className="t2q-card-pro p-5 sm:p-6">
         <TotalsRow
           label="Materials subtotal"
           value={formatCurrency(totals.materials_subtotal, currency)}
@@ -509,7 +509,7 @@ export function QuoteEditor({
         title="Terms"
         summary={termsSummary}
       >
-        <section className="t2q-card p-5 sm:p-6">
+        <section className="t2q-card-pro p-5 sm:p-6">
           <div className="font-mono text-xs uppercase tracking-[0.2em] text-ink-400">
             Terms
           </div>
@@ -617,7 +617,7 @@ function ItemsSection({
   return (
     <section
       data-testid={`section-${title.toLowerCase()}`}
-      className="t2q-card p-5 sm:p-6"
+      className="t2q-card-pro p-5 sm:p-6"
     >
       <div className="flex items-center justify-between">
         <h3 className="font-display text-lg uppercase tracking-tight">

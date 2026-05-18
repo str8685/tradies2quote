@@ -123,7 +123,7 @@ function SubmitButton({ mode }: { mode: "create" | "edit" }) {
       type="submit"
       data-testid="material-submit"
       disabled={pending}
-      className="t2q-btn-primary disabled:cursor-not-allowed disabled:opacity-50"
+      className="t2q-btn-primary-pro disabled:cursor-not-allowed disabled:opacity-50"
     >
       <FloppyDisk size={18} weight="bold" />
       {pending ? "Saving…" : label}

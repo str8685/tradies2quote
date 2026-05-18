@@ -79,7 +79,7 @@ export async function QuoteReviewAgent() {
     return (
       <section
         data-testid="quote-review-agent"
-        className="t2q-premium-card-static p-5 sm:p-6"
+        className="t2q-card-pro p-5 sm:p-6"
       >
         <Header />
         <div className="mt-5 rounded-sm border border-ink-700 bg-ink-900/40 p-4 text-sm text-ink-300">
@@ -132,7 +132,7 @@ export async function QuoteReviewAgent() {
   return (
     <section
       data-testid="quote-review-agent"
-      className="t2q-premium-card-static p-5 sm:p-6"
+      className="t2q-card-pro p-5 sm:p-6"
     >
       <Header />
       <div className="mt-5 flex flex-wrap items-baseline justify-between gap-2">

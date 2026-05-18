@@ -12,7 +12,7 @@ import { ArrowRight } from "@phosphor-icons/react/dist/ssr";
  * tradies can see the agent exists without being able to fire anything
  * that doesn't work yet.
  *
- * Visual treatment uses the existing `.t2q-premium-card` utility so the
+ * Visual treatment uses the existing `.t2q-card-pro t2q-card-pro-hover` utility so the
  * hub feels like the rest of the app, with a brand-orange status pill in
  * the corner and a Phosphor icon block at the top.
  */
@@ -49,7 +49,7 @@ export function AgentCard({
   return (
     <article
       data-testid={`agent-card-${title.toLowerCase().replace(/\s+/g, "-")}`}
-      className="t2q-premium-card flex h-full flex-col p-5 sm:p-6"
+      className="t2q-card-pro t2q-card-pro-hover flex h-full flex-col p-5 sm:p-6"
     >
       <div className="flex items-start justify-between gap-3">
         <span
@@ -76,7 +76,7 @@ export function AgentCard({
         {cta ? (
           <Link
             href={cta.href}
-            className="t2q-btn-ghost inline-flex h-10 items-center justify-center gap-1.5 px-4"
+            className="t2q-btn-ghost-pro inline-flex h-10 items-center justify-center gap-1.5 px-4"
           >
             {cta.label}
             <ArrowRight size={14} weight="bold" />

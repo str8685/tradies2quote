@@ -96,7 +96,7 @@ export default async function AgentMonitorPage() {
 
       <main className="mx-auto max-w-5xl px-4 py-10 sm:px-6 sm:py-14">
         <div className="mb-8">
-          <div className="t2q-section-label mb-3">{"// owner"}</div>
+          <div className="t2q-section-label-pro mb-3">{"// owner"}</div>
           <h1 className="font-display text-3xl uppercase tracking-tight sm:text-4xl">
             Agent monitor.
           </h1>
@@ -128,7 +128,7 @@ export default async function AgentMonitorPage() {
         <section
           aria-label="Recent runs"
           data-testid="monitor-runs"
-          className="t2q-premium-card-static mb-5 p-4 sm:p-5"
+          className="t2q-card-pro mb-5 p-4 sm:p-5"
         >
           <div className="flex items-baseline justify-between">
             <h2 className="font-display text-base uppercase tracking-tight text-white sm:text-lg">
@@ -235,7 +235,7 @@ export default async function AgentMonitorPage() {
         <section
           aria-label="Recent users"
           data-testid="monitor-users"
-          className="t2q-premium-card-static mb-5 p-4 sm:p-5"
+          className="t2q-card-pro mb-5 p-4 sm:p-5"
         >
           <div className="flex items-baseline justify-between">
             <h2 className="font-display text-base uppercase tracking-tight text-white sm:text-lg">
@@ -305,7 +305,7 @@ export default async function AgentMonitorPage() {
         <section
           aria-label="Recent events"
           data-testid="monitor-events"
-          className="t2q-premium-card-static mb-5 p-4 sm:p-5"
+          className="t2q-card-pro mb-5 p-4 sm:p-5"
         >
           <div className="flex items-baseline justify-between">
             <h2 className="font-display text-base uppercase tracking-tight text-white sm:text-lg">

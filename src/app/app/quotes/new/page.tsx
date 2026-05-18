@@ -38,7 +38,7 @@ export default async function NewQuotePage() {
 
       <main className="mx-auto max-w-3xl px-4 py-10 sm:px-6 sm:py-14">
         <div className="mb-8">
-          <div className="t2q-section-label mb-3">{"// step 1 of 3"}</div>
+          <div className="t2q-section-label-pro mb-3">{"// step 1 of 3"}</div>
           <h1 className="font-display text-3xl uppercase tracking-tight sm:text-4xl">
             Describe the <span className="text-brand">job.</span>
           </h1>

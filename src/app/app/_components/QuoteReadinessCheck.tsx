@@ -77,7 +77,7 @@ export function QuoteReadinessCheck({ quoteData, profile, expiresAt }: Props) {
     <section
       data-testid="quote-readiness"
       data-readiness-status={summary.status}
-      className={`t2q-premium-card-static mb-6 p-5 sm:p-6 border ${banner.wrapper.replace("bg-", "bg-")}`}
+      className={`t2q-card-pro mb-6 p-5 sm:p-6 border ${banner.wrapper.replace("bg-", "bg-")}`}
     >
       {/* Banner */}
       <div className="flex items-start gap-3">

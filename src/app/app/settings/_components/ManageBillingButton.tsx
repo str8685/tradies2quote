@@ -41,7 +41,7 @@ export function ManageBillingButton() {
         data-testid="settings-manage-billing"
         onClick={open}
         disabled={state === "loading"}
-        className="t2q-btn-ghost inline-flex h-11 items-center gap-2 px-5 disabled:opacity-50 disabled:cursor-not-allowed"
+        className="t2q-btn-ghost-pro inline-flex h-11 items-center gap-2 px-5 disabled:opacity-50 disabled:cursor-not-allowed"
       >
         <CreditCard size={16} weight="bold" />
         {state === "loading" ? "Opening Stripe…" : "Manage billing"}

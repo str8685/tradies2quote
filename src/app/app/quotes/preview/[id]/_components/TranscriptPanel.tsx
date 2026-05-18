@@ -119,7 +119,7 @@ export function TranscriptPanel({ quoteId, transcript }: Props) {
       className="space-y-3 rounded-sm border border-ink-700 bg-ink-800/40 p-4"
     >
       <div className="flex items-center justify-between gap-2">
-        <p className="t2q-section-label">{"// transcript"}</p>
+        <p className="t2q-section-label-pro">{"// transcript"}</p>
         {transcript.fallback === "summary_failed" && (
           // Wave 19.5 — bumped from a muted ink-400 corner badge to a
           // hivis warning pill so silent AI failures actually announce

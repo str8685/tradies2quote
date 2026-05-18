@@ -101,7 +101,7 @@ export function DeviceInfoClient() {
     <section
       aria-label="Device"
       data-testid="debug-device"
-      className="t2q-premium-card-static p-5 sm:p-7"
+      className="t2q-card-pro p-5 sm:p-7"
     >
       <h2 className="font-display text-lg uppercase tracking-tight text-white sm:text-xl">
         Device.

@@ -32,7 +32,7 @@ export default function AppError({
   return (
     <div className="min-h-screen text-white">
       <main className="mx-auto max-w-3xl px-4 py-20 sm:px-6">
-        <div className="t2q-premium-card-static p-6 sm:p-10">
+        <div className="t2q-card-pro p-6 sm:p-10">
           <span
             aria-hidden="true"
             className="inline-flex h-12 w-12 items-center justify-center rounded-sm border border-red-500/40 bg-red-500/10 text-red-300"
@@ -60,7 +60,7 @@ export default function AppError({
               type="button"
               onClick={() => reset()}
               data-testid="app-error-retry"
-              className="t2q-btn-primary inline-flex h-11 items-center justify-center gap-2 px-5"
+              className="t2q-btn-primary-pro inline-flex h-11 items-center justify-center gap-2 px-5"
             >
               <ArrowClockwise size={16} weight="bold" />
               Try again
@@ -68,7 +68,7 @@ export default function AppError({
             <Link
               href="/app"
               data-testid="app-error-dashboard"
-              className="t2q-btn-ghost inline-flex h-11 items-center justify-center gap-2 px-5"
+              className="t2q-btn-ghost-pro inline-flex h-11 items-center justify-center gap-2 px-5"
             >
               <House size={16} weight="bold" />
               Back to dashboard

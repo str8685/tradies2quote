@@ -46,7 +46,7 @@ export function CheckoutButton() {
         data-testid="upgrade-checkout-button"
         onClick={go}
         disabled={state === "loading"}
-        className="t2q-btn-primary inline-flex h-12 items-center gap-2 px-6 text-base disabled:opacity-60 disabled:cursor-not-allowed"
+        className="t2q-btn-primary-pro inline-flex h-12 items-center gap-2 px-6 text-base disabled:opacity-60 disabled:cursor-not-allowed"
       >
         {state === "loading" ? (
           <>

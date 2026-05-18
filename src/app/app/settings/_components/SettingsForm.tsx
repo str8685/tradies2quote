@@ -244,7 +244,7 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <section className="t2q-premium-card-static p-5 sm:p-7">
+    <section className="t2q-card-pro p-5 sm:p-7">
       <h2 className="font-display text-lg uppercase tracking-tight text-white sm:text-xl">
         {title}
       </h2>
@@ -283,7 +283,7 @@ function SaveButton() {
       type="submit"
       data-testid="settings-save"
       disabled={pending}
-      className="t2q-btn-primary inline-flex h-11 items-center gap-2 px-6 disabled:cursor-not-allowed disabled:opacity-60"
+      className="t2q-btn-primary-pro inline-flex h-11 items-center gap-2 px-6 disabled:cursor-not-allowed disabled:opacity-60"
     >
       <FloppyDisk size={18} weight="bold" />
       {pending ? "Saving…" : "Save settings"}

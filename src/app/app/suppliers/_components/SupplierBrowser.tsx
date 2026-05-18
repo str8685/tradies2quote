@@ -211,7 +211,7 @@ export function SupplierBrowser({ initialUrl }: { initialUrl: string }) {
   return (
     <main className="mx-auto w-full max-w-3xl px-3 pb-32 pt-4 sm:px-6 sm:pt-8">
       <div className="mb-3 flex flex-col gap-1 sm:mb-4">
-        <div className="t2q-section-label">{"// in-app supplier browser"}</div>
+        <div className="t2q-section-label-pro">{"// in-app supplier browser"}</div>
         <h1 className="font-display text-2xl uppercase tracking-tight sm:text-3xl">
           Browse & <span className="text-brand">import.</span>
         </h1>
@@ -300,7 +300,7 @@ export function SupplierBrowser({ initialUrl }: { initialUrl: string }) {
         <button
           type="submit"
           data-testid="supplier-url-go"
-          className="t2q-btn-primary h-11 px-4 text-xs sm:text-sm"
+          className="t2q-btn-primary-pro h-11 px-4 text-xs sm:text-sm"
         >
           Go
         </button>
@@ -384,7 +384,7 @@ export function SupplierBrowser({ initialUrl }: { initialUrl: string }) {
             onClick={onAddToMaterials}
             disabled={phase.state === "extracting"}
             data-testid="supplier-add-btn"
-            className="t2q-btn-primary t2q-shadow-brutal h-14 w-full max-w-sm justify-center text-base disabled:cursor-not-allowed disabled:opacity-70"
+            className="t2q-btn-primary-pro t2q-shadow-brutal h-14 w-full max-w-sm justify-center text-base disabled:cursor-not-allowed disabled:opacity-70"
           >
             {phase.state === "extracting" ? (
               <>
@@ -477,7 +477,7 @@ function ReviewSheet({
       onClick={onCancel}
     >
       <div
-        className="t2q-card w-full max-w-md rounded-b-none p-5 sm:rounded-sm sm:p-6"
+        className="t2q-card-pro w-full max-w-md rounded-b-none p-5 sm:rounded-sm sm:p-6"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-start justify-between gap-3">
@@ -600,7 +600,7 @@ function ReviewSheet({
               })
             }
             data-testid="supplier-review-save"
-            className="t2q-btn-primary h-11 px-5 disabled:cursor-not-allowed disabled:opacity-60"
+            className="t2q-btn-primary-pro h-11 px-5 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {phase.saving ? "Saving…" : "Save to Materials"}
           </button>
@@ -626,7 +626,7 @@ function ManualFallbackSheet({
       onClick={onCancel}
     >
       <div
-        className="t2q-card w-full max-w-md rounded-b-none p-5 sm:rounded-sm sm:p-6"
+        className="t2q-card-pro w-full max-w-md rounded-b-none p-5 sm:rounded-sm sm:p-6"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="font-mono text-[10px] uppercase tracking-[0.25em] text-brand">
@@ -650,7 +650,7 @@ function ManualFallbackSheet({
           <Link
             href={`/app/materials/capture?url=${encodeURIComponent(sourceUrl)}`}
             data-testid="supplier-manual-link"
-            className="t2q-btn-primary h-11 px-5"
+            className="t2q-btn-primary-pro h-11 px-5"
           >
             Enter manually
           </Link>

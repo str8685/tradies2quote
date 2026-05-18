@@ -745,7 +745,7 @@ export default async function GuidePage() {
           Back to settings
         </Link>
         <div className="mb-10">
-          <div className="t2q-section-label mb-3">{"// the manual"}</div>
+          <div className="t2q-section-label-pro mb-3">{"// the manual"}</div>
           <h1 className="font-display text-3xl uppercase tracking-tight sm:text-4xl">
             How to use <span className="text-brand">T2Q.</span>
           </h1>
@@ -759,7 +759,7 @@ export default async function GuidePage() {
         {/* Table of contents */}
         <nav
           aria-label="Sections"
-          className="t2q-premium-card-static mb-10 p-4 sm:p-5"
+          className="t2q-card-pro mb-10 p-4 sm:p-5"
         >
           <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-ink-300">
             {`// ${SECTIONS.length} sections — tap to jump`}
@@ -809,7 +809,7 @@ export default async function GuidePage() {
             </a>{" "}
             — we read every message.
           </p>
-          <Link href="/app" className="t2q-btn-ghost mt-2">
+          <Link href="/app" className="t2q-btn-ghost-pro mt-2">
             <House size={16} weight="bold" />
             Back to dashboard
           </Link>
@@ -836,7 +836,7 @@ function SectionBlock({
     <section
       id={section.id}
       data-testid={`guide-section-${section.id}`}
-      className="scroll-mt-20 t2q-premium-card-static p-5 sm:p-6"
+      className="scroll-mt-20 t2q-card-pro p-5 sm:p-6"
     >
       <header className="mb-4 flex items-start gap-3 sm:items-center">
         <span

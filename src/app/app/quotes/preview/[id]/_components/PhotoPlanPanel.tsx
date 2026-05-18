@@ -14,7 +14,7 @@ import type { PhotoPlanItem, PhotoPlanResult } from "@/lib/agents/photo-plan";
  * Photo / Plan panel — the quote-editor surface for the Photo/Plan
  * Reading agent.
  *
- * Mirrors <TakeoffPanel>: a collapsible `t2q-card` that sits in the
+ * Mirrors <TakeoffPanel>: a collapsible `t2q-card-pro` that sits in the
  * quote editor. The tradie uploads a site photo or a sketched plan; it
  * POSTs to the existing `/api/agents/photo-plan` route (auth-gated,
  * in-memory, already reports every run to the monitoring dashboard);
@@ -136,7 +136,7 @@ export function PhotoPlanPanel({ onAddItems, onAddNotes, isAccepted }: Props) {
     : "Upload a site photo or a sketched plan";
 
   return (
-    <section data-testid="photo-plan-panel" className="t2q-card">
+    <section data-testid="photo-plan-panel" className="t2q-card-pro">
       <details className="group">
         <summary className="flex cursor-pointer list-none items-start justify-between gap-4 p-5 sm:p-6 [&::-webkit-details-marker]:hidden">
           <div className="min-w-0 flex-1">
@@ -225,7 +225,7 @@ export function PhotoPlanPanel({ onAddItems, onAddNotes, isAccepted }: Props) {
                 type="submit"
                 disabled={!file || submitting}
                 data-testid="photo-plan-panel-submit"
-                className="t2q-btn-primary disabled:cursor-not-allowed disabled:opacity-40"
+                className="t2q-btn-primary-pro disabled:cursor-not-allowed disabled:opacity-40"
               >
                 {submitting ? (
                   <>
@@ -328,7 +328,7 @@ export function PhotoPlanPanel({ onAddItems, onAddNotes, isAccepted }: Props) {
                     onClick={handleAddItems}
                     disabled={isAccepted || itemsApplied}
                     title={isAccepted ? "Quote already accepted." : undefined}
-                    className="t2q-btn-primary disabled:cursor-not-allowed disabled:opacity-40"
+                    className="t2q-btn-primary-pro disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     {itemsApplied ? (
                       <>
@@ -349,7 +349,7 @@ export function PhotoPlanPanel({ onAddItems, onAddNotes, isAccepted }: Props) {
                   onClick={handleAddNotes}
                   disabled={isAccepted || notesApplied}
                   title={isAccepted ? "Quote already accepted." : undefined}
-                  className="t2q-btn-ghost disabled:cursor-not-allowed disabled:opacity-40"
+                  className="t2q-btn-ghost-pro disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   {notesApplied ? (
                     <>

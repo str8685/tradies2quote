@@ -70,7 +70,7 @@ export function SubmitButton({ children }: { children: React.ReactNode }) {
   return (
     <button
       type="submit"
-      className="w-full t2q-btn-primary h-12"
+      className="w-full t2q-btn-primary-pro h-12"
     >
       {children}
     </button>

@@ -49,7 +49,7 @@ export default function SupportPage() {
       <section className="relative overflow-hidden border-b border-ink-700">
         <div className="absolute inset-0 t2q-aurora opacity-40 pointer-events-none" />
         <div className="relative max-w-5xl mx-auto px-6 md:px-12 py-16 md:py-24">
-          <div className="t2q-section-label mb-4">{"// support · help"}</div>
+          <div className="t2q-section-label-pro mb-4">{"// support · help"}</div>
           <h1 className="font-display text-4xl sm:text-5xl lg:text-6xl uppercase tracking-tight text-white">
             How can we <span className="text-brand">help?</span>
           </h1>
@@ -115,7 +115,7 @@ export default function SupportPage() {
       {/* Common topics */}
       <section className="py-16 md:py-24">
         <div className="max-w-5xl mx-auto px-6 md:px-12">
-          <div className="t2q-section-label mb-3">{"// common topics"}</div>
+          <div className="t2q-section-label-pro mb-3">{"// common topics"}</div>
           <h2 className="font-display text-3xl sm:text-4xl uppercase tracking-tight text-white">
             Quick <span className="text-brand">answers.</span>
           </h2>
@@ -155,7 +155,7 @@ export default function SupportPage() {
       {/* Account & data */}
       <section className="py-16 md:py-24 border-t border-ink-700 bg-ink-950">
         <div className="max-w-5xl mx-auto px-6 md:px-12">
-          <div className="t2q-section-label mb-3">
+          <div className="t2q-section-label-pro mb-3">
             {"// your account · your data"}
           </div>
           <h2 className="font-display text-3xl sm:text-4xl uppercase tracking-tight text-white">

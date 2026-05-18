@@ -292,7 +292,7 @@ export function InvoiceList({ rows }: Props) {
           onClick={() => !pending && setConfirming(false)}
         >
           <div
-            className="t2q-card w-full max-w-sm p-5 sm:p-6"
+            className="t2q-card-pro w-full max-w-sm p-5 sm:p-6"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="font-mono text-[10px] uppercase tracking-[0.25em] text-brand">

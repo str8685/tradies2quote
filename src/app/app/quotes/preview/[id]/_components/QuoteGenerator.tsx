@@ -47,7 +47,7 @@ export function QuoteGenerator({ id }: { id: string }) {
   return (
     <section
       data-testid="quote-generator"
-      className="t2q-card flex min-h-[420px] flex-col items-center justify-center p-8 text-center"
+      className="t2q-card-pro flex min-h-[420px] flex-col items-center justify-center p-8 text-center"
     >
       {pending ? (
         <>
@@ -101,7 +101,7 @@ export function QuoteGenerator({ id }: { id: string }) {
                 startedRef.current = true;
                 void generate();
               }}
-              className="t2q-btn-primary inline-flex h-11 items-center justify-center px-5"
+              className="t2q-btn-primary-pro inline-flex h-11 items-center justify-center px-5"
             >
               Try again
             </button>
@@ -109,7 +109,7 @@ export function QuoteGenerator({ id }: { id: string }) {
               type="button"
               data-testid="quote-generator-manual"
               onClick={() => router.refresh()}
-              className="t2q-btn-ghost inline-flex h-11 items-center justify-center px-5"
+              className="t2q-btn-ghost-pro inline-flex h-11 items-center justify-center px-5"
             >
               Edit manually
             </button>

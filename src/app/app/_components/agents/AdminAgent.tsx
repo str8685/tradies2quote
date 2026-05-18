@@ -70,7 +70,7 @@ export function AdminAgent({ profile, clients }: Props) {
     <section
       data-testid="agent-admin"
       data-admin-status={summary.status}
-      className="t2q-premium-card-static p-5 sm:p-7"
+      className="t2q-card-pro p-5 sm:p-7"
     >
       <div className="flex items-center gap-3">
         <span

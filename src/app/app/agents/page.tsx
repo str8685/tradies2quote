@@ -57,7 +57,7 @@ export default async function AgentsPage() {
       <main className="mx-auto max-w-3xl px-4 py-10 sm:px-6 sm:py-14">
         {/* Hero */}
         <section className="mb-10">
-          <div className="t2q-section-label mb-3">{"// agents · run inline"}</div>
+          <div className="t2q-section-label-pro mb-3">{"// agents · run inline"}</div>
           <div className="flex flex-wrap items-center gap-3">
             <h1 className="font-display text-3xl uppercase tracking-tight sm:text-4xl">
               T2Q <span className="text-brand">Agents.</span>
@@ -81,7 +81,7 @@ export default async function AgentsPage() {
         {/* Quote Review — server component, suspended */}
         <Suspense
           fallback={
-            <section className="t2q-premium-card-static mb-6 p-5 sm:p-6">
+            <section className="t2q-card-pro mb-6 p-5 sm:p-6">
               <div className="h-4 w-1/3 animate-pulse rounded-sm bg-ink-700" />
               <div className="mt-4 h-20 animate-pulse rounded-sm bg-ink-700/60" />
             </section>
@@ -169,7 +169,7 @@ export default async function AgentsPage() {
         <section
           aria-labelledby="agents-safety-heading"
           data-testid="agents-safety"
-          className="t2q-premium-card-static mt-10 p-5 sm:p-7"
+          className="t2q-card-pro mt-10 p-5 sm:p-7"
         >
           <div className="flex items-center gap-3">
             <span
@@ -217,7 +217,7 @@ export default async function AgentsPage() {
         <section
           aria-labelledby="agents-status-heading"
           data-testid="agents-status-board"
-          className="t2q-premium-card-static mt-6 p-5 sm:p-7"
+          className="t2q-card-pro mt-6 p-5 sm:p-7"
         >
           <div className="flex items-center gap-3">
             <span

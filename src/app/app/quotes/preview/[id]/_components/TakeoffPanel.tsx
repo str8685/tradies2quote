@@ -106,7 +106,7 @@ export function TakeoffPanel({ onRecalculate, initialInputs, isAccepted }: Props
   const ready = toNumber(form.wallLengthM, 0) > 0;
 
   return (
-    <section data-testid="takeoff-panel" className="t2q-card">
+    <section data-testid="takeoff-panel" className="t2q-card-pro">
       <details className="group">
         <summary className="flex cursor-pointer list-none items-start justify-between gap-4 p-5 sm:p-6 [&::-webkit-details-marker]:hidden">
           <div className="min-w-0 flex-1">
@@ -249,7 +249,7 @@ export function TakeoffPanel({ onRecalculate, initialInputs, isAccepted }: Props
               onClick={handleRecalculate}
               disabled={!ready || isAccepted}
               title={isAccepted ? "Quote already accepted." : undefined}
-              className="t2q-btn-primary disabled:cursor-not-allowed disabled:opacity-40"
+              className="t2q-btn-primary-pro disabled:cursor-not-allowed disabled:opacity-40"
             >
               <Calculator size={18} weight="bold" />
               Recalculate Materials
