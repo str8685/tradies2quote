@@ -228,7 +228,7 @@ export function CustomerChat({ token, businessName, clientName }: Props) {
             // Clamping to 100vw guarantees the panel never extends past
             // the user-visible area, which kept the send button off-
             // screen on narrow embedded browsers.
-            className="flex h-[88vh] w-full max-w-[min(28rem,100vw)] flex-col overflow-hidden rounded-t-2xl border border-ink-700 bg-ink-950 shadow-2xl sm:h-[80vh] sm:rounded-2xl"
+            className="flex h-[88vh] w-full max-w-[min(28rem,100vw)] flex-col overflow-hidden overflow-x-hidden rounded-t-2xl border border-ink-700 bg-ink-950 shadow-2xl sm:h-[80vh] sm:rounded-2xl"
           >
             {/* Header */}
             <header className="flex items-start justify-between gap-3 border-b border-ink-700 bg-ink-950 px-5 py-4">
@@ -260,7 +260,7 @@ export function CustomerChat({ token, businessName, clientName }: Props) {
             <div
               ref={scrollRef}
               data-testid="customer-chat-messages"
-              className="flex-1 space-y-3 overflow-y-auto bg-ink-900 px-4 py-4"
+              className="flex-1 space-y-3 overflow-y-auto overflow-x-hidden bg-ink-900 px-4 py-4"
             >
               {messages.map((m, i) => (
                 <Bubble key={i} role={m.role} content={m.content} />
@@ -326,7 +326,14 @@ function Bubble({ role, content }: Message) {
     >
       <div
         className={[
-          "max-w-[85%] whitespace-pre-wrap rounded-md px-3 py-2 text-sm",
+          // Wave 38 — break-words on the bubble itself; without it a
+          // long URL or unbroken-string in a customer message can blow
+          // the bubble past 85% width, pushing the chat body wider,
+          // pushing the sheet wider, pushing the Send button off
+          // screen on narrow iPhones. min-w-0 lets the bubble shrink
+          // under flex pressure; break-words wraps mid-token when
+          // there's no whitespace to break on.
+          "max-w-[85%] min-w-0 whitespace-pre-wrap break-words rounded-md px-3 py-2 text-sm",
           isCustomer
             ? "bg-brand text-ink-900"
             : "bg-ink-800 text-ink-100 border border-ink-700",

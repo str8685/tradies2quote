@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
+import Link from "next/link";
 import {
+  ArrowLeft,
   CheckCircle,
   Clock,
   Info,
@@ -94,16 +96,26 @@ export default async function AgentMonitorPage() {
     <div className="min-h-screen text-white">
       <AppHeader context="Agent monitor" />
 
-      <main className="mx-auto max-w-5xl px-4 py-10 sm:px-6 sm:py-14">
-        <div className="mb-8">
-          <div className="t2q-section-label-pro mb-3">{"// owner"}</div>
-          <h1 className="font-display text-3xl uppercase tracking-tight sm:text-4xl">
+      <main className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-10">
+        {/* Back-to-settings link — anchored top-left so the operator
+            can bounce out of the owner-only telemetry view without
+            scrolling back through the mobile bottom nav. */}
+        <Link
+          href="/app/settings"
+          data-testid="monitor-back-to-settings"
+          className="mb-4 inline-flex h-9 items-center gap-1.5 rounded-sm border border-white/[0.06] bg-white/[0.02] px-3 font-mono text-[10px] uppercase tracking-[0.25em] text-ink-300 transition-colors hover:border-brand/40 hover:text-brand"
+        >
+          <ArrowLeft size={13} weight="bold" />
+          Settings
+        </Link>
+
+        <div className="mb-5">
+          <div className="t2q-section-label-pro mb-2">{"// owner"}</div>
+          <h1 className="font-display text-2xl uppercase tracking-tight sm:text-3xl">
             Agent monitor.
           </h1>
-          <p className="mt-3 text-sm text-ink-300 sm:text-base">
-            Live telemetry from every server-side agent — quote generation,
-            voice cleanup, compliance, follow-up, the SMS / email senders.
-            Owner-only.
+          <p className="mt-2 text-xs text-ink-300 sm:text-sm">
+            Live telemetry from every server-side agent. Owner-only.
           </p>
         </div>
 
@@ -124,7 +136,83 @@ export default async function AgentMonitorPage() {
           <KpiTile label="Pending" value={counts.pending ?? 0} tone="muted" />
         </section>
 
-        {/* Runs — denormalized lifecycle table. One row per run id. */}
+        {/* Users — promoted to the TOP of the section list (above Runs +
+            Events) so the operator can see who's signed up without
+            scrolling past the noisy run log on every page load. Reads
+            auth.users via the service-role admin API so even users
+            with no public.profiles row appear. PII is intentional
+            here: the dashboard is owner-only. */}
+        <section
+          aria-label="Recent users"
+          data-testid="monitor-users"
+          className="t2q-card-pro mb-5 p-4 sm:p-5"
+        >
+          <div className="flex items-baseline justify-between">
+            <h2 className="font-display text-base uppercase tracking-tight text-white sm:text-lg">
+              <Users
+                size={18}
+                weight="bold"
+                className="inline -mt-1 mr-1.5 text-brand"
+              />
+              Users <span className="text-ink-400">({users.length})</span>
+            </h2>
+            <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-ink-400">
+              sorted by last activity
+            </span>
+          </div>
+
+          {usersError && (
+            <p
+              data-testid="monitor-users-error"
+              className="mt-4 rounded-sm border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-300"
+            >
+              Could not load users: {usersError}
+            </p>
+          )}
+
+          {!usersError && users.length === 0 && (
+            <p
+              data-testid="monitor-users-empty"
+              className="mt-4 text-sm text-ink-300"
+            >
+              No users yet.
+            </p>
+          )}
+
+          {users.length > 0 && (
+            <ul className="mt-4 max-h-[24rem] space-y-2 overflow-y-auto pr-1">
+              {users.map((u) => (
+                <li
+                  key={u.id}
+                  data-testid={`monitor-user-${u.id}`}
+                  className="flex items-start gap-3 border-b border-ink-700/60 pb-2 last:border-b-0 last:pb-0"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-display text-sm uppercase tracking-tight text-white">
+                      {u.email ?? "—"}
+                    </p>
+                    <p className="mt-0.5 font-mono text-[10px] uppercase tracking-[0.2em] text-ink-300">
+                      Signed up {relativeTime(u.created_at)}
+                      {u.last_sign_in_at
+                        ? ` · Last seen ${relativeTime(u.last_sign_in_at)}`
+                        : " · Never signed in"}
+                      {u.email_confirmed_at ? "" : " · Email unconfirmed"}
+                    </p>
+                  </div>
+                  {u.last_sign_in_at && isWithin(u.last_sign_in_at, 24 * 60) && (
+                    <span className="inline-flex shrink-0 items-center rounded-sm border border-brand/40 bg-brand/10 px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.2em] text-brand">
+                      active
+                    </span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+
+        {/* Runs — denormalized lifecycle table. One row per run id.
+            Capped to 24rem + scroll-within-card so the runs log can't
+            push Events offscreen. */}
         <section
           aria-label="Recent runs"
           data-testid="monitor-runs"
@@ -159,7 +247,7 @@ export default async function AgentMonitorPage() {
           )}
 
           {runs.length > 0 && (
-            <ul className="mt-4 space-y-2">
+            <ul className="mt-4 max-h-[24rem] space-y-2 overflow-y-auto pr-1">
               {runs.map((r) => (
                 <li
                   key={r.run_id}
@@ -228,78 +316,6 @@ export default async function AgentMonitorPage() {
           )}
         </section>
 
-        {/* Users — who's signed up, who's logging in. Reads
-            auth.users via the service-role admin API so even users
-            with no public.profiles row appear. PII is intentional
-            here: the dashboard is owner-only. */}
-        <section
-          aria-label="Recent users"
-          data-testid="monitor-users"
-          className="t2q-card-pro mb-5 p-4 sm:p-5"
-        >
-          <div className="flex items-baseline justify-between">
-            <h2 className="font-display text-base uppercase tracking-tight text-white sm:text-lg">
-              <Users
-                size={18}
-                weight="bold"
-                className="inline -mt-1 mr-1.5 text-brand"
-              />
-              Users <span className="text-ink-400">({users.length})</span>
-            </h2>
-            <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-ink-400">
-              sorted by last activity
-            </span>
-          </div>
-
-          {usersError && (
-            <p
-              data-testid="monitor-users-error"
-              className="mt-4 rounded-sm border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-300"
-            >
-              Could not load users: {usersError}
-            </p>
-          )}
-
-          {!usersError && users.length === 0 && (
-            <p
-              data-testid="monitor-users-empty"
-              className="mt-5 text-sm text-ink-300"
-            >
-              No users yet.
-            </p>
-          )}
-
-          {users.length > 0 && (
-            <ul className="mt-4 space-y-2">
-              {users.map((u) => (
-                <li
-                  key={u.id}
-                  data-testid={`monitor-user-${u.id}`}
-                  className="flex items-start gap-3 border-b border-ink-700/60 pb-2 last:border-b-0 last:pb-0"
-                >
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate font-display text-sm uppercase tracking-tight text-white">
-                      {u.email ?? "—"}
-                    </p>
-                    <p className="mt-0.5 font-mono text-[10px] uppercase tracking-[0.2em] text-ink-300">
-                      Signed up {relativeTime(u.created_at)}
-                      {u.last_sign_in_at
-                        ? ` · Last seen ${relativeTime(u.last_sign_in_at)}`
-                        : " · Never signed in"}
-                      {u.email_confirmed_at ? "" : " · Email unconfirmed"}
-                    </p>
-                  </div>
-                  {u.last_sign_in_at && isWithin(u.last_sign_in_at, 24 * 60) && (
-                    <span className="inline-flex shrink-0 items-center rounded-sm border border-brand/40 bg-brand/10 px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.2em] text-brand">
-                      active
-                    </span>
-                  )}
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-
         {/* Events — raw append-only stream. Useful when a run misbehaves
             and you need the step-by-step. */}
         <section
@@ -335,7 +351,7 @@ export default async function AgentMonitorPage() {
           )}
 
           {events.length > 0 && (
-            <ul className="mt-4 space-y-1.5">
+            <ul className="mt-4 max-h-[24rem] space-y-1.5 overflow-y-auto pr-1">
               {events.map((e) => (
                 <li
                   key={e.id}
