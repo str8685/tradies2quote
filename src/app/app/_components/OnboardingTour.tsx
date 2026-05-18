@@ -146,11 +146,30 @@ const ALL_STEPS: ReadonlyArray<DriveStep> = [
     },
   },
   {
-    element: '[data-testid="dashboard-stats"]',
+    // Anchor resolved at runtime to the smallest inner element present.
+    // Pointing at the whole pipeline card was ~400px tall on iPhone,
+    // which left no room for the popover and Driver.js parked it
+    // off-target. The inner grid (or empty-state hint) is much shorter
+    // and lets the popover sit cleanly below it.
+    element: '[data-testid="dashboard-stage-tiles"]',
     popover: {
       title: "Your pipeline",
       description:
         "Every quote you create lives here, grouped by stage: Draft → Sent → Viewed → Accepted → Scheduled → In progress → Completed. Tap any stage tile to filter.",
+      side: "bottom",
+      align: "center",
+    },
+  },
+  {
+    // Empty-pipeline fallback for the same step — only one of these
+    // two will exist in the DOM, so only one survives the filter at
+    // drive time. The fallback covers fresh accounts that haven't
+    // created their first quote yet.
+    element: '[data-testid="dashboard-pipeline-empty"]',
+    popover: {
+      title: "Your pipeline",
+      description:
+        "This is where every quote you create will live, grouped by stage. Create your first quote and you'll see it appear here.",
       side: "bottom",
       align: "center",
     },
@@ -222,6 +241,11 @@ export function OnboardingTour() {
           nextBtnText: "Next →",
           prevBtnText: "← Back",
           doneBtnText: "Done",
+          // Scroll the highlighted element into view before positioning
+          // the popover. Without this, an anchor that's even partially
+          // offscreen on iPhone gets a popover parked at the screen edge
+          // and the spotlight border looks disconnected from the bubble.
+          smoothScroll: true,
           steps,
           onDestroyed: () => {
             markDone();
