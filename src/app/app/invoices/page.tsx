@@ -1,14 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import {
-  ArrowSquareOut,
-  Receipt,
-} from "@phosphor-icons/react/dist/ssr";
+import { Receipt } from "@phosphor-icons/react/dist/ssr";
 import { createClient } from "@/lib/supabase/server";
-import { formatCurrency } from "@/lib/quote-defaults";
 import type { InvoiceStatus } from "@/lib/types/invoice";
 import { AppHeader } from "../_components/AppHeader";
+import { InvoiceList } from "./_components/InvoiceList";
 
 export const metadata: Metadata = {
   title: "Invoices",
@@ -192,66 +189,27 @@ export default async function InvoicesPage({
               </p>
             </div>
           ) : (
-            <ul className="space-y-3">
-              {rows.map((inv) => {
+            <InvoiceList
+              rows={rows.map((inv) => {
                 const snapshot = (inv.invoice_data ?? {}) as {
                   client?: { name?: string };
                 };
-                const clientName = snapshot.client?.name?.trim() || "—";
-                return (
-                  <li
-                    key={inv.id}
-                    data-testid={`invoice-row-${inv.id}`}
-                    data-invoice-status={inv.status}
-                    className="border-b border-ink-700/60 pb-3 last:border-b-0 last:pb-0"
-                  >
-                    <Link
-                      href={`/app/quotes/preview/${inv.quote_id}#agent-invoice`}
-                      className="group flex items-start gap-3 hover:opacity-95"
-                    >
-                      <Receipt
-                        size={18}
-                        weight="bold"
-                        className="mt-0.5 shrink-0 text-brand"
-                      />
-                      <div className="min-w-0 flex-1">
-                        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                          <p className="font-display text-sm uppercase tracking-tight text-white sm:text-base">
-                            {inv.invoice_number}
-                          </p>
-                          <p className="truncate text-sm text-ink-200">
-                            {clientName}
-                          </p>
-                        </div>
-                        <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.2em] text-ink-400">
-                          {formatRelativeOrDate(inv.created_at)} ·{" "}
-                          {inv.status === "paid" && inv.paid_at
-                            ? `Paid ${formatRelativeOrDate(inv.paid_at)}`
-                            : inv.status === "sent" && inv.sent_at
-                              ? `Sent ${formatRelativeOrDate(inv.sent_at)}`
-                              : `Due ${formatDueLabel(inv.due_date)}`}
-                        </p>
-                      </div>
-                      <div className="flex shrink-0 flex-col items-end gap-1.5">
-                        <span className="font-display text-base text-white sm:text-lg">
-                          {formatCurrency(inv.total_amount, inv.currency)}
-                        </span>
-                        <span
-                          className={`inline-flex items-center rounded-sm border px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.2em] ${statusPill(inv.status as InvoiceStatus)}`}
-                        >
-                          {inv.status}
-                        </span>
-                      </div>
-                      <ArrowSquareOut
-                        size={14}
-                        weight="bold"
-                        className="mt-1 ml-1 hidden shrink-0 text-ink-400 group-hover:text-brand sm:block"
-                      />
-                    </Link>
-                  </li>
-                );
+                return {
+                  id: inv.id,
+                  invoice_number: inv.invoice_number,
+                  status: inv.status,
+                  total_amount: inv.total_amount,
+                  currency: inv.currency,
+                  due_date: inv.due_date,
+                  created_at: inv.created_at,
+                  sent_at: inv.sent_at,
+                  paid_at: inv.paid_at,
+                  quote_id: inv.quote_id,
+                  invoice_data: inv.invoice_data,
+                  clientName: snapshot.client?.name?.trim() || "—",
+                };
               })}
-            </ul>
+            />
           )}
         </section>
       </main>
@@ -294,45 +252,3 @@ function FilterTile({
   );
 }
 
-function statusPill(status: InvoiceStatus): string {
-  switch (status) {
-    case "draft":
-      return "border-ink-600 bg-ink-800 text-ink-200";
-    case "sent":
-      return "border-blue-500/40 bg-blue-500/10 text-blue-300";
-    case "paid":
-      return "border-emerald-500/40 bg-emerald-500/10 text-emerald-300";
-    case "overdue":
-      return "border-red-500/40 bg-red-500/10 text-red-300";
-    case "cancelled":
-      return "border-ink-600 bg-ink-800 text-ink-400";
-  }
-}
-
-function formatDueLabel(iso: string): string {
-  const t = Date.parse(iso);
-  if (Number.isNaN(t)) return "—";
-  const days = Math.round((t - Date.now()) / (1000 * 60 * 60 * 24));
-  if (days < 0)
-    return `${Math.abs(days)}d overdue`;
-  if (days === 0) return "today";
-  if (days === 1) return "tomorrow";
-  if (days < 14) return `in ${days}d`;
-  return new Date(iso).toLocaleDateString("en-NZ", {
-    day: "numeric",
-    month: "short",
-  });
-}
-
-function formatRelativeOrDate(iso: string): string {
-  const then = new Date(iso).getTime();
-  const diffSec = (Date.now() - then) / 1000;
-  if (diffSec < 60) return "just now";
-  if (diffSec < 3600) return `${Math.round(diffSec / 60)}m ago`;
-  if (diffSec < 86_400) return `${Math.round(diffSec / 3600)}h ago`;
-  if (diffSec < 7 * 86_400) return `${Math.round(diffSec / 86_400)}d ago`;
-  return new Date(iso).toLocaleDateString("en-NZ", {
-    day: "numeric",
-    month: "short",
-  });
-}
