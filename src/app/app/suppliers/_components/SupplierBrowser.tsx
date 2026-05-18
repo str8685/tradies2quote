@@ -223,33 +223,36 @@ export function SupplierBrowser({ initialUrl }: { initialUrl: string }) {
       </div>
 
       <div className="mb-3">
-        <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-ink-400">
-          {"// shortcuts"}
-        </p>
+        <p className="t2q-section-label-pro">{"// shortcuts"}</p>
         {/* Supplier shortcuts open in a NEW TAB (Safari on iOS). The old
             in-app iframe approach hit X-Frame-Options walls on every major
             NZ retailer — Placemakers/Bunnings/Mitre10/ITM/Noel Leeming all
             DENY iframing. Now the tradie taps a supplier, browses the
             product in Safari, copies the URL via Share, then comes back
-            and uses the "Paste URL from clipboard" button below. */}
-        <div className="mt-2 -mx-3 flex gap-2 overflow-x-auto px-3 pb-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0">
-          {SUPPLIER_SHORTCUTS.map((s) => (
+            and uses the "Paste URL from clipboard" button below.
+
+            Layout: 3-col grid on mobile (2 rows: 3+2 with the 5th
+            spanning the empty cell so all 5 sit on one screen — no
+            horizontal scroll), 5-col on desktop. */}
+        <div className="mt-2 grid grid-cols-3 gap-2 sm:grid-cols-5">
+          {SUPPLIER_SHORTCUTS.map((s, i) => (
             <a
               key={s.name}
               href={s.url}
               target="_blank"
               rel="noopener noreferrer"
               data-testid={`supplier-shortcut-${s.name.toLowerCase().replace(/\s+/g, "-")}`}
-              className="inline-flex shrink-0 items-center gap-1.5 rounded-sm border border-ink-700 bg-ink-800 px-3 py-2 font-display text-[11px] uppercase tracking-tight text-white transition-colors hover:border-brand sm:text-xs"
+              className={`inline-flex items-center justify-center gap-1 rounded-lg border border-white/[0.06] bg-white/[0.02] px-2 py-2 font-display text-[10.5px] uppercase tracking-tight text-white transition-colors hover:border-brand/40 hover:bg-brand/[0.06] sm:text-xs ${
+                i === 3 ? "col-span-2 sm:col-span-1" : ""
+              }`}
             >
-              <Storefront size={14} weight="bold" aria-hidden="true" />
-              {s.name}
-              <ArrowSquareOut
-                size={11}
+              <Storefront
+                size={13}
                 weight="bold"
                 aria-hidden="true"
-                className="text-ink-400"
+                className="shrink-0"
               />
+              <span className="truncate">{s.name}</span>
             </a>
           ))}
         </div>
