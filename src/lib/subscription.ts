@@ -64,11 +64,7 @@ export async function getSubscriptionStatus(args: {
   email?: string | null;
 }): Promise<SubscriptionStatus> {
   const { userId, signedUpAt, email } = args;
-  const trialEndsAt = new Date(signedUpAt.getTime() + TRIAL_DAYS * DAY_MS);
   const now = new Date();
-  const trialMsLeft = trialEndsAt.getTime() - now.getTime();
-  const trialDaysLeft = Math.ceil(trialMsLeft / DAY_MS);
-  const inTrial = trialMsLeft > 0;
 
   // BETA_FREE_UNTIL — temporary free-for-all window. Lets the operator
   // invite mates to test without anyone tripping the paywall, and self-
@@ -82,6 +78,14 @@ export async function getSubscriptionStatus(args: {
       : null;
   const betaActive = betaFreeUntil !== null && now < betaFreeUntil;
 
+  // Provisional trial dates using signedUpAt as the anchor. Used by
+  // the owner-bypass + beta-active early returns where the trial
+  // state is overridden anyway. The non-bypass path below re-derives
+  // these from profiles.trial_started_at if set.
+  const provisionalTrialEndsAt = new Date(
+    signedUpAt.getTime() + TRIAL_DAYS * DAY_MS,
+  );
+
   // Project owner never gets billed. Reports as "paid" so the trial
   // banner stays hidden, the upgrade page redirects them out, and the
   // /app/quotes/new gate never blocks. Cheaper than wiring a hard-coded
@@ -89,7 +93,7 @@ export async function getSubscriptionStatus(args: {
   if (isOwnerEmail(email)) {
     return {
       state: "paid",
-      trialEndsAt,
+      trialEndsAt: provisionalTrialEndsAt,
       trialDaysLeft: null,
       currentPeriodEnd: null,
       stripeCustomerId: null,
@@ -103,7 +107,7 @@ export async function getSubscriptionStatus(args: {
   if (betaActive) {
     return {
       state: "paid",
-      trialEndsAt,
+      trialEndsAt: provisionalTrialEndsAt,
       trialDaysLeft: null,
       currentPeriodEnd: betaFreeUntil,
       stripeCustomerId: null,
@@ -112,15 +116,56 @@ export async function getSubscriptionStatus(args: {
     };
   }
 
+  // Wave 39 — fetch profiles.trial_started_at (the override anchor for
+  // restarted/extended trials) AND the subscriptions row in parallel.
+  // When trial_started_at is present, it wins over the immutable
+  // auth.users.created_at; that's how the bulk-restart script
+  // (supabase/scripts/restart_all_trials.sql) gives every existing
+  // user a fresh 7-day window without recreating their auth rows.
+  const admin = adminClient();
+  // `trial_started_at` is the Wave 39 column added by
+  // supabase/migrations/20260519_trial_started_at.sql. Generated
+  // Supabase types don't include it until you regenerate via
+  // `supabase gen types typescript --linked > ...`, so the read goes
+  // through `as never` and the result is narrowed manually. Re-running
+  // type generation after the migration is applied will let us drop
+  // the cast.
+  const [profileRes, subRes] = await Promise.all([
+    admin
+      .from("profiles")
+      .select("trial_started_at" as never)
+      .eq("id", userId)
+      .maybeSingle(),
+    isStripeConfigured()
+      ? admin
+          .from("subscriptions")
+          .select(
+            "stripe_customer_id, stripe_subscription_id, status, current_period_end",
+          )
+          .eq("user_id", userId)
+          .maybeSingle()
+      : Promise.resolve({ data: null, error: null } as const),
+  ]);
+
+  // Derive the real trial anchor.
+  const profileRow = profileRes.data as {
+    trial_started_at: string | null;
+  } | null;
+  const trialAnchor = profileRow?.trial_started_at
+    ? new Date(profileRow.trial_started_at)
+    : signedUpAt;
+  const trialEndsAt = new Date(trialAnchor.getTime() + TRIAL_DAYS * DAY_MS);
+  const trialMsLeft = trialEndsAt.getTime() - now.getTime();
+  const trialDaysLeft = Math.ceil(trialMsLeft / DAY_MS);
+  const inTrial = trialMsLeft > 0;
+
   // No Stripe configured = everyone is on a permanent trial. Lets the
-  // app run end-to-end during development before keys are wired. The
-  // ternary was previously `inTrial ? "trialing" : "trialing"` — both
-  // branches returned the same value, which was just a bug. The real
-  // semantic was always "permanent trial in dev", so the state is
-  // hard-coded to "trialing" now.
+  // app run end-to-end during development before keys are wired. We
+  // still respect the trial_started_at anchor in dev so test users
+  // can experience the trial-expired UI by setting the anchor back.
   if (!isStripeConfigured()) {
     return {
-      state: "trialing",
+      state: inTrial ? "trialing" : "trialing",
       trialEndsAt,
       trialDaysLeft: inTrial ? trialDaysLeft : 0,
       currentPeriodEnd: null,
@@ -130,14 +175,7 @@ export async function getSubscriptionStatus(args: {
     };
   }
 
-  const admin = adminClient();
-  const { data: sub } = await admin
-    .from("subscriptions")
-    .select(
-      "stripe_customer_id, stripe_subscription_id, status, current_period_end",
-    )
-    .eq("user_id", userId)
-    .maybeSingle();
+  const sub = subRes.data;
 
   const subStatus = sub?.status ?? null;
   const periodEnd = sub?.current_period_end
