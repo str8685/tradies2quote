@@ -18,7 +18,7 @@ import type { PublicQuotePayload, QuoteData } from "@/lib/quote-types";
  *     via the existing get_quote_by_token RPC. Drafts, declined,
  *     accepted, and expired quotes refuse chat.
  *   - Chat message length capped at 1000 chars.
- *   - Rate limit: 25 chat turns per public_token per UTC day.
+ *   - Rate limit: 10 chat turns per public_token per UTC day.
  *
  * Persistence: chat history lives in `quotes.quote_data.chat_history`
  * as an append-only JSON array. We chose this over the `quote_events`
@@ -40,7 +40,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const MAX_MESSAGE_LEN = 1000;
-const MAX_MESSAGES_PER_DAY = 25;
+const MAX_MESSAGES_PER_DAY = 10;
 
 type Params = { token: string };
 

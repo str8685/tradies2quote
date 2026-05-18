@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { isOwnerEmail } from "@/lib/owner";
 
 /**
  * POST /api/suppliers/extract
@@ -11,6 +12,7 @@ import { createClient } from "@/lib/supabase/server";
  *   200 { product: { name, price, unit } | null, url, fetched: boolean }
  *   400 if the URL is missing or malformed
  *   401 if the user isn't signed in
+ *   429 if the user is over their daily quota
  *   502 if the upstream Claude call fails
  *
  * The route never throws on supplier-side failures (CORS-equivalent on
@@ -27,6 +29,44 @@ const MODEL = "claude-sonnet-4-20250514";
 const MAX_TOKENS = 512;
 const FETCH_TIMEOUT_MS = 8_000;
 const MAX_HTML_CHARS = 60_000;
+
+/**
+ * Daily cap on extracts per authenticated user. Counted in-memory per
+ * serverless instance — Vercel may spin up multiple instances so a
+ * determined abuser could exceed this in aggregate, but it costs us
+ * nothing (no DB write per call) and shuts down the obvious
+ * scripted-loop case where one session hammers the endpoint from one
+ * machine. A real abuser puts us into territory worth a proper
+ * table-backed limiter; until then this catches 95% of the risk.
+ *
+ * Resets at UTC midnight to match the chat endpoint's convention so
+ * both surfaces feel consistent to anyone debugging.
+ */
+const DAILY_LIMIT = 30;
+const usageBuckets = new Map<
+  string,
+  { count: number; resetAt: number }
+>();
+
+function checkAndCountUsage(
+  userId: string,
+): { ok: true } | { ok: false; resetAt: number } {
+  const now = Date.now();
+  const utcMidnight = new Date();
+  utcMidnight.setUTCHours(24, 0, 0, 0);
+  const resetAt = utcMidnight.getTime();
+
+  const bucket = usageBuckets.get(userId);
+  if (!bucket || bucket.resetAt <= now) {
+    usageBuckets.set(userId, { count: 1, resetAt });
+    return { ok: true };
+  }
+  if (bucket.count >= DAILY_LIMIT) {
+    return { ok: false, resetAt: bucket.resetAt };
+  }
+  bucket.count += 1;
+  return { ok: true };
+}
 
 type ExtractRequest = { url?: unknown };
 
@@ -50,6 +90,26 @@ export async function POST(request: NextRequest) {
   } = await supabase.auth.getUser();
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  // Owner bypass — lets the owner dogfood + stress-test without
+  // tripping their own cap. Mirrors how /app/agents + /app/debug
+  // are owner-gated via the same helper.
+  if (!isOwnerEmail(user.email)) {
+    const limit = checkAndCountUsage(user.id);
+    if (!limit.ok) {
+      const hoursUntilReset = Math.max(
+        1,
+        Math.ceil((limit.resetAt - Date.now()) / (60 * 60 * 1000)),
+      );
+      return NextResponse.json(
+        {
+          error: `Daily AI limit reached. Resets in about ${hoursUntilReset}h. Add materials manually until then, or get in touch if this seems wrong.`,
+          resetAt: new Date(limit.resetAt).toISOString(),
+        },
+        { status: 429 },
+      );
+    }
   }
 
   const apiKey = process.env.ANTHROPIC_API_KEY;
