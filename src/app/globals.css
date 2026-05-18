@@ -869,6 +869,17 @@ h1, h2, h3, h4, h5 {
   transition: color 150ms ease;
 }
 .t2q-bottomnav-tile:hover { color: #FFFFFF; }
+/* Instant tap feedback — fires the moment the finger touches the tile,
+   not after the page navigation finishes. Removes the dead-air feel on
+   mobile where the screen used to sit unchanged for ~200–600ms after a
+   tap. Pairs with the top progress bar in <TopProgressBar /> so the
+   user sees continuous motion: tile flash → bar slides → new page. */
+.t2q-bottomnav-tile:active {
+  color: #FF5F15;
+  background: rgba(255, 95, 21, 0.08);
+  transform: scale(0.97);
+  transition: color 60ms ease, background 60ms ease, transform 60ms ease;
+}
 .t2q-bottomnav-tile[aria-current="page"] {
   color: #FF5F15;
 }

@@ -2,6 +2,7 @@ import { SideMeasureTape } from "../_components/app/SideMeasureTape";
 import LoadingScreen from "../_components/landing/LoadingScreen";
 import { MobileBottomNav } from "./_components/MobileBottomNav";
 import { OnboardingTourGate } from "./_components/OnboardingTourGate";
+import { TopProgressBar } from "./_components/TopProgressBar";
 import { TrialBanner } from "./_components/TrialBanner";
 
 /**
@@ -78,6 +79,11 @@ export default function AppLayout({
       </div>
       <div aria-hidden="true" className="hidden lg:block" />
       <MobileBottomNav />
+      {/* Top-of-screen progress bar for /app/* tab navigations. Fires
+          on pathname change, animates for ~700ms, then fades. Skips
+          the first render so it doesn't compete with the brand splash
+          on app entry. */}
+      <TopProgressBar />
       {/* First-run onboarding tour. The Gate self-checks
           `localStorage["t2q-tour-done"]` on the client and ONLY
           triggers the dynamic import of the heavy tour UI if the user
