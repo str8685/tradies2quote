@@ -274,9 +274,9 @@ export function getAgentReadiness(): AgentReadiness[] {
     {
       id: "invoice",
       name: "Invoice Agent",
-      status: "coming-later",
+      status: "ready",
       detail:
-        "Builds invoice drafts from accepted quotes + timesheets. Not implemented yet.",
+        "Drafts invoices from accepted quotes via runInvoiceAgent. Browse them at /app/invoices.",
     },
   ];
 }

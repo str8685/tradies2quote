@@ -111,7 +111,7 @@ export default async function AgentMonitorPage() {
         <section
           aria-label="Agent counts"
           data-testid="monitor-kpis"
-          className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-5"
+          className="mb-5 grid grid-cols-2 gap-2 sm:grid-cols-5"
         >
           <KpiTile label="Running" value={counts.running ?? 0} tone="brand" />
           <KpiTile label="Complete" value={counts.complete ?? 0} tone="ok" />
@@ -128,10 +128,10 @@ export default async function AgentMonitorPage() {
         <section
           aria-label="Recent runs"
           data-testid="monitor-runs"
-          className="t2q-premium-card-static mb-8 p-5 sm:p-7"
+          className="t2q-premium-card-static mb-5 p-4 sm:p-5"
         >
           <div className="flex items-baseline justify-between">
-            <h2 className="font-display text-lg uppercase tracking-tight text-white sm:text-xl">
+            <h2 className="font-display text-base uppercase tracking-tight text-white sm:text-lg">
               Runs <span className="text-ink-400">({runs.length})</span>
             </h2>
             <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-ink-400">
@@ -159,13 +159,13 @@ export default async function AgentMonitorPage() {
           )}
 
           {runs.length > 0 && (
-            <ul className="mt-5 space-y-3">
+            <ul className="mt-4 space-y-2">
               {runs.map((r) => (
                 <li
                   key={r.run_id}
                   data-testid={`monitor-run-${r.run_id}`}
                   data-run-status={r.status}
-                  className="border-b border-ink-700/60 pb-3 last:border-b-0 last:pb-0"
+                  className="border-b border-ink-700/60 pb-2 last:border-b-0 last:pb-0"
                 >
                   <div className="flex items-start gap-3">
                     <span aria-hidden="true" className="mt-0.5 shrink-0">
@@ -235,10 +235,10 @@ export default async function AgentMonitorPage() {
         <section
           aria-label="Recent users"
           data-testid="monitor-users"
-          className="t2q-premium-card-static mb-8 p-5 sm:p-7"
+          className="t2q-premium-card-static mb-5 p-4 sm:p-5"
         >
           <div className="flex items-baseline justify-between">
-            <h2 className="font-display text-lg uppercase tracking-tight text-white sm:text-xl">
+            <h2 className="font-display text-base uppercase tracking-tight text-white sm:text-lg">
               <Users
                 size={18}
                 weight="bold"
@@ -270,12 +270,12 @@ export default async function AgentMonitorPage() {
           )}
 
           {users.length > 0 && (
-            <ul className="mt-5 space-y-3">
+            <ul className="mt-4 space-y-2">
               {users.map((u) => (
                 <li
                   key={u.id}
                   data-testid={`monitor-user-${u.id}`}
-                  className="flex items-start gap-3 border-b border-ink-700/60 pb-3 last:border-b-0 last:pb-0"
+                  className="flex items-start gap-3 border-b border-ink-700/60 pb-2 last:border-b-0 last:pb-0"
                 >
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-display text-sm uppercase tracking-tight text-white">
@@ -305,10 +305,10 @@ export default async function AgentMonitorPage() {
         <section
           aria-label="Recent events"
           data-testid="monitor-events"
-          className="t2q-premium-card-static mb-8 p-5 sm:p-7"
+          className="t2q-premium-card-static mb-5 p-4 sm:p-5"
         >
           <div className="flex items-baseline justify-between">
-            <h2 className="font-display text-lg uppercase tracking-tight text-white sm:text-xl">
+            <h2 className="font-display text-base uppercase tracking-tight text-white sm:text-lg">
               Events <span className="text-ink-400">({events.length})</span>
             </h2>
             <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-ink-400">
@@ -335,7 +335,7 @@ export default async function AgentMonitorPage() {
           )}
 
           {events.length > 0 && (
-            <ul className="mt-5 space-y-2">
+            <ul className="mt-4 space-y-1.5">
               {events.map((e) => (
                 <li
                   key={e.id}
@@ -432,11 +432,13 @@ function KpiTile({
   }[tone];
   return (
     <div
-      className={`rounded-sm border px-4 py-3 ${cls}`}
+      className={`rounded-sm border px-3 py-2 ${cls}`}
       data-testid={`monitor-kpi-${label.toLowerCase()}`}
     >
-      <p className="font-display text-2xl tracking-tight text-white">{value}</p>
-      <p className="mt-0.5 font-mono text-[10px] uppercase tracking-[0.2em]">
+      <p className="font-display text-xl leading-tight tracking-tight text-white">
+        {value}
+      </p>
+      <p className="mt-0.5 font-mono text-[9px] uppercase tracking-[0.2em]">
         {label}
       </p>
     </div>

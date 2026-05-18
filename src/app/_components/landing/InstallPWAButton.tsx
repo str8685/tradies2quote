@@ -121,7 +121,7 @@ export default function InstallPWAButton({
           variant === "hero"
             ? `t2q-btn-primary ${className}`
             : variant === "icon"
-              ? `inline-flex h-10 w-10 items-center justify-center rounded-sm border-2 border-brand bg-brand text-ink-900 transition-colors hover:bg-hivis hover:border-hivis ${className}`
+              ? `t2q-install-pulse inline-flex h-10 items-center gap-1.5 rounded-sm border-2 border-brand bg-brand px-3 font-display text-xs uppercase tracking-tight text-ink-900 transition-colors hover:bg-hivis hover:border-hivis ${className}`
               : `inline-flex items-center gap-2 h-10 px-4 border-2 border-ink-600 hover:border-brand text-white font-mono text-xs uppercase tracking-[0.2em] transition-colors rounded-sm ${className}`
         }
       >
@@ -131,7 +131,10 @@ export default function InstallPWAButton({
             <span>Install on phone</span>
           </>
         ) : variant === "icon" ? (
-          <DownloadSimple size={20} weight="bold" />
+          <>
+            <DownloadSimple size={16} weight="bold" />
+            <span>Install</span>
+          </>
         ) : (
           <>
             <DeviceMobile size={16} weight="bold" className="text-brand" />
