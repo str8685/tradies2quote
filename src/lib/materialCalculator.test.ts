@@ -155,8 +155,9 @@ describe("calculateDeckTakeoff", () => {
     // joist hangers = joistCount = 15
     expect(getMaterial(r, "joist-hangers")?.quantity).toBe(15);
 
-    // piles: pilesPerRow = floor(6/1.8) + 1 = 4; piles = 3 × 4 = 12
-    expect(getMaterial(r, "deck-piles")?.quantity).toBe(12);
+    // piles: pilesPerRow = ceil(6/1.8) + 1 = 5; piles = 3 × 5 = 15
+    // (matches blocklayer.com — fence-post rule: ceil(spans) + 1)
+    expect(getMaterial(r, "deck-piles")?.quantity).toBe(15);
 
     // screws = ceil(18 × 30 × 1.1) = 594
     expect(getMaterial(r, "deck-screws")?.quantity).toBe(594);
@@ -180,8 +181,8 @@ describe("calculateDeckTakeoff", () => {
     // boardRows = ceil(2000/95) = 22; linearM = 22 × 4 × 1.1 = 96.8
     expect(getMaterial(r, "decking-boards")?.quantity).toBeCloseTo(96.8, 2);
 
-    // piles: pilesPerRow = floor(4/1.8) + 1 = 3; piles = 3 × 3 = 9
-    expect(getMaterial(r, "deck-piles")?.quantity).toBe(9);
+    // piles: pilesPerRow = ceil(4/1.8) + 1 = 4; piles = 3 × 4 = 12
+    expect(getMaterial(r, "deck-piles")?.quantity).toBe(12);
 
     // screws = ceil(8 × 30 × 1.1) = 264
     expect(getMaterial(r, "deck-screws")?.quantity).toBe(264);
@@ -337,8 +338,8 @@ describe("calculateSubfloorTakeoff", () => {
     // bearerLengths = ceil(40 × 1.1 / 4.8) = ceil(9.166) = 10
     expect(getMaterial(r, "subfloor-bearers")?.quantity).toBe(10);
 
-    // piles: pilesPerRow = floor(8/1.8) + 1 = 5; piles = 5 × 5 = 25
-    expect(getMaterial(r, "subfloor-piles")?.quantity).toBe(25);
+    // piles: pilesPerRow = ceil(8/1.8) + 1 = 6; piles = 5 × 6 = 30
+    expect(getMaterial(r, "subfloor-piles")?.quantity).toBe(30);
 
     // plywood: sheetCoverage = 2.88; sheets = ceil(48 × 1.1 / 2.88) = ceil(18.33) = 19
     expect(getMaterial(r, "subfloor-plywood")?.quantity).toBe(19);
@@ -365,8 +366,8 @@ describe("calculateSubfloorTakeoff", () => {
     // bearerLengths = ceil(12 × 1.1 / 4.8) = ceil(2.75) = 3
     expect(getMaterial(r, "subfloor-bearers")?.quantity).toBe(3);
 
-    // pilesPerRow = floor(4/1.8) + 1 = 3; piles = 3 × 3 = 9
-    expect(getMaterial(r, "subfloor-piles")?.quantity).toBe(9);
+    // pilesPerRow = ceil(4/1.8) + 1 = 4; piles = 3 × 4 = 12
+    expect(getMaterial(r, "subfloor-piles")?.quantity).toBe(12);
 
     // plywood = ceil(12 × 1.1 / 2.88) = ceil(4.583) = 5
     expect(getMaterial(r, "subfloor-plywood")?.quantity).toBe(5);

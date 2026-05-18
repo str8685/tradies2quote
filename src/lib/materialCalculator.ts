@@ -438,7 +438,7 @@ export function calculateDeckTakeoff(
 
   // Piles — bearer rows × pile points along each bearer.
   if (includePiles) {
-    const pilesPerRow = Math.floor(deckLengthM / pileSpacingM) + 1;
+    const pilesPerRow = safeCeil(deckLengthM / pileSpacingM) + 1;
     const piles = bearerRows * pilesPerRow;
     materials.push({
       id: "deck-piles",
@@ -778,7 +778,7 @@ export function calculateSubfloorTakeoff(
 
   // Piles.
   if (includePiles) {
-    const pilesPerRow = Math.floor(floorLengthM / pileSpacingM) + 1;
+    const pilesPerRow = safeCeil(floorLengthM / pileSpacingM) + 1;
     const piles = bearerRows * pilesPerRow;
     materials.push({
       id: "subfloor-piles",
