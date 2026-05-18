@@ -393,7 +393,17 @@ export function calculateDeckTakeoff(
   });
 
   // Bearers — run along the deck length, spaced across the deck width.
-  const bearerRows = safeCeil(deckWidthM / bearerSpacingM) + 1;
+  // Outer bearers are set in from each deck edge by SET_IN_M, so the
+  // clear span between the two outer bearers is (width - 2 × setIn).
+  // Intermediates are only added if that clear span exceeds the max
+  // bearer spacing. Matches blocklayer.com's bearer convention.
+  const SET_IN_M = 0.1;
+  const effectiveBearerSpanM = Math.max(deckWidthM - 2 * SET_IN_M, 0);
+  const intermediateBearerCount = Math.max(
+    safeCeil(effectiveBearerSpanM / bearerSpacingM) - 1,
+    0,
+  );
+  const bearerRows = 2 + intermediateBearerCount;
   const bearerLinearM = round2(bearerRows * deckLengthM);
   const bearerLengths = safeCeil(
     (bearerLinearM * wasteMultiplier) / timberStockLengthM,
@@ -436,9 +446,16 @@ export function calculateDeckTakeoff(
     priceMatchKey: "joist-hangers",
   });
 
-  // Piles — bearer rows × pile points along each bearer.
+  // Piles — bearer rows × pile points along each bearer. Same set-in
+  // logic as bearers: outer piles inset from each end, intermediates
+  // only where the clear span exceeds max pile spacing.
   if (includePiles) {
-    const pilesPerRow = safeCeil(deckLengthM / pileSpacingM) + 1;
+    const effectivePileSpanM = Math.max(deckLengthM - 2 * SET_IN_M, 0);
+    const intermediatePileCount = Math.max(
+      safeCeil(effectivePileSpanM / pileSpacingM) - 1,
+      0,
+    );
+    const pilesPerRow = 2 + intermediatePileCount;
     const piles = bearerRows * pilesPerRow;
     materials.push({
       id: "deck-piles",
@@ -759,8 +776,15 @@ export function calculateSubfloorTakeoff(
     notes: `200×50 H1.2 SG8, ${joistSpacingMm}mm centres`,
   });
 
-  // Bearers.
-  const bearerRows = safeCeil(floorWidthM / bearerSpacingM) + 1;
+  // Bearers — same set-in logic as deck: outer bearers inset from each
+  // edge by SET_IN_M, intermediates only where clear span exceeds max.
+  const SET_IN_M = 0.1;
+  const effectiveBearerSpanM = Math.max(floorWidthM - 2 * SET_IN_M, 0);
+  const intermediateBearerCount = Math.max(
+    safeCeil(effectiveBearerSpanM / bearerSpacingM) - 1,
+    0,
+  );
+  const bearerRows = 2 + intermediateBearerCount;
   const bearerLinearM = round2(bearerRows * floorLengthM);
   const bearerLengths = safeCeil(
     (bearerLinearM * wasteMultiplier) / timberStockLengthM,
@@ -776,9 +800,14 @@ export function calculateSubfloorTakeoff(
     notes: `200×100 H4 SG8, ${bearerSpacingM}m spans`,
   });
 
-  // Piles.
+  // Piles — same set-in logic.
   if (includePiles) {
-    const pilesPerRow = safeCeil(floorLengthM / pileSpacingM) + 1;
+    const effectivePileSpanM = Math.max(floorLengthM - 2 * SET_IN_M, 0);
+    const intermediatePileCount = Math.max(
+      safeCeil(effectivePileSpanM / pileSpacingM) - 1,
+      0,
+    );
+    const pilesPerRow = 2 + intermediatePileCount;
     const piles = bearerRows * pilesPerRow;
     materials.push({
       id: "subfloor-piles",

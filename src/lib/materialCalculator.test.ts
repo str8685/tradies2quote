@@ -174,15 +174,17 @@ describe("calculateDeckTakeoff", () => {
     // joistLengths = ceil(20 × 1.1 / 4.8) = ceil(4.583) = 5
     expect(getMaterial(r, "deck-joists")?.quantity).toBe(5);
 
-    // bearerRows = ceil(2/1.8) + 1 = 3; linear = 12
-    // bearerLengths = ceil(12 × 1.1 / 4.8) = ceil(2.75) = 3
-    expect(getMaterial(r, "deck-bearers")?.quantity).toBe(3);
+    // bearerRows: effectiveSpan = 2 - 0.2 = 1.8m, intermediates = max(ceil(1.8/1.8)-1, 0) = 0
+    // bearerRows = 2 + 0 = 2 (matches blocklayer's 2-bearer convention for 2m width)
+    // linear = 2 × 4 = 8m; bearerLengths = ceil(8 × 1.1 / 4.8) = ceil(1.833) = 2
+    expect(getMaterial(r, "deck-bearers")?.quantity).toBe(2);
 
     // boardRows = ceil(2000/95) = 22; linearM = 22 × 4 × 1.1 = 96.8
     expect(getMaterial(r, "decking-boards")?.quantity).toBeCloseTo(96.8, 2);
 
-    // piles: pilesPerRow = ceil(4/1.8) + 1 = 4; piles = 3 × 4 = 12
-    expect(getMaterial(r, "deck-piles")?.quantity).toBe(12);
+    // piles: bearerRows=2, pilesPerRow: effective=3.8m, intermediates=max(ceil(3.8/1.8)-1,0)=2
+    // pilesPerRow = 2 + 2 = 4; piles = 2 × 4 = 8 (matches blocklayer exactly)
+    expect(getMaterial(r, "deck-piles")?.quantity).toBe(8);
 
     // screws = ceil(8 × 30 × 1.1) = 264
     expect(getMaterial(r, "deck-screws")?.quantity).toBe(264);
