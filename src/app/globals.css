@@ -540,6 +540,18 @@ h1, h2, h3, h4, h5 {
   color: #0A0A0A !important;
 }
 
+/* Logo chip — the horizontal logo has light-grey "T" and "Q" letters
+   that vanish on cream/white surfaces in light mode (only the orange
+   "2" survives). Wrap the logo in a dark pill in light mode so the
+   full wordmark stays legible. Dark mode is unchanged. */
+[data-theme="light"] .t2q-logo-chip {
+  background-color: #0A0A0A !important;
+  border: 1px solid #0A0A0A !important;
+  border-radius: 8px;
+  padding: 4px 8px;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.6) inset, 0 2px 8px -2px rgba(10, 10, 10, 0.25);
+}
+
 /* =========================================================================
    WAVE 10 — App-shell utilities and light-mode readability fixes.
    All new utilities live below this banner. Dark-mode defaults are

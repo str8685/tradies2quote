@@ -124,7 +124,7 @@ export function AppHeaderClient({
             href="/app"
             data-testid="app-header-home"
             aria-label="Tradies2Quote dashboard"
-            className="inline-flex shrink-0 items-center"
+            className="t2q-logo-chip inline-flex shrink-0 items-center"
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
@@ -132,7 +132,7 @@ export function AppHeaderClient({
               alt="Tradies2Quote"
               width={1084}
               height={512}
-              className="block h-7 w-auto sm:h-9"
+              className="block h-6 w-auto sm:h-7"
             />
           </Link>
           {context ? (
