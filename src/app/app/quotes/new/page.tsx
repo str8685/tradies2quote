@@ -25,6 +25,7 @@ export default async function NewQuotePage() {
   // read-only contract my trial-end emails promised.
   const sub = await getSubscriptionStatus({
     userId: user.id,
+    // eslint-disable-next-line react-hooks/purity -- server component, one-shot per request
     signedUpAt: new Date(user.created_at ?? Date.now()),
     email: user.email,
   });

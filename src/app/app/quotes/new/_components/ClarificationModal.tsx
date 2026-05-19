@@ -67,6 +67,7 @@ export function ClarificationModal({
   // Reset internal state every time the modal re-opens.
   useEffect(() => {
     if (open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- legitimate state reset on prop change
       setIndex(0);
       setAnswers({});
     }
@@ -87,9 +88,13 @@ export function ClarificationModal({
   const isLast = index === total - 1;
   const isFirst = index === 0;
 
-  const currentAnswer = current
-    ? answers[current.id] ?? { picked: null, text: "" }
-    : { picked: null, text: "" };
+  const currentAnswer = useMemo(
+    () =>
+      current
+        ? answers[current.id] ?? { picked: null, text: "" }
+        : { picked: null, text: "" },
+    [current, answers],
+  );
 
   const hasOptions = (current?.options.length ?? 0) > 0;
   const showFreeText = hasOptions

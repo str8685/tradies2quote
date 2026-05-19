@@ -94,7 +94,7 @@ export function SubscriptionPanel({
           </Link>
         ) : (
           <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-ink-400">
-            Checkout isn't configured yet.
+            Checkout isn&rsquo;t configured yet.
           </p>
         )}
       </div>

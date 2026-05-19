@@ -206,6 +206,7 @@ export default async function SettingsPage() {
         <SubscriptionPanel
           status={await getSubscriptionStatus({
             userId: user.id,
+            // eslint-disable-next-line react-hooks/purity -- server component, one-shot per request
             signedUpAt: new Date(user.created_at ?? Date.now()),
             email: user.email,
           })}

@@ -47,7 +47,6 @@ type Props = {
   clientName: string | null;
 };
 
-const WELCOME_DELAY_MS = 800;
 const MAX_HISTORY_FOR_API = 20;
 
 export function CustomerChat({ token, businessName, clientName }: Props) {
@@ -73,6 +72,7 @@ export function CustomerChat({ token, businessName, clientName }: Props) {
       role: "assistant",
       content: `Hi ${name}! I'm an AI assistant for ${tradie}. Ask me anything about this quote — line items, alternatives, timing, terms — and I'll answer using the actual numbers above. If I can't answer, I'll flag it for ${tradie} directly.`,
     };
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time welcome seed gated by hasSeenWelcome
     setMessages([welcome]);
     setHasSeenWelcome(true);
   }, [hasSeenWelcome, businessName, clientName]);
@@ -108,6 +108,7 @@ export function CustomerChat({ token, businessName, clientName }: Props) {
       } catch {
         /* private mode */
       }
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- hide hint when chat opens
       setHintVisible(false);
       // Defer so the sheet has time to mount + animate.
       const t = setTimeout(() => inputRef.current?.focus(), 100);

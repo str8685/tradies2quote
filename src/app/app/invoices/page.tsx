@@ -105,7 +105,7 @@ export default async function InvoicesPage({
             Money in.
           </h1>
           <p className="mt-3 text-sm text-ink-300 sm:text-base">
-            Every invoice you've ever drafted, sent or marked paid.
+            Every invoice you&rsquo;ve ever drafted, sent or marked paid.
             Filter by status with the tiles below.
           </p>
         </div>
