@@ -299,7 +299,10 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify({
         model: MODEL,
         max_tokens: MAX_TOKENS,
-        temperature: 0,
+        // `temperature` is deprecated on Opus 4.7 — the model uses
+        // adaptive thinking instead of a temperature knob. The
+        // structured system prompt + JSON prefill below are doing
+        // the determinism work that temperature=0 used to do.
         system: systemPrompt,
         messages: [
           {
