@@ -26,6 +26,60 @@ interface ScanResult {
   plan: ScannedPlan | null;
 }
 
+/**
+ * Map the scan UI's six job-type buttons to the takeoff calculator's
+ * canonical types. Anything that doesn't have a calculator (Fence,
+ * Concrete, Roofing, Other) gets undefined and we skip the marker —
+ * the AI fallback handles those.
+ */
+function planTypeForJob(
+  jobType: JobType,
+  buildType: string,
+): "deck" | "subfloor" | "cladding" | "wall" | undefined {
+  if (jobType === "Deck") return "deck";
+  if (jobType === "Framing") {
+    const bt = buildType.toLowerCase();
+    if (bt.includes("subfloor") || bt.includes("floor framing")) return "subfloor";
+    if (bt.includes("cladding") || bt.includes("weatherboard")) return "cladding";
+    return "wall";
+  }
+  return undefined;
+}
+
+function buildPlanMarker(
+  planType: "deck" | "subfloor" | "cladding" | "wall",
+  plan: ScannedPlan,
+): string {
+  const parts = [`type=${planType}`];
+  // Enforce NZ convention: length ≥ width. The deck calculator runs
+  // joists across the width and decking along the length, so swapping
+  // them silently produces a slightly different joist count. The
+  // extractRectangle helper already enforces this for prose-scanned
+  // dims; do the same for the marker.
+  if (plan.length_m > 0 && plan.width_m > 0) {
+    const lengthM = Math.max(plan.length_m, plan.width_m);
+    const widthM = Math.min(plan.length_m, plan.width_m);
+    parts.push(`length_m=${lengthM}`);
+    parts.push(`width_m=${widthM}`);
+  } else {
+    if (plan.length_m > 0) parts.push(`length_m=${plan.length_m}`);
+    if (plan.width_m > 0) parts.push(`width_m=${plan.width_m}`);
+  }
+  if (plan.height_m && plan.height_m > 0) {
+    parts.push(`height_m=${plan.height_m}`);
+  }
+  if (plan.joist_spacing_mm && plan.joist_spacing_mm > 0) {
+    parts.push(`joist_spacing_mm=${plan.joist_spacing_mm}`);
+  }
+  if (plan.post_count && plan.post_count > 0) {
+    parts.push(`post_count=${plan.post_count}`);
+  }
+  if (plan.post_spacing_m && plan.post_spacing_m > 0) {
+    parts.push(`post_spacing_m=${plan.post_spacing_m}`);
+  }
+  return "[T2Q_PLAN] " + parts.join(" ");
+}
+
 function buildFinalTranscript(
   jobType: JobType,
   timberLength: number,
@@ -33,6 +87,19 @@ function buildFinalTranscript(
   editedDimensions: string,
 ): string {
   const parts: string[] = [];
+
+  // Wave 43 — structured markers at the very top. The parser reads
+  // these BEFORE the loose text so the calculator gets the AI's
+  // structured guess directly, not whatever first "X by Y" pattern
+  // happens to appear in the prose. Skipping these on job types
+  // without a calculator (Fence/Concrete/Roofing/Other) is fine —
+  // the AI quote path handles those without a calculator anyway.
+  const planType = planTypeForJob(jobType, result.buildType);
+  if (planType && result.plan) {
+    parts.push(buildPlanMarker(planType, result.plan));
+  }
+  parts.push(`[T2Q_TIMBER] stock_length_m=${timberLength}`);
+
   parts.push(`Job type: ${jobType}.`);
   parts.push(
     `Tradie buys timber in ${timberLength}m lengths. Calculate board / stud / plate / decking counts in whole ${timberLength}m lengths with a 10% waste factor.`,

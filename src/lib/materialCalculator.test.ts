@@ -236,6 +236,129 @@ describe("calculateDeckTakeoff", () => {
       expect(m.formula.length).toBeGreaterThan(0);
     }
   });
+
+  // ───────────────────────────────────────────────────────────────────
+  // Wave 43 — Ratio guard
+  //
+  // The ratio guard is a third defence layer behind the unit-aware
+  // regex in aiTakeoffParser and sanitiseMeters() in this file. It
+  // clamps per-line quantities that exceed sane per-m² ceilings and
+  // adds a warning + formula annotation so the operator sees what
+  // happened. These tests lock both directions: sane inputs never
+  // trigger a clamp; absurd inputs always do.
+  // ───────────────────────────────────────────────────────────────────
+
+  it("ratio guard: sane 6 × 3 deck produces no clamp warnings", () => {
+    const r = calculateDeckTakeoff({ deckLengthM: 6, deckWidthM: 3 });
+    expect(r.warnings.some((w) => w.includes("ratio guard"))).toBe(false);
+    for (const m of r.materials) {
+      expect(m.formula).not.toMatch(/ratio_guard/);
+    }
+  });
+
+  it("ratio guard: 0.3m joist spacing on a 1m deck does NOT trip", () => {
+    // Tightest realistic case — 300mm centres on a 1m × 1m deck.
+    const r = calculateDeckTakeoff({
+      deckLengthM: 1,
+      deckWidthM: 1,
+      joistSpacingMm: 300,
+    });
+    expect(r.warnings.some((w) => w.includes("ratio guard"))).toBe(false);
+  });
+
+  it("ratio guard: handcrafted decking-board overflow IS clamped", () => {
+    const r = calculateDeckTakeoff({ deckLengthM: 1, deckWidthM: 1 });
+    const boards = r.materials.find((m) => m.id === "decking-boards");
+    expect(boards).toBeTruthy();
+    expect(boards!.quantity).toBeLessThanOrEqual(30);
+  });
+
+  it("ratio guard: absurd boardWidthMm clamps decking lineal-m", () => {
+    // Bug injection: 1mm-wide boards would produce ~2200 lm for a
+    // 4 × 3 deck (clearly a unit bug). Guard caps at 30 lm/m² × 12m²
+    // = 360 lm and emits a warning so the operator sees it.
+    const r = calculateDeckTakeoff({
+      deckLengthM: 4,
+      deckWidthM: 3,
+      boardWidthMm: 1,
+    });
+    expect(r.warnings.some((w) => w.includes("ratio guard"))).toBe(true);
+    const boards = r.materials.find((m) => m.id === "decking-boards");
+    expect(boards?.quantity).toBeLessThanOrEqual(360);
+    expect(boards?.formula).toMatch(/ratio_guard/);
+  });
+
+  it("ratio guard: extreme joist spacing clamps joist lengths", () => {
+    // 50mm joist centres would yield ~70 joist lengths for a small
+    // deck — a regression bug. The "unusual joist spacing" warning
+    // ALSO fires, but the ratio guard catches the downstream count.
+    const r = calculateDeckTakeoff({
+      deckLengthM: 4.8,
+      deckWidthM: 3.82,
+      joistSpacingMm: 50,
+    });
+    expect(r.warnings.some((w) => w.includes("ratio guard"))).toBe(true);
+    const joists = r.materials.find((m) => m.id === "deck-joists");
+    // Cap = ceil(1.5 × 18.34) = 28
+    expect(joists?.quantity).toBeLessThanOrEqual(28);
+    expect(joists?.formula).toMatch(/ratio_guard/);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────
+// Wave 43 — End-to-end "Whakamārama" regression
+// ─────────────────────────────────────────────────────────────────────────
+
+describe("Whakamārama deck regression", () => {
+  it("4.8m × 3.82m deck with 6m timber produces expected joist/bearer/board counts", () => {
+    const r = calculateDeckTakeoff({
+      deckLengthM: 4.8,
+      deckWidthM: 3.82,
+      timberStockLengthM: 6,
+    });
+    expect(r.warnings.some((w) => w.includes("ratio guard"))).toBe(false);
+
+    // joistCount = ceil(4800/450) + 1 = 12; linear = 12 × 3.82 = 45.84
+    // joistLengths = ceil(45.84 × 1.1 / 6) = ceil(8.404) = 9
+    const joists = r.materials.find((m) => m.id === "deck-joists");
+    expect(joists?.quantity).toBe(9);
+
+    // bearerRows: effectiveSpan = 3.82-0.2 = 3.62; intermediates =
+    // ceil(3.62/1.8)-1 = 3-1 = 2; bearerRows = 4
+    // linear = 4 × 4.8 = 19.2m; lengths = ceil(19.2 × 1.1 / 6) = 4
+    const bearers = r.materials.find((m) => m.id === "deck-bearers");
+    expect(bearers?.quantity).toBe(4);
+
+    // boardRows = ceil(3820/95) = 41; linearM = 41 × 4.8 × 1.1 = 216.48
+    const boards = r.materials.find((m) => m.id === "decking-boards");
+    expect(boards?.quantity).toBeCloseTo(216.48, 2);
+
+    // joistHangers = joistCount = 12
+    const hangers = r.materials.find((m) => m.id === "joist-hangers");
+    expect(hangers?.quantity).toBe(12);
+
+    // Decking screws (pack count): ceil(18.34 × 30 × 1.1) = 605
+    //   → packs = ceil(605/500) = 2 packs
+    const screws = r.materials.find((m) => m.id === "deck-screws");
+    expect(screws?.quantity).toBe(2);
+    expect(screws?.unit).toBe("pack");
+  });
+
+  it("blocks a future 'wrong dims got through' bug from producing a $32M quote", () => {
+    // Simulate the failure mode: somehow the calculator received a
+    // wildly wrong deckLengthM (e.g. parser bug treating mm as m).
+    // Pre-Wave-43 this produced ~8000 joists. Post-Wave-43 the
+    // sanitiseMeters clamp catches it AND the ratio guard catches
+    // anything that slips past sanitisation.
+    const r = calculateDeckTakeoff({
+      deckLengthM: 4800, // mm-as-m: sanitiseMeters → 4.8 m
+      deckWidthM: 3820, // mm-as-m: sanitiseMeters → 3.82 m
+    });
+    expect(r.warnings.some((w) => w.includes("ratio guard"))).toBe(false);
+    expect(
+      r.materials.find((m) => m.id === "deck-joists")?.quantity,
+    ).toBeLessThan(50);
+  });
 });
 
 // ─────────────────────────────────────────────────────────────────────────

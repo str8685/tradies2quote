@@ -356,6 +356,121 @@ function sanitiseMeters(value: number): number {
   return value > 50 ? value / 1000 : value;
 }
 
+// ─────────────────────────────────────────────────────────────────────────
+// Wave 43 — Geometric ratio guard (deck)
+//
+// Third defence layer behind (a) the unit-aware regex in
+// aiTakeoffParser.extractRectangle and (b) sanitiseMeters above. Both
+// of those operate on INPUTS. The ratio guard operates on OUTPUTS: it
+// recomputes each per-m² ratio after the calculator runs and clamps
+// anything wildly outside the band that NZ residential practice
+// produces. If clamping triggers, a warning is added and the formula
+// string is annotated so the operator sees what happened.
+//
+// The ceilings below are upper bounds for SANE inputs — they were
+// chosen by computing the worst-case (smallest deck, tightest joist
+// spacing, narrowest boards) and rounding up. A legitimate quote will
+// never hit these; only a unit/regex bug will. That's the point.
+// ─────────────────────────────────────────────────────────────────────────
+const DECK_RATIO_CAPS = {
+  // Joist lengths per m² of deck area. Tightest sane case: 300mm
+  // joist centres on a 1m-wide deck with 4.8m stock = ~1.3/m². Round
+  // up to 1.5 as the alarm threshold.
+  joistLengthsPerM2: 1.5,
+  // Bearer lengths per m². Worst case at 1.8m spans, narrow deck,
+  // 4.8m stock = ~0.4/m². Cap at 0.6.
+  bearerLengthsPerM2: 0.6,
+  // Decking lineal m per m². 30mm board with 5mm gap = ~28 lm/m²
+  // (extreme), 90mm board ≈ 11.7 lm/m². Cap at 30 so anything past
+  // "tiny board" gets caught.
+  deckingLinealMPerM2: 30,
+  // Decking screw PACKS per m². 33 screws/m² ÷ 500 per pack ≈
+  // 0.07/m². Cap at 0.5 — a 10 m² deck shouldn't need 5 packs.
+  screwPacksPerM2: 0.5,
+  // Joist hangers per m². On a 1m-wide deck at 300mm centres ≈
+  // 4.3/m² but that's not residential. Cap at 5.
+  joistHangersPerM2: 5,
+  // Concrete piles per m². 1.8m × 1.8m grid = 0.31/m² typical.
+  // Small decks dominate by the 4-corner-pile minimum. Cap at 2.
+  pilesPerM2: 2,
+};
+
+interface RatioCheck {
+  id: string;
+  cap: number; // per m² ceiling
+  minAllowed?: number; // absolute floor regardless of m²
+}
+
+function applyRatioGuard(
+  materials: MaterialTakeoffLine[],
+  areaM2: number,
+  checks: RatioCheck[],
+): string[] {
+  if (!Number.isFinite(areaM2) || areaM2 <= 0) return [];
+  const warnings: string[] = [];
+  for (const check of checks) {
+    const m = materials.find((mat) => mat.id === check.id);
+    if (!m) continue;
+    const ceiling = Math.max(
+      check.minAllowed ?? 0,
+      Math.ceil(check.cap * areaM2),
+    );
+    if (m.quantity > ceiling) {
+      const wasQty = m.quantity;
+      m.quantity = ceiling;
+      m.formula =
+        `${m.formula} [ratio_guard: was ${wasQty} ${m.unit}, capped to ${ceiling} (${check.cap}/m² ceiling for ${areaM2}m² area)]`;
+      warnings.push(
+        `${m.name}: ratio guard clamped ${wasQty} ${m.unit} → ${ceiling} ${m.unit} (area ${areaM2}m²). Check input dimensions.`,
+      );
+    }
+  }
+  return warnings;
+}
+
+/**
+ * Apply per-line ratio caps in place for a deck takeoff. Any quantity
+ * exceeding its cap × deck area is clamped, the formula gets a
+ * `[ratio_guard: was N → M]` annotation, and a warning is appended.
+ * Sane inputs never trigger this; it's a smoke alarm for future
+ * parser/unit regressions.
+ */
+function applyDeckRatioGuard(
+  materials: MaterialTakeoffLine[],
+  deckAreaM2: number,
+): string[] {
+  return applyRatioGuard(materials, deckAreaM2, [
+    { id: "deck-joists", cap: DECK_RATIO_CAPS.joistLengthsPerM2 },
+    { id: "deck-bearers", cap: DECK_RATIO_CAPS.bearerLengthsPerM2 },
+    { id: "decking-boards", cap: DECK_RATIO_CAPS.deckingLinealMPerM2 },
+    { id: "deck-screws", cap: DECK_RATIO_CAPS.screwPacksPerM2, minAllowed: 1 },
+    { id: "joist-hangers", cap: DECK_RATIO_CAPS.joistHangersPerM2 },
+    { id: "deck-piles", cap: DECK_RATIO_CAPS.pilesPerM2, minAllowed: 4 },
+  ]);
+}
+
+/** Parallel guard for subfloor takeoffs (same geometry, different IDs). */
+function applySubfloorRatioGuard(
+  materials: MaterialTakeoffLine[],
+  floorAreaM2: number,
+): string[] {
+  return applyRatioGuard(materials, floorAreaM2, [
+    { id: "subfloor-joists", cap: DECK_RATIO_CAPS.joistLengthsPerM2 },
+    { id: "subfloor-bearers", cap: DECK_RATIO_CAPS.bearerLengthsPerM2 },
+    {
+      id: "subfloor-joist-hangers",
+      cap: DECK_RATIO_CAPS.joistHangersPerM2,
+    },
+    { id: "subfloor-piles", cap: DECK_RATIO_CAPS.pilesPerM2, minAllowed: 4 },
+    // Plywood sheets: sheet area 2.88 m² → ~0.39 sheets/m² with 10%
+    // waste, ~0.5/m² with bigger waste. Cap at 1.0/m² (catches a
+    // doubled-up dim).
+    { id: "subfloor-plywood", cap: 1.0 },
+    // Subfloor screws are per-each, ~9 per m². Cap at 25/m².
+    { id: "subfloor-screws", cap: 25 },
+  ]);
+}
+
 export function calculateDeckTakeoff(
   input: DeckTakeoffInput,
 ): MaterialTakeoffResult {
@@ -513,6 +628,12 @@ export function calculateDeckTakeoff(
     formula: "1 box allowance",
     priceMatchKey: "joist-hanger-nails",
   });
+
+  // Wave 43 — ratio guard. Clamps any per-line quantity that exceeds
+  // sane per-m² ceilings (defense in depth against future parser
+  // regressions). Sane inputs never trigger this; it's a smoke alarm.
+  const guardWarnings = applyDeckRatioGuard(materials, deckAreaM2);
+  warnings.push(...guardWarnings);
 
   return {
     summary: {
@@ -883,6 +1004,11 @@ export function calculateSubfloorTakeoff(
     formula: `ceil(floorAreaM2=${floorAreaM2} × 8 × (1+${wastePercent}/100)) = ${screws}`,
     priceMatchKey: "subfloor-screws",
   });
+
+  // Wave 43 — subfloor ratio guard. Same defense-in-depth role as the
+  // deck guard.
+  const guardWarnings = applySubfloorRatioGuard(materials, floorAreaM2);
+  warnings.push(...guardWarnings);
 
   return {
     summary: {

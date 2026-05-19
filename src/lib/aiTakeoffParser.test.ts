@@ -306,6 +306,167 @@ describe("detectTakeoffType + per-type parsers", () => {
   });
 });
 
+// ─────────────────────────────────────────────────────────────────────────
+// Wave 43 — Structured marker support
+//
+// The ScanPanel now embeds machine-readable markers at the top of the
+// transcript so the calculator gets the AI's structured plan dims
+// directly instead of guessing them out of prose. These tests lock
+// the marker priority, the cross-check against user-edited prose, and
+// the timber-stock-length forwarding.
+// ─────────────────────────────────────────────────────────────────────────
+describe("structured [T2Q_PLAN] marker", () => {
+  it("uses marker dims for deck even when prose has no rectangle", () => {
+    const t =
+      "[T2Q_PLAN] type=deck length_m=4.8 width_m=3.82\n\n" +
+      "Job type: Deck.\nWhat is being built: Timber deck.\n" +
+      "DIMENSIONS (tradie-confirmed):\nPost depth: 600mm\n";
+    const r = parseTakeoffDescription(t);
+    expect(r.type).toBe("deck");
+    if (r.type !== "deck") throw new Error("not deck");
+    expect(r.input.deckLengthM).toBeCloseTo(4.8, 3);
+    expect(r.input.deckWidthM).toBeCloseTo(3.82, 3);
+  });
+
+  it("marker takes priority over an unrelated loose rectangle", () => {
+    // Real failure mode: AI's structured plan correctly says 4.8 ×
+    // 3.82 m but the structural section mentions a 7m × 6m site
+    // outline. Without the marker, the loose scanner used to grab
+    // 7×6 and the calculator emitted a 42m² deck takeoff.
+    const t =
+      "[T2Q_PLAN] type=deck length_m=4.8 width_m=3.82\n" +
+      "Deck job. Site outline 7m × 6m. Joists 140x45.";
+    const r = parseTakeoffDescription(t);
+    if (r.type !== "deck") throw new Error("not deck");
+    expect(r.input.deckLengthM).toBeCloseTo(4.8, 3);
+    expect(r.input.deckWidthM).toBeCloseTo(3.82, 3);
+  });
+
+  it("standalone dimensions override marker when they disagree > 15%", () => {
+    // The Whakamārama failure mode in reverse: AI's plan says 7×6
+    // (wrong) but the dimensions section (which the tradie can edit)
+    // says 4.8m and 3.82m. The cross-check rule says the
+    // user-visible text wins.
+    const t =
+      "[T2Q_PLAN] type=deck length_m=7 width_m=6\n\n" +
+      "Job type: Deck.\n" +
+      "DIMENSIONS (tradie-confirmed):\n4800mm = 4.8m\n3820mm = 3.82m\n";
+    const r = parseTakeoffDescription(t);
+    if (r.type !== "deck") throw new Error("not deck");
+    expect(r.input.deckLengthM).toBeCloseTo(4.8, 3);
+    expect(r.input.deckWidthM).toBeCloseTo(3.82, 3);
+    expect(r.assumptions.some((a) => a.includes("disagreed"))).toBe(true);
+  });
+
+  it("marker AND standalone agree within 15% → marker wins, no warning", () => {
+    const t =
+      "[T2Q_PLAN] type=deck length_m=4.8 width_m=3.82\n\n" +
+      "DIMENSIONS:\n4800mm = 4.8m\n3820mm = 3.82m\n";
+    const r = parseTakeoffDescription(t);
+    if (r.type !== "deck") throw new Error("not deck");
+    expect(r.input.deckLengthM).toBeCloseTo(4.8, 3);
+    expect(r.assumptions.some((a) => a.includes("disagreed"))).toBe(false);
+  });
+
+  it("subfloor marker carries dimensions", () => {
+    const t =
+      "[T2Q_PLAN] type=subfloor length_m=8 width_m=6\n\n" +
+      "Subfloor framing job.";
+    const r = parseTakeoffDescription(t);
+    expect(r.type).toBe("subfloor");
+    if (r.type !== "subfloor") throw new Error("not subfloor");
+    expect(r.input.floorLengthM).toBe(8);
+    expect(r.input.floorWidthM).toBe(6);
+  });
+
+  it("malformed marker is ignored (falls through to text scan)", () => {
+    const t =
+      "[T2Q_PLAN] type=deck length_m=garbage width_m=3.82\n\n" +
+      "Deck 6 by 3";
+    const r = parseTakeoffDescription(t);
+    if (r.type !== "deck") throw new Error("not deck");
+    // Loose scanner kicks in.
+    expect(r.input.deckLengthM).toBe(6);
+    expect(r.input.deckWidthM).toBe(3);
+  });
+
+  it("out-of-envelope marker (>30m) is ignored", () => {
+    const t =
+      "[T2Q_PLAN] type=deck length_m=300 width_m=200\n\n" +
+      "Deck 6 by 3";
+    const r = parseTakeoffDescription(t);
+    if (r.type !== "deck") throw new Error("not deck");
+    expect(r.input.deckLengthM).toBe(6);
+    expect(r.input.deckWidthM).toBe(3);
+  });
+
+  it("marker enforces length ≥ width regardless of axis order", () => {
+    // AI returned axes reversed — marker should normalise so the
+    // calculator gets the deck the same way around either way.
+    const t = "[T2Q_PLAN] type=deck length_m=3.82 width_m=4.8\n\nDeck job.";
+    const r = parseTakeoffDescription(t);
+    if (r.type !== "deck") throw new Error("not deck");
+    expect(r.input.deckLengthM).toBeCloseTo(4.8, 3);
+    expect(r.input.deckWidthM).toBeCloseTo(3.82, 3);
+  });
+
+  it("[T2Q_TIMBER] sets timberStockLengthM for deck", () => {
+    const t =
+      "[T2Q_PLAN] type=deck length_m=4.8 width_m=3.82\n" +
+      "[T2Q_TIMBER] stock_length_m=6\n\nDeck job.";
+    const r = parseTakeoffDescription(t);
+    if (r.type !== "deck") throw new Error("not deck");
+    expect(r.input.timberStockLengthM).toBe(6);
+  });
+
+  it("prose 'buys timber in 6m lengths' also sets stock length", () => {
+    const t =
+      "[T2Q_PLAN] type=deck length_m=4.8 width_m=3.82\n\n" +
+      "Tradie buys timber in 6m lengths. 10% waste.";
+    const r = parseTakeoffDescription(t);
+    if (r.type !== "deck") throw new Error("not deck");
+    expect(r.input.timberStockLengthM).toBe(6);
+  });
+
+  it("timber stock length is clamped to 2.4 – 7.2 m", () => {
+    const tooLong =
+      "[T2Q_PLAN] type=deck length_m=4.8 width_m=3.82\n" +
+      "[T2Q_TIMBER] stock_length_m=20";
+    const r1 = parseTakeoffDescription(tooLong);
+    if (r1.type !== "deck") throw new Error("not deck");
+    // Out-of-band → no override.
+    expect(r1.input.timberStockLengthM).toBeUndefined();
+
+    const tooShort =
+      "[T2Q_PLAN] type=deck length_m=4.8 width_m=3.82\n" +
+      "[T2Q_TIMBER] stock_length_m=1";
+    const r2 = parseTakeoffDescription(tooShort);
+    if (r2.type !== "deck") throw new Error("not deck");
+    expect(r2.input.timberStockLengthM).toBeUndefined();
+  });
+});
+
+describe("standalone dimensions fallback", () => {
+  it("picks the two largest unit-bearing values when no rectangle is present", () => {
+    const t =
+      "Job type: Deck.\n" +
+      "DIMENSIONS:\n4800mm = 4.8m (length)\n3820mm = 3.82m (width)\n" +
+      "Post depth 600mm\n12 posts at 1800mm spacing\n";
+    const r = parseTakeoffDescription(t);
+    if (r.type !== "deck") throw new Error("not deck");
+    expect(r.input.deckLengthM).toBeCloseTo(4.8, 3);
+    expect(r.input.deckWidthM).toBeCloseTo(3.82, 3);
+  });
+
+  it("ignores numbers below 1m (timber sizes, fastener spacings)", () => {
+    const t = "Deck. Posts 125mm. Joists 140mm. Decking 90mm boards.";
+    const r = parseTakeoffDescription(t);
+    if (r.type !== "deck") throw new Error("not deck");
+    expect(r.input.deckLengthM).toBeUndefined();
+    expect(r.input.deckWidthM).toBeUndefined();
+  });
+});
+
 describe("runTakeoff", () => {
   it("dispatches deck → deck calculator", async () => {
     const { runTakeoff } = await import("./aiTakeoffParser");

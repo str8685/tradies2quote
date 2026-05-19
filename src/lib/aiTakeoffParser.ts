@@ -62,6 +62,143 @@ const NUMBER_WORDS: Record<string, number> = {
   ten: 10,
 };
 
+// ─────────────────────────────────────────────────────────────────────────
+// Structured markers (Wave 43)
+//
+// The scan-drawing route extracts a structured `plan` object from the
+// drawing (shape, length_m, width_m, …). That structured data USED to
+// be discarded — the ScanPanel built a plain-English transcript and the
+// parser had to guess at the deck dimensions by scanning the text for
+// "X by Y" patterns. That guess was fragile: if the drawing also had
+// a site outline (e.g. 7m × 6m) the parser could grab THAT instead of
+// the deck dims (e.g. 4.8m × 3.82m), and the calculator produced a
+// 30-m² deck takeoff when the real deck is 18 m². No amount of
+// downstream ratio-guarding can fix bad inputs — the dimensions have
+// to be right at the source.
+//
+// The fix: ScanPanel now embeds a deterministic marker line at the top
+// of the transcript when the AI produced structured plan data:
+//
+//   [T2Q_PLAN] type=deck length_m=4.8 width_m=3.82 joist_spacing_mm=450
+//   [T2Q_TIMBER] stock_length_m=6
+//
+// Markers are parsed FIRST, before any loose text matching, so the
+// calculator gets the AI's structured guess directly. The free-form
+// dimensions textarea stays as-is for AI consumption (it captures
+// step heights, post depths, accessories the calculator doesn't model)
+// but no longer doubles as the source of truth for the calculator's
+// primary plan dimensions.
+// ─────────────────────────────────────────────────────────────────────────
+const T2Q_PLAN_RE = /\[T2Q_PLAN\]\s+([^\n\r]+)/i;
+const T2Q_TIMBER_RE = /\[T2Q_TIMBER\]\s+([^\n\r]+)/i;
+
+function parseMarkerPairs(body: string): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const part of body.split(/\s+/)) {
+    const eq = part.indexOf("=");
+    if (eq <= 0) continue;
+    const key = part.slice(0, eq).trim().toLowerCase();
+    const value = part.slice(eq + 1).trim();
+    if (key && value) out[key] = value;
+  }
+  return out;
+}
+
+export interface StructuredPlanMarker {
+  type?: string;
+  lengthM?: number;
+  widthM?: number;
+  heightM?: number;
+  joistSpacingMm?: number;
+  postCount?: number;
+  postSpacingM?: number;
+}
+
+/**
+ * Pull `[T2Q_PLAN] key=value key=value …` off the transcript. Returns
+ * undefined if no marker, or if the marker's length/width values are
+ * outside the sane plan envelope (1m–30m). The envelope check matches
+ * `extractRectangle` so a corrupted marker can't bypass the safety
+ * floor.
+ */
+export function extractStructuredPlanMarker(
+  text: string,
+): StructuredPlanMarker | undefined {
+  const m = text.match(T2Q_PLAN_RE);
+  if (!m) return undefined;
+  const pairs = parseMarkerPairs(m[1] ?? "");
+  const optNum = (key: string): number | undefined => {
+    const raw = pairs[key];
+    if (raw === undefined) return undefined;
+    const n = Number(raw);
+    return Number.isFinite(n) && n > 0 ? n : undefined;
+  };
+  const rawLength = optNum("length_m");
+  const rawWidth = optNum("width_m");
+  // Envelope check — same MIN/MAX as extractRectangle. Out-of-range
+  // markers are dropped so a corrupted marker can't bypass the safety
+  // floor.
+  const MIN_PLAN_M = 1;
+  const MAX_PLAN_M = 30;
+  if (rawLength !== undefined && (rawLength < MIN_PLAN_M || rawLength > MAX_PLAN_M)) {
+    return undefined;
+  }
+  if (rawWidth !== undefined && (rawWidth < MIN_PLAN_M || rawWidth > MAX_PLAN_M)) {
+    return undefined;
+  }
+  // NZ convention: length ≥ width. The deck calculator runs joists
+  // across width and decking along length — silently swapping the
+  // two changes joist count (e.g. 7×6 → 17 joists, 6×7 → 15) so
+  // normalising here keeps the result deterministic regardless of
+  // how the AI labelled the axes.
+  let lengthM = rawLength;
+  let widthM = rawWidth;
+  if (lengthM !== undefined && widthM !== undefined) {
+    lengthM = Math.max(rawLength!, rawWidth!);
+    widthM = Math.min(rawLength!, rawWidth!);
+  }
+  return {
+    type: pairs["type"]?.toLowerCase(),
+    lengthM,
+    widthM,
+    heightM: optNum("height_m"),
+    joistSpacingMm: optNum("joist_spacing_mm"),
+    postCount: optNum("post_count"),
+    postSpacingM: optNum("post_spacing_m"),
+  };
+}
+
+/**
+ * Pull `[T2Q_TIMBER] stock_length_m=6` off the transcript. Defence
+ * against the scan UI's timber-length preference being silently
+ * dropped on the way to the calculator. Clamps to the same 2.4–7.2 m
+ * band the UI enforces so a bad marker can't produce nonsense.
+ */
+export function extractTimberStockLengthM(text: string): number | undefined {
+  const m = text.match(T2Q_TIMBER_RE);
+  if (m) {
+    const pairs = parseMarkerPairs(m[1] ?? "");
+    const raw = pairs["stock_length_m"];
+    if (raw !== undefined) {
+      const n = Number(raw);
+      if (Number.isFinite(n) && n >= 2.4 && n <= 7.2) {
+        return Math.round(n * 10) / 10;
+      }
+    }
+  }
+  // Fallback to the prose hint the ScanPanel writes ("Tradie buys
+  // timber in 6m lengths").
+  const re = /buys?\s+timber\s+in\s+(\d+(?:\.\d+)?)\s*(?:m|metres?)?\s+length/i;
+  const pm = text.match(re);
+  if (pm) {
+    const n = Number(pm[1]);
+    if (Number.isFinite(n) && n >= 2.4 && n <= 7.2) {
+      return Math.round(n * 10) / 10;
+    }
+  }
+  return undefined;
+}
+
 function readNumberToken(token: string | undefined): number | undefined {
   if (!token) return undefined;
   const lower = token.toLowerCase();
@@ -268,6 +405,57 @@ function extractRectangle(
   return undefined;
 }
 
+/**
+ * Pull the two largest standalone dimensions out of the transcript's
+ * DIMENSIONS section. Used as a CROSS-CHECK against the
+ * `[T2Q_PLAN]` marker: when the user edits the dimensions textarea
+ * to correct what the AI mis-read, those edits should win over the
+ * AI's structured plan guess.
+ *
+ * Detects lines like:
+ *   "4800mm = 4.8m"
+ *   "3820mm = 3.82m (width)"
+ *   "Deck length: 4.8m"
+ *
+ * Skips:
+ *   "Posts 125x125 H5"    (timber size — both sides < 1m after norm)
+ *   "Post depth 600mm"    (< 1m, also a depth not a plan dim)
+ *   "12 piles at 1.8m"    (1.8m is a spacing, not a plan dim — only
+ *                          taken if it's one of the top-2 largest)
+ *
+ * Returns the two distinct largest values (lengthM ≥ widthM), or
+ * undefined when fewer than two qualifying numbers are present.
+ */
+function extractStandaloneDims(
+  text: string,
+): { lengthM: number; widthM: number } | undefined {
+  // We want STANDALONE dimensions — numbers followed by mm/m that
+  // aren't paired with another "X by Y" pattern. So we strip any
+  // "A x B" pairs first, then scan what's left for unit-suffixed
+  // values.
+  const withoutPairs = text.replace(
+    /\d+(?:\.\d+)?\s*(?:mm|m|metres?|meters?)?\s*(?:by|x|×|\*)\s*\d+(?:\.\d+)?\s*(?:mm|m|metres?|meters?)?/gi,
+    " ",
+  );
+  // Unit-bearing standalone numbers. Require explicit mm / m / metres
+  // — bare numbers in prose are too noisy.
+  const re = /(\d+(?:\.\d+)?)\s*(mm|metres?|meters?|m)\b/gi;
+  const values = new Set<number>();
+  const MIN_PLAN_M = 1;
+  const MAX_PLAN_M = 30;
+  for (const m of withoutPairs.matchAll(re)) {
+    const n = Number(m[1]);
+    if (!Number.isFinite(n) || n <= 0) continue;
+    const unit = (m[2] ?? "").toLowerCase();
+    const inM = unit === "mm" ? n / 1000 : n;
+    if (inM < MIN_PLAN_M || inM > MAX_PLAN_M) continue;
+    values.add(Math.round(inM * 1000) / 1000);
+  }
+  if (values.size < 2) return undefined;
+  const sorted = Array.from(values).sort((a, b) => b - a);
+  return { lengthM: sorted[0], widthM: sorted[1] };
+}
+
 function extractJoistSpacingMm(text: string): number | undefined {
   // "450mm centres", "joists at 450mm", "joist centres 600"
   const re =
@@ -294,18 +482,67 @@ function parseDeckDescription(
   const assumptions: string[] = [];
   const missingFields: string[] = [];
 
-  const dims = extractRectangle(text);
-  if (dims) {
-    input.deckLengthM = dims.lengthM;
-    input.deckWidthM = dims.widthM;
+  // Dimension resolution priority:
+  //   1. `[T2Q_PLAN]` marker (AI's structured plan) — UNLESS it
+  //      disagrees by > 15% with what the dimensions section actually
+  //      says, in which case the user-visible text wins. This catches
+  //      the failure mode where the AI mis-read the drawing but
+  //      transcribed the prose correctly.
+  //   2. Loose "X by Y" rectangle scan with timber-size filter.
+  //   3. Two-largest-standalone-dim cross-check, when no rectangle.
+  const marker = extractStructuredPlanMarker(text);
+  const standalone = extractStandaloneDims(text);
+
+  const useMarker =
+    marker &&
+    (marker.type === undefined || marker.type === "deck") &&
+    marker.lengthM !== undefined &&
+    marker.widthM !== undefined;
+
+  if (useMarker) {
+    // Cross-check against user-visible standalone dims. If the
+    // marker disagrees by > 15% in EITHER axis, the dimensions text
+    // (which the tradie has reviewed and edited) wins.
+    const TOLERANCE = 0.15;
+    const disagrees =
+      standalone &&
+      (Math.abs(marker.lengthM! - standalone.lengthM) / standalone.lengthM >
+        TOLERANCE ||
+        Math.abs(marker.widthM! - standalone.widthM) / standalone.widthM >
+          TOLERANCE);
+    if (disagrees) {
+      input.deckLengthM = standalone.lengthM;
+      input.deckWidthM = standalone.widthM;
+      assumptions.push(
+        `AI's structured plan (${marker.lengthM}m × ${marker.widthM}m) disagreed with the dimensions text (${standalone.lengthM}m × ${standalone.widthM}m). Using the dimensions text.`,
+      );
+    } else {
+      input.deckLengthM = marker.lengthM;
+      input.deckWidthM = marker.widthM;
+    }
+  } else {
+    const dims = extractRectangle(text);
+    if (dims) {
+      input.deckLengthM = dims.lengthM;
+      input.deckWidthM = dims.widthM;
+    } else if (standalone) {
+      input.deckLengthM = standalone.lengthM;
+      input.deckWidthM = standalone.widthM;
+    }
   }
 
-  const joistSpacing = extractJoistSpacingMm(text);
+  const joistSpacing =
+    extractJoistSpacingMm(text) ?? marker?.joistSpacingMm;
   if (joistSpacing !== undefined) {
     input.joistSpacingMm = joistSpacing;
   } else if (applyDefaults) {
     input.joistSpacingMm = 450;
     assumptions.push("Used default joist spacing of 450mm centres.");
+  }
+
+  const timberStock = extractTimberStockLengthM(text);
+  if (timberStock !== undefined) {
+    input.timberStockLengthM = timberStock;
   }
 
   const piles = extractIncludePiles(text);
@@ -345,15 +582,22 @@ function parseCladdingDescription(
   const assumptions: string[] = [];
   const missingFields: string[] = [];
 
-  const wallLength = extractWallLength(text);
+  const marker = extractStructuredPlanMarker(text);
+
+  const wallLength = extractWallLength(text) ?? marker?.lengthM;
   if (wallLength !== undefined) input.wallLengthM = wallLength;
 
-  const wallHeight = extractWallHeight(text);
+  const wallHeight = extractWallHeight(text) ?? marker?.heightM;
   if (wallHeight !== undefined) {
     input.wallHeightM = wallHeight;
   } else if (applyDefaults) {
     input.wallHeightM = 2.4;
     assumptions.push("Used default wall height of 2.4m.");
+  }
+
+  const timberStock = extractTimberStockLengthM(text);
+  if (timberStock !== undefined) {
+    input.timberStockLengthM = timberStock;
   }
 
   // Openings — count windows + doors, estimate area from defaults.
@@ -406,18 +650,54 @@ function parseSubfloorDescription(
   const assumptions: string[] = [];
   const missingFields: string[] = [];
 
-  const dims = extractRectangle(text);
-  if (dims) {
-    input.floorLengthM = dims.lengthM;
-    input.floorWidthM = dims.widthM;
+  const marker = extractStructuredPlanMarker(text);
+  const standalone = extractStandaloneDims(text);
+  const useMarker =
+    marker &&
+    (marker.type === undefined || marker.type === "subfloor") &&
+    marker.lengthM !== undefined &&
+    marker.widthM !== undefined;
+  if (useMarker) {
+    const TOLERANCE = 0.15;
+    const disagrees =
+      standalone &&
+      (Math.abs(marker.lengthM! - standalone.lengthM) / standalone.lengthM >
+        TOLERANCE ||
+        Math.abs(marker.widthM! - standalone.widthM) / standalone.widthM >
+          TOLERANCE);
+    if (disagrees) {
+      input.floorLengthM = standalone.lengthM;
+      input.floorWidthM = standalone.widthM;
+      assumptions.push(
+        `AI's structured plan (${marker.lengthM}m × ${marker.widthM}m) disagreed with the dimensions text (${standalone.lengthM}m × ${standalone.widthM}m). Using the dimensions text.`,
+      );
+    } else {
+      input.floorLengthM = marker.lengthM;
+      input.floorWidthM = marker.widthM;
+    }
+  } else {
+    const dims = extractRectangle(text);
+    if (dims) {
+      input.floorLengthM = dims.lengthM;
+      input.floorWidthM = dims.widthM;
+    } else if (standalone) {
+      input.floorLengthM = standalone.lengthM;
+      input.floorWidthM = standalone.widthM;
+    }
   }
 
-  const joistSpacing = extractJoistSpacingMm(text);
+  const joistSpacing =
+    extractJoistSpacingMm(text) ?? marker?.joistSpacingMm;
   if (joistSpacing !== undefined) {
     input.joistSpacingMm = joistSpacing;
   } else if (applyDefaults) {
     input.joistSpacingMm = 450;
     assumptions.push("Used default joist spacing of 450mm centres.");
+  }
+
+  const timberStock = extractTimberStockLengthM(text);
+  if (timberStock !== undefined) {
+    input.timberStockLengthM = timberStock;
   }
 
   const waste = extractWastePercent(text);
@@ -469,15 +749,22 @@ function parseWallDescription(
   const assumptions: string[] = [];
   const missingFields: string[] = [];
 
-  const wallLengthM = extractWallLength(text);
+  const marker = extractStructuredPlanMarker(text);
+
+  const wallLengthM = extractWallLength(text) ?? marker?.lengthM;
   if (wallLengthM !== undefined) input.wallLengthM = wallLengthM;
 
-  const wallHeightM = extractWallHeight(text);
+  const wallHeightM = extractWallHeight(text) ?? marker?.heightM;
   if (wallHeightM !== undefined) {
     input.wallHeightM = wallHeightM;
   } else if (applyDefaults) {
     input.wallHeightM = 2.4;
     assumptions.push("Used default wall height of 2.4m.");
+  }
+
+  const timberStock = extractTimberStockLengthM(text);
+  if (timberStock !== undefined) {
+    input.timberStockLengthM = timberStock;
   }
 
   const studSpacingMm = extractStudSpacing(text);
