@@ -340,11 +340,27 @@ export const DECK_DEFAULTS = {
   includePiles: true,
 };
 
+/**
+ * Defence-in-depth clamp: any dimension above 50 m almost certainly
+ * means the caller passed millimetres in a metres-named field (NZ
+ * residential trade drawings are written in mm with the suffix
+ * dropped). A 4800-something value should be 4.8 m. Divide by 1000.
+ *
+ * The parser in aiTakeoffParser also disambiguates units, but a
+ * downstream clamp here means no future caller — AI, manual API, or
+ * a refactor — can ever drive a million-dollar runaway quote off
+ * unit confusion alone.
+ */
+function sanitiseMeters(value: number): number {
+  if (!Number.isFinite(value) || value <= 0) return value;
+  return value > 50 ? value / 1000 : value;
+}
+
 export function calculateDeckTakeoff(
   input: DeckTakeoffInput,
 ): MaterialTakeoffResult {
-  const deckLengthM = Number(input.deckLengthM);
-  const deckWidthM = Number(input.deckWidthM);
+  const deckLengthM = sanitiseMeters(Number(input.deckLengthM));
+  const deckWidthM = sanitiseMeters(Number(input.deckWidthM));
   const joistSpacingMm =
     input.joistSpacingMm ?? DECK_DEFAULTS.joistSpacingMm;
   const bearerSpacingM =
@@ -547,8 +563,10 @@ export const CLADDING_DEFAULTS = {
 export function calculateCladdingTakeoff(
   input: CladdingTakeoffInput,
 ): MaterialTakeoffResult {
-  const wallLengthM = Number(input.wallLengthM);
-  const wallHeightM = input.wallHeightM ?? CLADDING_DEFAULTS.wallHeightM;
+  const wallLengthM = sanitiseMeters(Number(input.wallLengthM));
+  const wallHeightM = sanitiseMeters(
+    input.wallHeightM ?? CLADDING_DEFAULTS.wallHeightM,
+  );
   const openingAreaM2 =
     input.openingAreaM2 ?? CLADDING_DEFAULTS.openingAreaM2;
   const claddingCoverageMm =
@@ -720,8 +738,8 @@ export const SUBFLOOR_DEFAULTS = {
 export function calculateSubfloorTakeoff(
   input: SubfloorTakeoffInput,
 ): MaterialTakeoffResult {
-  const floorLengthM = Number(input.floorLengthM);
-  const floorWidthM = Number(input.floorWidthM);
+  const floorLengthM = sanitiseMeters(Number(input.floorLengthM));
+  const floorWidthM = sanitiseMeters(Number(input.floorWidthM));
   const joistSpacingMm =
     input.joistSpacingMm ?? SUBFLOOR_DEFAULTS.joistSpacingMm;
   const bearerSpacingM =
