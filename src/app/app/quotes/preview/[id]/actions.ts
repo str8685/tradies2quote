@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { round2 } from "@/lib/quote-defaults";
 import { applyMaterialCorrections } from "@/lib/quoteEditLearning";
+import { buildQuoteEditDiff, diffIsNonEmpty } from "@/lib/quoteEditDiff";
 import type { QuoteData, QuoteStatus } from "@/lib/quote-types";
 import { canTransition } from "@/lib/lifecycle/stages";
 import {
@@ -28,7 +29,7 @@ export async function saveQuoteChanges(
 
   const { data: priorRow } = await supabase
     .from("quotes")
-    .select("quote_data, status, user_id")
+    .select("quote_data, ai_snapshot, status, user_id")
     .eq("id", id)
     .single();
   // RLS already scopes this, but check ownership explicitly so a
@@ -41,6 +42,12 @@ export async function saveQuoteChanges(
     return { error: "Quote already accepted — edits are locked." };
   }
   const prior = (priorRow.quote_data ?? null) as QuoteData | null;
+  // ai_snapshot is the frozen baseline — never mutated after generation.
+  // Older quotes (pre-Wave-40) have no snapshot; fall back to the
+  // current quote_data so the first edit still logs something useful.
+  const aiSnapshot =
+    ((priorRow as { ai_snapshot?: unknown }).ai_snapshot as QuoteData | null) ??
+    prior;
 
   let materials_subtotal = 0;
   let labour_subtotal = 0;
@@ -130,6 +137,24 @@ export async function saveQuoteChanges(
     items,
     prior?.line_items ?? [],
   );
+
+  // Wave 40 — log the AI-vs-tradie diff for the eval loop. Always
+  // diffed against the frozen ai_snapshot, never against the previous
+  // edit, so the signal stays clean across multiple saves. Failures
+  // are swallowed: logging is a side benefit, not part of the save.
+  try {
+    const diff = buildQuoteEditDiff(aiSnapshot, next);
+    if (diffIsNonEmpty(diff)) {
+      await supabase.from("quote_edit_events").insert({
+        quote_id: id,
+        user_id: user.id,
+        edited_data: next,
+        diff,
+      });
+    }
+  } catch (e) {
+    console.warn("quote_edit_events insert failed (non-fatal)", e);
+  }
 
   return { ok: true, materialsLearned: learn.materialsLearned };
 }

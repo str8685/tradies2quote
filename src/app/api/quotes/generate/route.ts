@@ -567,6 +567,7 @@ export async function POST(request: NextRequest) {
     .from("quotes")
     .update({
       quote_data: parsed,
+      ai_snapshot: parsed,
       total_amount: parsed.total,
       currency: parsed.currency,
     })
