@@ -113,8 +113,12 @@ async function DashboardData({
   // Stats query is intentionally separate from the recent-quotes query
   // so it can scan all the user's non-deleted rows for accurate counts
   // and totals without bloating the recent-list payload.
-  const [{ data: quotes }, { data: statsRows }, { data: profile }] =
-    await Promise.all([
+  const [
+    { data: quotes },
+    { data: statsRows },
+    { data: profile },
+    { count: materialsCount },
+  ] = await Promise.all([
       supabase
         .from("quotes")
         .select(
@@ -141,11 +145,21 @@ async function DashboardData({
         .select("business_name")
         .eq("id", userId)
         .maybeSingle(),
+      // Wave 41 — count of the tradie's own materials. Drives the
+      // "Quick start your library" banner: zero items means every
+      // future quote will pay the AI-estimate tax for prices, so we
+      // nudge them toward the bulk-seed page before they generate
+      // their first one.
+      supabase
+        .from("materials")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", userId),
     ]);
   const businessNameMissing =
     !profile?.business_name ||
     (typeof profile.business_name === "string" &&
       profile.business_name.trim().length === 0);
+  const libraryEmpty = (materialsCount ?? 0) === 0;
 
   // Aggregate this user's own quote stats. Pure JS so no extra Postgres
   // RPC needed, and the query already RLS-scopes by user_id.
@@ -214,6 +228,45 @@ async function DashboardData({
             size={18}
             weight="bold"
             className="shrink-0 text-brand sm:hidden"
+            aria-hidden="true"
+          />
+        </Link>
+      ) : null}
+
+      {/* Wave 41 — empty-library nudge. Surfaces the bulk-seed page
+          so new tradies can populate 5–10 of their most-used materials
+          in 60 seconds. Without this nudge, fresh accounts ship every
+          early quote with AI-estimated prices (amber stripe on every
+          material line) — a confidence killer for first impressions. */}
+      {libraryEmpty ? (
+        <Link
+          href="/app/materials/quick-start"
+          data-testid="dashboard-quick-start-banner"
+          className="t2q-card-pro t2q-card-pro-hover mb-5 flex items-start gap-3 p-4 sm:items-center sm:p-5"
+        >
+          <span
+            aria-hidden="true"
+            className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
+          >
+            <Plus size={18} weight="bold" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="font-display text-sm uppercase tracking-tight text-white">
+              Boost quote accuracy in 60 seconds.
+            </p>
+            <p className="mt-0.5 text-xs text-ink-300 sm:text-sm">
+              Add the materials you use every week so future quotes pull
+              your real prices instead of AI estimates.
+            </p>
+          </div>
+          <span className="hidden items-center gap-1 font-mono text-[10px] uppercase tracking-[0.25em] text-emerald-300 sm:inline-flex">
+            Quick start
+            <ArrowRight size={12} weight="bold" />
+          </span>
+          <ArrowRight
+            size={18}
+            weight="bold"
+            className="shrink-0 text-emerald-300 sm:hidden"
             aria-hidden="true"
           />
         </Link>
