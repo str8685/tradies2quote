@@ -43,7 +43,8 @@ export default async function NewQuotePage() {
             Describe the <span className="text-brand">job.</span>
           </h1>
           <p className="mt-3 text-sm text-ink-300 sm:text-base">
-            Talk it through, or type it out. Either way — we turn it into a quote.
+            Talk it through, type it out, or scan a hand-drawn plan — either way
+            we turn it into a quote.
           </p>
         </div>
 

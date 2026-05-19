@@ -7,8 +7,9 @@ import {
   ClarificationModal,
   type ClarificationAnswer,
 } from "./ClarificationModal";
+import { ScanPanel } from "./ScanPanel";
 
-type Tab = "voice" | "type";
+type Tab = "voice" | "type" | "scan";
 type VoiceState = "idle" | "recording" | "processing" | "error";
 
 const MAX_SECONDS = 180;
@@ -39,13 +40,22 @@ export function QuoteInputTabs() {
   const [tab, setTab] = useState<Tab>("voice");
   const [transcript, setTranscript] = useState<string>("");
   const [typed, setTyped] = useState<string>("");
+  const [scanned, setScanned] = useState<string>("");
+
+  // The "Continue" row reads the active tab's text. Scan and voice both
+  // produce a fully-formed transcript, so they continue immediately;
+  // typed input still requires the 20-char floor so people don't
+  // accidentally generate from a single word.
+  const activeText =
+    tab === "voice" ? transcript : tab === "scan" ? scanned : typed;
+  const activeMin = tab === "type" ? MIN_TEXT_LENGTH : 1;
 
   return (
     <div>
       <div
         role="tablist"
         aria-label="Input method"
-        className="grid grid-cols-2 gap-2 rounded-sm border border-ink-700 bg-ink-800 p-1"
+        className="grid grid-cols-3 gap-2 rounded-sm border border-ink-700 bg-ink-800 p-1"
       >
         <TabButton
           active={tab === "voice"}
@@ -63,20 +73,27 @@ export function QuoteInputTabs() {
         >
           Type
         </TabButton>
+        <TabButton
+          active={tab === "scan"}
+          onClick={() => setTab("scan")}
+          testId="tab-scan"
+          controls="panel-scan"
+        >
+          Scan
+        </TabButton>
       </div>
 
       <div className="mt-6">
-        {tab === "voice" ? (
+        {tab === "voice" && (
           <VoicePanel transcript={transcript} setTranscript={setTranscript} />
-        ) : (
-          <TypePanel value={typed} setValue={setTyped} />
+        )}
+        {tab === "type" && <TypePanel value={typed} setValue={setTyped} />}
+        {tab === "scan" && (
+          <ScanPanel transcript={scanned} setTranscript={setScanned} />
         )}
       </div>
 
-      <ContinueRow
-        text={tab === "voice" ? transcript : typed}
-        minLength={tab === "voice" ? 1 : MIN_TEXT_LENGTH}
-      />
+      <ContinueRow text={activeText} minLength={activeMin} />
     </div>
   );
 }
