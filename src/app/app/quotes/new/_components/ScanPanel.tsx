@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Camera, UploadSimple, X, ArrowLeft } from "@phosphor-icons/react/dist/ssr";
+import { FloorPlanSvg } from "@/lib/floorPlanSvg";
+import type { ScannedPlan } from "@/app/api/quotes/scan-drawing/route";
 
 type ScanState = "idle" | "uploading" | "review-dims" | "transcript" | "error";
 
@@ -21,6 +23,7 @@ interface ScanResult {
   dimensions: string;
   structural: string;
   notes: string;
+  plan: ScannedPlan | null;
 }
 
 function buildFinalTranscript(
@@ -165,6 +168,7 @@ export function ScanPanel({
         dimensions: (data.dimensions ?? "").trim(),
         structural: (data.structural ?? "").trim(),
         notes: (data.notes ?? "").trim(),
+        plan: data.plan ?? null,
       };
       setScanResult(result);
       setEditedDimensions(result.dimensions);
@@ -243,6 +247,8 @@ export function ScanPanel({
       ) : state === "review-dims" && scanResult ? (
         <DimensionReview
           buildType={scanResult.buildType}
+          plan={scanResult.plan}
+          jobType={jobType || "Other"}
           previewUrl={previewUrl}
           dimensions={editedDimensions}
           onDimensionsChange={setEditedDimensions}
@@ -472,6 +478,8 @@ function ScanSetup({
 
 function DimensionReview({
   buildType,
+  plan,
+  jobType,
   previewUrl,
   dimensions,
   onDimensionsChange,
@@ -479,6 +487,8 @@ function DimensionReview({
   onBack,
 }: {
   buildType: string;
+  plan: ScannedPlan | null;
+  jobType: JobType | "Other";
   previewUrl: string | null;
   dimensions: string;
   onDimensionsChange: (s: string) => void;
@@ -507,6 +517,18 @@ function DimensionReview({
           </p>
         )}
       </div>
+
+      {plan && (
+        <div
+          data-testid="floor-plan-wrapper"
+          className="mt-4 overflow-hidden rounded-sm border border-ink-700 bg-ink-950"
+        >
+          <div className="border-b border-ink-700 px-3 py-2 font-mono text-[10px] uppercase tracking-[0.2em] text-ink-400">
+            {"// schematic — measure against your drawing"}
+          </div>
+          <FloorPlanSvg plan={plan} jobType={jobType as JobType} />
+        </div>
+      )}
 
       {previewUrl && (
         <div className="mt-3">
