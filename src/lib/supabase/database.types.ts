@@ -381,6 +381,7 @@ export type Database = {
           phone: string | null
           tax_label: string | null
           tax_rate: number | null
+          trial_started_at: string | null
           updated_at: string
         }
         Insert: {
@@ -400,6 +401,7 @@ export type Database = {
           phone?: string | null
           tax_label?: string | null
           tax_rate?: number | null
+          trial_started_at?: string | null
           updated_at?: string
         }
         Update: {
@@ -419,9 +421,45 @@ export type Database = {
           phone?: string | null
           tax_label?: string | null
           tax_rate?: number | null
+          trial_started_at?: string | null
           updated_at?: string
         }
         Relationships: []
+      }
+      quote_edit_events: {
+        Row: {
+          created_at: string
+          diff: Json
+          edited_data: Json
+          id: string
+          quote_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          diff: Json
+          edited_data: Json
+          id?: string
+          quote_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          diff?: Json
+          edited_data?: Json
+          id?: string
+          quote_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quote_edit_events_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       quote_events: {
         Row: {
@@ -505,6 +543,7 @@ export type Database = {
           accepted_quote_version: number
           accepted_total: number | null
           accepted_user_agent: string | null
+          ai_snapshot: Json | null
           archived_at: string | null
           client_id: string | null
           completed_at: string | null
@@ -538,6 +577,7 @@ export type Database = {
           accepted_quote_version?: number
           accepted_total?: number | null
           accepted_user_agent?: string | null
+          ai_snapshot?: Json | null
           archived_at?: string | null
           client_id?: string | null
           completed_at?: string | null
@@ -571,6 +611,7 @@ export type Database = {
           accepted_quote_version?: number
           accepted_total?: number | null
           accepted_user_agent?: string | null
+          ai_snapshot?: Json | null
           archived_at?: string | null
           client_id?: string | null
           completed_at?: string | null

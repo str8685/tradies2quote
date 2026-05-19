@@ -96,6 +96,25 @@ Out of scope for the MVP — do not build:
 
 Do **not** modify the marketing landing page (`src/app/page.tsx` and `src/app/_components/landing/*`) without an explicit request.
 
+## AI eval loop (Wave 40)
+
+Every quote save logs an AI-vs-tradie diff so prompt improvements can be grounded in evidence instead of guessing.
+
+- `quotes.ai_snapshot` (JSONB, nullable) — frozen QuoteData written ONCE in `/api/quotes/generate`. Never mutated afterwards; `quote_data` is the live editable copy.
+- `quote_edit_events` — one row per `saveQuoteChanges` call. Holds `edited_data` (user's saved version) and `diff` (structured before/after vs `ai_snapshot`).
+- Diff is computed by `src/lib/quoteEditDiff.ts` — matches lines by `library_id` → description → position, emits per-field changes plus removed/added line counts.
+
+Read patterns the AI gets wrong (e.g. "what fields are corrected most"):
+```sql
+select field->>'name' as field_name, count(*)
+from quote_edit_events,
+  jsonb_array_elements(diff->'modified') as line,
+  jsonb_array_elements(line->'fields') as field
+group by field->>'name' order by count(*) desc;
+```
+
+When fixing a recurring AI mistake, prefer a clean-room rule in the system prompt (we can't legally ingest copyrighted manuals from GIB / James Hardie / MiTek into a commercial product). The facts themselves aren't copyrightable.
+
 ## Working preferences
 
 - **Scoped chunks**, not one-shot builds. Stage 1, Stage 2, etc. — finish one before touching the next.

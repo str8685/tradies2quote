@@ -9,12 +9,6 @@ export type QuickStartResult =
   | { ok: true; inserted: number; skipped: number }
   | { error: string };
 
-const QUICK_START_INITIAL: QuickStartResult = { ok: true, inserted: 0, skipped: 0 };
-
-export async function getQuickStartInitial(): Promise<QuickStartResult> {
-  return QUICK_START_INITIAL;
-}
-
 function parsePrice(raw: FormDataEntryValue | null): number | null {
   if (typeof raw !== "string") return null;
   const trimmed = raw.trim();
