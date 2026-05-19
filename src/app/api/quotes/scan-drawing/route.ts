@@ -319,7 +319,11 @@ export async function POST(request: NextRequest) {
               { type: "text", text: userTextParts.join("\n\n") },
             ],
           },
-          { role: "assistant", content: "{" },
+          // Note: pre Wave-42 there was a `{ role: "assistant",
+          // content: "{" }` prefill here to force JSON output.
+          // Opus 4.7's adaptive thinking is incompatible with
+          // assistant-turn prefills, so we rely on the system
+          // prompt's "Output STRICT JSON only" instruction instead.
         ],
       }),
     });
@@ -383,7 +387,14 @@ export async function POST(request: NextRequest) {
   }
 
   const text = payload.content?.find((c) => c.type === "text")?.text ?? "";
-  const fullJson = "{" + text;
+  // Without the assistant-turn prefill, the model returns the full
+  // JSON itself. Trim defensively — Opus occasionally pads with a
+  // leading newline or a ```json fence even when told not to.
+  const fullJson = text
+    .trim()
+    .replace(/^```(?:json)?\s*/i, "")
+    .replace(/```\s*$/i, "")
+    .trim();
 
   let parsed: ScanPayload;
   try {
