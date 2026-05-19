@@ -412,34 +412,48 @@ function extractRectangle(
  * to correct what the AI mis-read, those edits should win over the
  * AI's structured plan guess.
  *
- * Detects lines like:
- *   "4800mm = 4.8m"
- *   "3820mm = 3.82m (width)"
- *   "Deck length: 4.8m"
+ * Scoping is critical. Wave 43 regression: the first version of this
+ * function scanned the FULL transcript, including the AI's prose,
+ * structural and notes sections. The AI sometimes mentions area /
+ * volume values like "deck area 28.8m²" or "concrete 0.45m³ × 60",
+ * and the regex would happily lift "28.8m" out of "28.8m²" because
+ * `\b` treats `²` as a word boundary. That value then beat the
+ * correct marker (6m × 4.8m) in the cross-check because 28.8 ≤ 30,
+ * the calculator received a 28.8m × 6m "deck", and emitted 72 joist
+ * lengths / 2027m of decking — exactly the bug the marker was
+ * meant to PREVENT.
  *
- * Skips:
- *   "Posts 125x125 H5"    (timber size — both sides < 1m after norm)
- *   "Post depth 600mm"    (< 1m, also a depth not a plan dim)
- *   "12 piles at 1.8m"    (1.8m is a spacing, not a plan dim — only
- *                          taken if it's one of the top-2 largest)
- *
- * Returns the two distinct largest values (lengthM ≥ widthM), or
- * undefined when fewer than two qualifying numbers are present.
+ * Two defences:
+ *   1. Restrict scanning to the explicit DIMENSIONS section if it's
+ *      present (delimited by "DIMENSIONS (tradie-confirmed):" and
+ *      the next "STRUCTURAL"/"NOTES" header). The AI is told to put
+ *      ONE PLAN DIMENSION PER LINE in this section — exactly the
+ *      shape this helper is meant to read.
+ *   2. Tighter unit regex that explicitly rejects m²/m³/m2/m3.
  */
 function extractStandaloneDims(
   text: string,
 ): { lengthM: number; widthM: number } | undefined {
-  // We want STANDALONE dimensions — numbers followed by mm/m that
-  // aren't paired with another "X by Y" pattern. So we strip any
-  // "A x B" pairs first, then scan what's left for unit-suffixed
-  // values.
-  const withoutPairs = text.replace(
+  // Scope to the DIMENSIONS section when present. The whole-transcript
+  // path is a fallback for inputs that don't go through ScanPanel
+  // (legacy voice / typed entry).
+  const dimsSectionRe =
+    /DIMENSIONS\s*(?:\([^)]*\))?\s*:?\s*\n([\s\S]*?)(?=\n[A-Z][A-Z\s/&]+:|$)/i;
+  const dimsMatch = text.match(dimsSectionRe);
+  const scope = dimsMatch ? dimsMatch[1] : text;
+
+  // Strip "X by Y" pairs so they don't double-count as standalone.
+  const withoutPairs = scope.replace(
     /\d+(?:\.\d+)?\s*(?:mm|m|metres?|meters?)?\s*(?:by|x|×|\*)\s*\d+(?:\.\d+)?\s*(?:mm|m|metres?|meters?)?/gi,
     " ",
   );
-  // Unit-bearing standalone numbers. Require explicit mm / m / metres
-  // — bare numbers in prose are too noisy.
-  const re = /(\d+(?:\.\d+)?)\s*(mm|metres?|meters?|m)\b/gi;
+
+  // Reject m² / m³ / m2 / m3 — those are areas / volumes, not plan
+  // dimensions. `(?![²³23])` after the unit is the area/volume
+  // guard. `(?!m)` keeps us from matching the first `m` of `mm` as
+  // a standalone metre unit.
+  const re =
+    /(\d+(?:\.\d+)?)\s*(mm|metres?|meters?|m)(?![²³23m])\b/gi;
   const values = new Set<number>();
   const MIN_PLAN_M = 1;
   const MAX_PLAN_M = 30;
@@ -503,7 +517,13 @@ function parseDeckDescription(
     // Cross-check against user-visible standalone dims. If the
     // marker disagrees by > 15% in EITHER axis, the dimensions text
     // (which the tradie has reviewed and edited) wins.
-    const TOLERANCE = 0.15;
+    // Tolerance: 25% in EITHER axis. Tightened from 15% in Wave 43b
+    // because the cross-check kept misfiring on L-shaped decks where
+    // the DIMENSIONS section lists multiple edge lengths and the
+    // marker bounds the enclosing rectangle. The marker is right
+    // more often than not — only override when there's a meaningful
+    // disagreement.
+    const TOLERANCE = 0.25;
     const disagrees =
       standalone &&
       (Math.abs(marker.lengthM! - standalone.lengthM) / standalone.lengthM >
@@ -658,7 +678,13 @@ function parseSubfloorDescription(
     marker.lengthM !== undefined &&
     marker.widthM !== undefined;
   if (useMarker) {
-    const TOLERANCE = 0.15;
+    // Tolerance: 25% in EITHER axis. Tightened from 15% in Wave 43b
+    // because the cross-check kept misfiring on L-shaped decks where
+    // the DIMENSIONS section lists multiple edge lengths and the
+    // marker bounds the enclosing rectangle. The marker is right
+    // more often than not — only override when there's a meaningful
+    // disagreement.
+    const TOLERANCE = 0.25;
     const disagrees =
       standalone &&
       (Math.abs(marker.lengthM! - standalone.lengthM) / standalone.lengthM >

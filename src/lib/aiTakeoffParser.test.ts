@@ -342,15 +342,15 @@ describe("structured [T2Q_PLAN] marker", () => {
     expect(r.input.deckWidthM).toBeCloseTo(3.82, 3);
   });
 
-  it("standalone dimensions override marker when they disagree > 15%", () => {
-    // The Whakamārama failure mode in reverse: AI's plan says 7×6
-    // (wrong) but the dimensions section (which the tradie can edit)
-    // says 4.8m and 3.82m. The cross-check rule says the
-    // user-visible text wins.
+  it("standalone dimensions override marker when they disagree > 25%", () => {
+    // Failure mode: AI's plan says 7×6 (wrong) but the dimensions
+    // section (which the tradie can edit) says 4.8m and 3.82m. The
+    // cross-check rule says the user-visible text wins.
     const t =
       "[T2Q_PLAN] type=deck length_m=7 width_m=6\n\n" +
       "Job type: Deck.\n" +
-      "DIMENSIONS (tradie-confirmed):\n4800mm = 4.8m\n3820mm = 3.82m\n";
+      "DIMENSIONS (tradie-confirmed):\n4800mm = 4.8m\n3820mm = 3.82m\n" +
+      "STRUCTURAL ELEMENTS:\nJoists 140x45 H3.2";
     const r = parseTakeoffDescription(t);
     if (r.type !== "deck") throw new Error("not deck");
     expect(r.input.deckLengthM).toBeCloseTo(4.8, 3);
@@ -358,14 +358,50 @@ describe("structured [T2Q_PLAN] marker", () => {
     expect(r.assumptions.some((a) => a.includes("disagreed"))).toBe(true);
   });
 
-  it("marker AND standalone agree within 15% → marker wins, no warning", () => {
+  it("marker AND standalone agree within 25% → marker wins, no warning", () => {
     const t =
       "[T2Q_PLAN] type=deck length_m=4.8 width_m=3.82\n\n" +
-      "DIMENSIONS:\n4800mm = 4.8m\n3820mm = 3.82m\n";
+      "DIMENSIONS:\n4800mm = 4.8m\n3820mm = 3.82m\n" +
+      "STRUCTURAL ELEMENTS:\nJoists 140x45";
     const r = parseTakeoffDescription(t);
     if (r.type !== "deck") throw new Error("not deck");
     expect(r.input.deckLengthM).toBeCloseTo(4.8, 3);
     expect(r.assumptions.some((a) => a.includes("disagreed"))).toBe(false);
+  });
+
+  // Regression — Wave 43b. AI prose mentioned "deck area 28.8m²" and
+  // the standalone-dim extractor picked up "28.8m" as a candidate
+  // (because `\b` treats `²` as a word boundary). The cross-check
+  // then ran with 28.8 as `lengthM`, overrode the correct 6×4.8
+  // marker, and the calculator produced 72 joists / 2027m of decking
+  // — a 30+ × 6 deck. This locks the m² guard.
+  it("ignores `28.8m²` (area mention) — does not treat as plan dim", () => {
+    const t =
+      "[T2Q_PLAN] type=deck length_m=6 width_m=4.8\n\n" +
+      "Job type: Deck.\n" +
+      "DIMENSIONS (tradie-confirmed):\n" +
+      "6.0m (top edge)\n" +
+      "4800mm = 4.8m\n" +
+      "STRUCTURAL ELEMENTS:\nDeck area: 28.8m². Concrete volume 0.45m³ × 12 posts.\n";
+    const r = parseTakeoffDescription(t);
+    if (r.type !== "deck") throw new Error("not deck");
+    // Marker wins — no rogue 28.8 dragged in from the structural
+    // section.
+    expect(r.input.deckLengthM).toBeCloseTo(6, 3);
+    expect(r.input.deckWidthM).toBeCloseTo(4.8, 3);
+  });
+
+  it("standalone scan is scoped to the DIMENSIONS section when present", () => {
+    // Pile depth `1.8m` and rail length `12m` mentioned in prose
+    // shouldn't override DIMENSIONS-section values.
+    const t =
+      "[T2Q_PLAN] type=deck length_m=4.8 width_m=3.82\n\n" +
+      "DIMENSIONS (tradie-confirmed):\n4800mm = 4.8m\n3820mm = 3.82m\n" +
+      "STRUCTURAL ELEMENTS:\nFence rail 12m, pile depth 1.8m.\n";
+    const r = parseTakeoffDescription(t);
+    if (r.type !== "deck") throw new Error("not deck");
+    expect(r.input.deckLengthM).toBeCloseTo(4.8, 3);
+    expect(r.input.deckWidthM).toBeCloseTo(3.82, 3);
   });
 
   it("subfloor marker carries dimensions", () => {

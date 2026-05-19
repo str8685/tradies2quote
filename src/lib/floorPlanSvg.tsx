@@ -93,11 +93,16 @@ function RectPlanSvg({
           <path
             d="M 20 0 L 0 0 0 20"
             fill="none"
-            stroke="rgb(255 255 255 / 0.04)"
+            stroke="rgb(255 255 255 / 0.06)"
             strokeWidth="1"
           />
         </pattern>
       </defs>
+      {/* Solid dark backdrop — the schematic was unreadable in light
+          mode because every overlay relied on white-on-dark contrast.
+          Pinning the SVG's own background fixes that without
+          touching the app theme. */}
+      <rect width={VIEWBOX_W} height={VIEWBOX_H} fill="rgb(10 10 10)" />
       <rect width={VIEWBOX_W} height={VIEWBOX_H} fill="url(#grid)" />
 
       <g>
@@ -107,9 +112,9 @@ function RectPlanSvg({
           y={y}
           width={wPx}
           height={lPx}
-          fill="rgb(255 95 21 / 0.06)"
-          stroke="rgb(255 95 21 / 0.9)"
-          strokeWidth="2"
+          fill="rgb(255 95 21 / 0.08)"
+          stroke="rgb(255 95 21)"
+          strokeWidth="2.5"
         />
 
         {/* Job-type overlays */}
@@ -142,8 +147,85 @@ function RectPlanSvg({
           text={fmtM(plan.length_m)}
           vertical
         />
+
+        {/* Inline annotations — more measure detail. Surface the
+            structured bits the AI extracted so the operator can
+            sense-check at a glance instead of scrolling the prose. */}
+        <PlanAnnotations
+          plan={plan}
+          jobType={jobType}
+          x={x}
+          y={y}
+          wPx={wPx}
+          lPx={lPx}
+        />
       </g>
     </svg>
+  );
+}
+
+function PlanAnnotations({
+  plan,
+  jobType,
+  x,
+  y,
+  lPx,
+}: {
+  plan: ScannedPlan;
+  jobType: JobType;
+  x: number;
+  y: number;
+  wPx: number;
+  lPx: number;
+}) {
+  const lines: string[] = [];
+  if (plan.post_count && plan.post_count > 0) {
+    lines.push(`${plan.post_count} posts`);
+  }
+  if (plan.post_spacing_m && plan.post_spacing_m > 0) {
+    lines.push(`${fmtM(plan.post_spacing_m)} post spacing`);
+  }
+  if (plan.joist_spacing_mm && plan.joist_spacing_mm > 0) {
+    lines.push(`${plan.joist_spacing_mm}mm joist c/c`);
+  }
+  if (plan.height_m && plan.height_m > 0) {
+    lines.push(`${fmtM(plan.height_m)} ${jobType === "Deck" ? "above ground" : "high"}`);
+  }
+  if (jobType === "Deck" && plan.joist_orientation) {
+    lines.push(`joists ↔ ${plan.joist_orientation}`);
+  }
+  if (lines.length === 0) return null;
+
+  // Position the annotation block in the lower-left so it doesn't
+  // collide with the right-side length label.
+  const baseX = x + 6;
+  const baseY = y + lPx - lines.length * 14 - 6;
+
+  return (
+    <g>
+      <rect
+        x={baseX - 4}
+        y={baseY - 12}
+        width={140}
+        height={lines.length * 14 + 8}
+        fill="rgb(0 0 0 / 0.55)"
+        stroke="rgb(255 255 255 / 0.18)"
+        strokeWidth="1"
+        rx="2"
+      />
+      {lines.map((line, i) => (
+        <text
+          key={i}
+          x={baseX}
+          y={baseY + i * 14}
+          fill="rgb(255 255 255 / 0.85)"
+          fontSize="11"
+          fontFamily="IBM Plex Mono, ui-monospace, monospace"
+        >
+          {line}
+        </text>
+      ))}
+    </g>
   );
 }
 
