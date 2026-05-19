@@ -159,8 +159,11 @@ describe("calculateDeckTakeoff", () => {
     // (matches blocklayer.com — fence-post rule: ceil(spans) + 1)
     expect(getMaterial(r, "deck-piles")?.quantity).toBe(15);
 
-    // screws = ceil(18 × 30 × 1.1) = 594
-    expect(getMaterial(r, "deck-screws")?.quantity).toBe(594);
+    // screws total = ceil(18 × 30 × 1.1) = 594 individual screws
+    //   → packs = ceil(594 / 500) = 2 (output as pack count so library
+    //     match at per-pack pricing lines up correctly)
+    expect(getMaterial(r, "deck-screws")?.quantity).toBe(2);
+    expect(getMaterial(r, "deck-screws")?.unit).toBe("pack");
 
     // nail box fixed
     expect(getMaterial(r, "joist-hanger-nails")?.quantity).toBe(1);
@@ -186,8 +189,9 @@ describe("calculateDeckTakeoff", () => {
     // pilesPerRow = 2 + 2 = 4; piles = 2 × 4 = 8 (matches blocklayer exactly)
     expect(getMaterial(r, "deck-piles")?.quantity).toBe(8);
 
-    // screws = ceil(8 × 30 × 1.1) = 264
-    expect(getMaterial(r, "deck-screws")?.quantity).toBe(264);
+    // screws total = ceil(8 × 30 × 1.1) = 264 → packs = ceil(264/500) = 1
+    expect(getMaterial(r, "deck-screws")?.quantity).toBe(1);
+    expect(getMaterial(r, "deck-screws")?.unit).toBe("pack");
   });
 
   it("includePiles=false drops the piles line", () => {
