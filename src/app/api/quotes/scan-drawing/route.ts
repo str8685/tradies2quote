@@ -6,15 +6,13 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
-// Wave 42 — Opus 4.7 for the scan, Sonnet 4 still for the downstream
-// quote planner. Vision is the most error-prone link in the chain
-// (messy handwriting, faded pencil, photos taken at an angle), so
-// the marginal cost of running the vision step on the smarter model
-// pays for itself if it shaves 5 minutes of tradie-correction work
-// off the dimension review. The line-item planner that follows in
-// /api/quotes/generate stays on Sonnet — text reasoning, much higher
-// call volume, no need to pay the Opus premium there.
-const MODEL = "claude-opus-4-7";
+// Wave 42 (rollback) — bringing scan-drawing back to Sonnet 4 after
+// the Opus 4.7 model ID `claude-opus-4-7` was rejected by the public
+// Anthropic API. The exact Opus ID needs to be looked up against
+// docs.anthropic.com/en/docs/about-claude/models before re-trying.
+// Sonnet vision is still strong; the upgrade was a polish step, not
+// a fix for a broken feature.
+const MODEL = "claude-sonnet-4-20250514";
 const MAX_TOKENS = 2048;
 
 const MAX_BYTES = 8 * 1024 * 1024;
