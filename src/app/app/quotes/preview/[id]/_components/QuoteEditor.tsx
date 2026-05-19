@@ -29,6 +29,7 @@ import {
   confidenceTally,
   type LineConfidence,
 } from "@/lib/lineConfidence";
+import { explainFormula } from "@/lib/explainFormula";
 import type { MaterialTakeoffResult } from "@/lib/materialCalculator";
 import type { PhotoPlanItem } from "@/lib/agents/photo-plan";
 import { saveQuoteChanges } from "../actions";
@@ -742,14 +743,13 @@ function ItemsSection({
               <div className="mt-2 text-right font-mono text-xs uppercase tracking-[0.2em] text-ink-300">
                 Line total: <span className="text-white">{formatCurrency(it.line_total, currency)}</span>
               </div>
-              {it.formula && (
-                <p
-                  data-testid="line-formula"
-                  className="mt-1 font-mono text-[10px] text-ink-500"
-                  title={it.price_match_key ?? undefined}
-                >
-                  {`// ${it.formula}`}
-                </p>
+              {(it.formula || libMaterial) && (
+                <ShowWorking
+                  formula={it.formula}
+                  libraryName={libMaterial?.name ?? null}
+                  unit={it.unit}
+                  result={it.quantity}
+                />
               )}
             </li>
           );
@@ -757,6 +757,63 @@ function ItemsSection({
         </ul>
       )}
     </section>
+  );
+}
+
+function ShowWorking({
+  formula,
+  libraryName,
+  unit,
+  result,
+}: {
+  formula: string | null | undefined;
+  libraryName: string | null;
+  unit: string;
+  result: number;
+}) {
+  const explained = explainFormula(formula);
+  const hasMath = explained.length > 0;
+  // Skip the entire toggle if we have neither a formula nor a library
+  // match — the parent already gates on that, but it's defensive here.
+  if (!hasMath && !libraryName) return null;
+  return (
+    <details className="mt-2 rounded-sm border border-ink-700 bg-ink-950/70 [&[open]>summary>span:last-child]:rotate-180">
+      <summary
+        data-testid="show-working-toggle"
+        className="flex cursor-pointer select-none items-center justify-between gap-2 px-3 py-2 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-300 hover:text-white"
+      >
+        <span>{"// show working"}</span>
+        <span aria-hidden="true" className="transition-transform">
+          ▾
+        </span>
+      </summary>
+      <div className="space-y-2 border-t border-ink-700 px-3 py-2.5 text-xs text-ink-200">
+        {hasMath && (
+          <div data-testid="working-formula">
+            <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-500">
+              {"// quantity"}
+            </div>
+            <div className="mt-1 break-words text-sm leading-snug text-white">
+              {explained}
+            </div>
+            <div className="mt-1 font-mono text-[10px] text-ink-400">
+              = {result} {unit || ""}
+            </div>
+          </div>
+        )}
+        {libraryName && (
+          <div data-testid="working-library">
+            <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-500">
+              {"// price"}
+            </div>
+            <div className="mt-1 text-sm text-white">
+              Matched to your library:{" "}
+              <span className="text-brand">{libraryName}</span>
+            </div>
+          </div>
+        )}
+      </div>
+    </details>
   );
 }
 
