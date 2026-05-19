@@ -4,15 +4,20 @@ import { canWrite, getSubscriptionStatus } from "@/lib/subscription";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+// Opus on a detailed image can take 20-40s. Vercel's default function
+// timeout is 10s on Hobby, 60s on Pro — bump to 60 so we don't 502
+// while Anthropic is still thinking. Clamped to the plan's max by
+// Vercel.
+export const maxDuration = 60;
 
 const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
-// Wave 42 (rollback) — bringing scan-drawing back to Sonnet 4 after
-// the Opus 4.7 model ID `claude-opus-4-7` was rejected by the public
-// Anthropic API. The exact Opus ID needs to be looked up against
-// docs.anthropic.com/en/docs/about-claude/models before re-trying.
-// Sonnet vision is still strong; the upgrade was a polish step, not
-// a fix for a broken feature.
-const MODEL = "claude-sonnet-4-20250514";
+// Wave 42 (retry) — back on Opus 4.7 now that the workspace audit
+// (via Claude in Chrome) confirmed Opus is enabled with $11+ credit
+// and Tier 1 rate limits. The exact public API ID per
+// docs.anthropic.com is `claude-opus-4-7`. If we 502 again, the
+// improved error logging below will surface the actual Anthropic
+// response status + body so we can diagnose properly.
+const MODEL = "claude-opus-4-7";
 const MAX_TOKENS = 2048;
 
 const MAX_BYTES = 8 * 1024 * 1024;
@@ -325,9 +330,27 @@ export async function POST(request: NextRequest) {
 
   if (!claudeRes.ok) {
     const detail = await claudeRes.text().catch(() => "");
-    console.error("scan-drawing Claude API error", claudeRes.status, detail.slice(0, 400));
+    // Verbose so the full Anthropic error body lands in Vercel logs.
+    // Single-line JSON so log query tools can grep it cleanly. Also
+    // logs the model we tried, so a future model-id mistake is
+    // obvious from the log alone without cross-referencing the code.
+    console.error(
+      JSON.stringify({
+        tag: "scan-drawing.anthropic_error",
+        model: MODEL,
+        status: claudeRes.status,
+        statusText: claudeRes.statusText,
+        detail: detail.slice(0, 2000),
+      }),
+    );
     return NextResponse.json(
-      { error: "Drawing scan failed. Please try again." },
+      {
+        error: "Drawing scan failed. Please try again.",
+        // Surface the Anthropic status to the client so the on-screen
+        // error is more useful than "try again" — e.g. a 404 likely
+        // means the model id is wrong, 429 means rate limited.
+        upstream_status: claudeRes.status,
+      },
       { status: 502 },
     );
   }
