@@ -330,10 +330,13 @@ export async function POST(request: NextRequest) {
 
   if (!claudeRes.ok) {
     const detail = await claudeRes.text().catch(() => "");
-    // Verbose so the full Anthropic error body lands in Vercel logs.
-    // Single-line JSON so log query tools can grep it cleanly. Also
-    // logs the model we tried, so a future model-id mistake is
-    // obvious from the log alone without cross-referencing the code.
+    // Status FIRST so even a 30-char-truncated log surface still
+    // tells us what Anthropic returned. Format: "ANTHROPIC_<status>
+    // <model> <first-bit-of-error-body>". Full JSON follows on the
+    // next line for log tools that ingest everything.
+    console.error(
+      `ANTHROPIC_${claudeRes.status} ${MODEL} ${detail.slice(0, 120).replace(/\s+/g, " ")}`,
+    );
     console.error(
       JSON.stringify({
         tag: "scan-drawing.anthropic_error",
