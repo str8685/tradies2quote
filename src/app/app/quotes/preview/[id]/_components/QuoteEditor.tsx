@@ -24,6 +24,11 @@ import type {
   QuoteStatus,
 } from "@/lib/quote-types";
 import { matchToLibrary } from "@/lib/materials";
+import {
+  lineConfidence,
+  confidenceTally,
+  type LineConfidence,
+} from "@/lib/lineConfidence";
 import type { MaterialTakeoffResult } from "@/lib/materialCalculator";
 import type { PhotoPlanItem } from "@/lib/agents/photo-plan";
 import { saveQuoteChanges } from "../actions";
@@ -270,6 +275,12 @@ export function QuoteEditor({
   const materialMissingPrices = materialIndices.filter(
     (x) => x.it.is_missing_price,
   ).length;
+  const materialConfidence = confidenceTally(
+    materialIndices.map((x) => ({
+      it: x.it,
+      lib: x.it.library_id ? libraryById.get(x.it.library_id) : null,
+    })),
+  );
   const materialsSummary = [
     `${materialIndices.length} item${materialIndices.length === 1 ? "" : "s"}`,
     formatCurrency(totals.materials_subtotal, currency),
@@ -428,6 +439,8 @@ export function QuoteEditor({
           currency={currency}
           libraryById={libraryById}
           showBadges
+          showConfidence
+          confidenceTally={materialConfidence}
           onUpdate={updateItem}
           onRemove={removeItem}
           onAdd={() => addItem("material")}
@@ -596,6 +609,8 @@ function ItemsSection({
   currency,
   libraryById,
   showBadges,
+  showConfidence,
+  confidenceTally,
   onUpdate,
   onRemove,
   onAdd,
@@ -608,6 +623,8 @@ function ItemsSection({
   currency: string;
   libraryById: Map<string, LibraryMaterial>;
   showBadges: boolean;
+  showConfidence?: boolean;
+  confidenceTally?: { high: number; medium: number; low: number };
   onUpdate: (idx: number, patch: Partial<QuoteLineItem>) => void;
   onRemove: (idx: number) => void;
   onAdd: () => void;
@@ -638,6 +655,10 @@ function ItemsSection({
         </button>
       </div>
 
+      {showConfidence && confidenceTally && rows.length > 0 && (
+        <ConfidenceLegend tally={confidenceTally} />
+      )}
+
       {rows.length === 0 ? (
         <p className="mt-4 font-mono text-xs uppercase tracking-[0.2em] text-ink-500">
           {"// no items — add one above"}
@@ -648,11 +669,23 @@ function ItemsSection({
             const libMaterial = it.library_id
               ? libraryById.get(it.library_id)
               : undefined;
+            const confidence: LineConfidence = showConfidence
+              ? lineConfidence(it, libMaterial)
+              : "none";
+            const confidenceClass =
+              confidence === "high"
+                ? "border-l-4 border-l-emerald-500/70"
+                : confidence === "medium"
+                  ? "border-l-4 border-l-hivis/70"
+                  : confidence === "low"
+                    ? "border-l-4 border-l-red-500/70"
+                    : "";
             return (
             <li
               key={i}
               data-testid={`row-${i}`}
-              className="rounded-sm border border-ink-700 bg-ink-900 p-3"
+              data-confidence={confidence}
+              className={`rounded-sm border border-ink-700 bg-ink-900 p-3 ${confidenceClass}`}
             >
               {showBadges && (
                 <ItemBadge
@@ -724,6 +757,80 @@ function ItemsSection({
         </ul>
       )}
     </section>
+  );
+}
+
+function ConfidenceLegend({
+  tally,
+}: {
+  tally: { high: number; medium: number; low: number };
+}) {
+  const total = tally.high + tally.medium + tally.low;
+  if (total === 0) return null;
+  return (
+    <div
+      data-testid="confidence-legend"
+      className="mt-3 flex flex-wrap items-center gap-2 rounded-sm border border-ink-700 bg-ink-950 px-3 py-2 font-mono text-[10px] uppercase tracking-[0.18em]"
+    >
+      <span className="text-ink-500">{"// confidence"}</span>
+      <ConfidenceChip
+        color="emerald"
+        count={tally.high}
+        label="From your library"
+        testid="legend-high"
+      />
+      <ConfidenceChip
+        color="hivis"
+        count={tally.medium}
+        label="AI estimate"
+        testid="legend-medium"
+      />
+      <ConfidenceChip
+        color="red"
+        count={tally.low}
+        label="Needs price"
+        testid="legend-low"
+      />
+    </div>
+  );
+}
+
+function ConfidenceChip({
+  color,
+  count,
+  label,
+  testid,
+}: {
+  color: "emerald" | "hivis" | "red";
+  count: number;
+  label: string;
+  testid: string;
+}) {
+  const dimmed = count === 0;
+  const swatch =
+    color === "emerald"
+      ? "bg-emerald-500/80"
+      : color === "hivis"
+        ? "bg-hivis/80"
+        : "bg-red-500/80";
+  const text = dimmed
+    ? "text-ink-600"
+    : color === "emerald"
+      ? "text-emerald-300"
+      : color === "hivis"
+        ? "text-hivis"
+        : "text-red-300";
+  return (
+    <span
+      data-testid={testid}
+      className={`inline-flex items-center gap-1.5 ${text}`}
+    >
+      <span
+        aria-hidden="true"
+        className={`inline-block h-2 w-2 rounded-full ${dimmed ? "bg-ink-700" : swatch}`}
+      />
+      {count} {label}
+    </span>
   );
 }
 
