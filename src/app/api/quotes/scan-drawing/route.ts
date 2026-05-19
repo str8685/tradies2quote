@@ -18,7 +18,17 @@ const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
 // improved error logging below will surface the actual Anthropic
 // response status + body so we can diagnose properly.
 const MODEL = "claude-opus-4-7";
-const MAX_TOKENS = 2048;
+// Bumped from 2048 → 4096. A detailed hand-drawn plan (multiple
+// dimension labels, step heights, post depths, fastener notes) can
+// easily generate a long structured response: 6 sections of prose
+// plus the JSON `plan` object. Opus's adaptive thinking also burns
+// internal tokens before the visible output starts, so 2048 was
+// truncating mid-JSON on dense sketches and surfacing as "Drawing
+// was too detailed to scan in one go" — a misleading message,
+// because the issue was the cap, not the drawing. Opus 4.7 supports
+// up to 8192 output tokens; 4096 keeps headroom without paying for
+// tokens we don't need.
+const MAX_TOKENS = 4096;
 
 const MAX_BYTES = 8 * 1024 * 1024;
 const ACCEPTED_MIME = new Set([
