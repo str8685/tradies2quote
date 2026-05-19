@@ -8,6 +8,7 @@ import {
   type ClarificationAnswer,
 } from "./ClarificationModal";
 import { ScanPanel } from "./ScanPanel";
+import { splitTranscript, hasHighlights } from "@/lib/highlightDimensions";
 
 type Tab = "voice" | "type" | "scan";
 type VoiceState = "idle" | "recording" | "processing" | "error";
@@ -436,17 +437,56 @@ function TranscriptReview({
   onChange: (s: string) => void;
   redoLabel: string;
 }) {
+  const segments = splitTranscript(transcript);
+  const showsHighlights = hasHighlights(transcript);
   return (
     <div>
       <div className="font-mono text-xs uppercase tracking-[0.2em] text-ink-400">
-        Transcript
+        {"// quick check — did I hear you right?"}
       </div>
+      <h3 className="mt-1 font-display text-base uppercase tracking-tight text-white sm:text-lg">
+        Confirm before I quote
+      </h3>
+      <p className="mt-1 text-sm text-ink-300">
+        {showsHighlights
+          ? "Read it back. Numbers and sizes are highlighted — that's where misreads cause bad quotes."
+          : "Read it back. Edit anything that's wrong before tapping Continue."}
+      </p>
+
+      {showsHighlights && (
+        <div
+          data-testid="transcript-highlighted"
+          aria-hidden="true"
+          className="mt-4 whitespace-pre-wrap rounded-sm border border-ink-700 bg-ink-950 px-4 py-3 text-base leading-relaxed text-ink-100"
+        >
+          {segments.map((seg, i) =>
+            seg.kind === "highlight" ? (
+              <span
+                key={i}
+                className="rounded-[2px] bg-brand/20 px-1 font-semibold text-brand"
+              >
+                {seg.value}
+              </span>
+            ) : (
+              <span key={i}>{seg.value}</span>
+            ),
+          )}
+        </div>
+      )}
+
+      <label
+        htmlFor="transcript-output"
+        className="mt-4 block font-mono text-[10px] uppercase tracking-[0.2em] text-ink-500"
+      >
+        Edit if anything&rsquo;s wrong
+      </label>
       <textarea
+        id="transcript-output"
         data-testid="transcript-output"
         value={transcript}
         onChange={(e) => onChange(e.target.value)}
-        rows={8}
-        className="mt-3 block w-full resize-y rounded-sm border border-ink-600 bg-ink-900 px-4 py-3 text-base text-white outline-none focus:border-brand"
+        rows={6}
+        className="mt-2 block w-full resize-y rounded-sm border border-ink-600 bg-ink-900 px-4 py-3 text-base text-white outline-none focus:border-brand"
       />
       <button
         type="button"
