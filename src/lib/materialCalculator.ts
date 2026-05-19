@@ -485,15 +485,21 @@ export function calculateDeckTakeoff(
   }
 
   // Decking screws — ~30 per m² industry standard for 90mm boards on
-  // 450mm joist centres (2 screws per board per joist).
-  const screws = safeCeil(deckAreaM2 * 30 * wasteMultiplier);
+  // 450mm joist centres (2 screws per board per joist). NZ tradies
+  // buy stainless decking screws in boxes of 500, so we output the
+  // PACK count, not the individual screw count. Outputting "each"
+  // here used to collide with library matches priced per pack —
+  // resulting in qty 594 × $45/pack = $26K for a 20m² deck.
+  const screwsPerPack = 500;
+  const screwsTotal = safeCeil(deckAreaM2 * 30 * wasteMultiplier);
+  const screwPacks = Math.max(1, Math.ceil(screwsTotal / screwsPerPack));
   materials.push({
     id: "deck-screws",
     name: "Decking screws (stainless)",
     category: "Fixings",
-    quantity: screws,
-    unit: "each",
-    formula: `ceil(deckAreaM2=${deckAreaM2} × 30 × (1+${wastePercent}/100)) = ${screws}`,
+    quantity: screwPacks,
+    unit: "pack",
+    formula: `ceil(${deckAreaM2}m² × 30 screws/m² × (1+${wastePercent}/100)) = ${screwsTotal} screws → ${screwPacks} pack of ${screwsPerPack}`,
     priceMatchKey: "decking-screws",
   });
 
