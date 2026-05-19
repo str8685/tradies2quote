@@ -6,10 +6,15 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
-// Claude vision — Sonnet 4 is what the rest of the quote pipeline uses
-// (see src/app/api/quotes/generate/route.ts), so the read of the
-// drawing and the line-item planner downstream see the same model.
-const MODEL = "claude-sonnet-4-20250514";
+// Wave 42 — Opus 4.7 for the scan, Sonnet 4 still for the downstream
+// quote planner. Vision is the most error-prone link in the chain
+// (messy handwriting, faded pencil, photos taken at an angle), so
+// the marginal cost of running the vision step on the smarter model
+// pays for itself if it shaves 5 minutes of tradie-correction work
+// off the dimension review. The line-item planner that follows in
+// /api/quotes/generate stays on Sonnet — text reasoning, much higher
+// call volume, no need to pay the Opus premium there.
+const MODEL = "claude-opus-4-7";
 const MAX_TOKENS = 2048;
 
 const MAX_BYTES = 8 * 1024 * 1024;
