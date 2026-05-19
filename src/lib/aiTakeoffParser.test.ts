@@ -172,6 +172,28 @@ describe("detectTakeoffType + per-type parsers", () => {
     expect(r.input.deckWidthM).toBe(3);
   });
 
+  // Regression — Wave 42. The Whakamārama scan came back with
+  // dimensions "4800 x 3820" (mm with the suffix dropped, the NZ
+  // trade-drawing default). The old unit-optional regex treated
+  // those bare numbers as metres and the calculator emitted ~8000
+  // joists for a 4.8 m × 3.82 m deck. These cases lock the
+  // unit-aware behaviour so it can't silently regress.
+  it("'4800 x 3820' (NZ trade-drawing mm, no suffix) → 4.8 m × 3.82 m", () => {
+    const r = parseTakeoffDescription("deck 4800 x 3820");
+    expect(r.type).toBe("deck");
+    if (r.type !== "deck") throw new Error("not deck");
+    expect(r.input.deckLengthM).toBeCloseTo(4.8, 3);
+    expect(r.input.deckWidthM).toBeCloseTo(3.82, 3);
+  });
+
+  it("'4800mm x 3820mm' (explicit mm) → 4.8 m × 3.82 m", () => {
+    const r = parseTakeoffDescription("deck 4800mm x 3820mm");
+    expect(r.type).toBe("deck");
+    if (r.type !== "deck") throw new Error("not deck");
+    expect(r.input.deckLengthM).toBeCloseTo(4.8, 3);
+    expect(r.input.deckWidthM).toBeCloseTo(3.82, 3);
+  });
+
   it("orders dimensions so length ≥ width regardless of input order", () => {
     const r = parseTakeoffDescription("3 by 6 deck");
     expect(r.type).toBe("deck");

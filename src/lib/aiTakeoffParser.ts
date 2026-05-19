@@ -223,15 +223,32 @@ export function detectTakeoffType(description: string): TakeoffType {
 function extractRectangle(
   text: string,
 ): { lengthM: number; widthM: number } | undefined {
+  // Capture the value AND any unit suffix on each side so we can
+  // disambiguate millimetres from metres. NZ trade drawings almost
+  // always write dimensions in mm with the suffix dropped — "4800 x
+  // 3820" means 4.8 m × 3.82 m, NOT 4800 m × 3820 m. Older versions
+  // of this regex treated bare numbers as metres and produced
+  // 1000× quote explosions.
   const re =
-    /(\d+(?:\.\d+)?)\s*(?:m|metres?)?\s*(?:by|x|×|\*)\s*(\d+(?:\.\d+)?)\s*(?:m|metres?)?/i;
+    /(\d+(?:\.\d+)?)\s*(mm|m|metres?|meters?)?\s*(?:by|x|×|\*)\s*(\d+(?:\.\d+)?)\s*(mm|m|metres?|meters?)?/i;
   const m = text.match(re);
   if (!m) return undefined;
-  const a = Number(m[1]);
-  const b = Number(m[2]);
-  if (!Number.isFinite(a) || !Number.isFinite(b) || a <= 0 || b <= 0) {
-    return undefined;
-  }
+  const parseSide = (value: string, unit: string | undefined): number => {
+    const n = Number(value);
+    if (!Number.isFinite(n) || n <= 0) return NaN;
+    const u = (unit ?? "").toLowerCase();
+    if (u === "mm") return n / 1000;
+    if (u === "m" || u === "metre" || u === "metres" || u === "meter" || u === "meters") {
+      return n;
+    }
+    // Unitless. Apply the "NZ-builder reasonableness" clamp: any
+    // plan dimension above 50 m is almost certainly mm written
+    // without the suffix. Below 50 m, treat as metres.
+    return n > 50 ? n / 1000 : n;
+  };
+  const a = parseSide(m[1] ?? "", m[2]);
+  const b = parseSide(m[3] ?? "", m[4]);
+  if (!Number.isFinite(a) || !Number.isFinite(b)) return undefined;
   return { lengthM: Math.max(a, b), widthM: Math.min(a, b) };
 }
 
