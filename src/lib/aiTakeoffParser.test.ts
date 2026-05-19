@@ -194,6 +194,41 @@ describe("detectTakeoffType + per-type parsers", () => {
     expect(r.input.deckWidthM).toBeCloseTo(3.82, 3);
   });
 
+  // Regression — Wave 42b. Once the parser was unit-aware it started
+  // picking up timber-size notation ("125x125 posts", "140x45 joists")
+  // as the deck shape, producing 1 joist / 0.28 m of decking. The
+  // parser must skip any X-by-Y match where both sides come out
+  // under 1 m — those are material sizes, not plan footprints.
+  it("skips '125x125' (post timber size) and finds the real deck dims", () => {
+    const r = parseTakeoffDescription(
+      "Deck job. Posts 125x125 H5. Joists 140x45 H3.2. Plan: 4800 x 3820.",
+    );
+    expect(r.type).toBe("deck");
+    if (r.type !== "deck") throw new Error("not deck");
+    expect(r.input.deckLengthM).toBeCloseTo(4.8, 3);
+    expect(r.input.deckWidthM).toBeCloseTo(3.82, 3);
+  });
+
+  it("skips '140x45' (joist timber size) before the deck dims", () => {
+    const r = parseTakeoffDescription(
+      "Joists 140x45 H3.2 at 450mm centres. Deck 6 x 3 m.",
+    );
+    expect(r.type).toBe("deck");
+    if (r.type !== "deck") throw new Error("not deck");
+    expect(r.input.deckLengthM).toBe(6);
+    expect(r.input.deckWidthM).toBe(3);
+  });
+
+  it("returns undefined when only timber sizes are present (no real plan)", () => {
+    const r = parseTakeoffDescription(
+      "Posts 125x125 H5. Joists 140x45 H3.2. Decking 140x19.",
+    );
+    expect(r.type).toBe("deck");
+    if (r.type !== "deck") throw new Error("not deck");
+    expect(r.input.deckLengthM).toBeUndefined();
+    expect(r.input.deckWidthM).toBeUndefined();
+  });
+
   it("orders dimensions so length ≥ width regardless of input order", () => {
     const r = parseTakeoffDescription("3 by 6 deck");
     expect(r.type).toBe("deck");
