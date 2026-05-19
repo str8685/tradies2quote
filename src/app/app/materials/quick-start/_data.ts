@@ -56,18 +56,25 @@ export const STARTER_MATERIALS: StarterMaterial[] = [
     trade_hint: "Deck posts and fence posts",
   },
   {
+    slug: "gib-standard-10mm",
+    name: "GIB Standard 10mm 1200x2400",
+    unit: "sheet",
+    category: "Plasterboard",
+    trade_hint: "Wall lining",
+  },
+  {
     slug: "gib-standard-13mm",
     name: "GIB Standard 13mm 1200x2400",
     unit: "sheet",
     category: "Plasterboard",
-    trade_hint: "Standard wall lining",
+    trade_hint: "Ceiling lining (anti-sag)",
   },
   {
     slug: "gib-aqualine-10mm",
     name: "GIB Aqualine 10mm 1200x2400",
     unit: "sheet",
     category: "Plasterboard",
-    trade_hint: "Wet area lining",
+    trade_hint: "Wet area lining (bathrooms, laundries)",
   },
   {
     slug: "pink-batts-r32-wall",
