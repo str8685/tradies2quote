@@ -88,7 +88,17 @@ Output shape:
   "summary": string,
   "dimensions": string,
   "structural": string,
-  "notes": string
+  "notes": string,
+  "plan": {
+    "shape": "rect" | "l_shape" | "line" | "other",
+    "width_m": number,
+    "length_m": number,
+    "post_count": number | null,
+    "post_spacing_m": number | null,
+    "joist_spacing_mm": number | null,
+    "joist_orientation": "width" | "length" | null,
+    "height_m": number | null
+  } | null
 }
 
 Where:
@@ -96,12 +106,24 @@ Where:
 - "summary" is one sentence (under 200 chars) for log lines.
 - "dimensions" is the PRIMARY DIMENSIONS section ONLY — one dimension per line, no headers, no extra commentary. This is what the tradie will review first to catch misreads. 4–20 lines typically.
 - "structural" is sections 3–6 (structural elements, fixings, concrete, accessories) joined with newlines.
-- "notes" is sections 7–9 (tradie's labels, assumptions, missing info) joined with newlines.`;
+- "notes" is sections 7–9 (tradie's labels, assumptions, missing info) joined with newlines.
+- "plan" is the smallest structured summary that a programmatic renderer can use to draw a clean schematic of what's being built. Use NULL for any field you can't extract from the drawing. Use NULL for the entire plan if the sketch is too ambiguous to produce a confident shape. Width and length in metres, joist spacing in millimetres. "line" shape is for fences (length_m only matters). "joist_orientation" is which axis the joists span across — "width" means joists run parallel to the width edge, "length" means parallel to the length edge.`;
 }
 
 interface AnthropicResponse {
   content?: Array<{ type: string; text?: string }>;
   stop_reason?: string;
+}
+
+export interface ScannedPlan {
+  shape: "rect" | "l_shape" | "line" | "other";
+  width_m: number;
+  length_m: number;
+  post_count: number | null;
+  post_spacing_m: number | null;
+  joist_spacing_mm: number | null;
+  joist_orientation: "width" | "length" | null;
+  height_m: number | null;
 }
 
 interface ScanPayload {
@@ -110,8 +132,43 @@ interface ScanPayload {
   dimensions?: string;
   structural?: string;
   notes?: string;
+  plan?: ScannedPlan | null;
   // Tolerate the legacy single-transcript shape too.
   transcript?: string;
+}
+
+function sanitisePlan(raw: unknown): ScannedPlan | null {
+  if (!raw || typeof raw !== "object") return null;
+  const r = raw as Record<string, unknown>;
+  const shape =
+    r.shape === "rect" || r.shape === "l_shape" || r.shape === "line"
+      ? r.shape
+      : "other";
+  const w = Number(r.width_m);
+  const l = Number(r.length_m);
+  // Reject the plan outright if we don't have at least a width AND length —
+  // the renderer can't draw anything sensible without them. Fences with
+  // length only still need a length_m; we treat that as width_m=0 + length.
+  if (!Number.isFinite(w) || !Number.isFinite(l)) return null;
+  if (w <= 0 && l <= 0) return null;
+  const optNum = (v: unknown): number | null => {
+    const n = Number(v);
+    return Number.isFinite(n) && n > 0 ? n : null;
+  };
+  const orientation =
+    r.joist_orientation === "width" || r.joist_orientation === "length"
+      ? r.joist_orientation
+      : null;
+  return {
+    shape,
+    width_m: Math.max(0, w),
+    length_m: Math.max(0, l),
+    post_count: optNum(r.post_count),
+    post_spacing_m: optNum(r.post_spacing_m),
+    joist_spacing_mm: optNum(r.joist_spacing_mm),
+    joist_orientation: orientation,
+    height_m: optNum(r.height_m),
+  };
 }
 
 export async function POST(request: NextRequest) {
@@ -332,6 +389,7 @@ export async function POST(request: NextRequest) {
     dimensions: dimensions || legacyTranscript,
     structural,
     notes,
+    plan: sanitisePlan(parsed.plan),
     jobType,
     timberLength,
   });
