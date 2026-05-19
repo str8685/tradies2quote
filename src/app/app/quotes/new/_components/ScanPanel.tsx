@@ -1,12 +1,53 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Camera, UploadSimple, X } from "@phosphor-icons/react/dist/ssr";
+import { Camera, UploadSimple, X, ArrowLeft } from "@phosphor-icons/react/dist/ssr";
 
-type ScanState = "idle" | "uploading" | "error";
+type ScanState = "idle" | "uploading" | "review-dims" | "transcript" | "error";
 
 const MAX_BYTES = 8 * 1024 * 1024;
 const ACCEPTED_MIME = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+
+const JOB_TYPES = ["Deck", "Fence", "Framing", "Concrete", "Roofing", "Other"] as const;
+type JobType = (typeof JOB_TYPES)[number];
+
+const TIMBER_LENGTH_DEFAULT = 6;
+const TIMBER_LENGTH_MIN = 2.4;
+const TIMBER_LENGTH_MAX = 7.2;
+
+interface ScanResult {
+  buildType: string;
+  summary: string;
+  dimensions: string;
+  structural: string;
+  notes: string;
+}
+
+function buildFinalTranscript(
+  jobType: JobType,
+  timberLength: number,
+  result: ScanResult,
+  editedDimensions: string,
+): string {
+  const parts: string[] = [];
+  parts.push(`Job type: ${jobType}.`);
+  parts.push(
+    `Tradie buys timber in ${timberLength}m lengths. Calculate board / stud / plate / decking counts in whole ${timberLength}m lengths with a 10% waste factor.`,
+  );
+  if (result.buildType) {
+    parts.push(`What is being built: ${result.buildType}.`);
+  }
+  if (editedDimensions.trim()) {
+    parts.push("DIMENSIONS (tradie-confirmed):\n" + editedDimensions.trim());
+  }
+  if (result.structural.trim()) {
+    parts.push("STRUCTURAL ELEMENTS & FIXINGS:\n" + result.structural.trim());
+  }
+  if (result.notes.trim()) {
+    parts.push("NOTES & ASSUMPTIONS:\n" + result.notes.trim());
+  }
+  return parts.join("\n\n");
+}
 
 export function ScanPanel({
   transcript,
@@ -19,7 +60,12 @@ export function ScanPanel({
   const [error, setError] = useState<string>("");
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [hint, setHint] = useState<string>("");
-  const [buildType, setBuildType] = useState<string>("");
+  const [jobType, setJobType] = useState<JobType | "">("");
+  const [timberLengthInput, setTimberLengthInput] = useState<string>(
+    String(TIMBER_LENGTH_DEFAULT),
+  );
+  const [scanResult, setScanResult] = useState<ScanResult | null>(null);
+  const [editedDimensions, setEditedDimensions] = useState<string>("");
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const cameraInputRef = useRef<HTMLInputElement | null>(null);
@@ -30,11 +76,45 @@ export function ScanPanel({
     };
   }, [previewUrl]);
 
-  function reset() {
+  // Keep the local state in sync with the parent transcript: if the
+  // parent clears it (e.g. after a quote submission) we should reset
+  // our internal "transcript" view too.
+  useEffect(() => {
+    if (!transcript && state === "transcript") {
+      setState("idle");
+      setScanResult(null);
+      setEditedDimensions("");
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+      setPreviewUrl(null);
+    }
+  }, [transcript, state, previewUrl]);
+
+  function parsedTimberLength(): number {
+    const n = Number.parseFloat(timberLengthInput);
+    if (!Number.isFinite(n)) return TIMBER_LENGTH_DEFAULT;
+    if (n < TIMBER_LENGTH_MIN) return TIMBER_LENGTH_MIN;
+    if (n > TIMBER_LENGTH_MAX) return TIMBER_LENGTH_MAX;
+    return Math.round(n * 10) / 10;
+  }
+
+  function fullReset() {
     if (previewUrl) URL.revokeObjectURL(previewUrl);
     setPreviewUrl(null);
     setTranscript("");
-    setBuildType("");
+    setScanResult(null);
+    setEditedDimensions("");
+    setError("");
+    setState("idle");
+    if (fileInputRef.current) fileInputRef.current.value = "";
+    if (cameraInputRef.current) cameraInputRef.current.value = "";
+  }
+
+  function backToSetup() {
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    setPreviewUrl(null);
+    setTranscript("");
+    setScanResult(null);
+    setEditedDimensions("");
     setError("");
     setState("idle");
     if (fileInputRef.current) fileInputRef.current.value = "";
@@ -43,6 +123,11 @@ export function ScanPanel({
 
   async function handleFile(file: File) {
     setError("");
+    if (!jobType) {
+      setError("Pick a job type first.");
+      setState("error");
+      return;
+    }
     if (file.size === 0) {
       setError("That file is empty.");
       setState("error");
@@ -66,8 +151,11 @@ export function ScanPanel({
     setPreviewUrl(URL.createObjectURL(file));
     setState("uploading");
 
+    const timberLength = parsedTimberLength();
     const form = new FormData();
     form.append("image", file, file.name || "drawing.jpg");
+    form.append("jobType", jobType);
+    form.append("timberLength", String(timberLength));
     if (hint.trim().length > 0) {
       form.append("hint", hint.trim());
     }
@@ -83,13 +171,17 @@ export function ScanPanel({
         setState("error");
         return;
       }
-      const data = (await res.json()) as {
-        transcript?: string;
-        buildType?: string;
+      const data = (await res.json()) as Partial<ScanResult>;
+      const result: ScanResult = {
+        buildType: (data.buildType ?? "").trim(),
+        summary: (data.summary ?? "").trim(),
+        dimensions: (data.dimensions ?? "").trim(),
+        structural: (data.structural ?? "").trim(),
+        notes: (data.notes ?? "").trim(),
       };
-      setTranscript((data.transcript ?? "").trim());
-      setBuildType((data.buildType ?? "").trim());
-      setState("idle");
+      setScanResult(result);
+      setEditedDimensions(result.dimensions);
+      setState("review-dims");
     } catch {
       setError("Network error. Check your connection and try again.");
       setState("error");
@@ -100,6 +192,31 @@ export function ScanPanel({
     const f = e.target.files?.[0];
     if (f) void handleFile(f);
   }
+
+  function generateMaterials() {
+    if (!scanResult || !jobType) return;
+    const final = buildFinalTranscript(
+      jobType,
+      parsedTimberLength(),
+      scanResult,
+      editedDimensions,
+    );
+    setTranscript(final);
+    setState("transcript");
+  }
+
+  function rescan() {
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    setPreviewUrl(null);
+    setScanResult(null);
+    setEditedDimensions("");
+    setError("");
+    setState("idle");
+    if (fileInputRef.current) fileInputRef.current.value = "";
+    if (cameraInputRef.current) cameraInputRef.current.value = "";
+  }
+
+  const canScan = Boolean(jobType) && state !== "uploading";
 
   return (
     <section
@@ -127,138 +244,354 @@ export function ScanPanel({
         onChange={onFileChange}
       />
 
-      {transcript ? (
-        <ScanReview
+      {state === "transcript" && scanResult ? (
+        <ScanTranscriptReview
           transcript={transcript}
-          buildType={buildType}
+          buildType={scanResult.buildType}
           previewUrl={previewUrl}
           onChange={setTranscript}
-          onRedo={reset}
+          onBack={() => setState("review-dims")}
+          onRedo={fullReset}
+        />
+      ) : state === "review-dims" && scanResult ? (
+        <DimensionReview
+          buildType={scanResult.buildType}
+          previewUrl={previewUrl}
+          dimensions={editedDimensions}
+          onDimensionsChange={setEditedDimensions}
+          onGenerate={generateMaterials}
+          onBack={backToSetup}
         />
       ) : (
-        <div className="flex flex-col items-center text-center">
-          {previewUrl && state === "uploading" ? (
-            <div className="mb-4">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={previewUrl}
-                alt="Drawing preview"
-                className="mx-auto max-h-48 w-auto rounded-sm border border-ink-600 opacity-70"
-              />
-            </div>
-          ) : (
-            <div
-              aria-hidden="true"
-              className="mb-4 grid h-28 w-28 place-items-center rounded-full border-2 border-brand text-brand"
-            >
-              <Camera weight="bold" className="h-12 w-12" />
-            </div>
-          )}
-
-          <h3 className="font-display text-lg uppercase tracking-tight text-white sm:text-xl">
-            Scan a hand-drawn plan
-          </h3>
-          <p className="mt-2 max-w-sm text-sm text-ink-300">
-            Snap your sketch — deck, fence, framing — and we&rsquo;ll read the
-            dimensions and work out the materials.
-          </p>
-
-          <div className="mt-5 flex w-full flex-col items-stretch gap-2 sm:flex-row sm:justify-center">
-            <button
-              type="button"
-              onClick={() => cameraInputRef.current?.click()}
-              disabled={state === "uploading"}
-              data-testid="scan-take-photo"
-              className="t2q-btn-primary-pro inline-flex min-h-[44px] items-center justify-center gap-2 px-5 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              <Camera weight="bold" className="h-5 w-5" />
-              Take photo
-            </button>
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={state === "uploading"}
-              data-testid="scan-upload"
-              className="t2q-btn-ghost-pro inline-flex min-h-[44px] items-center justify-center gap-2 px-5 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              <UploadSimple weight="bold" className="h-5 w-5" />
-              Upload image
-            </button>
-          </div>
-
-          <div className="mt-5 w-full max-w-md text-left">
-            <label
-              htmlFor="scan-hint"
-              className="font-mono text-xs uppercase tracking-[0.2em] text-ink-400"
-            >
-              Optional context
-            </label>
-            <input
-              id="scan-hint"
-              data-testid="scan-hint"
-              value={hint}
-              onChange={(e) => setHint(e.target.value)}
-              maxLength={500}
-              placeholder="e.g. Treated pine deck, 1.2m off ground."
-              className="mt-2 block w-full rounded-sm border border-ink-600 bg-ink-900 px-3 py-2 text-sm text-white placeholder:text-ink-500 outline-none focus:border-brand"
-            />
-          </div>
-
-          <p
-            data-testid="scan-status"
-            aria-live="polite"
-            className="mt-4 min-h-5 text-sm text-ink-300"
-          >
-            {state === "idle" && "Up to 8 MB. JPEG or PNG works best."}
-            {state === "uploading" && "Reading your drawing…"}
-            {state === "error" && (
-              <span data-testid="scan-error" className="text-red-400">
-                {error}
-              </span>
-            )}
-          </p>
-
-          {state === "error" && (
-            <button
-              type="button"
-              onClick={reset}
-              className="mt-3 inline-flex min-h-[44px] items-center text-sm font-mono uppercase tracking-[0.2em] text-brand hover:text-brand-300"
-            >
-              Try again
-            </button>
-          )}
-        </div>
+        <ScanSetup
+          state={state}
+          error={error}
+          previewUrl={previewUrl}
+          jobType={jobType}
+          setJobType={setJobType}
+          timberLengthInput={timberLengthInput}
+          setTimberLengthInput={setTimberLengthInput}
+          hint={hint}
+          setHint={setHint}
+          canScan={canScan}
+          onTakePhoto={() => cameraInputRef.current?.click()}
+          onUpload={() => fileInputRef.current?.click()}
+          onRetry={rescan}
+        />
       )}
     </section>
   );
 }
 
-function ScanReview({
+function ScanSetup({
+  state,
+  error,
+  previewUrl,
+  jobType,
+  setJobType,
+  timberLengthInput,
+  setTimberLengthInput,
+  hint,
+  setHint,
+  canScan,
+  onTakePhoto,
+  onUpload,
+  onRetry,
+}: {
+  state: ScanState;
+  error: string;
+  previewUrl: string | null;
+  jobType: JobType | "";
+  setJobType: (j: JobType) => void;
+  timberLengthInput: string;
+  setTimberLengthInput: (s: string) => void;
+  hint: string;
+  setHint: (s: string) => void;
+  canScan: boolean;
+  onTakePhoto: () => void;
+  onUpload: () => void;
+  onRetry: () => void;
+}) {
+  return (
+    <div className="flex flex-col items-center text-center">
+      {previewUrl && state === "uploading" ? (
+        <div className="mb-4">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={previewUrl}
+            alt="Drawing preview"
+            className="mx-auto max-h-48 w-auto rounded-sm border border-ink-600 opacity-70"
+          />
+        </div>
+      ) : (
+        <div
+          aria-hidden="true"
+          className="mb-4 grid h-24 w-24 place-items-center rounded-full border-2 border-brand text-brand sm:h-28 sm:w-28"
+        >
+          <Camera weight="bold" className="h-10 w-10 sm:h-12 sm:w-12" />
+        </div>
+      )}
+
+      <h3 className="font-display text-lg uppercase tracking-tight text-white sm:text-xl">
+        Scan a hand-drawn plan
+      </h3>
+      <p className="mt-2 max-w-sm text-sm text-ink-300">
+        Pick the job type, then snap your sketch — we&rsquo;ll read the
+        dimensions and work out the materials.
+      </p>
+
+      <div className="mt-6 w-full max-w-md text-left">
+        <label
+          id="scan-jobtype-label"
+          className="font-mono text-xs uppercase tracking-[0.2em] text-ink-400"
+        >
+          Job type
+        </label>
+        <div
+          role="radiogroup"
+          aria-labelledby="scan-jobtype-label"
+          data-testid="scan-jobtype"
+          className="mt-2 grid grid-cols-3 gap-2"
+        >
+          {JOB_TYPES.map((j) => {
+            const active = jobType === j;
+            return (
+              <button
+                key={j}
+                type="button"
+                role="radio"
+                aria-checked={active}
+                data-testid={`scan-jobtype-${j.toLowerCase()}`}
+                onClick={() => setJobType(j)}
+                disabled={state === "uploading"}
+                className={[
+                  "min-h-11 rounded-sm border px-2 font-display text-sm uppercase tracking-tight transition-colors disabled:cursor-not-allowed disabled:opacity-50",
+                  active
+                    ? "border-brand bg-brand text-ink-900"
+                    : "border-ink-600 bg-ink-900 text-ink-300 hover:border-brand hover:text-white",
+                ].join(" ")}
+              >
+                {j}
+              </button>
+            );
+          })}
+        </div>
+        {!jobType && (
+          <p className="mt-2 font-mono text-[10px] uppercase tracking-[0.2em] text-ink-500">
+            {"// pick one so we know what to look for"}
+          </p>
+        )}
+      </div>
+
+      <div className="mt-5 w-full max-w-md text-left">
+        <label
+          htmlFor="scan-timber-length"
+          className="font-mono text-xs uppercase tracking-[0.2em] text-ink-400"
+        >
+          Timber length preference
+        </label>
+        <div className="mt-2 flex items-center gap-3">
+          <span className="text-sm text-ink-300">I buy timber in</span>
+          <input
+            id="scan-timber-length"
+            data-testid="scan-timber-length"
+            type="number"
+            inputMode="decimal"
+            min={TIMBER_LENGTH_MIN}
+            max={TIMBER_LENGTH_MAX}
+            step="0.1"
+            value={timberLengthInput}
+            onChange={(e) => setTimberLengthInput(e.target.value)}
+            disabled={state === "uploading"}
+            className="w-20 rounded-sm border border-ink-600 bg-ink-900 px-3 py-2 text-center text-base text-white outline-none focus:border-brand disabled:opacity-50"
+          />
+          <span className="text-sm text-ink-300">metre lengths</span>
+        </div>
+        <p className="mt-2 font-mono text-[10px] uppercase tracking-[0.2em] text-ink-500">
+          {"// default 6m · we factor 10% waste into the count"}
+        </p>
+      </div>
+
+      <div className="mt-6 flex w-full flex-col items-stretch gap-2 sm:flex-row sm:justify-center">
+        <button
+          type="button"
+          onClick={onTakePhoto}
+          disabled={!canScan}
+          data-testid="scan-take-photo"
+          className="t2q-btn-primary-pro inline-flex min-h-[44px] items-center justify-center gap-2 px-5 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          <Camera weight="bold" className="h-5 w-5" />
+          Take photo
+        </button>
+        <button
+          type="button"
+          onClick={onUpload}
+          disabled={!canScan}
+          data-testid="scan-upload"
+          className="t2q-btn-ghost-pro inline-flex min-h-[44px] items-center justify-center gap-2 px-5 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          <UploadSimple weight="bold" className="h-5 w-5" />
+          Upload image
+        </button>
+      </div>
+
+      <div className="mt-5 w-full max-w-md text-left">
+        <label
+          htmlFor="scan-hint"
+          className="font-mono text-xs uppercase tracking-[0.2em] text-ink-400"
+        >
+          Optional context
+        </label>
+        <input
+          id="scan-hint"
+          data-testid="scan-hint"
+          value={hint}
+          onChange={(e) => setHint(e.target.value)}
+          maxLength={500}
+          disabled={state === "uploading"}
+          placeholder="e.g. Treated pine deck, 1.2m off ground."
+          className="mt-2 block w-full rounded-sm border border-ink-600 bg-ink-900 px-3 py-2 text-sm text-white placeholder:text-ink-500 outline-none focus:border-brand disabled:opacity-50"
+        />
+      </div>
+
+      <p
+        data-testid="scan-status"
+        aria-live="polite"
+        className="mt-4 min-h-5 text-sm text-ink-300"
+      >
+        {state === "idle" && (jobType
+          ? "Up to 8 MB. JPEG or PNG works best."
+          : "Pick a job type to enable the camera.")}
+        {state === "uploading" && "Reading your drawing…"}
+        {state === "error" && (
+          <span data-testid="scan-error" className="text-red-400">
+            {error}
+          </span>
+        )}
+      </p>
+
+      {state === "error" && (
+        <button
+          type="button"
+          onClick={onRetry}
+          className="mt-3 inline-flex min-h-[44px] items-center text-sm font-mono uppercase tracking-[0.2em] text-brand hover:text-brand-300"
+        >
+          Try again
+        </button>
+      )}
+    </div>
+  );
+}
+
+function DimensionReview({
+  buildType,
+  previewUrl,
+  dimensions,
+  onDimensionsChange,
+  onGenerate,
+  onBack,
+}: {
+  buildType: string;
+  previewUrl: string | null;
+  dimensions: string;
+  onDimensionsChange: (s: string) => void;
+  onGenerate: () => void;
+  onBack: () => void;
+}) {
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={onBack}
+        data-testid="scan-back-to-setup"
+        className="inline-flex items-center gap-1 text-sm font-mono uppercase tracking-[0.2em] text-ink-300 hover:text-white"
+      >
+        <ArrowLeft weight="bold" className="h-4 w-4" />
+        Back
+      </button>
+
+      <div className="mt-3">
+        <div className="font-mono text-xs uppercase tracking-[0.2em] text-ink-400">
+          Here&rsquo;s what I read from your drawing
+        </div>
+        {buildType && (
+          <p className="mt-1 font-display text-base uppercase tracking-tight text-white">
+            {buildType}
+          </p>
+        )}
+      </div>
+
+      {previewUrl && (
+        <div className="mt-3">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={previewUrl}
+            alt="Scanned drawing"
+            className="max-h-56 w-auto rounded-sm border border-ink-600"
+          />
+        </div>
+      )}
+
+      <label
+        htmlFor="scan-dimensions"
+        className="mt-5 block font-mono text-xs uppercase tracking-[0.2em] text-ink-400"
+      >
+        Dimensions — correct any misreads
+      </label>
+      <textarea
+        id="scan-dimensions"
+        data-testid="scan-dimensions"
+        value={dimensions}
+        onChange={(e) => onDimensionsChange(e.target.value)}
+        rows={10}
+        className="mt-2 block w-full resize-y rounded-sm border border-ink-600 bg-ink-900 px-4 py-3 text-sm text-white outline-none focus:border-brand"
+      />
+      <p className="mt-2 font-mono text-[10px] uppercase tracking-[0.2em] text-ink-500">
+        {"// edit any number we got wrong — the materials list will use these"}
+      </p>
+
+      <div className="mt-5">
+        <button
+          type="button"
+          onClick={onGenerate}
+          data-testid="scan-generate-materials"
+          disabled={dimensions.trim().length === 0}
+          className="t2q-btn-primary-pro inline-flex min-h-[44px] w-full items-center justify-center px-5 disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto"
+        >
+          Generate materials →
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function ScanTranscriptReview({
   transcript,
   buildType,
   previewUrl,
   onChange,
+  onBack,
   onRedo,
 }: {
   transcript: string;
   buildType: string;
   previewUrl: string | null;
   onChange: (s: string) => void;
+  onBack: () => void;
   onRedo: () => void;
 }) {
   return (
     <div>
       <div className="flex items-start justify-between gap-3">
-        <div>
-          <div className="font-mono text-xs uppercase tracking-[0.2em] text-ink-400">
-            Drawing read
-          </div>
-          {buildType && (
-            <p className="mt-1 font-display text-base uppercase tracking-tight text-white">
-              {buildType}
-            </p>
-          )}
-        </div>
+        <button
+          type="button"
+          onClick={onBack}
+          data-testid="scan-back-to-dims"
+          className="inline-flex items-center gap-1 text-sm font-mono uppercase tracking-[0.2em] text-ink-300 hover:text-white"
+        >
+          <ArrowLeft weight="bold" className="h-4 w-4" />
+          Edit dimensions
+        </button>
         <button
           type="button"
           onClick={onRedo}
@@ -268,6 +601,17 @@ function ScanReview({
         >
           <X weight="bold" className="h-4 w-4" />
         </button>
+      </div>
+
+      <div className="mt-3">
+        <div className="font-mono text-xs uppercase tracking-[0.2em] text-ink-400">
+          Drawing read
+        </div>
+        {buildType && (
+          <p className="mt-1 font-display text-base uppercase tracking-tight text-white">
+            {buildType}
+          </p>
+        )}
       </div>
 
       {previewUrl && (
