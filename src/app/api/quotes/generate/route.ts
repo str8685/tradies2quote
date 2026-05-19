@@ -68,7 +68,18 @@ export const dynamic = "force-dynamic";
 
 const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
 const MODEL = "claude-sonnet-4-20250514";
-const MAX_TOKENS = 8192;
+// Bumped 8192 → 16384 defensively after the scan-drawing route's
+// 2048 cap surfaced as the misleading "Drawing was too detailed"
+// error. The same `stop_reason === "max_tokens"` branch below would
+// surface as "This job was too long to quote in one go" — also
+// misleading, because the issue is the cap, not the job. A long
+// quote with 40+ line items, labour breakdowns, notes and
+// compliance review can plausibly push past 8192. Sonnet 4 supports
+// up to 64k output tokens; 16384 keeps headroom for several years
+// of quote-complexity growth. max_tokens is a CAP not a minimum —
+// the model returns what it needs so this doesn't cost more on
+// normal quotes.
+const MAX_TOKENS = 16384;
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
