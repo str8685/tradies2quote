@@ -26,6 +26,7 @@ export async function TrialBanner() {
   } = await supabase.auth.getUser();
   if (!user) return null;
 
+  // eslint-disable-next-line react-hooks/purity -- server component, runs once per request
   const signedUpAt = new Date(user.created_at ?? Date.now());
   const sub = await getSubscriptionStatus({
     userId: user.id,

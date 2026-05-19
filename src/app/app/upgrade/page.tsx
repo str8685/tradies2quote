@@ -43,6 +43,7 @@ export default async function UpgradePage({
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
+  // eslint-disable-next-line react-hooks/purity -- server component, one-shot per request
   const signedUpAt = new Date(user.created_at ?? Date.now());
   const sub = await getSubscriptionStatus({
     userId: user.id,
@@ -144,7 +145,7 @@ export default async function UpgradePage({
                 className="inline-flex items-center gap-2 rounded-sm border border-hivis/40 bg-hivis/10 px-3 py-2 text-xs text-hivis"
               >
                 <Lock size={14} weight="bold" />
-                Checkout isn't configured yet — STRIPE_SECRET_KEY,
+                Checkout isn&rsquo;t configured yet — STRIPE_SECRET_KEY,
                 STRIPE_WEBHOOK_SECRET, STRIPE_PRICE_ID missing in env.
               </p>
             )}

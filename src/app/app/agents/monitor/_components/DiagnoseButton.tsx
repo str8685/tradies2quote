@@ -154,7 +154,6 @@ export function DiagnoseButton({ runId }: Props) {
                 <div
                   data-testid={`diagnose-text-${runId}`}
                   className="prose-diagnose"
-                  // eslint-disable-next-line react/no-danger
                   dangerouslySetInnerHTML={{
                     __html: renderTriageMarkdown(diagnosis),
                   }}

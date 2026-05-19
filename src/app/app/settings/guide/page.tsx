@@ -230,7 +230,7 @@ const SECTIONS: ReadonlyArray<Section> = [
         <p>
           T2Q drops you on the editor with every line, price, quantity and
           client field editable. Look for the yellow{" "}
-          <strong className="text-white">// review these</strong> notes box
+          <strong className="text-white">{"// review these"}</strong> notes box
           and any red{" "}
           <strong className="text-white">MISSING PRICE</strong> pills —
           those are the lines that need your eye before sending.
