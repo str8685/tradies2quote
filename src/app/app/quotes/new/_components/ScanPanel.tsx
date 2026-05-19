@@ -76,19 +76,6 @@ export function ScanPanel({
     };
   }, [previewUrl]);
 
-  // Keep the local state in sync with the parent transcript: if the
-  // parent clears it (e.g. after a quote submission) we should reset
-  // our internal "transcript" view too.
-  useEffect(() => {
-    if (!transcript && state === "transcript") {
-      setState("idle");
-      setScanResult(null);
-      setEditedDimensions("");
-      if (previewUrl) URL.revokeObjectURL(previewUrl);
-      setPreviewUrl(null);
-    }
-  }, [transcript, state, previewUrl]);
-
   function parsedTimberLength(): number {
     const n = Number.parseFloat(timberLengthInput);
     if (!Number.isFinite(n)) return TIMBER_LENGTH_DEFAULT;
