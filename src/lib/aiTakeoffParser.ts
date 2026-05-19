@@ -229,10 +229,13 @@ function extractRectangle(
   // 3820" means 4.8 m × 3.82 m, NOT 4800 m × 3820 m. Older versions
   // of this regex treated bare numbers as metres and produced
   // 1000× quote explosions.
+  //
+  // matchAll, not match — the transcript can contain multiple "X x Y"
+  // patterns (e.g. "Posts 125x125", "Joists 140x45", "Deck 4800x3820")
+  // and the FIRST match isn't always the deck plan. We loop and pick
+  // the first match where both sides come out in a sane deck range.
   const re =
-    /(\d+(?:\.\d+)?)\s*(mm|m|metres?|meters?)?\s*(?:by|x|×|\*)\s*(\d+(?:\.\d+)?)\s*(mm|m|metres?|meters?)?/i;
-  const m = text.match(re);
-  if (!m) return undefined;
+    /(\d+(?:\.\d+)?)\s*(mm|m|metres?|meters?)?\s*(?:by|x|×|\*)\s*(\d+(?:\.\d+)?)\s*(mm|m|metres?|meters?)?/gi;
   const parseSide = (value: string, unit: string | undefined): number => {
     const n = Number(value);
     if (!Number.isFinite(n) || n <= 0) return NaN;
@@ -246,10 +249,23 @@ function extractRectangle(
     // without the suffix. Below 50 m, treat as metres.
     return n > 50 ? n / 1000 : n;
   };
-  const a = parseSide(m[1] ?? "", m[2]);
-  const b = parseSide(m[3] ?? "", m[4]);
-  if (!Number.isFinite(a) || !Number.isFinite(b)) return undefined;
-  return { lengthM: Math.max(a, b), widthM: Math.min(a, b) };
+  // A sane deck/wall/slab footprint is 1 m on the short side and at
+  // most 30 m on the long side. Anything outside that envelope is
+  // almost certainly a timber size (90x45, 125x125, 140x19) or a
+  // bay window or fastener spacing, not the plan footprint.
+  const MIN_PLAN_M = 1;
+  const MAX_PLAN_M = 30;
+  for (const m of text.matchAll(re)) {
+    const a = parseSide(m[1] ?? "", m[2]);
+    const b = parseSide(m[3] ?? "", m[4]);
+    if (!Number.isFinite(a) || !Number.isFinite(b)) continue;
+    const lengthM = Math.max(a, b);
+    const widthM = Math.min(a, b);
+    if (widthM < MIN_PLAN_M) continue; // both timber-size or one tiny → skip
+    if (lengthM > MAX_PLAN_M) continue; // even after clamp it's too big → skip
+    return { lengthM, widthM };
+  }
+  return undefined;
 }
 
 function extractJoistSpacingMm(text: string): number | undefined {
