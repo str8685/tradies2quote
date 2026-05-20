@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { headers } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { CheckCircle, Plus, Upload } from "@phosphor-icons/react/dist/ssr";
+import { Camera, CheckCircle, Plus, Upload } from "@phosphor-icons/react/dist/ssr";
 import { createClient } from "@/lib/supabase/server";
 import { NZ_DEFAULTS } from "@/lib/quote-defaults";
 import type { LibraryMaterial } from "@/lib/quote-types";
@@ -142,7 +142,15 @@ async function MaterialsBody({ userId }: { userId: string }) {
         >
           {`// ${materials.length} item${materials.length === 1 ? "" : "s"} saved`}
         </p>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          <Link
+            href="/app/materials/import-quote"
+            data-testid="materials-scan-quote-link"
+            className="t2q-btn-ghost-pro"
+          >
+            <Camera size={18} weight="bold" />
+            Scan quote
+          </Link>
           <Link
             href="/app/materials/import"
             data-testid="materials-import-link"

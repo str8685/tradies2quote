@@ -244,3 +244,140 @@ export async function importMaterials(
   revalidatePath("/app/materials");
   return { inserted, updated, failed };
 }
+
+// ───────────────────────────────────────────────────────────────────────
+// Supplier-quote import (Wave 46).
+//
+// Sibling of importMaterials for rows the tradie reviewed off an AI-read
+// supplier quote photo. Same dedupe-by-name + bulk-insert / serial-update
+// shape, but the rows are marked is_ai_estimated + price_source so the
+// library makes clear these prices came from a scanned quote and should
+// be re-confirmed. The human has already reviewed every row in the UI.
+// ───────────────────────────────────────────────────────────────────────
+
+export type SupplierQuoteRow = {
+  name: string;
+  unit: string;
+  default_unit_price: number;
+  sku: string | null;
+  notes: string | null;
+};
+
+export async function importSupplierQuoteItems(
+  rows: SupplierQuoteRow[],
+  supplier: string | null,
+): Promise<{ inserted: number; updated: number; failed: number; error?: string }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  if (!Array.isArray(rows) || rows.length === 0) {
+    return { inserted: 0, updated: 0, failed: 0, error: "No rows to import." };
+  }
+  // Defensive server-side validation — the UI already enforces this, but
+  // never trust the client. Drop rows with no name or a bad price.
+  const clean = rows
+    .map((r) => ({
+      name: typeof r.name === "string" ? r.name.trim() : "",
+      unit: typeof r.unit === "string" && r.unit.trim() ? r.unit.trim() : "each",
+      default_unit_price: Math.max(0, Number(r.default_unit_price) || 0),
+      sku: typeof r.sku === "string" && r.sku.trim() ? r.sku.trim() : null,
+      notes: typeof r.notes === "string" && r.notes.trim() ? r.notes.trim() : null,
+    }))
+    .filter((r) => r.name.length > 0);
+  if (clean.length === 0) {
+    return { inserted: 0, updated: 0, failed: 0, error: "No valid rows to import." };
+  }
+
+  const supplierName =
+    typeof supplier === "string" && supplier.trim() ? supplier.trim() : null;
+
+  const { data: existing, error: selErr } = await supabase
+    .from("materials")
+    .select("id, name")
+    .eq("user_id", user.id);
+  if (selErr) {
+    console.error("importSupplierQuoteItems select failed", selErr);
+    return {
+      inserted: 0,
+      updated: 0,
+      failed: clean.length,
+      error: "Could not read existing library.",
+    };
+  }
+
+  const byName = new Map<string, string>();
+  for (const m of existing ?? []) {
+    byName.set(m.name.trim().toLowerCase(), m.id);
+  }
+
+  const toInsert: typeof clean = [];
+  const toUpdate: Array<{ id: string; row: (typeof clean)[number] }> = [];
+  for (const r of clean) {
+    const matchId = byName.get(r.name.toLowerCase());
+    if (matchId) toUpdate.push({ id: matchId, row: r });
+    else toInsert.push(r);
+  }
+
+  let inserted = 0;
+  let updated = 0;
+  let failed = 0;
+
+  if (toInsert.length > 0) {
+    const { data, error } = await supabase
+      .from("materials")
+      .insert(
+        toInsert.map((r) => ({
+          user_id: user.id,
+          name: r.name,
+          unit: r.unit,
+          default_unit_price: r.default_unit_price,
+          supplier: supplierName,
+          sku: r.sku,
+          notes: r.notes ?? "From scanned supplier quote — confirm price.",
+          is_ai_estimated: true,
+          price_source: "supplier_import",
+          price_confidence: "medium",
+          gst_included: false,
+        })),
+      )
+      .select("id");
+    if (error) {
+      console.error("importSupplierQuoteItems insert failed", error);
+      failed += toInsert.length;
+    } else {
+      inserted = data?.length ?? 0;
+    }
+  }
+
+  for (const u of toUpdate) {
+    const { error } = await supabase
+      .from("materials")
+      .update({
+        unit: u.row.unit,
+        default_unit_price: u.row.default_unit_price,
+        supplier: supplierName,
+        sku: u.row.sku,
+        notes: u.row.notes ?? "From scanned supplier quote — confirm price.",
+        is_ai_estimated: true,
+        price_source: "supplier_import",
+        price_confidence: "medium",
+        gst_included: false,
+      })
+      .eq("id", u.id)
+      .eq("user_id", user.id);
+    if (error) failed++;
+    else updated++;
+  }
+
+  console.log("[import-quote] saved", {
+    userId: user.id,
+    inserted,
+    updated,
+    failed,
+  });
+  revalidatePath("/app/materials");
+  return { inserted, updated, failed };
+}
