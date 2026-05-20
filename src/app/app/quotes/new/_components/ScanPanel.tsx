@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Camera, UploadSimple, X, ArrowLeft } from "@phosphor-icons/react/dist/ssr";
 import { FloorPlanSvg } from "@/lib/floorPlanSvg";
+import { TapeMeasureProgress } from "@/app/app/_components/TapeMeasureProgress";
 import type { ScannedPlan } from "@/app/api/quotes/scan-drawing/route";
 
 type ScanState = "idle" | "uploading" | "review-dims" | "transcript" | "error";
@@ -136,6 +137,8 @@ export function ScanPanel({
   );
   const [scanResult, setScanResult] = useState<ScanResult | null>(null);
   const [editedDimensions, setEditedDimensions] = useState<string>("");
+  // Drives the tape-measure progress: true = scan finished, snap to 100%.
+  const [scanComplete, setScanComplete] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const cameraInputRef = useRef<HTMLInputElement | null>(null);
@@ -160,6 +163,7 @@ export function ScanPanel({
     setTranscript("");
     setScanResult(null);
     setEditedDimensions("");
+    setScanComplete(false);
     setError("");
     setState("idle");
     if (fileInputRef.current) fileInputRef.current.value = "";
@@ -172,6 +176,7 @@ export function ScanPanel({
     setTranscript("");
     setScanResult(null);
     setEditedDimensions("");
+    setScanComplete(false);
     setError("");
     setState("idle");
     if (fileInputRef.current) fileInputRef.current.value = "";
@@ -206,6 +211,7 @@ export function ScanPanel({
 
     if (previewUrl) URL.revokeObjectURL(previewUrl);
     setPreviewUrl(URL.createObjectURL(file));
+    setScanComplete(false);
     setState("uploading");
 
     const timberLength = parsedTimberLength();
@@ -239,6 +245,9 @@ export function ScanPanel({
       };
       setScanResult(result);
       setEditedDimensions(result.dimensions);
+      // Let the tape snap to 100% (the satisfying click) before swapping views.
+      setScanComplete(true);
+      await new Promise((r) => setTimeout(r, 450));
       setState("review-dims");
     } catch {
       setError("Network error. Check your connection and try again.");
@@ -268,6 +277,7 @@ export function ScanPanel({
     setPreviewUrl(null);
     setScanResult(null);
     setEditedDimensions("");
+    setScanComplete(false);
     setError("");
     setState("idle");
     if (fileInputRef.current) fileInputRef.current.value = "";
@@ -326,6 +336,7 @@ export function ScanPanel({
         <ScanSetup
           state={state}
           error={error}
+          scanComplete={scanComplete}
           previewUrl={previewUrl}
           jobType={jobType}
           setJobType={setJobType}
@@ -346,6 +357,7 @@ export function ScanPanel({
 function ScanSetup({
   state,
   error,
+  scanComplete,
   previewUrl,
   jobType,
   setJobType,
@@ -360,6 +372,7 @@ function ScanSetup({
 }: {
   state: ScanState;
   error: string;
+  scanComplete: boolean;
   previewUrl: string | null;
   jobType: JobType | "";
   setJobType: (j: JobType) => void;
@@ -389,6 +402,12 @@ function ScanSetup({
           className="mb-4 grid h-24 w-24 place-items-center rounded-full border-2 border-brand text-brand sm:h-28 sm:w-28"
         >
           <Camera weight="bold" className="h-10 w-10 sm:h-12 sm:w-12" />
+        </div>
+      )}
+
+      {state === "uploading" && (
+        <div className="mb-5 flex w-full justify-center">
+          <TapeMeasureProgress done={scanComplete} />
         </div>
       )}
 

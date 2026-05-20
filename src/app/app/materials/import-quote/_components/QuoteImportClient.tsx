@@ -10,6 +10,7 @@ import {
   Warning,
 } from "@phosphor-icons/react";
 import { toExGst } from "@/lib/materials/quoteExtraction";
+import { TapeMeasureProgress } from "@/app/app/_components/TapeMeasureProgress";
 import {
   importSupplierQuoteItems,
   type SupplierQuoteRow,
@@ -257,6 +258,11 @@ export function QuoteImportClient({ currency }: { currency: string }) {
               {phase === "extracting" ? "Reading quote…" : "Scan quote"}
             </button>
           </div>
+          {phase === "extracting" && (
+            <div className="mt-4 flex justify-center">
+              <TapeMeasureProgress estimateMs={18000} />
+            </div>
+          )}
         </div>
       )}
 
