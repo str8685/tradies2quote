@@ -124,6 +124,12 @@ export type ScopeResult = {
   clarifications: ClarificationQuestion[];
   /** Human-readable working narrative built by the explain layer. */
   explanation: string;
+  /**
+   * Post-calculation plausibility verdict. Advisory only — the
+   * evaluator NEVER recalculates or overwrites a quantity. Optional so
+   * older callers / fixtures stay valid.
+   */
+  evaluator?: EvaluatorVerdict;
 };
 
 /**
@@ -140,7 +146,64 @@ export type TakeoffResult = {
   scopes: ScopeResult[];
   clarifications: ClarificationQuestion[];
   warnings: string[];
+  /** Aggregated plausibility verdict across all calculated scopes. */
+  evaluator?: EvaluatorVerdict;
 };
+
+// ─────────────────────────────────────────────────────────────────────────
+// Evaluator (post-calculation plausibility layer).
+//
+// Runs AFTER the deterministic calculator + validator. It reviews the
+// extraction, the calculator output and the validator flags and assigns
+// a plausibility verdict. It is ADVISORY — it never invents or replaces
+// a quantity, and the calculator stays the source of truth.
+//
+//   pass     — nothing implausible spotted.
+//   caution  — output is suspicious; a human should eyeball it before
+//              it goes out (does not hard-block, but requires an explicit
+//              acknowledgement at the send gate).
+//   fail     — output is almost certainly wrong; hard-blocked from send.
+// ─────────────────────────────────────────────────────────────────────────
+
+export type EvaluatorStatus = "pass" | "caution" | "fail";
+
+export type EvaluatorReason = {
+  /** Stable machine code, e.g. "roof_area_not_pitched". */
+  code: string;
+  /** Human-readable explanation suitable for the UI. */
+  message: string;
+  severity: "caution" | "fail";
+  scope: ScopeType;
+};
+
+export type EvaluatorVerdict = {
+  status: EvaluatorStatus;
+  reasons: EvaluatorReason[];
+  /** [0,1] — lower when more/severe reasons fire. */
+  confidence: number;
+  /** True when status is not "pass" (caution or fail). */
+  requires_manual_confirmation: boolean;
+};
+
+export function evaluatorStatusRank(s: EvaluatorStatus): number {
+  switch (s) {
+    case "pass":
+      return 0;
+    case "caution":
+      return 1;
+    case "fail":
+      return 2;
+  }
+}
+
+export function worstEvaluatorStatus(
+  items: EvaluatorStatus[],
+): EvaluatorStatus {
+  if (items.length === 0) return "pass";
+  return items.reduce((acc, s) =>
+    evaluatorStatusRank(s) > evaluatorStatusRank(acc) ? s : acc,
+  );
+}
 
 // ─────────────────────────────────────────────────────────────────────────
 // Structured extraction — what the LLM (or regex parser) feeds us.

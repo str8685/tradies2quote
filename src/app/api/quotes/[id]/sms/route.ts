@@ -19,10 +19,14 @@ export const dynamic = "force-dynamic";
 type Params = { id: string };
 
 export async function POST(
-  _request: NextRequest,
+  request: NextRequest,
   ctx: { params: Promise<Params> },
 ) {
   const { id } = await ctx.params;
+  const body = (await request.json().catch(() => ({}))) as {
+    acknowledged?: boolean;
+  };
+  const acknowledged = body?.acknowledged === true;
   const supabase = await createClient();
   const {
     data: { user },
@@ -49,12 +53,14 @@ export async function POST(
     status: quote.status,
     total_amount: quote.total_amount,
     quote_data: qd,
+    acknowledged,
   });
   if (!validation.ok) {
     return NextResponse.json(
       {
         error: validation.error,
         message: SEND_ERROR_MESSAGES[validation.error as SendValidationError],
+        reasons: validation.reasons ?? [],
       },
       { status: 400 },
     );
@@ -170,10 +176,21 @@ export async function POST(
     );
   }
 
+  if (acknowledged) {
+    console.log("[send-gate] takeoff override used", {
+      quoteId: quote.id,
+      channel: "sms",
+    });
+  }
   await admin.from("quote_events").insert({
     quote_id: quote.id,
     type: "sent",
-    metadata: { channel: "sms", to: validation.resolvedPhone, sid: smsResult.sid },
+    metadata: {
+      channel: "sms",
+      to: validation.resolvedPhone,
+      sid: smsResult.sid,
+      ...(acknowledged ? { takeoff_override: true } : {}),
+    },
   });
 
   return NextResponse.json({

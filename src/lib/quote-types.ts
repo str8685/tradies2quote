@@ -89,6 +89,23 @@ export type QuoteLineItem = {
   takeoff_flags?: string[];
 };
 
+/**
+ * Wave 45 — frozen summary of the takeoff evaluator's verdict for this
+ * quote. Written ONCE by `/api/quotes/generate` into `quote_data`, read
+ * by the pre-send safety gate. Server-side only — never exposed via
+ * PublicLineItem / PublicQuotePayload.
+ *
+ *   pass     — no implausible output spotted.
+ *   caution  — suspicious; send requires an explicit acknowledgement.
+ *   fail     — almost certainly wrong; send is hard-blocked.
+ */
+export type TakeoffEvaluationSummary = {
+  status: "pass" | "caution" | "fail";
+  /** Human-readable reasons (already de-coupled from internal codes). */
+  reasons: string[];
+  confidence: number;
+};
+
 export type TakeoffInputsSnapshot = Partial<{
   wallLengthM: number;
   wallHeightM: number;
@@ -224,6 +241,12 @@ export type QuoteData = {
   terms: string;
   notes: string[];
   takeoff_inputs?: TakeoffInputsSnapshot;
+  /**
+   * Wave 45 — frozen evaluator verdict for the takeoff. Read by the
+   * pre-send safety gate. Absent on legacy quotes (treated as unknown,
+   * never as a hard block).
+   */
+  takeoff_evaluation?: TakeoffEvaluationSummary;
   /**
    * Stage 5 — server-side compliance review payload.
    *

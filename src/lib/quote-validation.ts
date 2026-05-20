@@ -1,4 +1,4 @@
-import type { QuoteData, QuoteStatus } from "./quote-types";
+import type { QuoteData, QuoteLineItem, QuoteStatus } from "./quote-types";
 
 export type SendValidationError =
   | "client_name_missing"
@@ -8,15 +8,110 @@ export type SendValidationError =
   | "client_phone_invalid"
   | "no_line_items"
   | "total_zero"
-  | "already_accepted";
+  | "already_accepted"
+  // Wave 45 — takeoff safety gate.
+  | "takeoff_blocked"
+  | "takeoff_unconfirmed";
 
 export type SendValidationResult =
   | { ok: true; resolvedEmail: string }
-  | { ok: false; error: SendValidationError };
+  | { ok: false; error: SendValidationError; reasons?: string[] };
 
 export type SmsSendValidationResult =
   | { ok: true; resolvedPhone: string }
-  | { ok: false; error: SendValidationError };
+  | { ok: false; error: SendValidationError; reasons?: string[] };
+
+/**
+ * Wave 45 — pre-send takeoff safety assessment.
+ *
+ * Reads the calculation-risk signals already carried on each line
+ * (`takeoff_status`) plus the frozen evaluator verdict
+ * (`quote_data.takeoff_evaluation`) and decides whether a quote may be
+ * sent.
+ *
+ *   - HARD BLOCK (can_send=false): any `blocked` line OR evaluator
+ *     `fail`. These cannot be sent by any path and cannot be overridden
+ *     — the underlying number is missing or almost certainly wrong.
+ *   - WARN (requires_acknowledgement=true): any `needs_review` /
+ *     `assumed` line OR evaluator `caution`. Sendable, but only after an
+ *     explicit acknowledgement so uncertainty is never hidden.
+ *
+ * Legacy quotes with no takeoff signals assess as fully sendable — the
+ * absence of data is never treated as a block.
+ */
+export type TakeoffSafetyAssessment = {
+  can_send: boolean;
+  block_reasons: string[];
+  warning_reasons: string[];
+  requires_acknowledgement: boolean;
+};
+
+function lineLabels(items: QuoteLineItem[], max = 3): string {
+  const names = items
+    .map((it) => it.description?.trim())
+    .filter((d): d is string => !!d);
+  const shown = names.slice(0, max).join(", ");
+  const extra = names.length > max ? ` +${names.length - max} more` : "";
+  return shown ? `${shown}${extra}` : `${items.length} line(s)`;
+}
+
+export function assessQuoteTakeoffSafety(
+  quote_data: QuoteData | null,
+): TakeoffSafetyAssessment {
+  const block_reasons: string[] = [];
+  const warning_reasons: string[] = [];
+
+  const items: QuoteLineItem[] = Array.isArray(quote_data?.line_items)
+    ? quote_data!.line_items
+    : [];
+
+  const blocked = items.filter((it) => it.takeoff_status === "blocked");
+  const needsReview = items.filter(
+    (it) => it.takeoff_status === "needs_review",
+  );
+  const assumed = items.filter((it) => it.takeoff_status === "assumed");
+
+  if (blocked.length > 0) {
+    block_reasons.push(
+      `${blocked.length} line(s) couldn't be calculated and need more info: ${lineLabels(blocked)}.`,
+    );
+  }
+
+  const evaluation = quote_data?.takeoff_evaluation ?? null;
+  if (evaluation?.status === "fail") {
+    for (const r of evaluation.reasons) block_reasons.push(r);
+    if (evaluation.reasons.length === 0) {
+      block_reasons.push("Automated check flagged the takeoff as unreliable.");
+    }
+  }
+
+  if (needsReview.length > 0) {
+    warning_reasons.push(
+      `${needsReview.length} line(s) flagged for review: ${lineLabels(needsReview)}.`,
+    );
+  }
+  if (assumed.length > 0) {
+    warning_reasons.push(
+      `${assumed.length} line(s) used default assumptions: ${lineLabels(assumed)}.`,
+    );
+  }
+  if (evaluation?.status === "caution") {
+    for (const r of evaluation.reasons) warning_reasons.push(r);
+    if (evaluation.reasons.length === 0) {
+      warning_reasons.push("Automated check flagged the takeoff for review.");
+    }
+  }
+
+  const can_send = block_reasons.length === 0;
+  return {
+    can_send,
+    block_reasons,
+    warning_reasons,
+    // Only ask for an acknowledgement when the quote is otherwise
+    // sendable — a hard block supersedes the warning path.
+    requires_acknowledgement: can_send && warning_reasons.length > 0,
+  };
+}
 
 const PLACEHOLDER_NAMES = new Set(["", "to be confirmed", "tbc", "tbd"]);
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -27,8 +122,10 @@ export function validateQuoteForSending(args: {
   status: QuoteStatus | string;
   total_amount: number | null;
   quote_data: QuoteData | null;
+  /** Set true once the operator has acknowledged caution-level warnings. */
+  acknowledged?: boolean;
 }): SendValidationResult {
-  const { status, total_amount, quote_data } = args;
+  const { status, total_amount, quote_data, acknowledged } = args;
   if (status === "accepted") {
     return { ok: false, error: "already_accepted" };
   }
@@ -63,6 +160,17 @@ export function validateQuoteForSending(args: {
   if (!Number.isFinite(total) || total <= 0) {
     return { ok: false, error: "total_zero" };
   }
+  const safety = assessQuoteTakeoffSafety(quote_data);
+  if (!safety.can_send) {
+    return { ok: false, error: "takeoff_blocked", reasons: safety.block_reasons };
+  }
+  if (safety.requires_acknowledgement && !acknowledged) {
+    return {
+      ok: false,
+      error: "takeoff_unconfirmed",
+      reasons: safety.warning_reasons,
+    };
+  }
   return { ok: true, resolvedEmail: email };
 }
 
@@ -70,8 +178,10 @@ export function validateQuoteForSmsSending(args: {
   status: QuoteStatus | string;
   total_amount: number | null;
   quote_data: QuoteData | null;
+  /** Set true once the operator has acknowledged caution-level warnings. */
+  acknowledged?: boolean;
 }): SmsSendValidationResult {
-  const { status, total_amount, quote_data } = args;
+  const { status, total_amount, quote_data, acknowledged } = args;
   if (status === "accepted") {
     return { ok: false, error: "already_accepted" };
   }
@@ -98,6 +208,17 @@ export function validateQuoteForSmsSending(args: {
   const total = Number(total_amount ?? 0);
   if (!Number.isFinite(total) || total <= 0) {
     return { ok: false, error: "total_zero" };
+  }
+  const safety = assessQuoteTakeoffSafety(quote_data);
+  if (!safety.can_send) {
+    return { ok: false, error: "takeoff_blocked", reasons: safety.block_reasons };
+  }
+  if (safety.requires_acknowledgement && !acknowledged) {
+    return {
+      ok: false,
+      error: "takeoff_unconfirmed",
+      reasons: safety.warning_reasons,
+    };
   }
   return { ok: true, resolvedPhone: phone };
 }
@@ -134,4 +255,8 @@ export const SEND_ERROR_MESSAGES: Record<SendValidationError, string> = {
   no_line_items: "Add at least one line item before sending.",
   total_zero: "Quote total must be greater than zero.",
   already_accepted: "This quote has already been accepted.",
+  takeoff_blocked:
+    "Some quantities couldn't be calculated or look wrong. Fix the flagged lines before sending.",
+  takeoff_unconfirmed:
+    "This quote has assumptions or flagged quantities. Review and confirm them before sending.",
 };

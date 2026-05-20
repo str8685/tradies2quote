@@ -10,6 +10,7 @@ import {
   Copy,
   EnvelopeSimple,
   FileText,
+  Warning,
 } from "@phosphor-icons/react/dist/ssr";
 import type { QuoteStatus } from "@/lib/quote-types";
 
@@ -47,6 +48,8 @@ const ERROR_COPY: Record<string, string> = {
   sms_token_not_configured: "SMS isn't configured. Set TWILIO_AUTH_TOKEN.",
   sms_from_not_configured: "SMS isn't configured. Set TWILIO_FROM_NUMBER.",
   update_failed: "Message sent but the quote status couldn't update.",
+  takeoff_blocked: "Fix the flagged takeoff lines before sending.",
+  takeoff_unconfirmed: "Review and confirm the flagged quantities before sending.",
 };
 
 export function SendQuoteButton({
@@ -62,15 +65,22 @@ export function SendQuoteButton({
   const [activeChannel, setActiveChannel] = useState<"email" | "sms">("email");
   const [errorMessage, setErrorMessage] = useState<string>("");
   const [copyOk, setCopyOk] = useState(false);
+  // Wave 45 — takeoff safety gate. `confirmReasons` drives the
+  // acknowledge-before-send panel (caution-level); `blockReasons` shows
+  // hard blocks that can't be overridden.
+  const [confirmReasons, setConfirmReasons] = useState<string[] | null>(null);
+  const [blockReasons, setBlockReasons] = useState<string[] | null>(null);
 
   const acceptUrl =
     publicToken && typeof window !== "undefined"
       ? `${window.location.origin}/quote/${publicToken}`
       : null;
 
-  async function sendVia(channel: "email" | "sms") {
+  async function sendVia(channel: "email" | "sms", acknowledged = false) {
     setActiveChannel(channel);
     setErrorMessage("");
+    setBlockReasons(null);
+    if (!acknowledged) setConfirmReasons(null);
     if (onSaveBeforeSend) {
       setState("saving");
       const saved = await onSaveBeforeSend();
@@ -86,17 +96,39 @@ export function SendQuoteButton({
         channel === "sms"
           ? `/api/quotes/${quoteId}/sms`
           : `/api/quotes/${quoteId}/send`;
-      const res = await fetch(endpoint, { method: "POST" });
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ acknowledged }),
+      });
       if (!res.ok) {
         const data = (await res.json().catch(() => ({}))) as {
           error?: string;
           message?: string;
+          reasons?: string[];
         };
         const code = data.error ?? "send_failed";
+        // Caution-level: surface the reasons + a confirm button rather
+        // than a dead-end error. Re-sending with acknowledged=true clears it.
+        if (code === "takeoff_unconfirmed") {
+          setConfirmReasons(data.reasons ?? []);
+          setState("idle");
+          return;
+        }
+        // Hard block: show the reasons, no override path.
+        if (code === "takeoff_blocked") {
+          setBlockReasons(data.reasons ?? []);
+          setErrorMessage(
+            data.message ?? ERROR_COPY[code] ?? "Fix the flagged lines before sending.",
+          );
+          setState("error");
+          return;
+        }
         setErrorMessage(data.message ?? ERROR_COPY[code] ?? "Could not send the quote.");
         setState("error");
         return;
       }
+      setConfirmReasons(null);
       setState("sent");
       router.refresh();
     } catch {
@@ -166,6 +198,61 @@ export function SendQuoteButton({
       </div>
 
       <div className="flex flex-col items-stretch gap-2 sm:items-end">
+        {blockReasons && blockReasons.length > 0 && (
+          <div
+            data-testid="send-blocked"
+            className="rounded-sm border border-red-500/50 bg-red-500/10 p-3 text-left sm:max-w-sm"
+          >
+            <p className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.2em] text-red-300">
+              <Warning size={14} weight="fill" />
+              {"// can't send yet"}
+            </p>
+            <ul className="mt-2 space-y-1 text-xs text-ink-100">
+              {blockReasons.map((r, i) => (
+                <li key={i} className="flex items-start gap-1.5">
+                  <span className="mt-0.5 shrink-0 text-red-300">→</span>
+                  <span>{r}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+        {confirmReasons && (
+          <div
+            data-testid="send-confirm"
+            className="rounded-sm border border-hivis/50 bg-hivis/10 p-3 text-left sm:max-w-sm"
+          >
+            <p className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.2em] text-hivis">
+              <Warning size={14} weight="fill" />
+              {"// confirm before sending"}
+            </p>
+            <ul className="mt-2 space-y-1 text-xs text-ink-100">
+              {confirmReasons.map((r, i) => (
+                <li key={i} className="flex items-start gap-1.5">
+                  <span className="mt-0.5 shrink-0 text-hivis">→</span>
+                  <span>{r}</span>
+                </li>
+              ))}
+            </ul>
+            <div className="mt-3 flex items-center gap-3">
+              <button
+                type="button"
+                data-testid="send-confirm-button"
+                onClick={() => sendVia(activeChannel, true)}
+                className="t2q-btn-primary-pro !py-2 !text-[11px]"
+              >
+                Confirm &amp; send {activeChannel === "sms" ? "SMS" : "email"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setConfirmReasons(null)}
+                className="font-mono text-[10px] uppercase tracking-[0.2em] text-ink-300 hover:text-ink-100"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
         {state === "error" && (
           <p
             data-testid="send-error"

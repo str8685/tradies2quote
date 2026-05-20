@@ -688,6 +688,30 @@ export async function POST(request: NextRequest) {
     });
   }
 
+  // Wave 45 — freeze the takeoff evaluator's verdict onto the quote so
+  // the pre-send safety gate can read it, and surface caution/fail
+  // reasons in the existing "// review these" notes UI. Advisory only —
+  // the evaluator never changed any quantity above.
+  const evaluatorVerdict = orchestrated.evaluator;
+  if (evaluatorVerdict) {
+    parsed.takeoff_evaluation = {
+      status: evaluatorVerdict.status,
+      reasons: evaluatorVerdict.reasons.map((r) => r.message),
+      confidence: evaluatorVerdict.confidence,
+    };
+    if (evaluatorVerdict.status !== "pass") {
+      console.log("[takeoff] evaluator flagged a quote", {
+        quoteId: quote.id,
+        status: evaluatorVerdict.status,
+        reasons: evaluatorVerdict.reasons.length,
+      });
+      parsed.notes = [
+        ...evaluatorVerdict.reasons.map((r) => `[check] ${r.message}`),
+        ...(parsed.notes ?? []),
+      ];
+    }
+  }
+
   let materials_subtotal = 0;
   let labour_subtotal = 0;
   for (const it of parsed.line_items) {

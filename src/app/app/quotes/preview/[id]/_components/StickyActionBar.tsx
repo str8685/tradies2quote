@@ -6,6 +6,7 @@ import {
   ChatCircleText,
   EnvelopeSimple,
   FloppyDisk,
+  Warning,
 } from "@phosphor-icons/react";
 import type { QuoteStatus } from "@/lib/quote-types";
 
@@ -70,6 +71,8 @@ const ERROR_COPY: Record<string, string> = {
   sms_token_not_configured: "SMS isn't configured. Set TWILIO_AUTH_TOKEN.",
   sms_from_not_configured: "SMS isn't configured. Set TWILIO_FROM_NUMBER.",
   update_failed: "Message sent but the quote status couldn't update.",
+  takeoff_blocked: "Fix the flagged takeoff lines before sending.",
+  takeoff_unconfirmed: "Review and confirm the flagged quantities before sending.",
 };
 
 const STATUS_PILL: Record<QuoteStatus, { label: string; cls: string }> = {
@@ -95,6 +98,9 @@ export function StickyActionBar({
   const [sendState, setSendState] = useState<SendState>("idle");
   const [activeChannel, setActiveChannel] = useState<"email" | "sms">("email");
   const [errorMessage, setErrorMessage] = useState("");
+  // Wave 45 — takeoff safety gate (mirrors SendQuoteButton).
+  const [confirmReasons, setConfirmReasons] = useState<string[] | null>(null);
+  const [blockReasons, setBlockReasons] = useState<string[] | null>(null);
 
   const isAccepted = status === "accepted";
   const isSentOrViewed = status === "sent" || status === "viewed";
@@ -103,9 +109,11 @@ export function StickyActionBar({
     sendState === "generating" ||
     sendState === "sending";
 
-  async function sendVia(channel: "email" | "sms") {
+  async function sendVia(channel: "email" | "sms", acknowledged = false) {
     setActiveChannel(channel);
     setErrorMessage("");
+    setBlockReasons(null);
+    if (!acknowledged) setConfirmReasons(null);
     setSendState("saving");
     const saved = await onSaveBeforeSend();
     if (!saved) {
@@ -119,19 +127,38 @@ export function StickyActionBar({
         channel === "sms"
           ? `/api/quotes/${quoteId}/sms`
           : `/api/quotes/${quoteId}/send`;
-      const res = await fetch(endpoint, { method: "POST" });
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ acknowledged }),
+      });
       if (!res.ok) {
         const data = (await res.json().catch(() => ({}))) as {
           error?: string;
           message?: string;
+          reasons?: string[];
         };
         const code = data.error ?? "send_failed";
+        if (code === "takeoff_unconfirmed") {
+          setConfirmReasons(data.reasons ?? []);
+          setSendState("idle");
+          return;
+        }
+        if (code === "takeoff_blocked") {
+          setBlockReasons(data.reasons ?? []);
+          setErrorMessage(
+            data.message ?? ERROR_COPY[code] ?? "Fix the flagged lines before sending.",
+          );
+          setSendState("error");
+          return;
+        }
         setErrorMessage(
           data.message ?? ERROR_COPY[code] ?? "Could not send the quote.",
         );
         setSendState("error");
         return;
       }
+      setConfirmReasons(null);
       setSendState("sent");
       router.refresh();
     } catch {
@@ -175,6 +202,72 @@ export function StickyActionBar({
                 ? "// sms sent"
                 : "// quote sent"}
           </p>
+        </div>
+      )}
+
+      {blockReasons && blockReasons.length > 0 && (
+        <div
+          aria-live="polite"
+          className="fixed inset-x-0 bottom-[150px] z-50 mx-auto max-w-3xl px-4 sm:static sm:bottom-auto sm:max-w-none sm:px-0 sm:mb-2"
+        >
+          <div
+            data-testid="sticky-send-blocked"
+            className="rounded-sm border border-red-500/60 bg-ink-950 p-3 shadow-lg"
+          >
+            <p className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.2em] text-red-300">
+              <Warning size={14} weight="fill" />
+              {"// can't send yet"}
+            </p>
+            <ul className="mt-2 space-y-1 text-xs text-ink-100">
+              {blockReasons.map((r, i) => (
+                <li key={i} className="flex items-start gap-1.5">
+                  <span className="mt-0.5 shrink-0 text-red-300">→</span>
+                  <span>{r}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      )}
+      {confirmReasons && (
+        <div
+          aria-live="polite"
+          className="fixed inset-x-0 bottom-[150px] z-50 mx-auto max-w-3xl px-4 sm:static sm:bottom-auto sm:max-w-none sm:px-0 sm:mb-2"
+        >
+          <div
+            data-testid="sticky-send-confirm"
+            className="rounded-sm border border-hivis/60 bg-ink-950 p-3 shadow-lg"
+          >
+            <p className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.2em] text-hivis">
+              <Warning size={14} weight="fill" />
+              {"// confirm before sending"}
+            </p>
+            <ul className="mt-2 space-y-1 text-xs text-ink-100">
+              {confirmReasons.map((r, i) => (
+                <li key={i} className="flex items-start gap-1.5">
+                  <span className="mt-0.5 shrink-0 text-hivis">→</span>
+                  <span>{r}</span>
+                </li>
+              ))}
+            </ul>
+            <div className="mt-3 flex items-center gap-3">
+              <button
+                type="button"
+                data-testid="sticky-send-confirm-button"
+                onClick={() => sendVia(activeChannel, true)}
+                className="t2q-btn-primary-pro min-h-[44px] !px-4 !text-[11px]"
+              >
+                Confirm &amp; send {activeChannel === "sms" ? "text" : "email"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setConfirmReasons(null)}
+                className="font-mono text-[10px] uppercase tracking-[0.2em] text-ink-300 hover:text-ink-100"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

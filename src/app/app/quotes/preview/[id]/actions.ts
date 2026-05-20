@@ -7,6 +7,7 @@ import { round2 } from "@/lib/quote-defaults";
 import { applyMaterialCorrections } from "@/lib/quoteEditLearning";
 import { buildQuoteEditDiff, diffIsNonEmpty } from "@/lib/quoteEditDiff";
 import type { QuoteData, QuoteStatus } from "@/lib/quote-types";
+import { assessQuoteTakeoffSafety } from "@/lib/quote-validation";
 import { canTransition } from "@/lib/lifecycle/stages";
 import {
   logAgentError,
@@ -266,6 +267,26 @@ async function transition(
 }
 
 export async function sendQuote(quoteId: string): Promise<LifecycleResult> {
+  // Hard safety gate: a quote with an uncalculable (blocked) line or a
+  // failed evaluator verdict can never be marked sent — by ANY path. This
+  // mirrors the gate in the email/SMS routes so the lifecycle "Send"
+  // button can't be used to slip a broken takeoff past the artifact send.
+  // Caution-level warnings are intentionally NOT blocked here — the
+  // customer-facing email/SMS send owns the explicit acknowledgement flow.
+  const supabase = await createClient();
+  const { data: row } = await supabase
+    .from("quotes")
+    .select("quote_data")
+    .eq("id", quoteId)
+    .single();
+  const qd = (row?.quote_data ?? null) as QuoteData | null;
+  const safety = assessQuoteTakeoffSafety(qd);
+  if (!safety.can_send) {
+    return {
+      error: `Can't send — fix the flagged takeoff first: ${safety.block_reasons.join(" ")}`,
+      code: "22023",
+    };
+  }
   return transition(quoteId, "sent");
 }
 

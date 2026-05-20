@@ -19,6 +19,7 @@
 
 import { runCalculator } from "./calculators";
 import { buildClarifications } from "./clarify";
+import { evaluateScope, evaluateTakeoff } from "./evaluate";
 import { explainScope } from "./explain";
 import { extractFromLLM, extractFromText } from "./extraction";
 import { routeScope } from "./scope-router";
@@ -118,18 +119,24 @@ export function runTakeoff(
         }
       }
     }
+    // Post-calc plausibility pass (advisory; never changes quantities).
+    result.evaluator = evaluateScope(result, ext);
     result.explanation = explainScope(result);
     scopes.push(result);
     allClarifications.push(...result.clarifications);
   }
 
   const status = worstStatus(scopes.map((s) => s.status));
+  const evaluator = evaluateTakeoff(
+    scopes.flatMap((s) => (s.evaluator ? [s.evaluator] : [])),
+  );
   return {
     status,
     primary_scope: route.primary,
     scopes,
     clarifications: allClarifications,
     warnings,
+    evaluator,
   };
 }
 
@@ -175,6 +182,7 @@ export function runTakeoffWithExtraction(
       result.status = "needs_review";
     }
   }
+  result.evaluator = evaluateScope(result, ext);
   result.explanation = explainScope(result);
   return {
     status: result.status,
@@ -182,6 +190,7 @@ export function runTakeoffWithExtraction(
     scopes: [result],
     clarifications: result.clarifications,
     warnings: [...result.warnings],
+    evaluator: result.evaluator,
   };
 }
 

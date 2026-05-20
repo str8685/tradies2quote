@@ -19,10 +19,14 @@ export const dynamic = "force-dynamic";
 type Params = { id: string };
 
 export async function POST(
-  _request: NextRequest,
+  request: NextRequest,
   ctx: { params: Promise<Params> },
 ) {
   const { id } = await ctx.params;
+  const body = (await request.json().catch(() => ({}))) as {
+    acknowledged?: boolean;
+  };
+  const acknowledged = body?.acknowledged === true;
   const supabase = await createClient();
   const {
     data: { user },
@@ -49,17 +53,19 @@ export async function POST(
     status: quote.status,
     total_amount: quote.total_amount,
     quote_data: qd,
+    acknowledged,
   });
   if (!validation.ok) {
     // Validation failures are user-actionable (missing email, no line
-    // items, etc.) so they're returned to the client below with a
-    // human-readable message — no server log needed. Errors that ARE
-    // server-side problems (PDF gen, upload, email) still log via
-    // console.error so they surface in Vercel logs.
+    // items, takeoff-risk, etc.) so they're returned to the client below
+    // with a human-readable message + structured reasons — no server log
+    // needed. Errors that ARE server-side problems (PDF gen, upload,
+    // email) still log via console.error so they surface in Vercel logs.
     return NextResponse.json(
       {
         error: validation.error,
         message: SEND_ERROR_MESSAGES[validation.error as SendValidationError],
+        reasons: validation.reasons ?? [],
       },
       { status: 400 },
     );
@@ -173,9 +179,20 @@ export async function POST(
     );
   }
 
-  await admin
-    .from("quote_events")
-    .insert({ quote_id: quote.id, type: "sent", metadata: { to: quoteData.client.email } });
+  if (acknowledged) {
+    console.log("[send-gate] takeoff override used", {
+      quoteId: quote.id,
+      channel: "email",
+    });
+  }
+  await admin.from("quote_events").insert({
+    quote_id: quote.id,
+    type: "sent",
+    metadata: {
+      to: quoteData.client.email,
+      ...(acknowledged ? { takeoff_override: true } : {}),
+    },
+  });
 
   return NextResponse.json({
     ok: true,
