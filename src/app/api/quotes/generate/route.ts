@@ -16,6 +16,7 @@ import {
   complianceReviewEnabledFromEnv,
   safelyReviewQuote,
 } from "@/lib/compliance";
+import { runTakeoff as runOrchestratedTakeoff } from "@/lib/takeoff";
 import { cleanTranscript } from "@/lib/transcriptCleanup";
 import type {
   LibraryMaterial,
@@ -58,6 +59,34 @@ const TAKEOFF_MATERIAL_PATTERNS: RegExp[] = [
   /\b(structural\s+)?plywood\b/i,
   /\bsubfloor\s+screws?\b/i,
 ];
+
+// Wave 44 — per-scope material patterns the new orchestrator emits.
+// When an orchestrator scope produces lines for a job, we filter the
+// matching pattern out of the AI's response too, so we don't double up.
+const ORCHESTRATOR_MATERIAL_PATTERNS: Record<string, RegExp[]> = {
+  roofing: [
+    /\b(?:roof(?:ing)?\s+(?:sheets?|tiles?|screws?))\b/i,
+    /\b(?:colorsteel|coloursteel|long[-\s]?run)\b/i,
+  ],
+  fencing: [
+    /\b(?:fence\s+posts?|fence\s+rails?|palings?|picket)\b/i,
+  ],
+  concrete: [
+    /\b(?:ready[-\s]?mix|concrete|reinforcing\s+mesh|polythene\s+dpm)\b/i,
+  ],
+  insulation: [
+    /\b(?:pink\s+batts?|insulation\s+batts?|R\d(?:\.\d)?\s+batts?)\b/i,
+  ],
+  fixing: [
+    /\b(?:skirtings?|architraves?|scotia)\b/i,
+  ],
+  lining: [
+    /\b(?:gib|plasterboard|aqualine|fyreline|lining\s+sheets?)\b/i,
+  ],
+  framing: [
+    /\b(?:studs?|plates?|nogs?|framing\s+(?:pine|timber|nails?))\b/i,
+  ],
+};
 
 function looksLikeTakeoffMaterial(description: string): boolean {
   return TAKEOFF_MATERIAL_PATTERNS.some((p) => p.test(description));
@@ -231,6 +260,25 @@ export async function POST(request: NextRequest) {
   const parsedTakeoff = parseTakeoffDescription(transcript);
   const useCalculator = canRunCalculator(parsedTakeoff);
 
+  // Wave 44 — run the new takeoff orchestrator alongside the legacy
+  // parser. The orchestrator covers scopes the legacy parser doesn't
+  // (roofing, fencing, concrete, insulation, fixing, generic) and
+  // surfaces per-line `takeoff_status` for UI gating. The legacy
+  // parser still drives deck/cladding/wall/subfloor for backward
+  // compatibility — those have battle-tested ratio guards we don't
+  // want to lose. We map legacy parser type → orchestrator scope to
+  // decide which orchestrator scopes are NEW (not already covered).
+  const orchestrated = runOrchestratedTakeoff(transcript);
+  const LEGACY_SCOPE_COVERAGE: Record<string, string[]> = {
+    deck: ["deck"],
+    cladding: ["cladding"],
+    wall: ["framing", "lining", "insulation", "fixing"],
+    subfloor: ["framing", "lining"],
+  };
+  const legacyCovers = useCalculator
+    ? new Set(LEGACY_SCOPE_COVERAGE[parsedTakeoff.type] ?? [])
+    : new Set<string>();
+
   const systemPrompt = buildQuotePrompt(profile, library, {
     skipTakeoffMaterials: useCalculator,
     pastQuotes,
@@ -371,6 +419,27 @@ export async function POST(request: NextRequest) {
         parsedTakeoff.type,
       );
     }
+    // Build a lookup of takeoff_status keyed by formula prefix so we
+    // can carry the orchestrator's per-line status across to the
+    // legacy calculator's outputs. The legacy calculator's `formula`
+    // strings are forwarded verbatim by the orchestrator's deck/
+    // cladding/framing wrappers (see calculators/deck.ts), so the
+    // formula is a stable join key. Lines that don't match (legacy
+    // emitted a material the orchestrator didn't see) default to
+    // status="ok" — safe because they came from the legacy
+    // calculator's own deterministic output.
+    const orchestratedStatusByFormula = new Map<
+      string,
+      { status: "ok" | "assumed" | "needs_review" | "blocked"; flags: string[] }
+    >();
+    for (const scope of orchestrated.scopes) {
+      for (const l of scope.lines) {
+        orchestratedStatusByFormula.set(l.basis.formula, {
+          status: l.status,
+          flags: [...l.assumption_flags, ...l.validation_flags],
+        });
+      }
+    }
     for (const m of calc?.materials ?? []) {
       const match = matchToLibrary(m.name, library);
       const matchedPrice =
@@ -378,6 +447,10 @@ export async function POST(request: NextRequest) {
           ? Number(match.default_unit_price)
           : 0;
       if (match) usedLibraryIds.add(match.id);
+      const status = orchestratedStatusByFormula.get(m.formula) ?? {
+        status: "ok" as const,
+        flags: [] as string[],
+      };
       calculatorItems.push({
         type: "material",
         description: m.name,
@@ -391,6 +464,8 @@ export async function POST(request: NextRequest) {
         is_calculated_takeoff: true,
         formula: m.formula,
         price_match_key: m.priceMatchKey,
+        takeoff_status: status.status,
+        takeoff_flags: status.flags,
       });
     }
     if (parsedTakeoff.assumptions.length > 0) {
@@ -399,12 +474,84 @@ export async function POST(request: NextRequest) {
     parsed.takeoff_inputs = parsedTakeoff.input as TakeoffInputsSnapshot;
   }
 
+  // Wave 44 — append orchestrator-only scopes (the ones the legacy
+  // parser doesn't cover: roofing, fencing, concrete, insulation,
+  // fixing, generic, plus framing/lining when the legacy type wasn't
+  // "wall"/"subfloor"). Lines from a `blocked` scope are NOT appended
+  // — instead the scope's clarifications are surfaced via notes so
+  // the tradie can answer them and re-generate.
+  const orchestratorOnlyScopes = orchestrated.scopes.filter(
+    (s) => !legacyCovers.has(s.scope),
+  );
+  for (const scope of orchestratorOnlyScopes) {
+    if (scope.status === "blocked") {
+      for (const q of scope.clarifications) {
+        parsed.notes = [
+          ...(parsed.notes ?? []),
+          `[${scope.scope}] needs: ${q.question}`,
+        ];
+      }
+      continue;
+    }
+    for (const l of scope.lines) {
+      const match = matchToLibrary(l.name, library);
+      const matchedPrice =
+        match && match.default_unit_price !== null
+          ? Number(match.default_unit_price)
+          : 0;
+      if (match) usedLibraryIds.add(match.id);
+      calculatorItems.push({
+        type: "material",
+        description: l.name,
+        quantity: l.quantity,
+        unit: l.unit,
+        unit_price: matchedPrice,
+        line_total: round2(l.quantity * matchedPrice),
+        library_id: match?.id ?? null,
+        is_ai_estimated: false,
+        is_missing_price: !match,
+        is_calculated_takeoff: true,
+        formula: l.basis.formula,
+        price_match_key: l.priceMatchKey,
+        takeoff_status: l.status,
+        takeoff_flags: [...l.assumption_flags, ...l.validation_flags],
+      });
+    }
+    if (scope.assumptions.length > 0) {
+      parsed.notes = [
+        ...scope.assumptions.map((a) => `[${scope.scope}] ${a}`),
+        ...(parsed.notes ?? []),
+      ];
+    }
+  }
+
+  // Wave 44 — also exclude AI lines that overlap with what the
+  // orchestrator already produced for non-legacy scopes (roofing,
+  // fencing, concrete, insulation, fixing, framing/lining when
+  // outside the legacy "wall" path). The legacy filter
+  // looksLikeTakeoffMaterial only covers wall/deck/cladding/subfloor.
+  const orchestratorEmittedPatterns: RegExp[] = [];
+  for (const scope of orchestratorOnlyScopes) {
+    if (scope.status === "blocked") continue;
+    if (scope.lines.length === 0) continue;
+    const patterns = ORCHESTRATOR_MATERIAL_PATTERNS[scope.scope];
+    if (patterns) orchestratorEmittedPatterns.push(...patterns);
+  }
+  const looksLikeOrchestratorMaterial = (description: string): boolean =>
+    orchestratorEmittedPatterns.some((p) => p.test(description));
+
   const aiItems: QuoteLineItem[] = [];
   for (const it of parsed.line_items) {
     if (
       useCalculator &&
       it.type === "material" &&
       looksLikeTakeoffMaterial(it.description)
+    ) {
+      continue;
+    }
+    if (
+      it.type === "material" &&
+      looksLikeOrchestratorMaterial(it.description)
     ) {
       continue;
     }
@@ -429,6 +576,11 @@ export async function POST(request: NextRequest) {
     }
     it.is_calculated_takeoff = false;
     it.is_missing_price = false;
+    // Wave 44 — AI-generated material lines are "assumed" (LLM
+    // estimated the quantity); labour/other are "ok" because they're
+    // tradie-specified scope items the LLM is summarising.
+    it.takeoff_status =
+      it.type === "material" ? "assumed" : "ok";
     const lt = round2(qty * price);
     aiItems.push({ ...it, quantity: qty, unit_price: price, line_total: lt });
   }

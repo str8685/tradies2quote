@@ -694,6 +694,8 @@ function ItemsSection({
                   isLibrary={!!libMaterial}
                   isAi={!!it.is_ai_estimated && !libMaterial && !it.is_missing_price}
                   isMissingPrice={!!it.is_missing_price}
+                  takeoffStatus={it.takeoff_status}
+                  takeoffFlags={it.takeoff_flags}
                   supplierUrl={libMaterial?.supplier_url ?? null}
                   supplierName={libMaterial?.supplier ?? null}
                 />
@@ -896,6 +898,8 @@ function ItemBadge({
   isLibrary,
   isAi,
   isMissingPrice,
+  takeoffStatus,
+  takeoffFlags,
   supplierUrl,
   supplierName,
 }: {
@@ -903,15 +907,26 @@ function ItemBadge({
   isLibrary: boolean;
   isAi: boolean;
   isMissingPrice: boolean;
+  takeoffStatus?: "ok" | "assumed" | "needs_review" | "blocked";
+  takeoffFlags?: string[];
   supplierUrl: string | null;
   supplierName: string | null;
 }) {
-  if (!isCalculatedTakeoff && !isLibrary && !isAi && !isMissingPrice) {
+  // Wave 44 — takeoff status badge takes priority for material lines.
+  // "ok" maps to the existing "Calculated takeoff" badge to avoid
+  // visual churn for working quotes. "assumed" / "needs_review" /
+  // "blocked" surface as new badges so the tradie can see at a glance
+  // which lines they should eyeball before sending.
+  const flagsTitle =
+    takeoffFlags && takeoffFlags.length > 0
+      ? takeoffFlags.join(" · ")
+      : undefined;
+  if (!isCalculatedTakeoff && !isLibrary && !isAi && !isMissingPrice && !takeoffStatus) {
     return null;
   }
   return (
     <div className="mb-2 flex flex-wrap items-center gap-2">
-      {isCalculatedTakeoff && (
+      {isCalculatedTakeoff && (!takeoffStatus || takeoffStatus === "ok") && (
         <span
           data-testid="badge-calculated"
           className="inline-flex items-center gap-1 rounded-sm bg-blue-500/15 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-[0.18em] text-blue-300"
@@ -919,6 +934,34 @@ function ItemBadge({
         >
           <Calculator size={10} weight="bold" />
           Calculated takeoff
+        </span>
+      )}
+      {isCalculatedTakeoff && takeoffStatus === "assumed" && (
+        <span
+          data-testid="badge-assumed"
+          className="inline-flex items-center gap-1 rounded-sm bg-blue-500/15 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-[0.18em] text-blue-200"
+          title={flagsTitle ?? "Calculated with one or more defaults — confirm before sending"}
+        >
+          <Calculator size={10} weight="bold" />
+          Assumed
+        </span>
+      )}
+      {takeoffStatus === "needs_review" && (
+        <span
+          data-testid="badge-needs-review"
+          className="inline-flex items-center gap-1 rounded-sm bg-hivis/15 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-[0.18em] text-hivis"
+          title={flagsTitle ?? "Validator flagged this line — please review"}
+        >
+          Needs review
+        </span>
+      )}
+      {takeoffStatus === "blocked" && (
+        <span
+          data-testid="badge-blocked"
+          className="inline-flex items-center gap-1 rounded-sm border border-red-500/40 bg-red-500/10 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-[0.18em] text-red-300"
+          title={flagsTitle ?? "Calculator could not run — please clarify"}
+        >
+          Missing info
         </span>
       )}
       {!isCalculatedTakeoff && isLibrary && (

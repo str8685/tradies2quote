@@ -73,6 +73,20 @@ export type QuoteLineItem = {
   required_confirmations?: string[];
   /** Stage 5 — citations to the approved-source knowledge base. */
   citations?: ComplianceCitation[];
+  /**
+   * Wave 44 — takeoff status from the takeoff orchestrator. One of
+   *   ok            — calculated from concrete inputs.
+   *   assumed       — calculated with at least one default substituted.
+   *   needs_review  — calculator ran but validator flagged something.
+   *   blocked       — calculator could not run; needs clarification.
+   * Server-side only — never exposed via PublicLineItem.
+   */
+  takeoff_status?: "ok" | "assumed" | "needs_review" | "blocked";
+  /**
+   * Wave 44 — soft flags explaining a non-"ok" takeoff_status.
+   * Server-side only.
+   */
+  takeoff_flags?: string[];
 };
 
 export type TakeoffInputsSnapshot = Partial<{
