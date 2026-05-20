@@ -94,6 +94,11 @@ function looksLikeTakeoffMaterial(description: string): boolean {
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+// This route makes 2+ sequential LLM calls (quote generation, then
+// transcript cleanup, plus optional matcher/compliance passes). Give it
+// headroom so a slow-but-succeeding generation isn't killed by Vercel's
+// default function timeout and surfaced to the client as a gateway 502.
+export const maxDuration = 60;
 
 const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
 const MODEL = "claude-sonnet-4-20250514";
@@ -109,6 +114,41 @@ const MODEL = "claude-sonnet-4-20250514";
 // the model returns what it needs so this doesn't cost more on
 // normal quotes.
 const MAX_TOKENS = 16384;
+
+// Anthropic intermittently returns 429 (rate limit), 500, 503 and 529
+// (overloaded). Without a retry these surfaced to the client as a 502 and
+// the user saw generation "go backwards" before a manual retry succeeded.
+// Retry transient failures server-side with exponential backoff so a blip
+// is invisible. Non-retryable statuses (e.g. 400/401) return immediately.
+const RETRYABLE_STATUSES = new Set([429, 500, 502, 503, 529]);
+
+async function fetchWithRetry(
+  url: string,
+  init: RequestInit,
+  { attempts = 3, baseDelayMs = 500 }: { attempts?: number; baseDelayMs?: number } = {},
+): Promise<Response> {
+  for (let i = 0; i < attempts; i++) {
+    const isLast = i === attempts - 1;
+    try {
+      const res = await fetch(url, init);
+      if (res.ok || !RETRYABLE_STATUSES.has(res.status) || isLast) {
+        return res;
+      }
+      console.warn(
+        `Claude API ${res.status}; retrying (${i + 1}/${attempts - 1})`,
+      );
+    } catch (e) {
+      if (isLast) throw e;
+      console.warn(
+        `Claude API network error; retrying (${i + 1}/${attempts - 1})`,
+        e,
+      );
+    }
+    await new Promise((r) => setTimeout(r, baseDelayMs * 2 ** i));
+  }
+  // Unreachable: the loop always returns or throws on the last attempt.
+  throw new Error("fetchWithRetry exhausted all attempts");
+}
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
@@ -284,7 +324,7 @@ export async function POST(request: NextRequest) {
     pastQuotes,
   });
 
-  const claudeRes = await fetch(ANTHROPIC_URL, {
+  const claudeRes = await fetchWithRetry(ANTHROPIC_URL, {
     method: "POST",
     headers: {
       "x-api-key": apiKey,

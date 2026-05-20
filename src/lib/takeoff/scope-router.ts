@@ -55,11 +55,15 @@ const SCOPE_PATTERNS: Array<{ scope: ScopeType; pattern: RegExp }> = [
       /\b(?:insulation|pink\s*batts?|batts?|R\d(?:\.\d)?(?:\s|$)|wall\s+wrap)\b/i,
   },
 
-  // Fencing — paling, post-and-rail.
+  // Fencing — paling, post-and-rail, picket.
+  // NB: bare "post(s)" is deliberately NOT a fencing trigger — decks,
+  // pergolas and verandas all have posts, so matching it pulled fencing
+  // materials (palings/rails) into deck jobs. Require fencing context:
+  // "fence", "paling", "picket", or the "post and rail" phrase.
   {
     scope: "fencing",
     pattern:
-      /\b(?:fenc(?:e|ing)|palings?|post(?:s)?(?:\s+and\s+rails?)?|picket\s+fenc)\b/i,
+      /\b(?:fenc(?:e|ing)|palings?|pickets?|posts?\s+and\s+rails?)\b/i,
   },
 
   // Concrete — slabs, footings, piles.
