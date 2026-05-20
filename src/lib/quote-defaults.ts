@@ -75,3 +75,53 @@ export function validUntilDate(createdAt: string | Date, days = 30): Date {
 export function round2(n: number): number {
   return Math.round((Number.isFinite(n) ? n : 0) * 100) / 100;
 }
+
+/**
+ * The single source of truth for quote totals.
+ *
+ * Every total displayed or persisted (AI generation, the save action, and
+ * the live editor) must run through this so the numbers can never drift
+ * apart. The rule is SUM-OF-ROUNDED: each line is rounded to cents the
+ * same way it is shown to the tradie (`line_total`), then the rounded
+ * lines are summed. Summing the raw products and rounding once at the end
+ * (round-of-sum) produces a subtotal that the visible line items don't add
+ * up to — that mismatch was the "numbers don't match the total" bug.
+ *
+ * `materials_subtotal` deliberately includes "other" line items (markup
+ * applies to both), matching the AI prompt contract and the eval suite.
+ */
+export function computeQuoteTotals(
+  lineItems: ReadonlyArray<{
+    type: string;
+    quantity: number;
+    unit_price: number;
+  }>,
+  markupPct: number,
+  taxRate: number,
+) {
+  let materials_subtotal = 0;
+  let labour_subtotal = 0;
+  for (const it of lineItems) {
+    const line_total = round2(
+      (Number(it.quantity) || 0) * (Number(it.unit_price) || 0),
+    );
+    if (it.type === "labour") labour_subtotal += line_total;
+    else materials_subtotal += line_total;
+  }
+  materials_subtotal = round2(materials_subtotal);
+  labour_subtotal = round2(labour_subtotal);
+  const markup_amount = round2(materials_subtotal * ((Number(markupPct) || 0) / 100));
+  const subtotal_before_tax = round2(
+    materials_subtotal + markup_amount + labour_subtotal,
+  );
+  const tax_amount = round2(subtotal_before_tax * ((Number(taxRate) || 0) / 100));
+  const total = round2(subtotal_before_tax + tax_amount);
+  return {
+    materials_subtotal,
+    labour_subtotal,
+    markup_amount,
+    subtotal_before_tax,
+    tax_amount,
+    total,
+  };
+}

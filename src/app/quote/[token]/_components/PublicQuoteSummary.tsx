@@ -4,6 +4,7 @@ import { ArrowSquareOut, FileText } from "@phosphor-icons/react/dist/ssr";
 import {
   formatCurrency,
   formatIssueDate,
+  round2,
 } from "@/lib/quote-defaults";
 import type { PublicQuotePayload, PublicLineItem } from "@/lib/quote-types";
 
@@ -16,6 +17,14 @@ export function PublicQuoteSummary({ token, quote }: Props) {
   const materials = quote.line_items.filter((it) => it.type === "material");
   const labour = quote.line_items.filter((it) => it.type === "labour");
   const other = quote.line_items.filter((it) => it.type === "other");
+
+  // `materials_subtotal` bundles material + other lines (markup applies to
+  // the bundle). Split for display so each subtotal ties out to its
+  // visible section.
+  const sumLineTotals = (rows: PublicLineItem[]) =>
+    round2(rows.reduce((s, it) => s + (Number(it.line_total) || 0), 0));
+  const materialsOnlySubtotal = sumLineTotals(materials);
+  const otherSubtotal = sumLineTotals(other);
 
   return (
     <section data-testid="public-quote-summary" className="space-y-6">
@@ -95,7 +104,10 @@ export function PublicQuoteSummary({ token, quote }: Props) {
       )}
 
       <section className="t2q-card-pro p-5 sm:p-6">
-        <Row label="Materials subtotal" value={formatCurrency(quote.materials_subtotal, quote.currency)} />
+        <Row label="Materials subtotal" value={formatCurrency(materialsOnlySubtotal, quote.currency)} />
+        {other.length > 0 && (
+          <Row label="Other subtotal" value={formatCurrency(otherSubtotal, quote.currency)} />
+        )}
         <Row label={`Markup`} value={formatCurrency(quote.markup_amount, quote.currency)} />
         <Row label="Labour subtotal" value={formatCurrency(quote.labour_subtotal, quote.currency)} />
         <Row label="Subtotal" value={formatCurrency(quote.subtotal_before_tax, quote.currency)} divider />

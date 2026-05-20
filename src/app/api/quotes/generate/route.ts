@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { NZ_DEFAULTS, round2 } from "@/lib/quote-defaults";
+import { NZ_DEFAULTS, computeQuoteTotals, round2 } from "@/lib/quote-defaults";
 import { buildQuotePrompt, type PastQuoteSummary } from "@/lib/quote-prompt";
 import { matchToLibrary } from "@/lib/materials";
 import {
@@ -752,22 +752,17 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  let materials_subtotal = 0;
-  let labour_subtotal = 0;
-  for (const it of parsed.line_items) {
-    if (it.type === "labour") labour_subtotal += it.line_total;
-    else materials_subtotal += it.line_total;
-  }
-  const markup_amount = round2(materials_subtotal * (profile.default_markup_pct / 100));
-  const subtotal_before_tax = round2(materials_subtotal + markup_amount + labour_subtotal);
-  const tax_amount = round2(subtotal_before_tax * (profile.tax_rate / 100));
-  const total = round2(subtotal_before_tax + tax_amount);
-  parsed.materials_subtotal = round2(materials_subtotal);
-  parsed.labour_subtotal = round2(labour_subtotal);
-  parsed.markup_amount = markup_amount;
-  parsed.subtotal_before_tax = subtotal_before_tax;
-  parsed.tax_amount = tax_amount;
-  parsed.total = total;
+  const totals = computeQuoteTotals(
+    parsed.line_items,
+    profile.default_markup_pct,
+    profile.tax_rate,
+  );
+  parsed.materials_subtotal = totals.materials_subtotal;
+  parsed.labour_subtotal = totals.labour_subtotal;
+  parsed.markup_amount = totals.markup_amount;
+  parsed.subtotal_before_tax = totals.subtotal_before_tax;
+  parsed.tax_amount = totals.tax_amount;
+  parsed.total = totals.total;
 
   if (parsed.line_items.length > 0) {
     const { error: iErr } = await supabase.from("quote_items").insert(

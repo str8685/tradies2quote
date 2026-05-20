@@ -9,6 +9,7 @@ import {
   Trash,
 } from "@phosphor-icons/react/dist/ssr";
 import {
+  computeQuoteTotals,
   formatCurrency,
   formatIssueDate,
   isPlaceholderClientName,
@@ -108,28 +109,10 @@ export function QuoteEditor({
   // Intl.NumberFormat call in the editor throw and crashes the page.
   const currency = initialData.currency || "NZD";
 
-  const totals = useMemo(() => {
-    let materials_subtotal = 0;
-    let labour_subtotal = 0;
-    for (const it of items) {
-      const lt = (Number(it.quantity) || 0) * (Number(it.unit_price) || 0);
-      if (it.type === "labour") labour_subtotal += lt;
-      else materials_subtotal += lt;
-    }
-    const markup_amount = materials_subtotal * (markupPct / 100);
-    const subtotal_before_tax =
-      materials_subtotal + markup_amount + labour_subtotal;
-    const tax_amount = subtotal_before_tax * (taxRate / 100);
-    const total = subtotal_before_tax + tax_amount;
-    return {
-      materials_subtotal: round2(materials_subtotal),
-      labour_subtotal: round2(labour_subtotal),
-      markup_amount: round2(markup_amount),
-      subtotal_before_tax: round2(subtotal_before_tax),
-      tax_amount: round2(tax_amount),
-      total: round2(total),
-    };
-  }, [items, markupPct, taxRate]);
+  const totals = useMemo(
+    () => computeQuoteTotals(items, markupPct, taxRate),
+    [items, markupPct, taxRate],
+  );
 
   function updateItem(idx: number, patch: Partial<QuoteLineItem>) {
     setItems((prev) =>
@@ -271,6 +254,20 @@ export function QuoteEditor({
   const otherIndices = items
     .map((it, i) => ({ it, i }))
     .filter((x) => x.it.type === "other");
+
+  // The totals card shows Materials and Other as separate rows that each
+  // tie out to their visible section. `totals.materials_subtotal` bundles
+  // both (markup applies to the bundle), so split it for display only.
+  const sumRows = (rows: Array<{ it: QuoteLineItem }>) =>
+    round2(
+      rows.reduce(
+        (s, x) =>
+          s + round2((Number(x.it.quantity) || 0) * (Number(x.it.unit_price) || 0)),
+        0,
+      ),
+    );
+  const materialsOnlySubtotal = sumRows(materialIndices);
+  const otherSubtotal = sumRows(otherIndices);
 
   // Wave 19.10 — summary strings for the mobile-collapsible cards.
   const materialMissingPrices = materialIndices.filter(
@@ -492,8 +489,14 @@ export function QuoteEditor({
       <section data-testid="quote-totals" className="t2q-card-pro p-5 sm:p-6">
         <TotalsRow
           label="Materials subtotal"
-          value={formatCurrency(totals.materials_subtotal, currency)}
+          value={formatCurrency(materialsOnlySubtotal, currency)}
         />
+        {otherIndices.length > 0 && (
+          <TotalsRow
+            label="Other subtotal"
+            value={formatCurrency(otherSubtotal, currency)}
+          />
+        )}
         <TotalsRow
           label={`Markup (${markupPct}%)`}
           value={formatCurrency(totals.markup_amount, currency)}
