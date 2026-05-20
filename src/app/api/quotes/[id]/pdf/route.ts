@@ -1,13 +1,30 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { downloadPdf } from "@/lib/quote-storage";
+import { generateQuotePdf } from "@/lib/pdf-generator";
 import { quoteNumber } from "@/lib/quote-defaults";
+import type { QuoteData } from "@/lib/quote-types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 type Params = { id: string };
 
+/**
+ * Owner-facing quote PDF.
+ *
+ * Regenerates the PDF on demand from the CURRENT `quote_data` every
+ * time, rather than downloading the file frozen at send-time. The
+ * stored `pdf_path` is only written when a quote is sent (see
+ * /api/quotes/[id]/send + /sms); after that, editing the quote updates
+ * `quote_data` + `total_amount` but never refreshed the stored PDF, so
+ * the owner's "view PDF" showed a stale total that didn't match the
+ * on-screen itemised quote. Rendering live keeps the owner's PDF in
+ * lockstep with what they see in the editor.
+ *
+ * The customer-facing PDF (/api/quote/[token]/pdf) intentionally still
+ * serves the frozen `pdf_path` — the customer keeps exactly the quote
+ * that was sent until the tradie re-sends.
+ */
 export async function GET(
   _request: NextRequest,
   ctx: { params: Promise<Params> },
@@ -23,19 +40,37 @@ export async function GET(
 
   const { data: quote } = await supabase
     .from("quotes")
-    .select("id, pdf_path, created_at")
+    .select("id, quote_data, created_at, public_token")
     .eq("id", id)
-    .single();
-  if (!quote || !quote.pdf_path) {
-    return NextResponse.json({ error: "no_pdf" }, { status: 404 });
+    .eq("user_id", user.id)
+    .maybeSingle();
+  if (!quote || !quote.quote_data) {
+    return NextResponse.json({ error: "no_quote" }, { status: 404 });
   }
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("business_name, email, phone, address, logo_url")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  const acceptUrl = quote.public_token
+    ? `${appUrl}/quote/${quote.public_token}`
+    : null;
 
   let bytes: Uint8Array;
   try {
-    bytes = await downloadPdf(quote.pdf_path);
+    bytes = await generateQuotePdf({
+      quoteId: quote.id,
+      createdAt: quote.created_at,
+      quote: quote.quote_data as QuoteData,
+      profile: profile ?? { business_name: null },
+      acceptUrl,
+    });
   } catch (e) {
-    console.error("PDF download failed", e);
-    return NextResponse.json({ error: "download_failed" }, { status: 500 });
+    console.error("PDF generation failed", e);
+    return NextResponse.json({ error: "generation_failed" }, { status: 500 });
   }
 
   const filename = `${quoteNumber(quote.id, quote.created_at)}.pdf`;
