@@ -11,6 +11,7 @@ import {
 } from "@phosphor-icons/react";
 import { toExGst } from "@/lib/materials/quoteExtraction";
 import { TapeMeasureProgress } from "@/app/app/_components/TapeMeasureProgress";
+import { prepareScanImage } from "@/lib/scanImage";
 import {
   importSupplierQuoteItems,
   type SupplierQuoteRow,
@@ -76,14 +77,26 @@ export function QuoteImportClient({ currency }: { currency: string }) {
   }
 
   async function scan() {
-    const f = fileRef.current?.files?.[0];
-    if (!f) {
+    const raw = fileRef.current?.files?.[0];
+    if (!raw) {
       setError("Choose a photo of the quote first.");
       return;
     }
     setError("");
     setPhase("extracting");
     try {
+      // Convert iPhone HEIC → JPEG and downscale big photos so the upload
+      // clears Vercel's ~4.5 MB request-body limit (otherwise it 413s).
+      let f = raw;
+      try {
+        f = await prepareScanImage(raw);
+      } catch {
+        setError(
+          'Couldn’t read that photo. Upload a JPEG, or switch your iPhone Camera to "Most Compatible".',
+        );
+        setPhase("error");
+        return;
+      }
       const fd = new FormData();
       fd.append("image", f);
       const res = await fetch("/api/materials/extract-quote", {
@@ -218,7 +231,7 @@ export function QuoteImportClient({ currency }: { currency: string }) {
       <input
         ref={fileRef}
         type="file"
-        accept="image/*"
+        accept="image/*,.heic,.heif"
         capture="environment"
         className="sr-only"
         onChange={onFileChosen}

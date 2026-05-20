@@ -4,9 +4,16 @@ import { useEffect, useRef, useState } from "react";
 import { Camera, UploadSimple, X, ArrowLeft } from "@phosphor-icons/react/dist/ssr";
 import { FloorPlanSvg } from "@/lib/floorPlanSvg";
 import { TapeMeasureProgress } from "@/app/app/_components/TapeMeasureProgress";
+import { needsPrep, prepareScanImage } from "@/lib/scanImage";
 import type { ScannedPlan } from "@/app/api/quotes/scan-drawing/route";
 
-type ScanState = "idle" | "uploading" | "review-dims" | "transcript" | "error";
+type ScanState =
+  | "idle"
+  | "converting"
+  | "uploading"
+  | "review-dims"
+  | "transcript"
+  | "error";
 
 const MAX_BYTES = 8 * 1024 * 1024;
 const ACCEPTED_MIME = ["image/jpeg", "image/png", "image/webp", "image/gif"];
@@ -183,13 +190,31 @@ export function ScanPanel({
     if (cameraInputRef.current) cameraInputRef.current.value = "";
   }
 
-  async function handleFile(file: File) {
+  async function handleFile(inputFile: File) {
     setError("");
     if (!jobType) {
       setError("Pick a job type first.");
       setState("error");
       return;
     }
+
+    // Prep the photo client-side before upload: convert iPhone HEIC → JPEG
+    // (Claude can't read HEIC) and downscale big photos so they clear
+    // Vercel's ~4.5 MB request-body limit (otherwise the upload 413s).
+    let file = inputFile;
+    if (needsPrep(inputFile)) {
+      setState("converting");
+      try {
+        file = await prepareScanImage(inputFile);
+      } catch {
+        setError(
+          'Couldn’t read that photo. Upload a JPEG, or switch your iPhone Camera to "Most Compatible".',
+        );
+        setState("error");
+        return;
+      }
+    }
+
     if (file.size === 0) {
       setError("That file is empty.");
       setState("error");
@@ -284,7 +309,8 @@ export function ScanPanel({
     if (cameraInputRef.current) cameraInputRef.current.value = "";
   }
 
-  const canScan = Boolean(jobType) && state !== "uploading";
+  const canScan =
+    Boolean(jobType) && state !== "uploading" && state !== "converting";
 
   return (
     <section
@@ -297,7 +323,7 @@ export function ScanPanel({
       <input
         ref={fileInputRef}
         type="file"
-        accept="image/jpeg,image/png,image/webp,image/gif"
+        accept="image/jpeg,image/png,image/webp,image/gif,image/heic,image/heif,.heic,.heif"
         className="hidden"
         data-testid="scan-upload-input"
         onChange={onFileChange}
@@ -539,8 +565,9 @@ function ScanSetup({
         className="mt-4 min-h-5 text-sm text-ink-300"
       >
         {state === "idle" && (jobType
-          ? "Up to 8 MB. JPEG or PNG works best."
+          ? "Up to 8 MB. JPEG, PNG or iPhone (HEIC) photos."
           : "Pick a job type to enable the camera.")}
+        {state === "converting" && "Preparing photo…"}
         {state === "uploading" && "Reading your drawing…"}
         {state === "error" && (
           <span data-testid="scan-error" className="text-red-400">
