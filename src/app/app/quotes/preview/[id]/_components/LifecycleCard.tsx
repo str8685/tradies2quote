@@ -255,7 +255,7 @@ export function LifecycleCard({
               openAgentSection(AGENT_TARGET_ID[out.agentToTrigger!])
             }
             data-testid="lifecycle-agent-link"
-            className="inline-flex h-9 items-center gap-1.5 rounded-sm border border-ink-600 bg-ink-900 px-3 font-mono text-[10px] uppercase tracking-[0.2em] text-ink-200 transition-colors hover:border-brand hover:bg-brand hover:text-ink-900"
+            className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-sm border border-ink-600 bg-ink-900 px-3 font-mono text-[10px] uppercase tracking-[0.2em] text-ink-200 transition-colors hover:border-brand hover:bg-brand hover:text-ink-900"
           >
             Open
             <ArrowRight size={12} weight="bold" />

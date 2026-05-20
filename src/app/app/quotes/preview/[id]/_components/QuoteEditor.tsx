@@ -314,7 +314,10 @@ export function QuoteEditor({
   const clientNameInputValue = clientPlaceholder ? "" : client.name;
 
   return (
-    <div className="space-y-6">
+    // pb on mobile reserves space for the fixed StickyActionBar (sits above
+    // the 57px bottom nav) and the floating Install-App pill (bottom-[88px])
+    // so neither covers the last cards. Both go static/out-of-the-way at sm+.
+    <div className="space-y-6 pb-40 sm:pb-0">
       <section className="t2q-card-pro p-5 sm:p-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex-1">
@@ -1089,7 +1092,7 @@ function TotalsRow({
     <div
       data-testid={testId}
       className={[
-        "flex items-baseline justify-between py-1.5",
+        "flex items-baseline justify-between gap-3 py-1.5",
         divider ? "mt-2 border-t border-ink-700 pt-3" : "",
         emphasis ? "mt-2 border-t border-ink-700 pt-3" : "",
       ]
@@ -1099,8 +1102,8 @@ function TotalsRow({
       <span
         className={
           emphasis
-            ? "font-display text-base uppercase tracking-tight"
-            : "font-mono text-xs uppercase tracking-[0.2em] text-ink-300"
+            ? "min-w-0 truncate font-display text-base uppercase tracking-tight"
+            : "min-w-0 truncate font-mono text-xs uppercase tracking-[0.2em] text-ink-300"
         }
       >
         {label}
@@ -1108,8 +1111,8 @@ function TotalsRow({
       <span
         className={
           emphasis
-            ? "font-display text-2xl tabular-nums text-brand"
-            : "tabular-nums text-white"
+            ? "shrink-0 whitespace-nowrap font-display text-xl tabular-nums text-brand sm:text-2xl"
+            : "shrink-0 whitespace-nowrap tabular-nums text-white"
         }
       >
         {value}

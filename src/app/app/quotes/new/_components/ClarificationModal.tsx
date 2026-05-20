@@ -343,7 +343,7 @@ export function ClarificationModal({
         )}
 
         {/* Footer */}
-        <footer className="flex items-center justify-between gap-2 border-t border-ink-700 bg-ink-950 px-4 py-3 pb-[max(env(safe-area-inset-bottom),12px)] sm:px-6">
+        <footer className="flex flex-wrap items-center gap-2 gap-y-2 border-t border-ink-700 bg-ink-950 px-4 py-3 pb-[max(env(safe-area-inset-bottom),12px)] sm:px-6">
           <button
             type="button"
             onClick={handleBack}
@@ -354,7 +354,7 @@ export function ClarificationModal({
             <CaretLeft size={12} weight="bold" />
             Back
           </button>
-          <div className="flex items-center gap-2">
+          <div className="ml-auto flex items-center gap-2">
             <button
               type="button"
               onClick={handleSkip}
