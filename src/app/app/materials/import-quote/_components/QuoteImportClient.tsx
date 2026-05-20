@@ -260,7 +260,7 @@ export function QuoteImportClient({ currency }: { currency: string }) {
           </div>
           {phase === "extracting" && (
             <div className="mt-4 flex justify-center">
-              <TapeMeasureProgress estimateMs={18000} />
+              <TapeMeasureProgress estimateMs={18000} label="// reading quote" />
             </div>
           )}
         </div>

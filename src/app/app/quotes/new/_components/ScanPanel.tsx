@@ -407,7 +407,7 @@ function ScanSetup({
 
       {state === "uploading" && (
         <div className="mb-5 flex w-full justify-center">
-          <TapeMeasureProgress done={scanComplete} />
+          <TapeMeasureProgress done={scanComplete} label="// reading drawing" />
         </div>
       )}
 
