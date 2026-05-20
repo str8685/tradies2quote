@@ -29,6 +29,13 @@ export function runCladdingCalculator(ext: ExtractedExtraction): ScopeResult {
   if (ext.stock_length_m === null || ext.stock_length_m === undefined) {
     assumptions.push("Used default 4.8m timber stock length.");
   }
+  // Board cover width drives the lineal-metre count (same failure mode as the
+  // deck-board bug). Flag when it wasn't given so it isn't silently 150mm.
+  if (ext.coverage_mm === null || ext.coverage_mm === undefined) {
+    assumptions.push(
+      "Assumed 150mm cladding cover — state the board profile/cover width for an accurate board count.",
+    );
+  }
 
   const opening_area_m2 = ext.openings.reduce(
     (s, o) =>

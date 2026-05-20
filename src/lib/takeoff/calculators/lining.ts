@@ -52,6 +52,10 @@ export function runLiningCalculator(ext: ExtractedExtraction): ScopeResult {
   if (!ext.notes.some((n) => /both\s+sides?|two\s+sides?|one\s+side/i.test(n))) {
     assumptions.push("Assumed lining one side only.");
   }
+  // Sheet size drives the sheet count and isn't read from the spec yet.
+  assumptions.push(
+    "Assumed 1.2×2.4m lining sheets — change if using 1.2×3.0m or a different size.",
+  );
 
   const lines: TakeoffLine[] = [];
   const wasteMult = 1 + wastePct / 100;

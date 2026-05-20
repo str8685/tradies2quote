@@ -51,6 +51,18 @@ export function runRoofingCalculator(ext: ExtractedExtraction): ScopeResult {
   // ridge-to-eave run.
   const isTile = /(tile)/i.test(ext.material_spec ?? "");
   const coverWidth = DEFAULT_COVER_WIDTH_M;
+  // Cover width (long-run) / tile panel area are fixed defaults that drive
+  // the sheet/length count and aren't read from the spec yet — flag them so
+  // a different profile is never silently mis-counted.
+  if (isTile) {
+    assumptions.push(
+      `Assumed ${DEFAULT_SHEET_AREA_M2}m² tile panel coverage — confirm your tile profile.`,
+    );
+  } else {
+    assumptions.push(
+      `Assumed ${DEFAULT_COVER_WIDTH_M}m sheet cover (long-run) — confirm your profile's cover width.`,
+    );
+  }
   if (!isTile) {
     const widthM =
       Number.isFinite(ext.dimensions.width_m ?? NaN) &&

@@ -143,6 +143,22 @@ export function runFencingCalculator(ext: ExtractedExtraction): ScopeResult {
     priceMatchKey: "ready-mix-concrete",
   });
 
+  // Post spacing, rail count and paling width are fixed defaults that drive
+  // the counts and aren't read from the spec yet — flag every line they feed
+  // so a different fence spec is never silently mis-counted.
+  const fenceDefaultNotes = [
+    `Assumed ${DEFAULT_POST_SPACING_M}m post spacing — say e.g. "posts at 2.4m centres" to change it.`,
+    `Assumed ${DEFAULT_RAIL_COUNT} rails per bay.`,
+    `Assumed ${DEFAULT_PALING_WIDTH_MM}mm palings (${DEFAULT_PALING_GAP_MM}mm gap) — state the paling width if different.`,
+  ];
+  assumptions.push(...fenceDefaultNotes);
+  for (const l of lines) {
+    if (l.status === "ok") {
+      l.status = "assumed";
+      l.assumption_flags = [...l.assumption_flags, ...fenceDefaultNotes];
+    }
+  }
+
   const status = worstStatus([
     ...(assumptions.length > 0 ? (["assumed"] as const) : []),
     ...lines.map((l) => l.status),

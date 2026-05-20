@@ -120,6 +120,20 @@ export function runConcreteCalculator(ext: ExtractedExtraction): ScopeResult {
     });
   }
 
+  // Mesh + DPM use standard product coverages that drive sheet/roll counts —
+  // flag them so a different mesh/underlay isn't silently mis-counted.
+  if (planArea > 0) {
+    const coverageNote =
+      "Reinforcing mesh (SE62, 12.5 m²/sheet) and DPM (50 m²/roll) use standard coverages — change if your products differ.";
+    assumptions.push(coverageNote);
+    for (const l of lines) {
+      if (l.id === "concrete-mesh" || l.id === "concrete-poly") {
+        l.status = "assumed";
+        l.assumption_flags = [coverageNote];
+      }
+    }
+  }
+
   const status = worstStatus([
     ...(assumptions.length > 0 ? (["assumed"] as const) : []),
     ...lines.map((l) => l.status),
