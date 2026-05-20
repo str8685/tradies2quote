@@ -21,6 +21,7 @@ import {
   type DeckTakeoffInput,
   type MaterialTakeoffLine,
 } from "../../materialCalculator";
+import { extractDeckBoardWidthMm } from "../../aiTakeoffParser";
 import type {
   ExtractedExtraction,
   ScopeResult,
@@ -33,15 +34,34 @@ export function runDeckCalculator(ext: ExtractedExtraction): ScopeResult {
   const width_m = ext.dimensions.width_m ?? 0;
   const assumptions: string[] = [];
 
+  // Decking board width — from the material spec ("140x32 decking") or an
+  // explicit coverage hint. Drives the lineal-metre count; assuming 90mm
+  // for wide boards over-counts decking by ~50%.
+  const boardWidthMm =
+    extractDeckBoardWidthMm(ext.material_spec ?? "") ??
+    (typeof ext.coverage_mm === "number" &&
+    ext.coverage_mm >= 65 &&
+    ext.coverage_mm <= 205
+      ? Math.max(60, Math.round(ext.coverage_mm - 5))
+      : undefined);
+
   const input: DeckTakeoffInput = {
     deckLengthM: length_m,
     deckWidthM: width_m,
     joistSpacingMm: ext.spacing_mm ?? undefined,
+    boardWidthMm: boardWidthMm ?? undefined,
     wastePercent: ext.waste_percent ?? undefined,
     timberStockLengthM: ext.stock_length_m ?? undefined,
   };
   if (ext.spacing_mm === null || ext.spacing_mm === undefined) {
     assumptions.push("Used default joist spacing 450mm (NZ residential).");
+  }
+  if (boardWidthMm !== undefined && boardWidthMm !== 90) {
+    assumptions.push(`Decking width ${boardWidthMm}mm (from the material spec).`);
+  } else if (boardWidthMm === undefined) {
+    assumptions.push(
+      'Assumed 90mm decking boards — specify e.g. "140mm decking" if wider.',
+    );
   }
   if (ext.waste_percent === null || ext.waste_percent === undefined) {
     assumptions.push("Used default 10% waste.");

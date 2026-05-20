@@ -486,6 +486,62 @@ function extractIncludePiles(text: string): boolean | undefined {
   return undefined;
 }
 
+/**
+ * Decking board width (mm) from the job text.
+ *
+ * Decking-ANCHORED on purpose: a deck job also names joist/bearer sizes
+ * like "140x45", so we only treat a "WxT" (or "Wmm") as the board width
+ * when it sits next to a decking/board reference. Returns undefined when
+ * the width isn't stated — the calculator then keeps its 90mm default and
+ * the caller surfaces that assumption rather than hiding it.
+ *
+ * Catches:  "140x32 decking", "decking 140x32",
+ *           "150x40 ... decking (140x32)", "140mm decking"
+ * Ignores:  "140x45 joists at 450", "100x100 posts"
+ */
+export function extractDeckBoardWidthMm(text: string): number | undefined {
+  if (!text) return undefined;
+  const t = text.toLowerCase();
+  const ok = (w: number) =>
+    Number.isFinite(w) && w >= 60 && w <= 200 ? w : undefined;
+
+  // Dressed size in parens next to a decking mention: "decking (140x32)".
+  const paren = t.match(/decking[^()]{0,40}\((\d{2,3})\s*[x×]\s*\d{2,3}\)/);
+  if (paren) {
+    const w = ok(Number(paren[1]));
+    if (w) return w;
+  }
+
+  // "<WxT> ... decking" (allow grade/treatment tokens in between).
+  const before = t.match(
+    /(\d{2,3})\s*[x×]\s*\d{2,3}\s*(?:rad\s*|h\d(?:\.\d)?\s*|sg\d\s*|gt\s*|premium\s*|kwila\s*|vitex\s*|garapa\s*|pine\s*)*decking/,
+  );
+  if (before) {
+    const w = ok(Number(before[1]));
+    if (w) return w;
+  }
+
+  // "decking ... <WxT>"
+  const after = t.match(
+    /decking\s*(?:boards?\s*)?(?:rad\s*|h\d(?:\.\d)?\s*)*(\d{2,3})\s*[x×]\s*\d{2,3}/,
+  );
+  if (after) {
+    const w = ok(Number(after[1]));
+    if (w) return w;
+  }
+
+  // "140mm decking" / "decking boards 140mm"
+  const mm =
+    t.match(/(\d{2,3})\s*mm\s*(?:wide\s*)?(?:deck(?:ing)?|board)/) ??
+    t.match(/(?:deck(?:ing)?|board)s?\D{0,12}?(\d{2,3})\s*mm/);
+  if (mm) {
+    const w = ok(Number(mm[1]));
+    if (w) return w;
+  }
+
+  return undefined;
+}
+
 function parseDeckDescription(
   description: string,
   options: ParseOptions,
@@ -571,6 +627,22 @@ function parseDeckDescription(
   const waste = extractWastePercent(text);
   if (waste !== undefined) input.wastePercent = waste;
   else if (applyDefaults) input.wastePercent = 10;
+
+  // Decking board width drives the lineal-metre count. When the tradie
+  // states it (e.g. "140x32 decking") we use it; otherwise the calculator
+  // keeps its 90mm default — but we make that ASSUMPTION VISIBLE rather
+  // than silently costing wide boards as narrow ones.
+  const boardWidthMm = extractDeckBoardWidthMm(text);
+  if (boardWidthMm !== undefined) {
+    input.boardWidthMm = boardWidthMm;
+    if (boardWidthMm !== 90) {
+      assumptions.push(`Decking width ${boardWidthMm}mm (read from your description).`);
+    }
+  } else if (applyDefaults) {
+    assumptions.push(
+      'Assumed 90mm decking boards — say e.g. "140mm decking" if yours are wider.',
+    );
+  }
 
   if (input.deckLengthM === undefined || input.deckWidthM === undefined) {
     missingFields.push("Deck length and width.");
