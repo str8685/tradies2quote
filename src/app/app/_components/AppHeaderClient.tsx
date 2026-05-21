@@ -186,7 +186,7 @@ export function AppHeaderClient({
               aria-expanded={hubOpen}
               aria-label="Account hub"
               onClick={() => setHubOpen((v) => !v)}
-              className="inline-flex h-9 items-center justify-center rounded-full border border-ink-700 bg-ink-900/80 px-0.5 transition-colors hover:border-brand"
+              className="t2q-avatar-online inline-flex h-9 items-center justify-center rounded-full border border-ink-700 bg-ink-900/80 px-0.5 transition-colors hover:border-brand"
             >
               {avatarUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
