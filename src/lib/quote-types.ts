@@ -93,6 +93,13 @@ export type QuoteLineItem = {
    * quote_data JSONB; server-side only (never on PublicLineItem).
    */
   warnings?: string[];
+  /**
+   * For supplier-quote (ITM) imports: the line total printed on the
+   * supplier quote, in the quote's ex-GST basis. Read-only SOURCE value the
+   * Review Quote editor reconciles against `line_total` (= qty × unit_price).
+   * Absent on quotes that didn't come from a scanned supplier quote.
+   */
+  source_line_total?: number | null;
 };
 
 /**
@@ -291,6 +298,21 @@ export type QuoteData = {
    * don't need the persisted log).
    */
   chat_history?: unknown;
+  /**
+   * For supplier-quote (ITM) imports: the printed document totals as
+   * scanned, in the quote's ex-GST basis (subtotal/gst/total) plus the
+   * supplier name. Read-only SOURCE values the Review Quote editor
+   * reconciles against the live computed totals. Absent on non-import
+   * quotes — the editor only shows the reconciliation panel when present.
+   */
+  supplier_source?: SupplierSource | null;
+};
+
+export type SupplierSource = {
+  supplier: string | null;
+  subtotal: number | null;
+  gst: number | null;
+  total: number | null;
 };
 
 export type QuoteProfile = {

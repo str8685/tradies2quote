@@ -2,11 +2,13 @@
 
 import { useMemo, useState, useTransition } from "react";
 import {
+  ArrowsClockwise,
   ArrowSquareOut,
   Calculator,
   Plus,
   Sparkle,
   Trash,
+  Warning,
 } from "@phosphor-icons/react/dist/ssr";
 import {
   computeQuoteTotals,
@@ -17,6 +19,7 @@ import {
   round2,
   validUntilDate,
 } from "@/lib/quote-defaults";
+import { validateSupplierQuote } from "@/lib/materials/quoteValidation";
 import type {
   LibraryMaterial,
   QuoteData,
@@ -113,6 +116,56 @@ export function QuoteEditor({
     () => computeQuoteTotals(items, markupPct, taxRate),
     [items, markupPct, taxRate],
   );
+
+  // Supplier-quote reconciliation. Only meaningful for quotes imported from
+  // a scanned supplier (ITM) quote — those carry `supplier_source` totals
+  // and per-line `source_line_total`. Reuses the SAME deterministic
+  // validator the import screen uses so "source vs app" reads identically
+  // on the final Review Quote. Absent on voice/typed/drawing quotes.
+  const supplierSource = initialData.supplier_source ?? null;
+  const hasSupplierSource =
+    !!supplierSource &&
+    (supplierSource.subtotal != null ||
+      supplierSource.gst != null ||
+      supplierSource.total != null ||
+      items.some((it) => it.source_line_total != null));
+
+  const reconciliation = useMemo(() => {
+    if (!hasSupplierSource) return null;
+    return validateSupplierQuote(
+      {
+        supplier: supplierSource?.supplier ?? null,
+        quote_number: null,
+        currency,
+        gst_inclusive: false, // source values are stored ex-GST already
+        items: items.map((it) => ({
+          name: it.description,
+          unit: it.unit,
+          price: Number(it.unit_price) || null,
+          sku: null,
+          quantity: Number(it.quantity) || null,
+          pieces: null,
+          source_line_total: it.source_line_total ?? null,
+          raw_text: null,
+          confidence: 1,
+        })),
+        subtotal: supplierSource?.subtotal ?? null,
+        gst: supplierSource?.gst ?? null,
+        total: supplierSource?.total ?? null,
+        notes: [],
+      },
+      { taxRate: taxRate / 100 },
+    );
+  }, [hasSupplierSource, supplierSource, items, currency, taxRate]);
+
+  /** Snap a line's unit price so its line total matches the supplier source. */
+  function applySupplierLineValue(idx: number) {
+    const it = items[idx];
+    if (!it || it.source_line_total == null) return;
+    const qty = Number(it.quantity);
+    if (!Number.isFinite(qty) || qty <= 0) return;
+    updateItem(idx, { unit_price: round2(it.source_line_total / qty) });
+  }
 
   function updateItem(idx: number, patch: Partial<QuoteLineItem>) {
     setItems((prev) =>
@@ -484,6 +537,125 @@ export function QuoteEditor({
           addLabel="Add line"
           disabled={isAccepted}
         />
+      )}
+
+      {reconciliation && (
+        <section
+          data-testid="quote-supplier-reconcile"
+          className="t2q-card-pro p-5 sm:p-6"
+        >
+          <div className="flex items-center justify-between gap-3">
+            <p className="t2q-section-label-pro">
+              {"// supplier reconciliation"}
+            </p>
+            <span
+              className={`rounded-sm px-2 py-0.5 font-mono text-[9px] uppercase tracking-[0.15em] ${
+                reconciliation.severity === "error"
+                  ? "bg-red-500/15 text-red-300"
+                  : reconciliation.severity === "warning"
+                    ? "bg-hivis/15 text-hivis"
+                    : "bg-emerald-500/15 text-emerald-300"
+              }`}
+            >
+              {reconciliation.severity === "error"
+                ? "doesn't match supplier"
+                : reconciliation.severity === "warning"
+                  ? "check"
+                  : "matches supplier"}
+            </span>
+          </div>
+
+          {(() => {
+            const mismatches = items
+              .map((it, idx) => ({
+                it,
+                idx,
+                check: reconciliation.lines[idx]?.checks[0],
+              }))
+              .filter(
+                (x) =>
+                  x.check &&
+                  x.check.found != null &&
+                  x.check.severity === "error",
+              );
+            if (mismatches.length === 0) return null;
+            return (
+              <ul className="mt-3 space-y-2">
+                {mismatches.map(({ it, idx, check }) => (
+                  <li
+                    key={idx}
+                    className="flex flex-wrap items-center justify-between gap-2 rounded-sm border border-red-500/30 bg-red-500/5 px-3 py-2"
+                  >
+                    <span className="inline-flex min-w-0 flex-1 items-center gap-1.5 text-sm text-white">
+                      <Warning
+                        size={12}
+                        weight="fill"
+                        className="shrink-0 text-red-300"
+                      />
+                      <span className="truncate">{it.description}</span>
+                    </span>
+                    <span className="font-mono text-[11px] tabular-nums text-ink-300">
+                      supplier {formatCurrency(check!.found as number, currency)}{" "}
+                      · app{" "}
+                      {check!.expected != null
+                        ? formatCurrency(check!.expected, currency)
+                        : "—"}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => applySupplierLineValue(idx)}
+                      disabled={isAccepted}
+                      data-testid="reconcile-use-supplier"
+                      className="inline-flex items-center gap-1 font-mono text-[9px] uppercase tracking-[0.15em] text-brand hover:text-white disabled:opacity-50"
+                    >
+                      <ArrowsClockwise size={10} weight="bold" />
+                      use supplier value
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            );
+          })()}
+
+          <div className="mt-3 space-y-1.5 border-t border-white/5 pt-3">
+            {reconciliation.summary.map((c) => {
+              const bad = c.severity === "error";
+              const warn = c.severity === "warning";
+              return (
+                <div
+                  key={c.field}
+                  className="flex items-center justify-between gap-3 text-sm"
+                >
+                  <span className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-400">
+                    {c.field}
+                  </span>
+                  <div className="flex items-center gap-3 tabular-nums">
+                    <span className="text-ink-300">
+                      supplier{" "}
+                      {c.found != null ? formatCurrency(c.found, currency) : "—"}
+                    </span>
+                    <span className={bad ? "text-red-300" : "text-white"}>
+                      app{" "}
+                      {c.expected != null
+                        ? formatCurrency(c.expected, currency)
+                        : "—"}
+                    </span>
+                    {bad && (
+                      <span className="rounded-sm bg-red-500/15 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.15em] text-red-300">
+                        mismatch
+                      </span>
+                    )}
+                    {warn && (
+                      <span className="rounded-sm bg-hivis/15 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.15em] text-hivis">
+                        check
+                      </span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
       )}
 
       <section data-testid="quote-totals" className="t2q-card-pro p-5 sm:p-6">

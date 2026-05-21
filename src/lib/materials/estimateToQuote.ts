@@ -201,6 +201,12 @@ export function buildMirrorQuoteLines(
         is_missing_price: unit_price === 0,
         is_calculated_takeoff: false,
         price_source: unit_price > 0 ? "supplier_import" : "missing_price",
+        // Printed line total in the quote's ex-GST basis, kept as the
+        // read-only supplier source for the Review Quote reconciliation.
+        source_line_total:
+          it.source_line_total != null
+            ? toExGst(it.source_line_total, gstInclusive, taxRate)
+            : null,
       };
       return line;
     });

@@ -8,9 +8,10 @@ import {
   buildMirrorQuoteLines,
   computeQuoteTotals,
 } from "@/lib/materials/estimateToQuote";
-import type {
-  ExtractedSupplierItem,
-  SupplierQuoteExtraction,
+import {
+  toExGst,
+  type ExtractedSupplierItem,
+  type SupplierQuoteExtraction,
 } from "@/lib/materials/quoteExtraction";
 import { validateSupplierQuote } from "@/lib/materials/quoteValidation";
 import type { QuoteData } from "@/lib/quote-types";
@@ -544,6 +545,17 @@ export async function createQuoteFromScan(
     tax_rate: taxRate,
     terms: "",
     notes: [],
+    // Read-only supplier source totals (ex-GST basis, matching the quote)
+    // so the Review Quote editor can reconcile against the scanned quote.
+    supplier_source: {
+      supplier: supplierName,
+      subtotal:
+        meta?.subtotal != null
+          ? toExGst(meta.subtotal, meta?.gstInclusive ?? false, taxRate / 100)
+          : null,
+      gst: meta?.gst ?? null,
+      total: meta?.total ?? null,
+    },
   };
 
   const { data, error } = await supabase
