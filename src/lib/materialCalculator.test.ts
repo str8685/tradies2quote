@@ -169,6 +169,38 @@ describe("calculateDeckTakeoff", () => {
     expect(getMaterial(r, "joist-hanger-nails")?.quantity).toBe(1);
   });
 
+  it("6m × 4m deck — deterministic takeoff (no AI)", () => {
+    const r = calculateDeckTakeoff({ deckLengthM: 6, deckWidthM: 4 });
+    expect(r.warnings).toEqual([]);
+    expect(r.summary.netWallAreaM2).toBeCloseTo(24, 5);
+
+    // joistCount = ceil(6000/450) + 1 = 15; linear = 15 × 4 = 60
+    // joistLengths = ceil(60 × 1.1 / 4.8) = ceil(13.75) = 14
+    expect(getMaterial(r, "deck-joists")?.quantity).toBe(14);
+
+    // effectiveSpan = 4 - 0.2 = 3.8; intermediates = max(ceil(3.8/1.8)-1,0) = 2
+    // bearerRows = 2 + 2 = 4; linear = 4 × 6 = 24
+    // bearerLengths = ceil(24 × 1.1 / 4.8) = ceil(5.5) = 6
+    expect(getMaterial(r, "deck-bearers")?.quantity).toBe(6);
+
+    // boardRows = ceil(4000/95) = 43; linearM = 43 × 6 × 1.1 = 283.8
+    expect(getMaterial(r, "decking-boards")?.quantity).toBeCloseTo(283.8, 2);
+
+    // joist hangers = joistCount = 15
+    expect(getMaterial(r, "joist-hangers")?.quantity).toBe(15);
+
+    // pilesPerRow = 2 + max(ceil(5.8/1.8)-1,0) = 5; piles = bearerRows(4) × 5 = 20
+    expect(getMaterial(r, "deck-piles")?.quantity).toBe(20);
+
+    // screws total = ceil(24 × 30 × 1.1) = 792 → packs = ceil(792/500) = 2
+    expect(getMaterial(r, "deck-screws")?.quantity).toBe(2);
+    expect(getMaterial(r, "deck-screws")?.unit).toBe("pack");
+
+    // Determinism: same inputs → identical output.
+    const again = calculateDeckTakeoff({ deckLengthM: 6, deckWidthM: 4 });
+    expect(again.materials).toEqual(r.materials);
+  });
+
   it("4m × 2m deck — smaller case", () => {
     const r = calculateDeckTakeoff({ deckLengthM: 4, deckWidthM: 2 });
     expect(r.warnings).toEqual([]);

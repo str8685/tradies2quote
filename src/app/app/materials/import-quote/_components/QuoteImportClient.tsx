@@ -1,9 +1,10 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
+  ArrowsClockwise,
   Camera,
   Check,
   CheckCircle,
@@ -12,6 +13,9 @@ import {
   Warning,
 } from "@phosphor-icons/react";
 import { toExGst } from "@/lib/materials/quoteExtraction";
+import type { SupplierQuoteExtraction } from "@/lib/materials/quoteExtraction";
+import { validateSupplierQuote } from "@/lib/materials/quoteValidation";
+import { formatCurrency, round2 } from "@/lib/quote-defaults";
 import { TapeMeasureProgress } from "@/app/app/_components/TapeMeasureProgress";
 import { prepareScanImage } from "@/lib/scanImage";
 import {
@@ -38,11 +42,14 @@ type ReviewRow = {
   quantity: string; // kept as string for the input; parsed on use
   price: string; // kept as string for the input; parsed on save
   sku: string | null;
+  /** Printed line total as scanned — read-only SOURCE for reconciliation. */
+  sourceLineTotal: number | null;
   lowConfidence: boolean;
 };
 
 type ExtractResponse = {
   supplier: string | null;
+  quote_number?: string | null;
   currency: string | null;
   gst_inclusive: boolean | null;
   items: Array<{
@@ -51,9 +58,13 @@ type ExtractResponse = {
     quantity?: number | null;
     pieces?: number | null;
     price: number | null;
+    line_total?: number | null;
     sku: string | null;
     confidence: number;
   }>;
+  subtotal?: number | null;
+  gst?: number | null;
+  total?: number | null;
   notes: string[];
 };
 
@@ -69,6 +80,14 @@ export function QuoteImportClient({ currency }: { currency: string }) {
   const [gstInclusive, setGstInclusive] = useState<boolean>(false);
   const [rows, setRows] = useState<ReviewRow[]>([]);
   const [notes, setNotes] = useState<string[]>([]);
+  // Document-level SOURCE totals as scanned (read-only) — reconciled against
+  // the figures the app recomputes from the lines.
+  const [srcSubtotal, setSrcSubtotal] = useState<number | null>(null);
+  const [srcGst, setSrcGst] = useState<number | null>(null);
+  const [srcTotal, setSrcTotal] = useState<number | null>(null);
+  // The tradie's explicit "I've checked these, create anyway" override that
+  // unblocks quote creation when reconciliation flags an error.
+  const [acknowledged, setAcknowledged] = useState<boolean>(false);
   const [result, setResult] = useState<{
     inserted: number;
     updated: number;
@@ -131,6 +150,10 @@ export function QuoteImportClient({ currency }: { currency: string }) {
       setSupplier(data.supplier ?? "");
       setGstInclusive(data.gst_inclusive === true);
       setNotes(data.notes ?? []);
+      setSrcSubtotal(data.subtotal ?? null);
+      setSrcGst(data.gst ?? null);
+      setSrcTotal(data.total ?? null);
+      setAcknowledged(false);
       setRows(
         data.items.map((it) => ({
           id: crypto.randomUUID(),
@@ -145,6 +168,7 @@ export function QuoteImportClient({ currency }: { currency: string }) {
                 : "",
           price: it.price !== null ? String(it.price) : "",
           sku: it.sku,
+          sourceLineTotal: it.line_total ?? null,
           lowConfidence: it.confidence < 0.6,
         })),
       );
@@ -171,6 +195,57 @@ export function QuoteImportClient({ currency }: { currency: string }) {
   // A quote mirrors every ticked, named line (a $0 line is allowed — the
   // tradie can price it on the review screen).
   const createable = rows.filter((r) => r.include && r.name.trim());
+
+  // Live reconciliation over the lines that will form the quote, using the
+  // SAME deterministic validator the server runs. Drives the per-line +
+  // summary badges and whether quote creation is blocked.
+  const { validation, lineCheckById } = useMemo(() => {
+    const createableV = rows.filter((r) => r.include && r.name.trim());
+    const ext: SupplierQuoteExtraction = {
+      supplier: supplier.trim() || null,
+      quote_number: null,
+      currency,
+      gst_inclusive: gstInclusive,
+      items: createableV.map((r) => ({
+        name: r.name.trim(),
+        unit: r.unit.trim() || "each",
+        price:
+          Number.isFinite(Number(r.price)) && Number(r.price) > 0
+            ? Number(r.price)
+            : null,
+        sku: r.sku,
+        quantity:
+          Number.isFinite(Number(r.quantity)) && Number(r.quantity) > 0
+            ? Number(r.quantity)
+            : null,
+        pieces: null,
+        source_line_total: r.sourceLineTotal,
+        raw_text: null,
+        confidence: 1,
+      })),
+      subtotal: srcSubtotal,
+      gst: srcGst,
+      total: srcTotal,
+      notes: [],
+    };
+    const report = validateSupplierQuote(ext, { taxRate: 0.15 });
+    const map = new Map(
+      createableV.map((r, i) => [r.id, report.lines[i]] as const),
+    );
+    return { validation: report, lineCheckById: map };
+  }, [rows, supplier, currency, gstInclusive, srcSubtotal, srcGst, srcTotal]);
+
+  // Block quote creation while an error-level mismatch is unacknowledged.
+  const blocked = validation.blocking && !acknowledged;
+
+  /** Snap a line's unit price so its line total equals the printed source. */
+  function applySupplierValue(id: string) {
+    const r = rows.find((x) => x.id === id);
+    if (!r || r.sourceLineTotal == null) return;
+    const qty = Number(r.quantity);
+    if (!Number.isFinite(qty) || qty <= 0) return;
+    patchRow(id, { price: String(round2(r.sourceLineTotal / qty)) });
+  }
 
   async function save() {
     if (includable.length === 0) {
@@ -214,6 +289,7 @@ export function QuoteImportClient({ currency }: { currency: string }) {
       unit: r.unit.trim() || "each",
       quantity: Number(r.quantity) || 0,
       price: Number(r.price) || 0,
+      line_total: r.sourceLineTotal,
     }));
     if (quoteLines.length === 0) {
       setError("Tick at least one line with a name to build a quote.");
@@ -225,6 +301,10 @@ export function QuoteImportClient({ currency }: { currency: string }) {
       const res = await createQuoteFromScan(quoteLines, {
         supplier: supplier.trim() || null,
         gstInclusive,
+        subtotal: srcSubtotal,
+        gst: srcGst,
+        total: srcTotal,
+        acknowledge: acknowledged,
       });
       if (res.error || !res.id) {
         setError(res.error ?? "Could not create the quote.");
@@ -471,12 +551,133 @@ export function QuoteImportClient({ currency }: { currency: string }) {
                           Add a price above zero, or untick this line.
                         </p>
                       )}
+                      {(() => {
+                        const check = lineCheckById.get(r.id)?.checks[0];
+                        if (!r.include || !check || check.found == null) {
+                          return null;
+                        }
+                        const mismatch = check.severity === "error";
+                        return (
+                          <div
+                            data-testid="quote-import-line-reconcile"
+                            className={`mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] ${
+                              mismatch ? "text-red-300" : "text-ink-400"
+                            }`}
+                          >
+                            <span>
+                              Supplier:{" "}
+                              <span className="tabular-nums text-ink-200">
+                                {formatCurrency(check.found, currency)}
+                              </span>
+                            </span>
+                            <span>
+                              App (qty×price):{" "}
+                              <span className="tabular-nums">
+                                {check.expected != null
+                                  ? formatCurrency(check.expected, currency)
+                                  : "—"}
+                              </span>
+                            </span>
+                            {mismatch && (
+                              <>
+                                <span className="inline-flex items-center gap-1 rounded-sm bg-red-500/15 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.15em] text-red-300">
+                                  <Warning size={10} weight="fill" />
+                                  mismatch
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => applySupplierValue(r.id)}
+                                  data-testid="quote-import-use-supplier"
+                                  className="inline-flex items-center gap-1 font-mono text-[9px] uppercase tracking-[0.15em] text-brand hover:text-brand-300"
+                                >
+                                  <ArrowsClockwise size={10} weight="bold" />
+                                  use supplier value
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        );
+                      })()}
                     </div>
                   </div>
                 </li>
               );
             })}
           </ul>
+
+          {(srcSubtotal != null || srcGst != null || srcTotal != null) && (
+            <div
+              className="t2q-card-pro p-4 sm:p-5"
+              data-testid="quote-import-reconcile"
+            >
+              <div className="font-mono text-[10px] uppercase tracking-[0.25em] text-brand">
+                {"// reconciliation — supplier vs app"}
+              </div>
+              <div className="mt-3 space-y-1.5">
+                {validation.summary.map((c) => {
+                  const bad = c.severity === "error";
+                  const warn = c.severity === "warning";
+                  return (
+                    <div
+                      key={c.field}
+                      className="flex items-center justify-between gap-3 text-sm"
+                    >
+                      <span className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-400">
+                        {c.field}
+                      </span>
+                      <div className="flex items-center gap-3 tabular-nums">
+                        <span className="text-ink-300">
+                          supplier{" "}
+                          {c.found != null
+                            ? formatCurrency(c.found, currency)
+                            : "—"}
+                        </span>
+                        <span className={bad ? "text-red-300" : "text-white"}>
+                          app{" "}
+                          {c.expected != null
+                            ? formatCurrency(c.expected, currency)
+                            : "—"}
+                        </span>
+                        {bad && (
+                          <span className="rounded-sm bg-red-500/15 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.15em] text-red-300">
+                            mismatch
+                          </span>
+                        )}
+                        {warn && (
+                          <span className="rounded-sm bg-hivis/15 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.15em] text-hivis">
+                            check
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {validation.blocking && (
+            <div
+              className="rounded-sm border border-red-500/50 bg-red-500/10 p-3"
+              data-testid="quote-import-block"
+            >
+              <p className="text-sm text-red-200">
+                Some numbers don&rsquo;t reconcile with the supplier quote
+                (flagged above). Fix them — or tap &ldquo;use supplier
+                value&rdquo; — then create.
+              </p>
+              <label className="mt-2 inline-flex cursor-pointer items-center gap-2 text-xs text-ink-100">
+                <input
+                  type="checkbox"
+                  checked={acknowledged}
+                  onChange={(e) => setAcknowledged(e.target.checked)}
+                  className="h-4 w-4 accent-brand"
+                  data-testid="quote-import-acknowledge"
+                />
+                I&rsquo;ve checked these — create anyway
+              </label>
+            </div>
+          )}
 
           <div className="sticky bottom-2 z-10 flex flex-wrap items-center gap-3 rounded-sm border border-ink-700 bg-ink-950/95 p-3 shadow-lg">
             <button
@@ -485,7 +686,8 @@ export function QuoteImportClient({ currency }: { currency: string }) {
               disabled={
                 phase === "creating" ||
                 phase === "saving" ||
-                createable.length === 0
+                createable.length === 0 ||
+                blocked
               }
               data-testid="quote-import-create"
               className="t2q-btn-primary-pro inline-flex h-11 px-5 disabled:cursor-not-allowed disabled:opacity-50"

@@ -299,6 +299,13 @@ export async function POST(request: NextRequest) {
 
   const parsedTakeoff = parseTakeoffDescription(transcript);
   const useCalculator = canRunCalculator(parsedTakeoff);
+  // A drawing/takeoff scan always stamps its transcript with structured
+  // markers (ScanPanel emits [T2Q_TIMBER] for every job type, [T2Q_PLAN]
+  // for deck/framing). For these inputs the deterministic calculator /
+  // orchestrator is the ONLY source of material quantities — AI-estimated
+  // material lines are dropped below so no AI-guessed quantity reaches the
+  // final quote. (Voice/typed quotes have no marker and are unaffected.)
+  const isDrawing = /\[T2Q_(?:PLAN|TIMBER)\]/i.test(transcript);
 
   // Wave 44 — run the new takeoff orchestrator alongside the legacy
   // parser. The orchestrator covers scopes the legacy parser doesn't
@@ -582,6 +589,13 @@ export async function POST(request: NextRequest) {
 
   const aiItems: QuoteLineItem[] = [];
   for (const it of parsed.line_items) {
+    // Drawing/takeoff inputs: never let an AI-estimated MATERIAL quantity
+    // into the final quote. Only the deterministic calculator/orchestrator
+    // produces material lines here. AI labour/other (scope the LLM is
+    // summarising, not a measured quantity) is still allowed through.
+    if (isDrawing && it.type === "material") {
+      continue;
+    }
     if (
       useCalculator &&
       it.type === "material" &&

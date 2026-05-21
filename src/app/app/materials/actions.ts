@@ -8,7 +8,11 @@ import {
   buildMirrorQuoteLines,
   computeQuoteTotals,
 } from "@/lib/materials/estimateToQuote";
-import type { ExtractedSupplierItem } from "@/lib/materials/quoteExtraction";
+import type {
+  ExtractedSupplierItem,
+  SupplierQuoteExtraction,
+} from "@/lib/materials/quoteExtraction";
+import { validateSupplierQuote } from "@/lib/materials/quoteValidation";
 import type { QuoteData } from "@/lib/quote-types";
 import type { ActionResult } from "./_state";
 
@@ -411,8 +415,17 @@ export type ScanQuoteLine = {
 
 export async function createQuoteFromScan(
   lines: ScanQuoteLine[],
-  meta: { supplier: string | null; gstInclusive: boolean },
-): Promise<{ id?: string; error?: string }> {
+  meta: {
+    supplier: string | null;
+    gstInclusive: boolean;
+    /** Printed document totals as scanned (read-only source) for reconciliation. */
+    subtotal?: number | null;
+    gst?: number | null;
+    total?: number | null;
+    /** Tradie's explicit "create anyway" override for a flagged mismatch. */
+    acknowledge?: boolean;
+  },
+): Promise<{ id?: string; error?: string; blocked?: boolean }> {
   const supabase = await createClient();
   const {
     data: { user },
@@ -458,6 +471,43 @@ export async function createQuoteFromScan(
     .filter((i) => i.name.length > 0);
   if (items.length === 0) {
     return { error: "No valid lines to turn into a quote." };
+  }
+
+  // Deterministic reconciliation — the server is the authority for money.
+  // Block creation when the scanned totals don't reconcile with the lines,
+  // unless the tradie has explicitly acknowledged the mismatch.
+  const extraction: SupplierQuoteExtraction = {
+    supplier: meta?.supplier ?? null,
+    quote_number: null,
+    currency,
+    gst_inclusive: meta?.gstInclusive ?? false,
+    items,
+    subtotal: meta?.subtotal ?? null,
+    gst: meta?.gst ?? null,
+    total: meta?.total ?? null,
+    notes: [],
+  };
+  const validation = validateSupplierQuote(extraction, {
+    taxRate: taxRate / 100,
+  });
+  console.log("[import-quote] validation", {
+    userId: user.id,
+    severity: validation.severity,
+    blocking: validation.blocking,
+    acknowledged: meta?.acknowledge ?? false,
+    recomputed: validation.recomputed,
+    source: {
+      subtotal: meta?.subtotal ?? null,
+      gst: meta?.gst ?? null,
+      total: meta?.total ?? null,
+    },
+  });
+  if (validation.blocking && !meta?.acknowledge) {
+    return {
+      blocked: true,
+      error:
+        "The scanned totals don't reconcile with the line items. Fix the flagged lines (or tap “use supplier value”), then create again.",
+    };
   }
 
   const lineItems = buildMirrorQuoteLines(items, {
