@@ -123,6 +123,7 @@ async function DashboardData({
     { data: profile },
     { count: materialsCount },
     { data: upcomingRows },
+    { data: noteRows },
   ] = await Promise.all([
       supabase
         .from("quotes")
@@ -171,6 +172,14 @@ async function DashboardData({
         .not("scheduled_for", "is", null)
         .order("scheduled_for", { ascending: true })
         .limit(200),
+      // Personal calendar notes (calendar_notes) — owner's own day-notes
+      // shown alongside jobs on the dashboard calendar.
+      supabase
+        .from("calendar_notes")
+        .select("id, note_date, body")
+        .eq("user_id", userId)
+        .order("created_at", { ascending: true })
+        .limit(500),
     ]);
   const businessNameMissing =
     !profile?.business_name ||
@@ -216,6 +225,12 @@ async function DashboardData({
       currency: (q.currency as string) ?? "NZD",
     };
   });
+
+  const calendarNotes = (noteRows ?? []).map((n) => ({
+    id: n.id,
+    date: (n.note_date as string).slice(0, 10),
+    body: n.body as string,
+  }));
 
   return (
     <>
@@ -308,7 +323,11 @@ async function DashboardData({
           secondary KPI row (Quotes this month + Total quoted) keeps
           the Wave 10.5 honest-numbers idea alive without taking up
           screen-space the lifecycle tiles need. */}
-      <ScheduleCalendar jobs={scheduledJobs} todayISO={todayISO} />
+      <ScheduleCalendar
+        jobs={scheduledJobs}
+        notes={calendarNotes}
+        todayISO={todayISO}
+      />
 
       <section
         data-testid="dashboard-stats"

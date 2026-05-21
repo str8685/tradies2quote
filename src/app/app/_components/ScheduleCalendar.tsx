@@ -1,18 +1,24 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
-import { CaretLeft, CaretRight } from "@phosphor-icons/react";
+import { useRouter } from "next/navigation";
+import { CaretLeft, CaretRight, Plus, X } from "@phosphor-icons/react";
 import { formatCurrency } from "@/lib/quote-defaults";
+import {
+  addCalendarNote,
+  deleteCalendarNote,
+} from "./calendar-notes-actions";
 
 /**
- * Dashboard month calendar of scheduled jobs.
+ * Dashboard month calendar of scheduled jobs + personal day-notes.
  *
- * Buckets `jobs` by their `date` (YYYY-MM-DD), renders a Monday-first month
- * grid with a dot on any day that has work, lets the tradie page across
- * months, and shows the selected day's jobs beneath the grid. `todayISO`
- * comes from the server so SSR and the client agree on the highlighted /
- * default-selected cell (no hydration drift).
+ * Buckets `jobs` and `notes` by their `date` (YYYY-MM-DD), renders a
+ * Monday-first month grid with a brand dot on days that have a job and a
+ * hi-vis dot on days that have a note, lets the tradie page across months,
+ * and shows the selected day's jobs + notes beneath the grid (with an
+ * add-note field). `todayISO` comes from the server so SSR and the client
+ * agree on the highlighted / default-selected cell (no hydration drift).
  */
 export type CalendarJob = {
   id: string;
@@ -21,6 +27,12 @@ export type CalendarJob = {
   jobSummary: string;
   total: number;
   currency: string;
+};
+
+export type CalendarNote = {
+  id: string;
+  date: string;
+  body: string;
 };
 
 const WEEKDAYS = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"];
@@ -49,12 +61,19 @@ function longDate(dateKey: string): string {
 
 export function ScheduleCalendar({
   jobs,
+  notes,
   todayISO,
 }: {
   jobs: CalendarJob[];
+  notes: CalendarNote[];
   todayISO: string;
 }) {
-  const byDay = useMemo(() => {
+  const router = useRouter();
+  const [pending, startTransition] = useTransition();
+  const [draft, setDraft] = useState("");
+  const [error, setError] = useState<string | null>(null);
+
+  const jobsByDay = useMemo(() => {
     const map = new Map<string, CalendarJob[]>();
     for (const j of jobs) {
       const k = (j.date ?? "").slice(0, 10);
@@ -65,6 +84,18 @@ export function ScheduleCalendar({
     }
     return map;
   }, [jobs]);
+
+  const notesByDay = useMemo(() => {
+    const map = new Map<string, CalendarNote[]>();
+    for (const n of notes) {
+      const k = (n.date ?? "").slice(0, 10);
+      if (!k) continue;
+      const arr = map.get(k);
+      if (arr) arr.push(n);
+      else map.set(k, [n]);
+    }
+    return map;
+  }, [notes]);
 
   const [ty, tm] = useMemo(() => {
     const [y, m] = todayISO.split("-").map(Number);
@@ -87,7 +118,8 @@ export function ScheduleCalendar({
     return { cells: list, year: y, month: m };
   }, [view]);
 
-  const selectedJobs = byDay.get(selected) ?? [];
+  const selectedJobs = jobsByDay.get(selected) ?? [];
+  const selectedNotes = notesByDay.get(selected) ?? [];
 
   function step(delta: number) {
     setView((v) => {
@@ -95,6 +127,34 @@ export function ScheduleCalendar({
       if (next < 0) return { y: v.y - 1, m: 11 };
       if (next > 11) return { y: v.y + 1, m: 0 };
       return { y: v.y, m: next };
+    });
+  }
+
+  function onAdd() {
+    const body = draft.trim();
+    if (!body || pending) return;
+    setError(null);
+    startTransition(async () => {
+      const res = await addCalendarNote(selected, body);
+      if ("error" in res) {
+        setError(res.error);
+        return;
+      }
+      setDraft("");
+      router.refresh();
+    });
+  }
+
+  function onDelete(id: string) {
+    if (pending) return;
+    setError(null);
+    startTransition(async () => {
+      const res = await deleteCalendarNote(id);
+      if ("error" in res) {
+        setError(res.error);
+        return;
+      }
+      router.refresh();
     });
   }
 
@@ -140,7 +200,8 @@ export function ScheduleCalendar({
         ))}
         {cells.map((c, i) => {
           if (!c) return <div key={`b${i}`} aria-hidden="true" />;
-          const has = byDay.has(c.dateKey);
+          const hasJob = jobsByDay.has(c.dateKey);
+          const hasNote = notesByDay.has(c.dateKey);
           const isToday = c.dateKey === todayISO;
           const isSel = c.dateKey === selected;
           return (
@@ -148,7 +209,7 @@ export function ScheduleCalendar({
               key={c.dateKey}
               type="button"
               onClick={() => setSelected(c.dateKey)}
-              aria-label={`${c.day}${has ? " — has jobs" : ""}`}
+              aria-label={`${c.day}${hasJob ? " — has jobs" : ""}${hasNote ? " — has notes" : ""}`}
               aria-pressed={isSel}
               data-testid={`cal-day-${c.dateKey}`}
               className={[
@@ -161,14 +222,21 @@ export function ScheduleCalendar({
               ].join(" ")}
             >
               {c.day}
-              {has ? (
-                <span
-                  aria-hidden="true"
-                  className={[
-                    "absolute bottom-1 h-1 w-1 rounded-full",
-                    isSel ? "bg-ink-900" : "bg-brand",
-                  ].join(" ")}
-                />
+              {hasJob || hasNote ? (
+                <span className="absolute bottom-1 flex items-center gap-0.5">
+                  {hasJob ? (
+                    <span
+                      aria-hidden="true"
+                      className={`h-1 w-1 rounded-full ${isSel ? "bg-ink-900" : "bg-brand"}`}
+                    />
+                  ) : null}
+                  {hasNote ? (
+                    <span
+                      aria-hidden="true"
+                      className={`h-1 w-1 rounded-full ${isSel ? "bg-ink-900/70" : "bg-hivis"}`}
+                    />
+                  ) : null}
+                </span>
               ) : null}
             </button>
           );
@@ -179,14 +247,8 @@ export function ScheduleCalendar({
         <p className="text-xs font-semibold uppercase tracking-wide text-brand">
           {longDate(selected)}
         </p>
-        {selectedJobs.length === 0 ? (
-          <p
-            data-testid="calendar-day-empty"
-            className="mt-2 text-sm text-ink-400"
-          >
-            No jobs scheduled. Accept a quote, then set a job date to add one.
-          </p>
-        ) : (
+
+        {selectedJobs.length > 0 ? (
           <ul className="mt-3 space-y-2">
             {selectedJobs.map((j) => (
               <li key={j.id}>
@@ -210,7 +272,73 @@ export function ScheduleCalendar({
               </li>
             ))}
           </ul>
-        )}
+        ) : null}
+
+        {/* Notes for the selected day */}
+        <div className="mt-3 space-y-2">
+          {selectedNotes.map((n) => (
+            <div
+              key={n.id}
+              data-testid="calendar-note"
+              className="flex items-start justify-between gap-2 rounded-xl border border-hivis/20 bg-hivis/[0.06] px-3.5 py-2.5"
+            >
+              <p className="min-w-0 flex-1 whitespace-pre-wrap break-words text-sm text-ink-100">
+                {n.body}
+              </p>
+              <button
+                type="button"
+                aria-label="Delete note"
+                disabled={pending}
+                onClick={() => onDelete(n.id)}
+                className="grid h-7 w-7 shrink-0 place-items-center rounded-full text-ink-400 hover:bg-white/10 hover:text-white disabled:opacity-50"
+              >
+                <X size={13} weight="bold" />
+              </button>
+            </div>
+          ))}
+
+          {selectedJobs.length === 0 && selectedNotes.length === 0 ? (
+            <p className="text-sm text-ink-400">
+              Nothing on this day yet. Add a note below, or schedule a job
+              from an accepted quote.
+            </p>
+          ) : null}
+
+          <div className="flex items-center gap-2 pt-1">
+            <input
+              type="text"
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  onAdd();
+                }
+              }}
+              maxLength={500}
+              placeholder="Add a note for this day…"
+              aria-label="New note"
+              data-testid="calendar-note-input"
+              className="h-10 flex-1 rounded-full border border-ink-600 bg-ink-900 px-4 text-sm text-white placeholder:text-ink-500 outline-none focus:border-brand"
+            />
+            <button
+              type="button"
+              onClick={onAdd}
+              disabled={pending || !draft.trim()}
+              aria-label="Add note"
+              data-testid="calendar-note-add"
+              className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-brand text-ink-900 disabled:opacity-50"
+            >
+              <Plus size={18} weight="bold" />
+            </button>
+          </div>
+
+          {error ? (
+            <p role="alert" className="text-xs text-red-300">
+              {error}
+            </p>
+          ) : null}
+        </div>
       </div>
     </section>
   );
