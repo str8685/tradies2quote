@@ -17,6 +17,13 @@ import {
   type HealthStatus,
 } from "@/lib/health-checks";
 import { DeviceInfoClient } from "./_components/DeviceInfoClient";
+import { buildQuoteTrace, type QuoteTrace } from "@/lib/quoteTrace";
+import { quoteNumber } from "@/lib/quote-defaults";
+import type { QuoteData } from "@/lib/quote-types";
+import {
+  QuoteTracePanel,
+  type RecentTraceRow,
+} from "./_components/QuoteTracePanel";
 
 export const metadata: Metadata = {
   title: "Debug",
@@ -36,7 +43,11 @@ export const dynamic = "force-dynamic";
  * anything else that could leak into a screenshot. The health-checks
  * module returns only `{ status: "ok" | "missing" | "error", detail }`.
  */
-export default async function DebugPage() {
+export default async function DebugPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ quote?: string }>;
+}) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -51,6 +62,49 @@ export default async function DebugPage() {
   const checks = await getAllHealthChecks();
   const build = getBuildIdentity();
   const agents = getAgentReadiness();
+
+  // Quote traceability (Phase 8). Recent quotes for the picker (a tiny
+  // trace each for the blocked/ok badge), plus the full trace for the
+  // selected quote. Owner-scoped reads only.
+  const sp = await searchParams;
+  const selectedQuoteId = typeof sp.quote === "string" ? sp.quote : null;
+
+  const { data: recentRows } = await supabase
+    .from("quotes")
+    .select("id, created_at, quote_data, status")
+    .eq("user_id", user.id)
+    .is("deleted_at", null)
+    .order("created_at", { ascending: false })
+    .limit(8);
+  const recentTraces: RecentTraceRow[] = (recentRows ?? []).map((q) => {
+    const qd = (q.quote_data ?? null) as QuoteData | null;
+    const tr = qd ? buildQuoteTrace(qd) : null;
+    return {
+      id: q.id as string,
+      number: quoteNumber(q.id as string, q.created_at as string),
+      status: (q.status as string) ?? "draft",
+      blocked: tr ? !tr.send.can_send : false,
+      issueCount: tr
+        ? tr.lines.reduce((n, l) => n + l.issues.length, 0)
+        : 0,
+    };
+  });
+
+  let selectedTrace: QuoteTrace | null = null;
+  let traceCurrency = "NZD";
+  if (selectedQuoteId) {
+    const { data: q } = await supabase
+      .from("quotes")
+      .select("id, quote_data")
+      .eq("id", selectedQuoteId)
+      .eq("user_id", user.id)
+      .maybeSingle();
+    const qd = (q?.quote_data ?? null) as QuoteData | null;
+    if (qd) {
+      selectedTrace = buildQuoteTrace(qd);
+      traceCurrency = qd.currency || "NZD";
+    }
+  }
 
   return (
     <div className="min-h-screen text-white">
@@ -211,6 +265,14 @@ export default async function DebugPage() {
             ))}
           </ul>
         </section>
+
+        {/* Quote traceability — Phase 8 */}
+        <QuoteTracePanel
+          recent={recentTraces}
+          selectedId={selectedQuoteId}
+          trace={selectedTrace}
+          currency={traceCurrency}
+        />
 
         {/* Client-side device info — runs on the client only */}
         <DeviceInfoClient />
