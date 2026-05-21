@@ -117,6 +117,16 @@ export type QuoteLineItem = {
    * engine (e.g. "line_total≠qty×price", "price_derived_from_total").
    */
   validation_flags?: string[];
+  /**
+   * PHASE 7 — provenance of this line's QUANTITY, plus whether the tradie
+   * has confirmed it. Final-send rule: an AI-supplied material quantity
+   * (`quantity_source === "ai"`) may NOT be sent until it is confirmed
+   * (`quantity_confirmed === true`), edited (→ "user"), or replaced with a
+   * deterministic calculator result (→ "calculator"). Calculator / supplier
+   * / user quantities are trusted. Absent = legacy (treated as not "ai").
+   */
+  quantity_source?: "ai" | "calculator" | "supplier" | "user";
+  quantity_confirmed?: boolean;
 };
 
 /**

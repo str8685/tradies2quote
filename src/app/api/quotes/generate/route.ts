@@ -307,6 +307,32 @@ export async function POST(request: NextRequest) {
   // final quote. (Voice/typed quotes have no marker and are unaffected.)
   const isDrawing = /\[T2Q_(?:PLAN|TIMBER)\]/i.test(transcript);
 
+  // PHASE 7 — a takeoff scope the calculator/orchestrator could not compute
+  // (missing / uncertain / impossible dimensions) becomes an explicit
+  // BLOCKED line rather than a silent gap or an AI-guessed quantity. The
+  // send gate hard-blocks any blocked line and the editor surfaces it —
+  // never hidden.
+  const blockedTakeoffLine = (
+    scope: string,
+    reasons: string[],
+  ): QuoteLineItem => ({
+    type: "material",
+    description: `${scope} takeoff — needs dimensions before it can be quoted`,
+    quantity: 0,
+    unit: "each",
+    unit_price: 0,
+    line_total: 0,
+    library_id: null,
+    is_ai_estimated: false,
+    is_missing_price: false,
+    is_calculated_takeoff: false,
+    takeoff_status: "blocked",
+    takeoff_flags:
+      reasons.length > 0
+        ? reasons
+        : ["Needs more info before it can be quoted."],
+  });
+
   // Wave 44 — run the new takeoff orchestrator alongside the legacy
   // parser. The orchestrator covers scopes the legacy parser doesn't
   // (roofing, fencing, concrete, insulation, fixing, generic) and
@@ -509,6 +535,7 @@ export async function POST(request: NextRequest) {
         is_ai_estimated: false,
         is_missing_price: !match,
         is_calculated_takeoff: true,
+        quantity_source: "calculator",
         formula: m.formula,
         price_match_key: m.priceMatchKey,
         takeoff_status: status.status,
@@ -538,6 +565,17 @@ export async function POST(request: NextRequest) {
           `[${scope.scope}] needs: ${q.question}`,
         ];
       }
+      // PHASE 7 — on a drawing scan, a blocked scope becomes a visible
+      // blocked LINE (hard-blocks send) rather than just a note that could
+      // be ignored. Voice/typed keep the note-only behaviour.
+      if (isDrawing) {
+        calculatorItems.push(
+          blockedTakeoffLine(
+            scope.scope,
+            scope.clarifications.map((q) => q.question),
+          ),
+        );
+      }
       continue;
     }
     for (const l of scope.lines) {
@@ -558,6 +596,7 @@ export async function POST(request: NextRequest) {
         is_ai_estimated: false,
         is_missing_price: !match,
         is_calculated_takeoff: true,
+        quantity_source: "calculator",
         formula: l.basis.formula,
         price_match_key: l.priceMatchKey,
         takeoff_status: l.status,
@@ -570,6 +609,18 @@ export async function POST(request: NextRequest) {
         ...(parsed.notes ?? []),
       ];
     }
+  }
+
+  // PHASE 7 — a drawing scan whose legacy calculator couldn't run (missing
+  // or impossible dimensions) must NOT silently produce a quote without
+  // those materials, nor fall back to AI quantities (already dropped for
+  // drawings). Emit an explicit blocked line carrying the missing-info
+  // reasons so the send gate hard-blocks and the tradie sees exactly what's
+  // needed.
+  if (isDrawing && !useCalculator && parsedTakeoff.type !== "unknown") {
+    calculatorItems.push(
+      blockedTakeoffLine(parsedTakeoff.type, parsedTakeoff.missingFields),
+    );
   }
 
   // Wave 44 — also exclude AI lines that overlap with what the
@@ -635,6 +686,14 @@ export async function POST(request: NextRequest) {
     // tradie-specified scope items the LLM is summarising.
     it.takeoff_status =
       it.type === "material" ? "assumed" : "ok";
+    // PHASE 7 — the QUANTITY on an AI material line came from the model, so
+    // mark it ai/unconfirmed: the send gate hard-blocks it until the tradie
+    // confirms or edits it. Library matching only sets the PRICE, never the
+    // quantity, so matched lines are AI-quantity too.
+    if (it.type === "material") {
+      it.quantity_source = "ai";
+      it.quantity_confirmed = false;
+    }
     const lt = round2(qty * price);
     aiItems.push({ ...it, quantity: qty, unit_price: price, line_total: lt });
   }

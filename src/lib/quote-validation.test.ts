@@ -233,6 +233,59 @@ describe("assessQuoteTakeoffSafety — supplier source fidelity (phase 4)", () =
   });
 });
 
+describe("assessQuoteTakeoffSafety — AI-supplied quantity (phase 7)", () => {
+  it("HARD-blocks an unconfirmed AI-supplied material quantity", () => {
+    const a = assessQuoteTakeoffSafety(
+      qd({
+        line_items: [
+          li({ quantity_source: "ai", quantity_confirmed: false }),
+        ],
+      }),
+    );
+    expect(a.can_send).toBe(false);
+    expect(a.requires_acknowledgement).toBe(false); // no override
+    expect(a.block_reasons.join(" ")).toMatch(/AI-estimated quantity/i);
+  });
+
+  it("allows an AI quantity once confirmed", () => {
+    const a = assessQuoteTakeoffSafety(
+      qd({
+        line_items: [li({ quantity_source: "ai", quantity_confirmed: true })],
+      }),
+    );
+    expect(a.can_send).toBe(true);
+  });
+
+  it("allows calculator / supplier / user quantities without confirmation", () => {
+    for (const src of ["calculator", "supplier", "user"] as const) {
+      const a = assessQuoteTakeoffSafety(
+        qd({ line_items: [li({ quantity_source: src })] }),
+      );
+      expect(a.can_send).toBe(true);
+    }
+  });
+
+  it("ignores AI quantity_source on non-material lines (labour)", () => {
+    const a = assessQuoteTakeoffSafety(
+      qd({
+        line_items: [
+          li({
+            type: "labour",
+            quantity_source: "ai",
+            quantity_confirmed: false,
+          }),
+        ],
+      }),
+    );
+    expect(a.can_send).toBe(true);
+  });
+
+  it("treats legacy lines (no quantity_source) as not AI", () => {
+    const a = assessQuoteTakeoffSafety(qd({ line_items: [li()] }));
+    expect(a.can_send).toBe(true);
+  });
+});
+
 describe("validateQuoteForSending — takeoff gate", () => {
   const args = (o: Partial<QuoteData>, acknowledged?: boolean) => ({
     status: "draft",

@@ -5,6 +5,7 @@ import {
   ArrowsClockwise,
   ArrowSquareOut,
   Calculator,
+  Check,
   Plus,
   Sparkle,
   Trash,
@@ -176,8 +177,23 @@ export function QuoteEditor({
         next.line_total = round2(
           (Number(next.quantity) || 0) * (Number(next.unit_price) || 0),
         );
+        // PHASE 7 — editing the quantity makes it the tradie's own value, so
+        // it's no longer an unconfirmed AI quantity (unblocks the send gate).
+        if (patch.quantity !== undefined && next.quantity_source === "ai") {
+          next.quantity_source = "user";
+          next.quantity_confirmed = true;
+        }
         return next;
       }),
+    );
+  }
+
+  /** Confirm an AI-estimated quantity as-is (the tradie agrees with it). */
+  function confirmQuantity(idx: number) {
+    setItems((prev) =>
+      prev.map((it, i) =>
+        i === idx ? { ...it, quantity_confirmed: true } : it,
+      ),
     );
   }
 
@@ -316,6 +332,18 @@ export function QuoteEditor({
   // public quote).
   const { materials: materialsOnlySubtotal, other: otherSubtotal } =
     splitDisplaySubtotals(items);
+
+  // PHASE 7 — material lines whose quantity came from the AI and isn't yet
+  // confirmed. These HARD-block sending (see assessQuoteTakeoffSafety); the
+  // banner below lets the tradie confirm or edit each. Never hidden.
+  const aiQtyUnconfirmed = items
+    .map((it, i) => ({ it, i }))
+    .filter(
+      (x) =>
+        x.it.type === "material" &&
+        x.it.quantity_source === "ai" &&
+        x.it.quantity_confirmed !== true,
+    );
 
   // Wave 19.10 — summary strings for the mobile-collapsible cards.
   const materialMissingPrices = materialIndices.filter(
@@ -695,6 +723,48 @@ export function QuoteEditor({
               );
             })}
           </div>
+        </section>
+      )}
+
+      {aiQtyUnconfirmed.length > 0 && (
+        <section
+          data-testid="ai-qty-confirm"
+          className="t2q-card-pro border border-red-500/30 p-5 sm:p-6"
+        >
+          <p className="flex items-start gap-1.5 text-sm font-semibold text-red-200">
+            <Warning size={14} weight="fill" className="mt-0.5 shrink-0" />
+            <span>
+              {aiQtyUnconfirmed.length} line
+              {aiQtyUnconfirmed.length === 1 ? "" : "s"} use an AI-estimated
+              quantity. Confirm or edit each before this quote can be sent —
+              the AI never sets a quantity on a sent quote unchecked.
+            </span>
+          </p>
+          <ul className="mt-3 space-y-1.5">
+            {aiQtyUnconfirmed.map(({ it, i }) => (
+              <li
+                key={i}
+                className="flex items-center justify-between gap-2 rounded-sm border border-red-500/20 bg-red-500/5 px-3 py-2"
+              >
+                <span className="min-w-0 flex-1 truncate text-sm text-white">
+                  {it.description || "Untitled line"}
+                  <span className="ml-1.5 tabular-nums text-ink-300">
+                    {it.quantity} {it.unit}
+                  </span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => confirmQuantity(i)}
+                  disabled={isAccepted}
+                  data-testid="confirm-ai-qty"
+                  className="inline-flex shrink-0 items-center gap-1 font-mono text-[9px] uppercase tracking-[0.15em] text-brand hover:text-white disabled:opacity-50"
+                >
+                  <Check size={10} weight="bold" />
+                  confirm qty
+                </button>
+              </li>
+            ))}
+          </ul>
         </section>
       )}
 

@@ -122,6 +122,22 @@ export function assessQuoteTakeoffSafety(
     }
   }
 
+  // PHASE 7 — an AI-supplied material quantity must never enter the send
+  // path unconfirmed. The tradie can confirm it, edit it (→ user-supplied),
+  // or replace it with a calculator result. Until then it's a HARD block:
+  // the AI never gets to put a quantity on a sent quote unchecked.
+  const unconfirmedAiQty = items.filter(
+    (it) =>
+      it.type === "material" &&
+      it.quantity_source === "ai" &&
+      it.quantity_confirmed !== true,
+  );
+  if (unconfirmedAiQty.length > 0) {
+    block_reasons.push(
+      `${unconfirmedAiQty.length} material line(s) use an AI-estimated quantity that must be confirmed before sending: ${lineLabels(unconfirmedAiQty)}.`,
+    );
+  }
+
   if (needsReview.length > 0) {
     warning_reasons.push(
       `${needsReview.length} line(s) flagged for review: ${lineLabels(needsReview)}.`,

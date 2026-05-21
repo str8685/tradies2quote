@@ -605,3 +605,24 @@ describe("canRunCalculator", () => {
     ).toBe(true);
   });
 });
+
+describe("missing-dimension drawing → blocks (phase 7)", () => {
+  it("a deck drawing with NO dimensions can't run the calculator", () => {
+    // This is what the generate route turns into a BLOCKED line (instead of
+    // an AI-guessed quantity): canRunCalculator=false + populated reasons.
+    const r = parseTakeoffDescription(
+      "[T2Q_PLAN] type=deck\n[T2Q_TIMBER] stock_length_m=6\nJob type: Deck. Build a deck.",
+    );
+    expect(r.type).toBe("deck");
+    expect(canRunCalculator(r)).toBe(false);
+    expect(r.missingFields.length).toBeGreaterThan(0);
+  });
+
+  it("a deck drawing WITH dimensions can run the calculator", () => {
+    const r = parseTakeoffDescription(
+      "[T2Q_PLAN] type=deck length_m=6 width_m=4\n[T2Q_TIMBER] stock_length_m=6\nJob type: Deck.",
+    );
+    expect(r.type).toBe("deck");
+    expect(canRunCalculator(r)).toBe(true);
+  });
+});
