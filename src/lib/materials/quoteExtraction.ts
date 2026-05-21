@@ -62,6 +62,16 @@ export type SupplierQuoteExtraction = {
   subtotal: number | null;
   gst: number | null;
   total: number | null;
+  /**
+   * PHASE 2 — document-level adjustments EXACTLY as printed, when the quote
+   * breaks them out. Optional; absent on quotes that don't print them.
+   * Reconciliation folds them into the expected grand total (discount
+   * reduces; freight/adjustments add) so a legitimate freight/discount
+   * quote doesn't falsely fail to reconcile.
+   */
+  discount?: number | null;
+  freight?: number | null;
+  adjustments?: number | null;
   /** Things the tradie should double-check (smudged numbers, ambiguous units). */
   notes: string[];
 };

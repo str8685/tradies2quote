@@ -565,6 +565,11 @@ export async function createQuoteFromScan(
       source_discount: null,
       source_freight: null,
       source_adjustments: null,
+      // Deterministic reconciliation verdict (computed above on the RAW
+      // extraction, GST-aware), frozen onto the quote so the pre-send gate
+      // can hard-block a critical mismatch.
+      reconciliation_status: validation.reconciliation_status,
+      reconciliation_reasons: validation.reconciliation_reasons,
     },
   };
 

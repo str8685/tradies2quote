@@ -18,6 +18,16 @@ import type { SupplierQuoteExtraction } from "./quoteExtraction";
 
 export type Severity = "ok" | "warning" | "error";
 
+/** Deterministic reconciliation verdict the send gate consumes. */
+export type ReconciliationStatus = "ok" | "needs_review" | "blocked";
+
+/** Map a worst-case severity to the send-gate reconciliation status. */
+export function reconciliationStatusFromSeverity(
+  s: Severity,
+): ReconciliationStatus {
+  return s === "error" ? "blocked" : s === "warning" ? "needs_review" : "ok";
+}
+
 /** One reconciliation check: what we recomputed (`expected`) vs what the
  *  quote printed (`found`). */
 export type ValidationCheck = {
@@ -42,6 +52,10 @@ export type QuoteValidationReport = {
   severity: Severity;
   /** True when any check is an error — block auto-approval until resolved. */
   blocking: boolean;
+  /** Send-gate verdict: ok | needs_review | blocked (derived from severity). */
+  reconciliation_status: ReconciliationStatus;
+  /** Plain-English reasons for every non-ok check (line + summary). */
+  reconciliation_reasons: string[];
   /** Figures recomputed deterministically, for the UI's "app value" column. */
   recomputed: {
     lineTotals: Array<number | null>;
@@ -139,13 +153,20 @@ export function validateSupplierQuote(
     lineTotals.reduce<number>((sum, lt) => sum + (lt ?? 0), 0),
   );
   const inclusive = extraction.gst_inclusive === true;
+  const discount = extraction.discount ?? 0;
+  const freight = extraction.freight ?? 0;
+  const adjustments = extraction.adjustments ?? 0;
   const baseSubtotal = extraction.subtotal ?? recomputedSubtotal;
+  // Net of document-level discount/freight/adjustments. GST applies to the
+  // net, and grand total = net + GST. When none are present this equals the
+  // bare subtotal — backward-compatible with the prior behaviour.
+  const baseNet = round2(baseSubtotal - discount + freight + adjustments);
   const recomputedGst = inclusive
-    ? round2(baseSubtotal - baseSubtotal / (1 + taxRate))
-    : round2(baseSubtotal * taxRate);
+    ? round2(baseNet - baseNet / (1 + taxRate))
+    : round2(baseNet * taxRate);
   const recomputedTotal = inclusive
-    ? round2(baseSubtotal)
-    : round2(baseSubtotal + (extraction.gst ?? recomputedGst));
+    ? round2(baseNet)
+    : round2(baseNet + (extraction.gst ?? recomputedGst));
 
   const summary: ValidationCheck[] = [];
 
@@ -229,11 +250,20 @@ export function validateSupplierQuote(
     ...summary.map((c) => c.severity),
   ]);
 
+  const reconciliation_reasons = [
+    ...lines.flatMap((l) => l.checks),
+    ...summary,
+  ]
+    .filter((c) => c.severity !== "ok")
+    .map((c) => c.reason);
+
   return {
     lines,
     summary,
     severity,
     blocking: severity === "error",
+    reconciliation_status: reconciliationStatusFromSeverity(severity),
+    reconciliation_reasons,
     recomputed: {
       lineTotals,
       subtotal: recomputedSubtotal,

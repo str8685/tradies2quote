@@ -35,6 +35,9 @@ function extraction(
     subtotal: partial.subtotal ?? null,
     gst: partial.gst ?? null,
     total: partial.total ?? null,
+    discount: partial.discount ?? null,
+    freight: partial.freight ?? null,
+    adjustments: partial.adjustments ?? null,
     notes: partial.notes ?? [],
   };
 }
@@ -143,5 +146,82 @@ describe("validateSupplierQuote", () => {
     const totalCheck = report.summary.find((c) => c.field === "total");
     expect(totalCheck?.severity).toBe("error");
     expect(totalCheck?.expected).toBe(2392.46);
+  });
+});
+
+describe("validateSupplierQuote — phase 2 (status + freight/discount)", () => {
+  it("exposes reconciliation_status=ok with no reasons for a clean quote", () => {
+    const r = validateSupplierQuote(cleanItmQuote());
+    expect(r.reconciliation_status).toBe("ok");
+    expect(r.reconciliation_reasons).toHaveLength(0);
+  });
+
+  it("maps an error to reconciliation_status=blocked with reasons", () => {
+    const q = cleanItmQuote();
+    q.subtotal = 1999.99;
+    const r = validateSupplierQuote(q);
+    expect(r.reconciliation_status).toBe("blocked");
+    expect(r.reconciliation_reasons.join(" ")).toMatch(/subtotal/i);
+  });
+
+  it("maps a missing-field warning to reconciliation_status=needs_review", () => {
+    const r = validateSupplierQuote(
+      extraction({ items: [item({ name: "Sundries", price: null, quantity: 4 })] }),
+    );
+    expect(r.reconciliation_status).toBe("needs_review");
+  });
+
+  it("GST-inclusive quote reconciles without a false GST error", () => {
+    // Inclusive: subtotal is the GST-inclusive figure, gst the embedded
+    // portion (1150 − 1150/1.15 = 150), total = subtotal.
+    const r = validateSupplierQuote(
+      extraction({
+        gst_inclusive: true,
+        items: [
+          item({ name: "Decking", unit: "m", price: 11.5, quantity: 100, source_line_total: 1150 }),
+        ],
+        subtotal: 1150,
+        gst: 150,
+        total: 1150,
+      }),
+    );
+    expect(r.summary.find((c) => c.field === "gst")?.severity).not.toBe("error");
+    expect(r.reconciliation_status).not.toBe("blocked");
+  });
+
+  it("folds freight into the expected total so a freight quote doesn't falsely fail", () => {
+    // net = 500 + 50 freight = 550; gst = 82.5; total = 632.5.
+    // Without freight-awareness the expected total would be 575 → false block.
+    const r = validateSupplierQuote(
+      extraction({
+        items: [
+          item({ name: "Timber", unit: "m", price: 50, quantity: 10, source_line_total: 500 }),
+        ],
+        subtotal: 500,
+        freight: 50,
+        gst: 82.5,
+        total: 632.5,
+      }),
+    );
+    expect(r.summary.find((c) => c.field === "total")?.severity).toBe("ok");
+    expect(r.blocking).toBe(false);
+    expect(r.reconciliation_status).toBe("ok");
+  });
+
+  it("applies a discount to the expected total", () => {
+    // net = 1000 − 100 discount = 900; gst = 135; total = 1035.
+    const r = validateSupplierQuote(
+      extraction({
+        items: [
+          item({ name: "Board", unit: "m", price: 100, quantity: 10, source_line_total: 1000 }),
+        ],
+        subtotal: 1000,
+        discount: 100,
+        gst: 135,
+        total: 1035,
+      }),
+    );
+    expect(r.summary.find((c) => c.field === "total")?.severity).toBe("ok");
+    expect(r.reconciliation_status).toBe("ok");
   });
 });
