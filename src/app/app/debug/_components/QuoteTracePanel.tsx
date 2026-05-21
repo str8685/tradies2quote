@@ -93,6 +93,18 @@ export function QuoteTracePanel({ recent, selectedId, trace, currency }: Props) 
                 label={`supplier · ${trace.reconciliation_status ?? "—"}`}
               />
             )}
+            {trace.extraction_status && (
+              <Badge
+                tone={
+                  trace.extraction_status === "blocked"
+                    ? "bad"
+                    : trace.extraction_status === "needs_review"
+                      ? "warn"
+                      : "ok"
+                }
+                label={`extraction · ${trace.extraction_status}`}
+              />
+            )}
             {trace.is_takeoff && <Badge tone="info" label="takeoff" />}
             <Badge
               tone={trace.totals_match ? "ok" : "bad"}
@@ -120,6 +132,13 @@ export function QuoteTracePanel({ recent, selectedId, trace, currency }: Props) 
               title="Reconciliation"
               tone="warn"
               reasons={trace.reconciliation_reasons}
+            />
+          )}
+          {trace.extraction_reasons.length > 0 && (
+            <ReasonList
+              title="Extraction"
+              tone="warn"
+              reasons={trace.extraction_reasons}
             />
           )}
 

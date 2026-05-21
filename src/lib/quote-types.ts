@@ -360,6 +360,12 @@ export type SupplierSource = {
   /** Deterministic reconciliation verdict (source vs computed). */
   reconciliation_status?: "ok" | "needs_review" | "blocked";
   reconciliation_reasons?: string[];
+  /**
+   * #2 — strict-extraction verdict captured at scan time (provenance):
+   * how trustworthy the AI read of the supplier doc was.
+   */
+  extraction_status?: "ok" | "needs_review" | "blocked";
+  extraction_reasons?: string[];
 };
 
 export type QuoteProfile = {

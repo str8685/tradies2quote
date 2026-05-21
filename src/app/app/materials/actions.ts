@@ -425,6 +425,9 @@ export async function createQuoteFromScan(
     total?: number | null;
     /** Tradie's explicit "create anyway" override for a flagged mismatch. */
     acknowledge?: boolean;
+    /** #2 — strict-extraction verdict from the scan route (provenance). */
+    extractionStatus?: "ok" | "needs_review" | "blocked";
+    extractionReasons?: string[];
   },
 ): Promise<{ id?: string; error?: string; blocked?: boolean }> {
   const supabase = await createClient();
@@ -570,6 +573,9 @@ export async function createQuoteFromScan(
       // can hard-block a critical mismatch.
       reconciliation_status: validation.reconciliation_status,
       reconciliation_reasons: validation.reconciliation_reasons,
+      // #2 — strict-extraction verdict (scan-time provenance for the trace).
+      extraction_status: meta?.extractionStatus,
+      extraction_reasons: meta?.extractionReasons,
     },
   };
 

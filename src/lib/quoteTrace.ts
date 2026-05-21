@@ -52,6 +52,9 @@ export type QuoteTrace = {
   } | null;
   reconciliation_status: string | null;
   reconciliation_reasons: string[];
+  /** #2 — strict-extraction verdict captured at scan time (provenance). */
+  extraction_status: string | null;
+  extraction_reasons: string[];
   stored_totals: {
     materials_subtotal: number;
     labour_subtotal: number;
@@ -172,6 +175,8 @@ export function buildQuoteTrace(quoteData: QuoteData): QuoteTrace {
       : null,
     reconciliation_status: supplier?.reconciliation_status ?? null,
     reconciliation_reasons: supplier?.reconciliation_reasons ?? [],
+    extraction_status: supplier?.extraction_status ?? null,
+    extraction_reasons: supplier?.extraction_reasons ?? [],
     stored_totals,
     computed_totals,
     totals_match,

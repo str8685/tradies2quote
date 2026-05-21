@@ -67,6 +67,10 @@ type ExtractResponse = {
   gst?: number | null;
   total?: number | null;
   notes: string[];
+  extraction_status?: "ok" | "needs_review" | "blocked";
+  extraction_reasons?: string[];
+  row_failures?: Array<{ index: number; reason: string; raw_text: string | null }>;
+  warnings?: string[];
 };
 
 const MAX_BYTES = 8 * 1024 * 1024;
@@ -91,6 +95,13 @@ export function QuoteImportClient({ currency }: { currency: string }) {
   // The tradie's explicit "I've checked these, create anyway" override that
   // unblocks quote creation when reconciliation flags an error.
   const [acknowledged, setAcknowledged] = useState<boolean>(false);
+  // #2 — strict-extraction verdict surfaced from the scan route.
+  const [extraction, setExtraction] = useState<{
+    status: "ok" | "needs_review" | "blocked";
+    reasons: string[];
+    rowFailures: Array<{ index: number; reason: string; raw_text: string | null }>;
+    warnings: string[];
+  } | null>(null);
   const [result, setResult] = useState<{
     inserted: number;
     updated: number;
@@ -165,6 +176,12 @@ export function QuoteImportClient({ currency }: { currency: string }) {
       setSrcGst(data.gst ?? null);
       setSrcTotal(data.total ?? null);
       setAcknowledged(false);
+      setExtraction({
+        status: data.extraction_status ?? "ok",
+        reasons: data.extraction_reasons ?? [],
+        rowFailures: data.row_failures ?? [],
+        warnings: data.warnings ?? [],
+      });
       setRows(
         data.items.map((it) => ({
           id: crypto.randomUUID(),
@@ -316,6 +333,8 @@ export function QuoteImportClient({ currency }: { currency: string }) {
         gst: srcGst,
         total: srcTotal,
         acknowledge: acknowledged,
+        extractionStatus: extraction?.status,
+        extractionReasons: extraction?.reasons,
       });
       if (res.error || !res.id) {
         setError(res.error ?? "Could not create the quote.");
@@ -360,6 +379,7 @@ export function QuoteImportClient({ currency }: { currency: string }) {
               setFileName("");
               setSupplier("");
               setNotes([]);
+              setExtraction(null);
               chosenFileRef.current = null;
               if (fileRef.current) fileRef.current.value = "";
               if (libraryRef.current) libraryRef.current.value = "";
@@ -501,6 +521,50 @@ export function QuoteImportClient({ currency }: { currency: string }) {
                 ))}
               </ul>
             )}
+            {extraction &&
+              (extraction.status !== "ok" ||
+                extraction.rowFailures.length > 0 ||
+                extraction.warnings.length > 0) && (
+                <div
+                  data-testid="quote-import-extraction"
+                  data-status={extraction.status}
+                  className={`mt-3 rounded-sm border p-3 ${
+                    extraction.status === "blocked"
+                      ? "border-red-500/40 bg-red-500/5"
+                      : "border-hivis/40 bg-hivis/5"
+                  }`}
+                >
+                  <p
+                    className={`font-mono text-[10px] uppercase tracking-[0.2em] ${
+                      extraction.status === "blocked" ? "text-red-300" : "text-hivis"
+                    }`}
+                  >
+                    {extraction.status === "blocked"
+                      ? "// extraction incomplete — re-scan recommended"
+                      : "// extraction needs review"}
+                  </p>
+                  {extraction.reasons.map((r, i) => (
+                    <p key={`r${i}`} className="mt-1 text-xs text-ink-200">
+                      {r}
+                    </p>
+                  ))}
+                  {extraction.rowFailures.length > 0 && (
+                    <ul className="mt-2 space-y-0.5">
+                      {extraction.rowFailures.map((f, i) => (
+                        <li key={`f${i}`} className="text-xs text-red-300">
+                          · row {f.index + 1}: {f.reason}
+                          {f.raw_text ? ` ("${f.raw_text}")` : ""}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  {extraction.warnings.map((w, i) => (
+                    <p key={`w${i}`} className="mt-1 text-xs text-ink-300">
+                      {w}
+                    </p>
+                  ))}
+                </div>
+              )}
           </div>
 
           <ul className="space-y-2" data-testid="quote-import-rows">

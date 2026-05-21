@@ -2,7 +2,13 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { canWrite, getSubscriptionStatus } from "@/lib/subscription";
 import { isOwnerEmail } from "@/lib/owner";
-import { parseSupplierQuoteExtraction } from "@/lib/materials/quoteExtraction";
+import {
+  assessExtraction,
+  chooseBestExtraction,
+  parseSupplierQuoteExtraction,
+  type RowFailure,
+  type SupplierQuoteExtraction,
+} from "@/lib/materials/quoteExtraction";
 
 /**
  * POST /api/materials/extract-quote
@@ -21,8 +27,10 @@ import { parseSupplierQuoteExtraction } from "@/lib/materials/quoteExtraction";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-// Vision over a dense quote photo can take 20-40s. Match scan-drawing.
-export const maxDuration = 60;
+// Vision over a dense quote photo can take 20-40s. Allow headroom for one
+// retry when the first extraction is incomplete (#2). Plan-dependent — if
+// the deploy caps at 60s the retry is time-budget-skipped (UI "Scan again").
+export const maxDuration = 90;
 
 const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
 const MODEL = "claude-sonnet-4-20250514";
@@ -208,109 +216,158 @@ export async function POST(request: NextRequest) {
   const base64 = Buffer.from(arrayBuf).toString("base64");
   const mediaType = mime === "image/jpg" ? "image/jpeg" : mime;
 
-  let claudeRes: Response;
-  try {
-    claudeRes = await fetch(ANTHROPIC_URL, {
-      method: "POST",
-      headers: {
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-        "content-type": "application/json",
+  type RouteAttempt = {
+    value: SupplierQuoteExtraction;
+    rowFailures: RowFailure[];
+    warnings: string[];
+  };
+  type AttemptResult =
+    | { kind: "attempt"; attempt: RouteAttempt }
+    | { kind: "error"; status: number; body: Record<string, unknown> };
+
+  // One AI extraction pass. `priorReasons` (non-empty on a retry) is fed
+  // back to the model so it re-reads the rows it got wrong.
+  async function runExtraction(priorReasons: string[]): Promise<AttemptResult> {
+    const retryNote =
+      priorReasons.length > 0
+        ? `\n\nYour previous read had problems: ${priorReasons.join("; ")}. Re-read EVERY row carefully, capture the EXACT printed numbers (never guess or skip a line), and include the printed subtotal, GST and total.`
+        : "";
+    let res: Response;
+    try {
+      res = await fetch(ANTHROPIC_URL, {
+        method: "POST",
+        headers: {
+          "x-api-key": apiKey!,
+          "anthropic-version": "2023-06-01",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          model: MODEL,
+          max_tokens: MAX_TOKENS,
+          temperature: 0,
+          system: SYSTEM_PROMPT,
+          messages: [
+            {
+              role: "user",
+              content: [
+                {
+                  type: "image",
+                  source: { type: "base64", media_type: mediaType, data: base64 },
+                },
+                {
+                  type: "text",
+                  text: `Read every product line on this supplier quote and return the JSON described in the system prompt.${retryNote}`,
+                },
+              ],
+            },
+          ],
+        }),
+      });
+    } catch (err) {
+      console.error("extract-quote fetch failed", err);
+      return {
+        kind: "error",
+        status: 502,
+        body: { error: "Network error contacting the scan model. Please try again." },
+      };
+    }
+    if (!res.ok) {
+      const detail = await res.text().catch(() => "");
+      console.error(
+        `ANTHROPIC_${res.status} ${MODEL} ${detail.slice(0, 120).replace(/\s+/g, " ")}`,
+      );
+      return {
+        kind: "error",
+        status: 502,
+        body: { error: "Quote scan failed. Please try again.", upstream_status: res.status },
+      };
+    }
+    let payload: AnthropicResponse;
+    try {
+      payload = (await res.json()) as AnthropicResponse;
+    } catch {
+      return { kind: "error", status: 502, body: { error: "Quote scan failed. Please try again." } };
+    }
+    if (payload.stop_reason === "max_tokens") {
+      return {
+        kind: "error",
+        status: 502,
+        body: {
+          error:
+            "That quote had too many lines to read in one go. Try photographing it in two halves.",
+        },
+      };
+    }
+    const text = payload.content?.find((c) => c.type === "text")?.text ?? "";
+    const fullJson = text
+      .trim()
+      .replace(/^```(?:json)?\s*/i, "")
+      .replace(/```\s*$/i, "")
+      .trim();
+    let raw: unknown;
+    try {
+      raw = JSON.parse(fullJson);
+    } catch (e) {
+      console.error(
+        "extract-quote failed to parse JSON",
+        e,
+        "raw (first 400):",
+        fullJson.slice(0, 400),
+      );
+      return {
+        kind: "error",
+        status: 502,
+        body: { error: "Couldn't read that quote. Try a sharper, flatter photo." },
+      };
+    }
+    const parsed = parseSupplierQuoteExtraction(raw);
+    if (!parsed.ok) {
+      return {
+        kind: "error",
+        status: 502,
+        body: { error: "Couldn't read that quote. Try a sharper, flatter photo." },
+      };
+    }
+    return {
+      kind: "attempt",
+      attempt: {
+        value: parsed.value,
+        rowFailures: parsed.rowFailures,
+        warnings: parsed.warnings,
       },
-      body: JSON.stringify({
-        model: MODEL,
-        max_tokens: MAX_TOKENS,
-        temperature: 0,
-        system: SYSTEM_PROMPT,
-        messages: [
-          {
-            role: "user",
-            content: [
-              {
-                type: "image",
-                source: { type: "base64", media_type: mediaType, data: base64 },
-              },
-              {
-                type: "text",
-                text: "Read every product line on this supplier quote and return the JSON described in the system prompt.",
-              },
-            ],
-          },
-        ],
-      }),
-    });
-  } catch (err) {
-    console.error("extract-quote fetch failed", err);
-    return NextResponse.json(
-      { error: "Network error contacting the scan model. Please try again." },
-      { status: 502 },
-    );
+    };
   }
 
-  if (!claudeRes.ok) {
-    const detail = await claudeRes.text().catch(() => "");
-    console.error(
-      `ANTHROPIC_${claudeRes.status} ${MODEL} ${detail.slice(0, 120).replace(/\s+/g, " ")}`,
-    );
-    return NextResponse.json(
-      { error: "Quote scan failed. Please try again.", upstream_status: claudeRes.status },
-      { status: 502 },
-    );
+  // Retry loop: re-run when the extraction isn't "ok", bounded by attempt
+  // count AND a time budget so we never blow the function timeout.
+  const startedAt = Date.now();
+  const TIME_BUDGET_MS = 40_000;
+  const MAX_ATTEMPTS = 2;
+  const attempts: RouteAttempt[] = [];
+  let priorReasons: string[] = [];
+  for (let i = 0; i < MAX_ATTEMPTS; i++) {
+    const r = await runExtraction(priorReasons);
+    if (r.kind === "error") {
+      // Hard failure on the first pass → surface it. On a retry → keep the
+      // attempt(s) we already have.
+      if (attempts.length === 0) {
+        return NextResponse.json(r.body, { status: r.status });
+      }
+      break;
+    }
+    attempts.push(r.attempt);
+    const assessment = assessExtraction(r.attempt.value, r.attempt.rowFailures);
+    if (assessment.status === "ok") break;
+    priorReasons = assessment.reasons;
+    if (Date.now() - startedAt > TIME_BUDGET_MS) break;
   }
 
-  let payload: AnthropicResponse;
-  try {
-    payload = (await claudeRes.json()) as AnthropicResponse;
-  } catch {
-    console.error("extract-quote returned non-JSON 200 body");
-    return NextResponse.json(
-      { error: "Quote scan failed. Please try again." },
-      { status: 502 },
-    );
-  }
+  const best = chooseBestExtraction(attempts);
+  const bestWarnings =
+    attempts.find((a) => a.value === best.value)?.warnings ?? [];
 
-  if (payload.stop_reason === "max_tokens") {
-    return NextResponse.json(
-      {
-        error:
-          "That quote had too many lines to read in one go. Try photographing it in two halves.",
-      },
-      { status: 502 },
-    );
-  }
-
-  const text = payload.content?.find((c) => c.type === "text")?.text ?? "";
-  const fullJson = text
-    .trim()
-    .replace(/^```(?:json)?\s*/i, "")
-    .replace(/```\s*$/i, "")
-    .trim();
-
-  let raw: unknown;
-  try {
-    raw = JSON.parse(fullJson);
-  } catch (e) {
-    console.error(
-      "extract-quote failed to parse JSON",
-      e,
-      "raw (first 400):",
-      fullJson.slice(0, 400),
-    );
-    return NextResponse.json(
-      { error: "Couldn't read that quote. Try a sharper, flatter photo." },
-      { status: 502 },
-    );
-  }
-
-  const parsed = parseSupplierQuoteExtraction(raw);
-  if (!parsed.ok) {
-    return NextResponse.json(
-      { error: "Couldn't read that quote. Try a sharper, flatter photo." },
-      { status: 502 },
-    );
-  }
-
-  if (parsed.value.items.length === 0) {
+  // 422 only for a truly unusable read (no usable items at all).
+  if (best.value.items.length === 0) {
     return NextResponse.json(
       {
         error:
@@ -322,9 +379,20 @@ export async function POST(request: NextRequest) {
 
   console.log("[extract-quote] ok", {
     userId: user.id,
-    supplier: parsed.value.supplier,
-    items: parsed.value.items.length,
+    supplier: best.value.supplier,
+    items: best.value.items.length,
+    status: best.status,
+    rowFailures: best.rowFailures.length,
+    attempts: attempts.length,
   });
 
-  return NextResponse.json(parsed.value);
+  // 200 even when needs_review/blocked so the tradie SEES the partial read
+  // + exactly why; createQuoteFromScan's reconciliation still gates create.
+  return NextResponse.json({
+    ...best.value,
+    extraction_status: best.status,
+    extraction_reasons: best.reasons,
+    row_failures: best.rowFailures,
+    warnings: bestWarnings,
+  });
 }
