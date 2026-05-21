@@ -13,6 +13,7 @@ import {
   Warning,
 } from "@phosphor-icons/react/dist/ssr";
 import type { QuoteStatus } from "@/lib/quote-types";
+import { SavePdfButton } from "@/app/app/_components/SavePdfButton";
 
 type Props = {
   quoteId: string;
@@ -174,6 +175,14 @@ export function SendQuoteButton({
             View PDF
           </Link>
         )}
+        {/* Save / back up the quote PDF to the device (Save to Files on
+            mobile). Always available — the owner PDF route regenerates
+            from the live quote_data on demand. */}
+        <SavePdfButton
+          url={`/api/quotes/${quoteId}/pdf`}
+          filename={`quote-${quoteId}.pdf`}
+          label="Save / back up"
+        />
         {publicToken && acceptUrl && (
           <>
             <a

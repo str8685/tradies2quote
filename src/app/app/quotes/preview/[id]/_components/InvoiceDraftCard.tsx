@@ -16,6 +16,7 @@ import type { QuoteData, QuoteStatus } from "@/lib/quote-types";
 import type { InvoiceStatus, InvoiceSummary } from "@/lib/types/invoice";
 import { runInvoiceAgent } from "@/lib/agents/invoice";
 import { createInvoiceFromQuote, markInvoicePaid } from "../actions";
+import { SavePdfButton } from "@/app/app/_components/SavePdfButton";
 
 /**
  * Wave 14 — Invoice draft card.
@@ -189,6 +190,18 @@ function ExistingInvoiceBody({ invoice }: { invoice: InvoiceSummary }) {
           ? " · Sent to client"
           : ""}
       </p>
+
+      {/* Back up the invoice PDF to the device (Save to Files on mobile).
+          Always available, even once paid/sent, so the tradie can keep a
+          copy in their own records. */}
+      <div className="mt-4 flex flex-wrap items-center gap-2">
+        <SavePdfButton
+          url={`/api/invoices/${invoice.id}/pdf`}
+          filename={`${invoice.invoice_number}.pdf`}
+          label="Save / back up PDF"
+          className="t2q-btn-ghost-pro inline-flex h-11 items-center gap-2 px-5 disabled:opacity-50"
+        />
+      </div>
 
       {!isCancelled && !isPaid && (
         <div className="mt-5 flex flex-wrap items-center gap-2">
