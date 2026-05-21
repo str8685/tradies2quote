@@ -4,7 +4,7 @@ import { ArrowSquareOut, FileText } from "@phosphor-icons/react/dist/ssr";
 import {
   formatCurrency,
   formatIssueDate,
-  round2,
+  splitDisplaySubtotals,
 } from "@/lib/quote-defaults";
 import type { PublicQuotePayload, PublicLineItem } from "@/lib/quote-types";
 
@@ -18,13 +18,11 @@ export function PublicQuoteSummary({ token, quote }: Props) {
   const labour = quote.line_items.filter((it) => it.type === "labour");
   const other = quote.line_items.filter((it) => it.type === "other");
 
-  // `materials_subtotal` bundles material + other lines (markup applies to
-  // the bundle). Split for display so each subtotal ties out to its
-  // visible section.
-  const sumLineTotals = (rows: PublicLineItem[]) =>
-    round2(rows.reduce((s, it) => s + (Number(it.line_total) || 0), 0));
-  const materialsOnlySubtotal = sumLineTotals(materials);
-  const otherSubtotal = sumLineTotals(other);
+  // `materials_subtotal` bundles material + other (markup applies to the
+  // bundle). splitDisplaySubtotals (shared with the editor + PDF) splits it
+  // for display so each subtotal ties out to its visible section.
+  const { materials: materialsOnlySubtotal, other: otherSubtotal } =
+    splitDisplaySubtotals(quote.line_items);
 
   return (
     <section data-testid="public-quote-summary" className="space-y-6">

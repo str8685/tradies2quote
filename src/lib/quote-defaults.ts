@@ -125,3 +125,45 @@ export function computeQuoteTotals(
     total,
   };
 }
+
+/** Money equality within a tolerance (default 1 cent) — for reconciling
+ *  printed vs computed figures without tripping on sub-cent rounding. */
+export function moneyEquals(a: number, b: number, tolerance = 0.01): boolean {
+  return Math.abs(round2(a) - round2(b)) <= tolerance;
+}
+
+/**
+ * Split a quote's line items into the two display subtotals shown as
+ * separate rows on the totals card / PDF / public quote: "Materials"
+ * (type `material`) and "Other" (type `other`). SUM-OF-ROUNDED so each row
+ * ties out to its visible section.
+ *
+ * Single source of the display-split rule — replaced three copy-pasted
+ * reduce blocks (editor, public summary, PDF). Display-only:
+ * computeQuoteTotals bundles material+other into materials_subtotal
+ * because markup applies to the bundle.
+ */
+export function splitDisplaySubtotals(
+  lineItems: ReadonlyArray<{
+    type: string;
+    quantity?: number;
+    unit_price?: number;
+    line_total?: number | null;
+  }>,
+): { materials: number; other: number } {
+  const amount = (it: {
+    quantity?: number;
+    unit_price?: number;
+    line_total?: number | null;
+  }): number =>
+    it.line_total != null
+      ? round2(Number(it.line_total) || 0)
+      : round2((Number(it.quantity) || 0) * (Number(it.unit_price) || 0));
+  const sumOf = (type: string) =>
+    round2(
+      lineItems
+        .filter((it) => it.type === type)
+        .reduce((s, it) => s + amount(it), 0),
+    );
+  return { materials: sumOf("material"), other: sumOf("other") };
+}

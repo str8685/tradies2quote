@@ -19,11 +19,7 @@
  */
 import type { QuoteData, QuoteStatus } from "@/lib/quote-types";
 import type { InvoiceDraftPreview } from "@/lib/types/invoice";
-
-/** 2-decimal rounding consistent with the rest of the quote engine. */
-function round2(n: number): number {
-  return Math.round((Number.isFinite(n) ? n : 0) * 100) / 100;
-}
+import { round2 } from "@/lib/quote-defaults";
 
 /** Due date is 7 days out from "now"; the RPC sets the authoritative one. */
 function defaultDueIso(): string {

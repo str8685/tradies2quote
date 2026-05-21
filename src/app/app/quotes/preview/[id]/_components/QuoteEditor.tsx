@@ -17,6 +17,7 @@ import {
   isPlaceholderClientName,
   quoteNumber,
   round2,
+  splitDisplaySubtotals,
   validUntilDate,
 } from "@/lib/quote-defaults";
 import { validateSupplierQuote } from "@/lib/materials/quoteValidation";
@@ -310,17 +311,11 @@ export function QuoteEditor({
 
   // The totals card shows Materials and Other as separate rows that each
   // tie out to their visible section. `totals.materials_subtotal` bundles
-  // both (markup applies to the bundle), so split it for display only.
-  const sumRows = (rows: Array<{ it: QuoteLineItem }>) =>
-    round2(
-      rows.reduce(
-        (s, x) =>
-          s + round2((Number(x.it.quantity) || 0) * (Number(x.it.unit_price) || 0)),
-        0,
-      ),
-    );
-  const materialsOnlySubtotal = sumRows(materialIndices);
-  const otherSubtotal = sumRows(otherIndices);
+  // both (markup applies to the bundle); splitDisplaySubtotals is the
+  // single source of that display-split rule (shared with the PDF + the
+  // public quote).
+  const { materials: materialsOnlySubtotal, other: otherSubtotal } =
+    splitDisplaySubtotals(items);
 
   // Wave 19.10 — summary strings for the mobile-collapsible cards.
   const materialMissingPrices = materialIndices.filter(

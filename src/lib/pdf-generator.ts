@@ -5,7 +5,7 @@ import {
   rgb,
   type PDFFont,
 } from "pdf-lib";
-import { formatCurrency, formatIssueDate, quoteNumber, round2, validUntilDate } from "./quote-defaults";
+import { formatCurrency, formatIssueDate, quoteNumber, splitDisplaySubtotals, validUntilDate } from "./quote-defaults";
 import type { QuoteData, QuoteLineItem, QuoteProfile } from "./quote-types";
 
 type GenerateArgs = {
@@ -355,14 +355,13 @@ export async function generateQuotePdf(args: GenerateArgs): Promise<Uint8Array> 
   }
 
   // `materials_subtotal` bundles material + other lines (markup applies to
-  // the bundle). Split for display so each subtotal ties out to its
-  // section above; otherwise "Materials subtotal" wouldn't equal the
-  // visible Materials list when "Other" lines exist.
-  const sumLineTotals = (rows: QuoteLineItem[]) =>
-    round2(rows.reduce((s, it) => s + (Number(it.line_total) || 0), 0));
-  drawTotalRow("Materials subtotal", sumLineTotals(materials));
+  // the bundle). splitDisplaySubtotals (shared with the editor + public
+  // quote) splits it for display so each subtotal ties out to its section
+  // above; otherwise "Materials subtotal" wouldn't equal the visible list.
+  const displaySplit = splitDisplaySubtotals(quote.line_items);
+  drawTotalRow("Materials subtotal", displaySplit.materials);
   if (other.length > 0) {
-    drawTotalRow("Other subtotal", sumLineTotals(other));
+    drawTotalRow("Other subtotal", displaySplit.other);
   }
   drawTotalRow(`Markup (${quote.markup_pct}%)`, quote.markup_amount);
   drawTotalRow("Labour subtotal", quote.labour_subtotal);
