@@ -18,9 +18,12 @@
  *   - Compact NZ-trade H-classes get expanded to their canonical
  *     decimal form (h32 → H3.2, h12 → H1.2, h42 → H4.2, h52 → H5.2)
  *     so the matcher's hard-filter sees the right class.
- *   - "jib" / "gyp" / "job" only become "GIB" when a plasterboard
- *     context word is nearby (sheet / board / lining / wall / ceiling
- *     / plasterboard) — otherwise leave alone and add a clarification.
+ *   - "jib" / "gyp" only become "GIB" when a plasterboard context word
+ *     is nearby (sheet / board / lining / wall / ceiling / plasterboard)
+ *     — otherwise leave alone and add a clarification. "job" is NEVER
+ *     auto-corrected: it's too common a trade word ("job type", "job
+ *     site") and rewriting it to GIB on incidental context corrupted
+ *     real quotes.
  *   - "pink bats" / "pinkbatts" / "pink-bats" → "Pink Batts" only when
  *     it reads as the brand. The word "batten" / "battens" is preserved
  *     as timber unless the context says otherwise.
@@ -173,22 +176,17 @@ export function applyDeterministicCorrections(raw: string): {
   });
 
   // -------------------------------------------------------------------------
-  // 2. jib / gyp / job → GIB (plasterboard context required)
+  // 2. jib / gyp → GIB (plasterboard context required)
+  //
+  // "job" is deliberately NOT in this list. It's one of the most common
+  // words in a job description ("job type", "job site", "this job"), and
+  // rewriting it to GIB on incidental nearby context (a stray digit + the
+  // word "board") corrupted ~16% of real transcripts — including our own
+  // "Job type:" scaffold becoming "GIB type:". Genuine GIB mishears come
+  // through as "jib" / "gyp", which are handled here.
   // -------------------------------------------------------------------------
-  text = text.replace(/\b(jib|gyp|job)\b/gi, (m, _w, offset: number) => {
-    if (m.toLowerCase() === "job") {
-      // "job" is a common English word; only treat as a typo of "gib"
-      // when there's a plasterboard context AND the word "the job" /
-      // "this job" reading would be unusual. We accept the conversion
-      // ONLY in plasterboard context AND when the surrounding tokens
-      // look like a material reference (a digit nearby, or a unit).
-      if (
-        !nearbyMatch(text, offset, m.length, PLASTERBOARD_CONTEXT_RE) ||
-        !nearbyMatch(text, offset, m.length, /\b\d|sheets?\b|board\b/i, 30)
-      ) {
-        return m;
-      }
-    } else if (!nearbyMatch(text, offset, m.length, PLASTERBOARD_CONTEXT_RE)) {
+  text = text.replace(/\b(jib|gyp)\b/gi, (m, _w, offset: number) => {
+    if (!nearbyMatch(text, offset, m.length, PLASTERBOARD_CONTEXT_RE)) {
       // jib / gyp without plasterboard context — refuse the rewrite
       // and emit a clarification so the user can confirm intent.
       clarifications.push({

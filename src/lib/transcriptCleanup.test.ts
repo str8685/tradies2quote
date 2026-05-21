@@ -79,6 +79,20 @@ describe("applyDeterministicCorrections — plasterboard brand normalisation", (
     expect(r.cleanedTranscript).toContain("job");
     expect(r.corrections.find((c) => c.before === "job" && c.after === "GIB")).toBeUndefined();
   });
+
+  it("'Job type:' scaffold is never rewritten to 'GIB type:' (regression — was ~16% of live quotes)", () => {
+    // Reproduces the exact production failure: the "Job type:" label sits
+    // near a digit ("stock_length_m=6") and the word "board" ("Calculate
+    // board"), which previously tripped the job→GIB rule.
+    const raw =
+      "[T2Q_TIMBER] stock_length_m=6\n\nJob type: Deck.\n\nTradie buys timber in 6m lengths. Calculate board / stud / plate / decking counts.";
+    const r = applyDeterministicCorrections(raw);
+    expect(r.cleanedTranscript).toContain("Job type: Deck");
+    expect(r.cleanedTranscript).not.toContain("GIB type");
+    expect(
+      r.corrections.find((c) => c.before.toLowerCase() === "job"),
+    ).toBeUndefined();
+  });
 });
 
 describe("applyDeterministicCorrections — Pink Batts", () => {
