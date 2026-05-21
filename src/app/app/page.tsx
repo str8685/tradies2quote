@@ -653,8 +653,6 @@ type UpcomingRow = {
  * who don't use scheduling. Each row links to the quote preview.
  */
 function UpcomingJobs({ rows }: { rows: UpcomingRow[] }) {
-  if (rows.length === 0) return null;
-
   const groups: Array<[string, UpcomingRow[]]> = [];
   for (const r of rows) {
     const key = (r.date ?? "").slice(0, 10);
@@ -670,7 +668,16 @@ function UpcomingJobs({ rows }: { rows: UpcomingRow[] }) {
       className="t2q-card-pro mb-7 p-5 sm:p-6"
     >
       <p className="t2q-section-label-pro">{"// upcoming"}</p>
-      <div className="mt-4 space-y-5">
+      {rows.length === 0 ? (
+        <p
+          data-testid="dashboard-upcoming-empty"
+          className="mt-3 text-sm leading-relaxed text-ink-300"
+        >
+          No jobs scheduled yet. When a quote is accepted, set a job date on
+          it and it&apos;ll show here, grouped by day.
+        </p>
+      ) : (
+        <div className="mt-4 space-y-5">
         {groups.map(([day, items]) => (
           <div key={day}>
             <p className="text-xs font-semibold uppercase tracking-wide text-brand">
@@ -701,7 +708,8 @@ function UpcomingJobs({ rows }: { rows: UpcomingRow[] }) {
             </ul>
           </div>
         ))}
-      </div>
+        </div>
+      )}
     </section>
   );
 }

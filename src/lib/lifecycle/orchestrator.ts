@@ -154,7 +154,7 @@ function proposeNextAction(s: QuoteStatus): NextAction | null {
         target: "scheduled",
         buttonLabel: "Schedule the job",
         description:
-          "Move the job to scheduled. A start-date picker lands in a follow-up wave.",
+          "Pick a job date and move it to scheduled — it'll show under Upcoming on your dashboard.",
       };
     case "scheduled":
       return {
