@@ -207,6 +207,12 @@ export function buildMirrorQuoteLines(
           it.source_line_total != null
             ? toExGst(it.source_line_total, gstInclusive, taxRate)
             : null,
+        // PHASE 2 — raw values EXACTLY as scanned (never GST-converted),
+        // so Review Quote can diff source vs the normalized/computed line.
+        source_description: it.name.trim(),
+        source_quantity: it.quantity ?? it.pieces ?? null,
+        source_unit: it.unit ? it.unit.trim() : null,
+        source_unit_price: it.price ?? null,
       };
       return line;
     });

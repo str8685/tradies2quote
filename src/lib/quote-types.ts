@@ -100,6 +100,23 @@ export type QuoteLineItem = {
    * Absent on quotes that didn't come from a scanned supplier quote.
    */
   source_line_total?: number | null;
+  /**
+   * PHASE 2 (source preservation) — the line EXACTLY as read from the
+   * supplier document, never GST-converted or recomputed. The live
+   * `quantity`/`unit`/`unit_price`/`line_total` above are the NORMALIZED
+   * (computed, ex-GST) values; these mirror the raw source so Review Quote
+   * can diff source vs app and the source is never silently overwritten.
+   * Absent on non-supplier lines.
+   */
+  source_description?: string | null;
+  source_quantity?: number | null;
+  source_unit?: string | null;
+  source_unit_price?: number | null;
+  /**
+   * Deterministic per-line reconciliation flags raised by the validation
+   * engine (e.g. "line_total≠qty×price", "price_derived_from_total").
+   */
+  validation_flags?: string[];
 };
 
 /**
@@ -310,9 +327,29 @@ export type QuoteData = {
 
 export type SupplierSource = {
   supplier: string | null;
+  /**
+   * NORMALIZED (ex-GST) document totals the app reconciles the computed
+   * quote against. (Legacy fields — kept for existing readers.)
+   */
   subtotal: number | null;
   gst: number | null;
   total: number | null;
+  /**
+   * PHASE 2 (source preservation) — values EXACTLY as printed on the
+   * supplier document, never GST-converted. The source is never silently
+   * overwritten; the reconciliation engine compares these (GST-aware)
+   * against the normalized/computed quote.
+   */
+  gst_inclusive?: boolean | null;
+  source_subtotal?: number | null;
+  source_gst?: number | null;
+  source_total?: number | null;
+  source_discount?: number | null;
+  source_freight?: number | null;
+  source_adjustments?: number | null;
+  /** Deterministic reconciliation verdict (source vs computed). */
+  reconciliation_status?: "ok" | "needs_review" | "blocked";
+  reconciliation_reasons?: string[];
 };
 
 export type QuoteProfile = {

@@ -555,6 +555,16 @@ export async function createQuoteFromScan(
           : null,
       gst: meta?.gst ?? null,
       total: meta?.total ?? null,
+      // PHASE 2 — raw printed document totals, EXACTLY as scanned and
+      // never GST-converted, so the source can never be silently
+      // overwritten and Review Quote can diff source vs computed.
+      gst_inclusive: meta?.gstInclusive ?? false,
+      source_subtotal: meta?.subtotal ?? null,
+      source_gst: meta?.gst ?? null,
+      source_total: meta?.total ?? null,
+      source_discount: null,
+      source_freight: null,
+      source_adjustments: null,
     },
   };
 
