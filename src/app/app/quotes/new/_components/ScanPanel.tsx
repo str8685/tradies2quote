@@ -1,7 +1,15 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Camera, UploadSimple, X, ArrowLeft } from "@phosphor-icons/react/dist/ssr";
+import Link from "next/link";
+import {
+  ArrowLeft,
+  Camera,
+  Receipt,
+  UploadSimple,
+  Warning,
+  X,
+} from "@phosphor-icons/react/dist/ssr";
 import { FloorPlanSvg } from "@/lib/floorPlanSvg";
 import { TapeMeasureProgress } from "@/app/app/_components/TapeMeasureProgress";
 import { needsPrep, prepareScanImage } from "@/lib/scanImage";
@@ -13,6 +21,7 @@ type ScanState =
   | "uploading"
   | "review-dims"
   | "transcript"
+  | "wrong-doc"
   | "error";
 
 const MAX_BYTES = 8 * 1024 * 1024;
@@ -32,6 +41,7 @@ interface ScanResult {
   structural: string;
   notes: string;
   plan: ScannedPlan | null;
+  documentType: "drawing" | "supplier_quote" | "other";
 }
 
 /**
@@ -259,7 +269,14 @@ export function ScanPanel({
         setState("error");
         return;
       }
-      const data = (await res.json()) as Partial<ScanResult>;
+      const data = (await res.json()) as Partial<ScanResult> & {
+        document_type?: string;
+      };
+      const documentType: ScanResult["documentType"] =
+        data.document_type === "supplier_quote" ||
+        data.document_type === "other"
+          ? data.document_type
+          : "drawing";
       const result: ScanResult = {
         buildType: (data.buildType ?? "").trim(),
         summary: (data.summary ?? "").trim(),
@@ -267,13 +284,17 @@ export function ScanPanel({
         structural: (data.structural ?? "").trim(),
         notes: (data.notes ?? "").trim(),
         plan: data.plan ?? null,
+        documentType,
       };
       setScanResult(result);
       setEditedDimensions(result.dimensions);
       // Let the tape snap to 100% (the satisfying click) before swapping views.
       setScanComplete(true);
       await new Promise((r) => setTimeout(r, 450));
-      setState("review-dims");
+      // A supplier quote photographed into the drawing scanner produces a
+      // hallucinated takeoff — steer the tradie to the quote importer
+      // instead, while still letting them force the takeoff if they meant to.
+      setState(documentType === "supplier_quote" ? "wrong-doc" : "review-dims");
     } catch {
       setError("Network error. Check your connection and try again.");
       setState("error");
@@ -338,7 +359,13 @@ export function ScanPanel({
         onChange={onFileChange}
       />
 
-      {state === "transcript" && scanResult ? (
+      {state === "wrong-doc" && scanResult ? (
+        <WrongDocNotice
+          previewUrl={previewUrl}
+          onContinueAnyway={() => setState("review-dims")}
+          onRedo={fullReset}
+        />
+      ) : state === "transcript" && scanResult ? (
         <ScanTranscriptReview
           transcript={transcript}
           buildType={scanResult.buildType}
@@ -764,6 +791,78 @@ function ScanTranscriptReview({
       <p className="mt-2 font-mono text-[10px] uppercase tracking-[0.2em] text-ink-500">
         {"// edit anything that's wrong — the quote will be built off this text"}
       </p>
+    </div>
+  );
+}
+
+/**
+ * Shown when the scan looks like a printed supplier quote rather than a
+ * hand-drawn plan. The drawing takeoff would hallucinate over a priced
+ * materials list, so we steer the tradie to the quote importer (which
+ * mirrors the supplier's lines + prices 1:1) while still letting them force
+ * the takeoff if they really did mean to scan a drawing.
+ */
+function WrongDocNotice({
+  previewUrl,
+  onContinueAnyway,
+  onRedo,
+}: {
+  previewUrl: string | null;
+  onContinueAnyway: () => void;
+  onRedo: () => void;
+}) {
+  return (
+    <div data-testid="scan-wrong-doc">
+      <div className="flex items-start gap-3 rounded-sm border border-hivis/40 bg-hivis/10 p-4">
+        <Warning weight="fill" className="mt-0.5 h-5 w-5 shrink-0 text-hivis" />
+        <div>
+          <h3 className="font-display text-base uppercase tracking-tight text-white">
+            That looks like a supplier quote
+          </h3>
+          <p className="mt-1 text-sm text-ink-200">
+            This scanner reads hand-drawn plans. To turn a merchant quote (ITM,
+            PlaceMakers…) into a quote that matches it exactly, use the quote
+            importer — it copies the supplier&rsquo;s line items and prices 1:1.
+          </p>
+        </div>
+      </div>
+
+      {previewUrl && (
+        <div className="mt-3">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={previewUrl}
+            alt="Scanned document"
+            className="max-h-48 w-auto rounded-sm border border-ink-600"
+          />
+        </div>
+      )}
+
+      <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:items-center">
+        <Link
+          href="/app/materials/import-quote"
+          data-testid="scan-wrong-doc-import"
+          className="t2q-btn-primary-pro inline-flex min-h-[44px] items-center justify-center gap-2 px-5"
+        >
+          <Receipt weight="bold" className="h-5 w-5" />
+          Import this supplier quote
+        </Link>
+        <button
+          type="button"
+          onClick={onContinueAnyway}
+          data-testid="scan-wrong-doc-continue"
+          className="t2q-btn-ghost-pro inline-flex min-h-[44px] items-center justify-center px-5"
+        >
+          Use as a drawing anyway
+        </button>
+        <button
+          type="button"
+          onClick={onRedo}
+          className="inline-flex min-h-[44px] items-center justify-center px-3 font-mono text-xs uppercase tracking-[0.2em] text-ink-300 hover:text-white"
+        >
+          Scan something else
+        </button>
+      </div>
     </div>
   );
 }

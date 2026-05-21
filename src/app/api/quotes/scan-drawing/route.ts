@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { canWrite, getSubscriptionStatus } from "@/lib/subscription";
+import { resolveDocumentType } from "@/lib/scanClassify";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -102,6 +103,7 @@ CRITICAL rules:
 
 Output shape:
 {
+  "document_type": "drawing" | "supplier_quote" | "other",
   "buildType": string,
   "summary": string,
   "dimensions": string,
@@ -120,6 +122,7 @@ Output shape:
 }
 
 Where:
+- "document_type" classifies what the image actually is. "drawing" = a hand-drawn or CAD plan/sketch with measurements to take off. "supplier_quote" = a printed/typed merchant quote, estimate, invoice or order (product line items with prices/SKUs and a Subtotal / GST / Total). "other" = neither. If it's clearly a supplier quote, set "supplier_quote" — the app will redirect the tradie to the quote importer instead of doing a takeoff.
 - "buildType" is a short noun phrase ("Timber deck", "1.8m boundary fence", "Garage GIB lining", …).
 - "summary" is one sentence (under 200 chars) for log lines.
 - "dimensions" is the PRIMARY DIMENSIONS section ONLY — one dimension per line, no headers, no extra commentary. This is what the tradie will review first to catch misreads. 4–20 lines typically.
@@ -145,6 +148,7 @@ export interface ScannedPlan {
 }
 
 interface ScanPayload {
+  document_type?: string;
   buildType?: string;
   summary?: string;
   dimensions?: string;
@@ -154,6 +158,7 @@ interface ScanPayload {
   // Tolerate the legacy single-transcript shape too.
   transcript?: string;
 }
+
 
 function sanitisePlan(raw: unknown): ScannedPlan | null {
   if (!raw || typeof raw !== "object") return null;
@@ -435,6 +440,10 @@ export async function POST(request: NextRequest) {
   }
 
   return NextResponse.json({
+    document_type: resolveDocumentType(
+      parsed.document_type,
+      [dimensions, structural, notes, legacyTranscript].join("\n"),
+    ),
     buildType:
       typeof parsed.buildType === "string" ? parsed.buildType.trim() : "",
     summary:
