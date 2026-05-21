@@ -813,7 +813,7 @@ function ItemsSection({
   return (
     <section
       data-testid={`section-${title.toLowerCase()}`}
-      className="t2q-card-pro p-5 sm:p-6"
+      className="t2q-card-pro p-4 sm:p-5"
     >
       <div className="flex items-center justify-between">
         <h3 className="font-display text-lg uppercase tracking-tight">
@@ -843,7 +843,7 @@ function ItemsSection({
           {"// no items — add one above"}
         </p>
       ) : (
-        <ul className="mt-4 space-y-3">
+        <ul className="mt-3 space-y-2">
           {rows.map(({ it, i }) => {
             const libMaterial = it.library_id
               ? libraryById.get(it.library_id)
@@ -864,7 +864,7 @@ function ItemsSection({
               key={i}
               data-testid={`row-${i}`}
               data-confidence={confidence}
-              className={`rounded-sm border border-ink-700 bg-ink-900 p-3 ${confidenceClass}`}
+              className={`rounded-sm border border-ink-700 bg-ink-900 p-2.5 ${confidenceClass}`}
             >
               {showBadges && (
                 <ItemBadge
@@ -900,7 +900,7 @@ function ItemsSection({
                   <Trash size={16} weight="bold" />
                 </button>
               </div>
-              <div className="mt-2 grid grid-cols-3 gap-2">
+              <div className="mt-1.5 grid grid-cols-3 gap-2">
                 <NumberField
                   label="Qty"
                   value={it.quantity}
@@ -920,7 +920,7 @@ function ItemsSection({
                   disabled={disabled}
                 />
               </div>
-              <div className="mt-2 text-right font-mono text-xs uppercase tracking-[0.2em] text-ink-300">
+              <div className="mt-1.5 text-right font-mono text-xs uppercase tracking-[0.2em] text-ink-300">
                 Line total: <span className="text-white">{formatCurrency(it.line_total, currency)}</span>
               </div>
               {(it.formula || libMaterial) && (
@@ -1103,7 +1103,7 @@ function ItemBadge({
     return null;
   }
   return (
-    <div className="mb-2 flex flex-wrap items-center gap-2">
+    <div className="mb-1.5 flex flex-wrap items-center gap-2">
       {isCalculatedTakeoff && (!takeoffStatus || takeoffStatus === "ok") && (
         <span
           data-testid="badge-calculated"

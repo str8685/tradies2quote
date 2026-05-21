@@ -8,6 +8,7 @@ import {
   type ClarificationAnswer,
 } from "./ClarificationModal";
 import { ScanPanel } from "./ScanPanel";
+import { TapeMeasureProgress } from "@/app/app/_components/TapeMeasureProgress";
 import { splitTranscript, hasHighlights } from "@/lib/highlightDimensions";
 
 type Tab = "voice" | "type" | "scan";
@@ -294,6 +295,11 @@ function VoicePanel({
               / {formatTime(MAX_SECONDS)}
             </span>
           </div>
+          {state === "processing" && (
+            <div className="mt-5 flex w-full justify-center">
+              <TapeMeasureProgress label="// transcribing" estimateMs={9000} />
+            </div>
+          )}
           <p
             data-testid="voice-status"
             aria-live="polite"

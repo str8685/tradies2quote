@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { LogoMark } from "../../_components/landing/Logo";
+import TapeProgress from "../../_components/landing/TapeProgress";
 
 /**
  * App-only splash / loading screen — soft-serif "Stowe" aesthetic.
@@ -103,7 +104,7 @@ export default function AppSplash({
       }}
     >
       <div className="relative flex flex-col items-center px-8 text-center">
-        <div className="t2q-splash-logo text-white">
+        <div className="t2q-app-splash-logo text-white">
           <LogoMark size={72} />
         </div>
 
@@ -118,30 +119,17 @@ export default function AppSplash({
           {tagline}
         </div>
 
-        {/* Thin gradient progress line — fills with `progress`. */}
-        <div className="t2q-splash-tape mt-9 h-[3px] w-56 overflow-hidden rounded-full bg-white/10">
-          <div
-            className="h-full rounded-full"
-            style={{
-              width: `${Math.round(progress * 100)}%`,
-              background: "linear-gradient(90deg, #FF5F15 0%, #FFEA00 100%)",
-              transition: "width 120ms linear",
-            }}
+        {/* Live measuring-tape gauge — the SAME on-brand loader the scan
+            and quote-generation screens use, driven by `progress` so the
+            whole app shares one "live, filling" loading language. */}
+        <div className="t2q-splash-tape mt-10 flex justify-center">
+          <TapeProgress
+            progress={progress}
+            width={300}
+            label="// loading"
+            showReadout
+            testId="app-splash-loader"
           />
-        </div>
-
-        {/* Breathing dots. */}
-        <div
-          className="t2q-splash-caption mt-6 flex items-center gap-1.5"
-          aria-hidden="true"
-        >
-          {[0, 1, 2].map((i) => (
-            <span
-              key={i}
-              className="t2q-loading-caption inline-block h-1.5 w-1.5 rounded-full bg-brand"
-              style={{ animationDelay: `${i * 200}ms` }}
-            />
-          ))}
         </div>
       </div>
     </div>

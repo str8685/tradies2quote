@@ -184,7 +184,7 @@ export function StickyActionBar({
       {(sendState === "error" || sendState === "sent") && (
         <div
           aria-live="polite"
-          className="fixed inset-x-0 bottom-[150px] z-50 mx-auto max-w-3xl px-4 sm:static sm:bottom-auto sm:max-w-none sm:px-0"
+          className="fixed inset-x-0 bottom-[180px] z-50 mx-auto max-w-3xl px-4 sm:static sm:bottom-auto sm:max-w-none sm:px-0"
         >
           <p
             data-testid={
@@ -208,7 +208,7 @@ export function StickyActionBar({
       {blockReasons && blockReasons.length > 0 && (
         <div
           aria-live="polite"
-          className="fixed inset-x-0 bottom-[150px] z-50 mx-auto max-w-3xl px-4 sm:static sm:bottom-auto sm:max-w-none sm:px-0 sm:mb-2"
+          className="fixed inset-x-0 bottom-[180px] z-50 mx-auto max-w-3xl px-4 sm:static sm:bottom-auto sm:max-w-none sm:px-0 sm:mb-2"
         >
           <div
             data-testid="sticky-send-blocked"
@@ -232,7 +232,7 @@ export function StickyActionBar({
       {confirmReasons && (
         <div
           aria-live="polite"
-          className="fixed inset-x-0 bottom-[150px] z-50 mx-auto max-w-3xl px-4 sm:static sm:bottom-auto sm:max-w-none sm:px-0 sm:mb-2"
+          className="fixed inset-x-0 bottom-[180px] z-50 mx-auto max-w-3xl px-4 sm:static sm:bottom-auto sm:max-w-none sm:px-0 sm:mb-2"
         >
           <div
             data-testid="sticky-send-confirm"
@@ -274,19 +274,19 @@ export function StickyActionBar({
       <div
         data-testid="sticky-action-bar"
         className={[
-          // Mobile fixed bar sitting flush on top of the bottom nav.
-          // The nav is 57px (56px tile + 1px border) plus its own
-          // safe-area padding-bottom, so `bottom` mirrors that exact
-          // formula — no floating gap, no overlap, on any device.
-          // Wave 36 — solid bg (was bg-ink-950/85). 85%-alpha was
-          // letting page content show through on light mode, which
-          // read as a floating translucent strip; solid + shadow now
-          // reads as a locked-in toolbar.
-          "fixed inset-x-0 bottom-[calc(57px_+_max(env(safe-area-inset-bottom)_-_24px,4px))] z-50 border-t border-ink-700/70 bg-ink-950 shadow-[0_-4px_12px_-4px_rgba(0,0,0,0.35)]",
+          // Soft-serif refresh — the bottom nav is now a FLOATING rounded
+          // pill (`.t2q-bottomnav-bar`, ~62px tall, sitting a thumb's width
+          // off the screen edges). The old `bottom: 57px + safe-area`
+          // formula assumed the previous edge-anchored 57px strip, so this
+          // bar ended up sitting ON TOP of the pill. Now it floats just
+          // ABOVE the pill: `bottom` clears the pill (~62px) + a gap, and
+          // it gets the same rounded/bordered/blurred treatment so the two
+          // read as one intentional floating cluster, not overlapping bars.
+          "fixed left-3 right-3 bottom-[calc(max(env(safe-area-inset-bottom),0.75rem)_+_4.5rem)] z-50 rounded-2xl border border-white/10 bg-ink-900/95 backdrop-blur-md shadow-[0_12px_32px_-8px_rgba(0,0,0,0.6)]",
           // min height 56 per the spec — leaves room for 44-px buttons.
           "min-h-[56px]",
           // On sm+ become a normal inline strip, no fixed positioning.
-          "sm:static sm:border-0 sm:bg-transparent sm:backdrop-blur-none",
+          "sm:static sm:left-auto sm:right-auto sm:rounded-none sm:border-0 sm:bg-transparent sm:shadow-none sm:backdrop-blur-none",
         ].join(" ")}
       >
         <div className="mx-auto flex max-w-3xl items-center gap-2 px-3 py-2 sm:justify-between sm:px-0 sm:py-4 sm:border-t sm:border-ink-700">

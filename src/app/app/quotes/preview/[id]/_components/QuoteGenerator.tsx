@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import TapeProgress from "@/app/_components/landing/TapeProgress";
+import { TapeMeasureProgress } from "@/app/app/_components/TapeMeasureProgress";
 
 export function QuoteGenerator({ id }: { id: string }) {
   const router = useRouter();
@@ -51,17 +51,14 @@ export function QuoteGenerator({ id }: { id: string }) {
     >
       {pending ? (
         <>
-          {/* Wave 12.5 — swapped the 8-bar `WaveLoader` for the same
-              measuring-tape progress widget the splash screen uses.
-              Indeterminate mode loops the orange needle 0 → 100mm so
-              users see consistent tradie-tool aesthetics from first
-              load through quote generation. */}
-          <TapeProgress
-            width={340}
-            height={36}
+          {/* Live measuring-tape gauge — the SAME loader as the splash,
+              scan and import screens. Driven live: the needle eases out
+              toward ~92% over the typical generation time and HOLDS there
+              until the result lands and the page refreshes, so it reads as
+              "almost there", never a fake or frozen bar. */}
+          <TapeMeasureProgress
             label="// generating quote"
-            showReadout
-            testId="quote-generator-loader"
+            estimateMs={14000}
           />
           <h2 className="mt-8 font-display text-2xl uppercase tracking-tight sm:text-3xl">
             Generating your <span className="text-brand">quote</span>…
