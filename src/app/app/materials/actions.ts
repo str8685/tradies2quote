@@ -405,6 +405,8 @@ export type ScanQuoteLine = {
   unit: string;
   quantity: number;
   price: number;
+  /** Printed line total as scanned — carried through for reconciliation. */
+  line_total?: number | null;
 };
 
 export async function createQuoteFromScan(
@@ -446,6 +448,11 @@ export async function createQuoteFromScan(
           ? Number(l.quantity)
           : null,
       pieces: null,
+      source_line_total:
+        Number.isFinite(Number(l.line_total)) && Number(l.line_total) > 0
+          ? Math.round(Number(l.line_total) * 100) / 100
+          : null,
+      raw_text: null,
       confidence: 1,
     }))
     .filter((i) => i.name.length > 0);

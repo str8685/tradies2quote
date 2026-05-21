@@ -30,16 +30,38 @@ export type ExtractedSupplierItem = {
    * the stock-length maths, so we don't re-round.
    */
   pieces: number | null;
+  /**
+   * The line total EXACTLY as printed on the supplier quote. Read-only
+   * SOURCE value — the validation layer reconciles this against the
+   * recomputed `quantity × price`. Never used to overwrite a price. Null
+   * when the quote doesn't print a per-line total.
+   */
+  source_line_total: number | null;
+  /**
+   * The raw text the model read this row off, for provenance / "show me
+   * where this came from" in review. Null when unavailable.
+   */
+  raw_text: string | null;
   /** [0,1] — the model's confidence in this row (lower when derived/unclear). */
   confidence: number;
 };
 
 export type SupplierQuoteExtraction = {
   supplier: string | null;
+  /** Quote / order number as printed, for the review header. */
+  quote_number: string | null;
   currency: string | null;
   /** true = displayed unit prices INCLUDE GST, false = exclude, null = unclear. */
   gst_inclusive: boolean | null;
   items: ExtractedSupplierItem[];
+  /**
+   * Document-level totals EXACTLY as printed. Read-only SOURCE values the
+   * validation layer reconciles against the recomputed figures. Null when
+   * the quote doesn't print that summary line.
+   */
+  subtotal: number | null;
+  gst: number | null;
+  total: number | null;
   /** Things the tradie should double-check (smudged numbers, ambiguous units). */
   notes: string[];
 };
@@ -138,6 +160,13 @@ export function parseSupplierQuoteExtraction(raw: unknown): ParseResult {
     const piecesRaw = toNumber(r.pieces);
     const pieces =
       piecesRaw === null || piecesRaw <= 0 ? null : Math.round(piecesRaw);
+    const sltRaw = toNumber(r.line_total);
+    const source_line_total =
+      sltRaw === null ? null : Math.round(sltRaw * 100) / 100;
+    const raw_text =
+      typeof r.raw_text === "string" && r.raw_text.trim()
+        ? r.raw_text.trim()
+        : null;
     const confidence = clampConfidence(r.confidence);
 
     // Dedupe identical name+unit rows the model may have read twice.
@@ -145,12 +174,26 @@ export function parseSupplierQuoteExtraction(raw: unknown): ParseResult {
     if (seen.has(key)) continue;
     seen.add(key);
 
-    items.push({ name, unit, price, sku, quantity, pieces, confidence });
+    items.push({
+      name,
+      unit,
+      price,
+      sku,
+      quantity,
+      pieces,
+      source_line_total,
+      raw_text,
+      confidence,
+    });
   }
 
   const supplier =
     typeof obj.supplier === "string" && obj.supplier.trim()
       ? obj.supplier.trim()
+      : null;
+  const quote_number =
+    typeof obj.quote_number === "string" && obj.quote_number.trim()
+      ? obj.quote_number.trim()
       : null;
   const currency =
     typeof obj.currency === "string" && obj.currency.trim()
@@ -158,13 +201,26 @@ export function parseSupplierQuoteExtraction(raw: unknown): ParseResult {
       : null;
   const gst_inclusive =
     typeof obj.gst_inclusive === "boolean" ? obj.gst_inclusive : null;
+  const subtotal = toNumber(obj.subtotal);
+  const gst = toNumber(obj.gst);
+  const total = toNumber(obj.total);
   const notes = Array.isArray(obj.notes)
     ? obj.notes.filter((s): s is string => typeof s === "string")
     : [];
 
   return {
     ok: true,
-    value: { supplier, currency, gst_inclusive, items, notes },
+    value: {
+      supplier,
+      quote_number,
+      currency,
+      gst_inclusive,
+      items,
+      subtotal,
+      gst,
+      total,
+      notes,
+    },
   };
 }
 

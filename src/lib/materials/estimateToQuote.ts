@@ -24,7 +24,10 @@ import type {
   QuoteProfile,
 } from "../quote-types";
 import { matchToLibrary } from "../materials";
-import { round2 } from "../quote-defaults";
+import {
+  computeQuoteTotals as computeSharedQuoteTotals,
+  round2,
+} from "../quote-defaults";
 
 const DEFAULT_STOCK_M = 6;
 const DEFAULT_WASTE_PCT = 10;
@@ -214,31 +217,20 @@ export type QuoteTotals = {
 };
 
 /**
- * Totals math — identical to /api/quotes/generate: markup applies to
- * materials only, GST applies to the post-markup subtotal.
+ * Totals math. Thin profile-shaped wrapper over the single shared money
+ * utility in quote-defaults (`computeQuoteTotals`) so there is exactly one
+ * implementation of quote totals in the codebase — markup applies to
+ * materials only, GST applies to the post-markup subtotal, sum-of-rounded
+ * lines. Returns the same shape callers here already use (adds markup_pct).
  */
 export function computeQuoteTotals(
   lineItems: QuoteLineItem[],
   profile: Pick<QuoteProfile, "default_markup_pct" | "tax_rate">,
 ): QuoteTotals {
-  let materials = 0;
-  let labour = 0;
-  for (const it of lineItems) {
-    if (it.type === "labour") labour += it.line_total;
-    else materials += it.line_total;
-  }
-  const markup_pct = profile.default_markup_pct;
-  const markup_amount = round2(materials * (markup_pct / 100));
-  const subtotal_before_tax = round2(materials + markup_amount + labour);
-  const tax_amount = round2(subtotal_before_tax * (profile.tax_rate / 100));
-  const total = round2(subtotal_before_tax + tax_amount);
-  return {
-    materials_subtotal: round2(materials),
-    labour_subtotal: round2(labour),
-    markup_pct,
-    markup_amount,
-    subtotal_before_tax,
-    tax_amount,
-    total,
-  };
+  const totals = computeSharedQuoteTotals(
+    lineItems,
+    profile.default_markup_pct,
+    profile.tax_rate,
+  );
+  return { ...totals, markup_pct: profile.default_markup_pct };
 }

@@ -22,6 +22,8 @@ const item = (
   sku: null,
   quantity,
   pieces,
+  source_line_total: null,
+  raw_text: null,
   confidence: 0.9,
 });
 
@@ -142,6 +144,8 @@ describe("buildQuoteLinesFromEstimate — supplier-price fallback", () => {
     sku: null,
     quantity,
     pieces: null,
+    source_line_total: null,
+    raw_text: null,
     confidence: 0.9,
   });
 
@@ -211,6 +215,8 @@ describe("buildMirrorQuoteLines — faithful ITM mirror", () => {
     sku: null,
     quantity,
     pieces,
+    source_line_total: null,
+    raw_text: null,
     confidence: 0.9,
   });
 

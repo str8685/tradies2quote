@@ -73,6 +73,7 @@ const SYSTEM_PROMPT = `You read a photo of a NEW ZEALAND building-supplier quote
 Return STRICT JSON only — no prose, no markdown, no code fences:
 {
   "supplier": string | null,
+  "quote_number": string | null,
   "currency": string | null,
   "gst_inclusive": boolean | null,
   "items": [
@@ -82,15 +83,21 @@ Return STRICT JSON only — no prose, no markdown, no code fences:
       "quantity": number | null,
       "pieces": number | null,
       "price": number | null,
+      "line_total": number | null,
       "sku": string | null,
+      "raw_text": string | null,
       "confidence": number
     }
   ],
+  "subtotal": number | null,
+  "gst": number | null,
+  "total": number | null,
   "notes": string[]
 }
 
 Field rules:
 - "supplier": the merchant's name if shown (e.g. "ITM"), else null.
+- "quote_number": the quote / order / reference number as printed, else null.
 - "currency": e.g. "NZD" if shown, else null.
 - "gst_inclusive": true if the UNIT prices shown INCLUDE GST, false if they EXCLUDE GST, null if you can't tell. NZ trade quotes are usually GST-exclusive.
 - "name": the product description as printed.
@@ -98,14 +105,18 @@ Field rules:
 - "quantity": the line quantity in the SAME unit as the unit price, so that quantity × price = the line total printed on the quote. null if not shown.
 - "pieces": when the line shows an "N/length" breakdown (e.g. "19/4.8m" = 19 lengths), the piece count (19), else null.
 - "price": the UNIT price (price for ONE unit), as a number, no "$" or commas. If the line only shows a quantity and a line total, divide total by quantity to get the unit price and LOWER the confidence. null if there is no usable price.
+- "line_total": the line total EXACTLY as printed on that row (no "$"/commas). Capture what is printed — do NOT compute or correct it. null if no per-line total is shown. (This is the source value the app reconciles against; the app recomputes its own total separately.)
 - "sku": the product/SKU/order code if printed, else null.
+- "raw_text": the row's text as you read it (e.g. "19/4.8m H3.2 140x45 @ 12.40 = 235.60"), for review provenance. null if unsure.
 - "confidence": 0..1 — your confidence in this row. Lower it when the text is unclear or you derived the unit price.
+- "subtotal" / "gst" / "total": the document summary amounts EXACTLY as printed (no "$"/commas), else null. Capture them — do NOT compute or correct them.
 - "notes": short strings for anything the tradie should double-check (smudged numbers, ambiguous units, lines you skipped).
 
 Hard rules:
-- Extract the UNIT price, never the line total.
-- Do NOT invent products or prices. If you cannot read a row, skip it and add a note.
-- Ignore summary lines (subtotal, GST, total, rounding). Keep a freight/delivery line only if it's a real chargeable item.
+- Extract BOTH the unit price ("price") AND the printed line total ("line_total") for each row — capture them exactly, never compute or "fix" a printed number.
+- Capture the printed summary amounts in "subtotal", "gst" and "total". Do NOT include subtotal/GST/total/rounding rows as product items in "items".
+- Do NOT invent products or numbers. If you cannot read a value, use null and add a note — never guess.
+- Keep a freight/delivery line as an item only if it's a real chargeable line.
 - Use NZ trade vocabulary.`;
 
 export async function POST(request: NextRequest) {
