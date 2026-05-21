@@ -48,6 +48,37 @@ export async function addCalendarNote(
   return { ok: true, id: data.id };
 }
 
+/** Edit the body of one of the caller's own calendar notes. */
+export async function updateCalendarNote(
+  id: string,
+  body: string,
+): Promise<CalendarNoteResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const trimmed = body.trim().slice(0, MAX_BODY);
+  if (!trimmed) return { error: "Write something first." };
+
+  const { data, error } = await supabase
+    .from("calendar_notes")
+    .update({ body: trimmed, updated_at: new Date().toISOString() })
+    .eq("id", id)
+    .eq("user_id", user.id)
+    .select("id")
+    .single();
+
+  if (error || !data) {
+    console.error("updateCalendarNote failed", error);
+    return { error: "Could not update the note." };
+  }
+
+  revalidatePath("/app");
+  return { ok: true, id: data.id };
+}
+
 /** Delete one of the caller's own calendar notes. */
 export async function deleteCalendarNote(
   id: string,

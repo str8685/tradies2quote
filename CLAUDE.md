@@ -89,10 +89,11 @@ Set runtime env vars (`OPENAI_API_KEY`, etc.) in Vercel project settings → Env
 ## Scope boundaries
 
 Out of scope for the MVP — do not build:
-- Job management, scheduling, time tracking
 - Live supplier price scraping
 - Xero / MYOB / QuickBooks integrations
 - Multi-language, white-label, native mobile apps
+
+**Now in scope (opted in by the owner):** lightweight **job scheduling** — a quote can carry a job date (`quotes.scheduled_for`, set via the date picker on the LifecycleCard schedule step) and the dashboard shows a month **calendar** (`src/app/app/_components/ScheduleCalendar.tsx`) of scheduled jobs plus personal day-**notes** (`calendar_notes` table, owner-only RLS). Full job management / time tracking is still out.
 
 Do **not** modify the marketing landing page (`src/app/page.tsx` and `src/app/_components/landing/*`) without an explicit request.
 
