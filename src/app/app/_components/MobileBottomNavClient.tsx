@@ -119,7 +119,7 @@ export function MobileBottomNavClient({ isOwner, userEmail, avatarUrl }: Props) 
         aria-label="Account menu"
         aria-expanded={sheetOpen}
         onClick={() => setSheetOpen(true)}
-        className="t2q-avatar-online fixed right-3 top-[calc(env(safe-area-inset-top)+0.6rem)] z-40 inline-flex h-10 w-10 items-center justify-center rounded-full border border-ink-700 bg-ink-950/80 shadow-lg backdrop-blur sm:hidden"
+        className="t2q-avatar-online fixed right-4 top-[calc(env(safe-area-inset-top)+0.6rem)] z-40 inline-flex h-10 w-10 items-center justify-center rounded-full border border-ink-700 bg-ink-950/80 backdrop-blur sm:hidden"
       >
         {avatarUrl ? (
           // eslint-disable-next-line @next/next/no-img-element

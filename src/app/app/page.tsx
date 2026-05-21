@@ -323,12 +323,6 @@ async function DashboardData({
           secondary KPI row (Quotes this month + Total quoted) keeps
           the Wave 10.5 honest-numbers idea alive without taking up
           screen-space the lifecycle tiles need. */}
-      <ScheduleCalendar
-        jobs={scheduledJobs}
-        notes={calendarNotes}
-        todayISO={todayISO}
-      />
-
       <section
         data-testid="dashboard-stats"
         aria-label="Pipeline by lifecycle stage"
@@ -385,6 +379,12 @@ async function DashboardData({
           </>
         )}
       </section>
+
+      <ScheduleCalendar
+        jobs={scheduledJobs}
+        notes={calendarNotes}
+        todayISO={todayISO}
+      />
 
       <div className="flex items-center justify-between gap-3">
         <p
