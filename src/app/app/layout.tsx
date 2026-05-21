@@ -1,5 +1,5 @@
 import { SideMeasureTape } from "../_components/app/SideMeasureTape";
-import LoadingScreen from "../_components/landing/LoadingScreen";
+import AppSplash from "./_components/AppSplash";
 import { MobileBottomNav } from "./_components/MobileBottomNav";
 import { OnboardingTourGate } from "./_components/OnboardingTourGate";
 import { TopProgressBar } from "./_components/TopProgressBar";
@@ -50,14 +50,14 @@ export default function AppLayout({
         aria-hidden="true"
         className="pointer-events-none fixed inset-x-0 top-0 z-50 h-[env(safe-area-inset-top)] bg-ink-950/75 backdrop-blur-sm"
       />
-      {/* Tape-measure brand splash. Renders once per session — the
+      {/* Soft-serif app splash. Renders once per session — the
           sessionStorage check inside the component decides whether to
           play or skip on each /app entry. Server-rendered visible so
           there's no flash of dashboard before it appears. */}
-      <LoadingScreen
+      <AppSplash
         storageKey="t2q-app-splash-shown"
-        tapeLabel="// loading the tools"
-        holdMs={5000}
+        tagline="Voice in. Quote out."
+        holdMs={2600}
       />
       <SideMeasureTape />
       {/* Mobile-only safe-area-top. AppHeader is `hidden sm:block`

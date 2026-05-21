@@ -5,10 +5,15 @@ import { redirect } from "next/navigation";
 import {
   ArrowRight,
   Bug,
+  FileText,
+  Microphone,
   Plus,
+  Receipt,
   Robot,
+  Stack,
   Warning,
 } from "@phosphor-icons/react/dist/ssr";
+import type { Icon } from "@phosphor-icons/react";
 import { createClient } from "@/lib/supabase/server";
 import { getCachedAuthUser } from "@/lib/supabase/auth";
 import { formatCurrency, quoteNumber } from "@/lib/quote-defaults";
@@ -78,6 +83,8 @@ export default async function DashboardPage() {
             Welcome, <span className="text-brand">{username}.</span>
           </h1>
         </div>
+
+        <QuickActions />
 
         <Suspense fallback={<DashboardSkeleton />}>
           <DashboardData userId={user.id} isOwner={isOwner} />
@@ -337,26 +344,13 @@ async function DashboardData({
         )}
       </section>
 
-      <div className="flex flex-col-reverse items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex items-center justify-between gap-3">
         <p
           data-testid="dashboard-recent-label"
           className="t2q-section-label-pro"
         >
           {`// ${recent.length} recent quote${recent.length === 1 ? "" : "s"}`}
         </p>
-        <div className="flex gap-2">
-          <Link href="/app/materials" className="t2q-btn-ghost-pro">
-            Materials
-          </Link>
-          <Link
-            href="/app/quotes/new"
-            data-testid="dashboard-new-quote"
-            className="t2q-btn-primary-pro"
-          >
-            <Plus size={18} weight="bold" />
-            New quote
-          </Link>
-        </div>
       </div>
 
       {/* Wave 13 — Agents card is now owner-only. Was visible to
@@ -597,6 +591,77 @@ function SecondaryStat({
       <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.2em] text-ink-300">
         {label}
       </p>
+    </div>
+  );
+}
+
+/**
+ * Soft-serif refresh — Stowe-style quick-actions grid. A 2-col grid of
+ * icon-badge cards for the app's primary destinations, replacing the old
+ * single New-quote / Materials button row. Static links only (no data),
+ * so it lives in the page frame and paints before the streamed body.
+ */
+const QUICK_ACTIONS: ReadonlyArray<{
+  href: string;
+  label: string;
+  sub: string;
+  icon: Icon;
+  primary?: boolean;
+  testId?: string;
+}> = [
+  {
+    href: "/app/quotes/new",
+    label: "New quote",
+    sub: "Voice in, quote out",
+    icon: Microphone,
+    primary: true,
+    testId: "dashboard-new-quote",
+  },
+  { href: "/app/quotes", label: "Quotes", sub: "View & manage", icon: FileText },
+  {
+    href: "/app/materials",
+    label: "Materials",
+    sub: "Your price library",
+    icon: Stack,
+  },
+  {
+    href: "/app/invoices",
+    label: "Invoices",
+    sub: "Bill & get paid",
+    icon: Receipt,
+  },
+];
+
+function QuickActions() {
+  return (
+    <div
+      data-testid="dashboard-quick-actions"
+      className="mb-7 grid grid-cols-2 gap-3 sm:mb-8 sm:gap-4"
+    >
+      {QUICK_ACTIONS.map(({ href, label, sub, icon: IconCmp, primary, testId }) => (
+        <Link
+          key={href}
+          href={href}
+          prefetch
+          data-testid={testId}
+          className="t2q-card-pro t2q-card-pro-hover flex flex-col gap-3 p-4 sm:p-5"
+        >
+          <span
+            aria-hidden="true"
+            className={`inline-flex h-11 w-11 items-center justify-center rounded-full ${
+              primary
+                ? "bg-brand text-ink-900"
+                : "border border-brand/30 bg-brand/10 text-brand"
+            }`}
+          >
+            <IconCmp size={20} weight="bold" />
+          </span>
+          <div>
+            <p className="text-base font-semibold text-white">{label}</p>
+            <p className="mt-0.5 text-xs text-ink-400">{sub}</p>
+          </div>
+        </Link>
+      ))}
     </div>
   );
 }
