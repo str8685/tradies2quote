@@ -1327,3 +1327,31 @@ h1, h2, h3, h4, h5 {
   text-transform: none !important;
   letter-spacing: -0.01em;
 }
+
+/* ─── Floating bottom-nav FAB ─────────────────────────────────────────────
+   Stowe-style raised centre action button (New quote). Pokes above the
+   floating pill bar; the border acts as a "gap" ring against the bar and
+   is theme-aware so it reads as separation in both dark + light. */
+.t2q-bottomnav-fab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 3.5rem;
+  width: 3.5rem;
+  margin-top: -1.75rem;
+  border-radius: 9999px;
+  background: #FF5F15;
+  color: #0A0A0A;
+  border: 3px solid #0E0E10;
+  box-shadow: 0 10px 24px -6px rgba(255, 95, 21, 0.6);
+  transition: transform 120ms ease, background-color 150ms ease;
+}
+.t2q-bottomnav-fab:hover {
+  background: #FF7233;
+}
+.t2q-bottomnav-fab:active {
+  transform: scale(0.94);
+}
+[data-theme="light"] .t2q-bottomnav-fab {
+  border-color: #F5F4EE;
+}

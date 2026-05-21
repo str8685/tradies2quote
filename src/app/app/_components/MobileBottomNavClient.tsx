@@ -8,9 +8,8 @@ import type { Icon } from "@phosphor-icons/react";
 import {
   House,
   ListBullets,
+  Plus,
   Receipt,
-  Robot,
-  Stack,
 } from "@phosphor-icons/react";
 
 /**
@@ -52,18 +51,16 @@ interface Props {
   avatarUrl: string | null;
 }
 
-const TILES: ReadonlyArray<{
-  href: string;
-  label: string;
-  icon: Icon;
-  ownerOnly: boolean;
-}> = [
-  { href: "/app", label: "Home", icon: House, ownerOnly: false },
-  { href: "/app/quotes", label: "Quotes", icon: ListBullets, ownerOnly: false },
-  { href: "/app/invoices", label: "Invoices", icon: Receipt, ownerOnly: false },
-  { href: "/app/materials", label: "Materials", icon: Stack, ownerOnly: false },
-  // Wave 13: Agents owner-only.
-  { href: "/app/agents", label: "Agents", icon: Robot, ownerOnly: true },
+// Soft-serif refresh — Stowe-style 4-tabs-plus-centre-FAB layout:
+//   [Home, Quotes]  ( New quote FAB )  [Invoices, Me]
+// Materials + Agents came off the bar (Materials lives in the dashboard
+// quick-actions grid; Agents in the dashboard card for owners).
+const LEFT_TILES: ReadonlyArray<{ href: string; label: string; icon: Icon }> = [
+  { href: "/app", label: "Home", icon: House },
+  { href: "/app/quotes", label: "Quotes", icon: ListBullets },
+];
+const RIGHT_TILES: ReadonlyArray<{ href: string; label: string; icon: Icon }> = [
+  { href: "/app/invoices", label: "Invoices", icon: Receipt },
 ];
 
 function isActive(href: string, pathname: string) {
@@ -73,18 +70,38 @@ function isActive(href: string, pathname: string) {
 
 export function MobileBottomNavClient({ isOwner, userEmail, avatarUrl }: Props) {
   const pathname = usePathname() ?? "";
-  // Wave 15.3 — memoised so re-renders triggered by sheetOpen state
-  // don't recompute the tile list or the avatar initial. Cheap but
-  // tightens the nav's render path on every tab interaction.
-  const visibleTiles = useMemo(
-    () => TILES.filter((t) => isOwner || !t.ownerOnly),
-    [isOwner],
-  );
   const initial = useMemo(
     () => (userEmail ?? "?").trim().charAt(0).toUpperCase() || "?",
     [userEmail],
   );
   const [sheetOpen, setSheetOpen] = useState(false);
+
+  // Wave 15.3 — explicit prefetch so the next tab's JS is warmed as soon
+  // as the nav renders. Next 16's default only prefetches the first level.
+  const renderTile = ({
+    href,
+    label,
+    icon: IconCmp,
+  }: {
+    href: string;
+    label: string;
+    icon: Icon;
+  }) => {
+    const active = isActive(href, pathname);
+    return (
+      <Link
+        key={href}
+        href={href}
+        prefetch={true}
+        className="t2q-bottomnav-tile"
+        aria-current={active ? "page" : undefined}
+        data-testid={`app-bottom-nav-${label.toLowerCase()}`}
+      >
+        <IconCmp size={22} weight={active ? "fill" : "regular"} aria-hidden="true" />
+        <span>{label}</span>
+      </Link>
+    );
+  };
 
   return (
     <>
@@ -94,30 +111,22 @@ export function MobileBottomNavClient({ isOwner, userEmail, avatarUrl }: Props) 
         aria-label="App navigation"
         className="t2q-bottomnav-bar sm:hidden"
       >
-        {visibleTiles.map(({ href, label, icon: IconCmp }) => {
-          const active = isActive(href, pathname);
-          return (
-            <Link
-              key={href}
-              href={href}
-              // Wave 15.3 — explicit prefetch so the next tab's JS is
-              // warmed as soon as the nav renders. Next 16's default
-              // `null` only prefetches loading.tsx + the first level,
-              // which is why mobile tap → render felt sluggish.
-              prefetch={true}
-              className="t2q-bottomnav-tile"
-              aria-current={active ? "page" : undefined}
-              data-testid={`app-bottom-nav-${label.toLowerCase()}`}
-            >
-              <IconCmp
-                size={22}
-                weight={active ? "fill" : "regular"}
-                aria-hidden="true"
-              />
-              <span>{label}</span>
-            </Link>
-          );
-        })}
+        {LEFT_TILES.map(renderTile)}
+
+        {/* Centre FAB — primary "New quote" action, raised above the bar. */}
+        <div className="flex flex-1 items-start justify-center">
+          <Link
+            href="/app/quotes/new"
+            prefetch={true}
+            aria-label="New quote"
+            data-testid="app-bottom-nav-new"
+            className="t2q-bottomnav-fab"
+          >
+            <Plus size={26} weight="bold" aria-hidden="true" />
+          </Link>
+        </div>
+
+        {RIGHT_TILES.map(renderTile)}
 
         {/* Avatar tile. Tappable; opens the slide-up account hub
             sheet. Shows the avatar image when uploaded, otherwise
