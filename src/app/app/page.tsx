@@ -21,6 +21,7 @@ import {
   QuotesListClient,
   type QuoteListRow,
 } from "./_components/QuotesListClient";
+import { ScheduleCalendar } from "./_components/ScheduleCalendar";
 
 export const metadata: Metadata = {
   title: "Dashboard",
@@ -108,10 +109,9 @@ async function DashboardData({
   isOwner: boolean;
 }) {
   const supabase = await createClient();
-  // Local-ish "today" floor for the upcoming-jobs query. Server runs in
-  // UTC; NZ is ahead, so subtract a day from the floor to avoid hiding a
-  // job scheduled for today when the UTC date hasn't ticked over yet.
-  const upcomingFloor = upcomingFloorISO();
+  // Server-side "today" (YYYY-MM-DD) passed to the calendar so SSR + the
+  // client agree on which cell to highlight/select (no hydration drift).
+  const todayISO = serverTodayISO();
   // Wave 10.5 — pull lightweight aggregates for the dashboard stats
   // panel (no platform-wide hype numbers, just this user's own data).
   // Stats query is intentionally separate from the recent-quotes query
@@ -159,9 +159,9 @@ async function DashboardData({
         .from("materials")
         .select("id", { count: "exact", head: true })
         .eq("user_id", userId),
-      // Upcoming scheduled jobs — quotes in the `scheduled` stage that
-      // carry a job date (quotes.scheduled_for), today onward, soonest
-      // first. Drives the dashboard "Upcoming" section.
+      // Scheduled jobs with a date (quotes.scheduled_for) — drives the
+      // dashboard calendar. Past + future so the tradie can page across
+      // months; the calendar component buckets them by day.
       supabase
         .from("quotes")
         .select("id, scheduled_for, total_amount, currency, quote_data, created_at")
@@ -169,9 +169,8 @@ async function DashboardData({
         .eq("status", "scheduled")
         .is("deleted_at", null)
         .not("scheduled_for", "is", null)
-        .gte("scheduled_for", upcomingFloor)
         .order("scheduled_for", { ascending: true })
-        .limit(8),
+        .limit(200),
     ]);
   const businessNameMissing =
     !profile?.business_name ||
@@ -206,11 +205,11 @@ async function DashboardData({
 
   const statsCurrency = stats.currency;
 
-  const upcoming = (upcomingRows ?? []).map((q) => {
+  const scheduledJobs = (upcomingRows ?? []).map((q) => {
     const qd = q.quote_data as QuoteData | null;
     return {
       id: q.id,
-      date: (q.scheduled_for as string | null) ?? "",
+      date: ((q.scheduled_for as string | null) ?? "").slice(0, 10),
       clientName: qd?.client?.name ?? "—",
       jobSummary: (qd?.job_summary as string | undefined) ?? "",
       total: Number(q.total_amount) || 0,
@@ -309,7 +308,7 @@ async function DashboardData({
           secondary KPI row (Quotes this month + Total quoted) keeps
           the Wave 10.5 honest-numbers idea alive without taking up
           screen-space the lifecycle tiles need. */}
-      <UpcomingJobs rows={upcoming} />
+      <ScheduleCalendar jobs={scheduledJobs} todayISO={todayISO} />
 
       <section
         data-testid="dashboard-stats"
@@ -620,97 +619,9 @@ function SecondaryStat({
   );
 }
 
-/** Yesterday (UTC) as YYYY-MM-DD — the floor for the upcoming-jobs query.
- *  In a helper (not the component body) so the date read stays out of the
- *  server component's render per the react-hooks/purity rule. */
-function upcomingFloorISO(): string {
-  return new Date(Date.now() - 24 * 3600 * 1000).toISOString().slice(0, 10);
-}
-
-/** "Tue 26 May" style day header for the upcoming-jobs groups. */
-function formatDayHeader(dateStr: string): string {
-  const d = new Date(`${dateStr}T00:00:00`);
-  if (Number.isNaN(d.getTime())) return dateStr;
-  return new Intl.DateTimeFormat("en-NZ", {
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-  }).format(d);
-}
-
-type UpcomingRow = {
-  id: string;
-  date: string;
-  clientName: string;
-  jobSummary: string;
-  total: number;
-  currency: string;
-};
-
-/**
- * Upcoming scheduled jobs, grouped by day. Renders nothing when there are
- * no scheduled jobs with a date, so the dashboard stays calm for tradies
- * who don't use scheduling. Each row links to the quote preview.
- */
-function UpcomingJobs({ rows }: { rows: UpcomingRow[] }) {
-  const groups: Array<[string, UpcomingRow[]]> = [];
-  for (const r of rows) {
-    const key = (r.date ?? "").slice(0, 10);
-    const last = groups[groups.length - 1];
-    if (last && last[0] === key) last[1].push(r);
-    else groups.push([key, [r]]);
-  }
-
-  return (
-    <section
-      data-testid="dashboard-upcoming"
-      aria-label="Upcoming jobs"
-      className="t2q-card-pro mb-7 p-5 sm:p-6"
-    >
-      <p className="t2q-section-label-pro">{"// upcoming"}</p>
-      {rows.length === 0 ? (
-        <p
-          data-testid="dashboard-upcoming-empty"
-          className="mt-3 text-sm leading-relaxed text-ink-300"
-        >
-          No jobs scheduled yet. When a quote is accepted, set a job date on
-          it and it&apos;ll show here, grouped by day.
-        </p>
-      ) : (
-        <div className="mt-4 space-y-5">
-        {groups.map(([day, items]) => (
-          <div key={day}>
-            <p className="text-xs font-semibold uppercase tracking-wide text-brand">
-              {formatDayHeader(day)}
-            </p>
-            <ul className="mt-2 space-y-2">
-              {items.map((r) => (
-                <li key={r.id}>
-                  <Link
-                    href={`/app/quotes/preview/${r.id}`}
-                    prefetch
-                    className="flex items-center justify-between gap-3 rounded-xl border border-white/[0.06] bg-white/[0.02] px-3.5 py-3 transition-colors hover:border-brand/40 hover:bg-brand/[0.06]"
-                  >
-                    <div className="min-w-0">
-                      <p className="truncate text-sm text-white">{r.clientName}</p>
-                      {r.jobSummary ? (
-                        <p className="mt-0.5 truncate text-xs text-ink-400">
-                          {r.jobSummary}
-                        </p>
-                      ) : null}
-                    </div>
-                    <span className="shrink-0 text-sm tabular-nums text-ink-200">
-                      {formatCurrency(r.total, r.currency)}
-                    </span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
-        ))}
-        </div>
-      )}
-    </section>
-  );
+/** Server-side today as YYYY-MM-DD. In a helper (not the component body)
+ *  to satisfy the react-hooks/purity rule for the async server component. */
+function serverTodayISO(): string {
+  return new Date().toISOString().slice(0, 10);
 }
 
