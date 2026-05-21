@@ -177,9 +177,12 @@ function Row({
   return (
     <div
       className={[
-        "flex items-baseline justify-between py-1.5",
-        divider ? "mt-2 border-t border-ink-700 pt-3" : "",
-        emphasis ? "mt-2 border-t border-ink-700 pt-3" : "",
+        "flex items-baseline justify-between gap-3",
+        emphasis
+          ? "mt-3 rounded-xl border border-brand/40 bg-brand/10 px-3.5 py-3"
+          : divider
+            ? "mt-2 border-t border-ink-700 pt-3 py-1.5"
+            : "py-1.5",
       ]
         .filter(Boolean)
         .join(" ")}
@@ -187,7 +190,7 @@ function Row({
       <span
         className={
           emphasis
-            ? "font-display text-base uppercase tracking-tight"
+            ? "min-w-0 truncate font-mono text-sm font-semibold uppercase tracking-[0.2em] text-white"
             : "font-mono text-xs uppercase tracking-[0.2em] text-ink-300"
         }
       >
@@ -196,7 +199,7 @@ function Row({
       <span
         className={
           emphasis
-            ? "font-display text-2xl tabular-nums text-brand"
+            ? "shrink-0 whitespace-nowrap font-semibold tabular-nums text-brand"
             : "tabular-nums text-white"
         }
       >

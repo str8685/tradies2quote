@@ -1289,7 +1289,7 @@ function TotalsRow({
       <span
         className={
           emphasis
-            ? "shrink-0 whitespace-nowrap font-semibold tabular-nums text-white"
+            ? "shrink-0 whitespace-nowrap font-semibold tabular-nums text-brand"
             : "shrink-0 whitespace-nowrap tabular-nums text-white"
         }
       >

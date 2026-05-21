@@ -296,7 +296,7 @@ export function ScheduleCalendar({
                       </p>
                     ) : null}
                   </div>
-                  <span className="shrink-0 text-sm tabular-nums text-ink-200">
+                  <span className="shrink-0 text-sm font-semibold tabular-nums text-brand">
                     {formatCurrency(j.total, j.currency)}
                   </span>
                 </Link>

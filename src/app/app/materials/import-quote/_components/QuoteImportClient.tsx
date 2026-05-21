@@ -8,6 +8,7 @@ import {
   Camera,
   Check,
   CheckCircle,
+  Image as ImageIcon,
   Receipt,
   Trash,
   Warning,
@@ -73,6 +74,8 @@ const MAX_BYTES = 8 * 1024 * 1024;
 export function QuoteImportClient({ currency }: { currency: string }) {
   const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
+  const libraryRef = useRef<HTMLInputElement>(null);
+  const chosenFileRef = useRef<File | null>(null);
   const [phase, setPhase] = useState<Phase>("idle");
   const [fileName, setFileName] = useState<string>("");
   const [error, setError] = useState<string>("");
@@ -98,6 +101,10 @@ export function QuoteImportClient({ currency }: { currency: string }) {
     fileRef.current?.click();
   }
 
+  function pickLibrary() {
+    libraryRef.current?.click();
+  }
+
   function onFileChosen(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0];
     if (!f) return;
@@ -105,13 +112,17 @@ export function QuoteImportClient({ currency }: { currency: string }) {
     if (f.size > MAX_BYTES) {
       setError("That photo is over 8 MB. Try a smaller image.");
       setFileName("");
+      chosenFileRef.current = null;
       return;
     }
+    // Either input (camera capture or photo library) funnels here, so we
+    // stash the chosen File rather than reading back off a single input.
+    chosenFileRef.current = f;
     setFileName(f.name);
   }
 
   async function scan() {
-    const raw = fileRef.current?.files?.[0];
+    const raw = chosenFileRef.current;
     if (!raw) {
       setError("Choose a photo of the quote first.");
       return;
@@ -349,7 +360,9 @@ export function QuoteImportClient({ currency }: { currency: string }) {
               setFileName("");
               setSupplier("");
               setNotes([]);
+              chosenFileRef.current = null;
               if (fileRef.current) fileRef.current.value = "";
+              if (libraryRef.current) libraryRef.current.value = "";
               setPhase("idle");
             }}
             className="t2q-btn-ghost-pro inline-flex h-11 px-5"
@@ -373,6 +386,16 @@ export function QuoteImportClient({ currency }: { currency: string }) {
         onChange={onFileChosen}
         data-testid="quote-import-file"
       />
+      {/* Photo-library import — no `capture`, so mobile offers the gallery
+          / file picker instead of forcing the camera. */}
+      <input
+        ref={libraryRef}
+        type="file"
+        accept="image/*,.heic,.heif"
+        className="sr-only"
+        onChange={onFileChosen}
+        data-testid="quote-import-file-library"
+      />
 
       {/* Upload + scan */}
       {(phase === "idle" || phase === "extracting" || phase === "error") && (
@@ -380,7 +403,7 @@ export function QuoteImportClient({ currency }: { currency: string }) {
           <div className="font-mono text-[10px] uppercase tracking-[0.25em] text-brand">
             {"// step 1 — photo"}
           </div>
-          <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
+          <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
             <button
               type="button"
               onClick={pickFile}
@@ -388,7 +411,17 @@ export function QuoteImportClient({ currency }: { currency: string }) {
               className="t2q-btn-ghost-pro inline-flex h-11 px-5 disabled:opacity-50"
             >
               <Camera size={18} weight="bold" />
-              {fileName ? "Change photo" : "Choose / take photo"}
+              {fileName ? "Retake photo" : "Take photo"}
+            </button>
+            <button
+              type="button"
+              onClick={pickLibrary}
+              disabled={phase === "extracting"}
+              className="t2q-btn-ghost-pro inline-flex h-11 px-5 disabled:opacity-50"
+              data-testid="quote-import-library-btn"
+            >
+              <ImageIcon size={18} weight="bold" />
+              Import photo
             </button>
             {fileName && (
               <span className="truncate font-mono text-xs text-ink-300" data-testid="quote-import-filename">

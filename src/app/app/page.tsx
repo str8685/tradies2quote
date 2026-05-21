@@ -380,7 +380,6 @@ async function DashboardData({
               <SecondaryStat
                 label="Total quoted"
                 value={formatCurrency(stats.totalAmount, statsCurrency)}
-                tone="brand"
               />
             </div>
           </>
@@ -600,7 +599,7 @@ function StageTile({
       }`}
     >
       <p
-        className={`font-display tabular-nums leading-none ${active ? "text-white group-hover:text-brand" : "text-ink-500"} text-base sm:text-2xl`}
+        className={`font-semibold tabular-nums leading-none ${active ? "text-brand" : "text-ink-500"} text-base sm:text-2xl`}
       >
         {count}
       </p>
@@ -615,20 +614,16 @@ function StageTile({
 function SecondaryStat({
   label,
   value,
-  tone = "neutral",
 }: {
   label: string;
   value: string;
-  tone?: "neutral" | "brand";
 }) {
   return (
     <div
       data-testid={`stat-${label.toLowerCase().replace(/\s+/g, "-")}`}
       className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-3.5 py-3"
     >
-      <p
-        className={`font-display tabular-nums leading-none ${tone === "brand" ? "text-brand" : "text-white"} text-lg sm:text-xl`}
-      >
+      <p className="font-semibold tabular-nums leading-none text-brand text-lg sm:text-xl">
         {value}
       </p>
       <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.2em] text-ink-300">
