@@ -2,10 +2,12 @@
 
 import { useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   Camera,
   Check,
   CheckCircle,
+  Receipt,
   Trash,
   Warning,
 } from "@phosphor-icons/react";
@@ -13,17 +15,27 @@ import { toExGst } from "@/lib/materials/quoteExtraction";
 import { TapeMeasureProgress } from "@/app/app/_components/TapeMeasureProgress";
 import { prepareScanImage } from "@/lib/scanImage";
 import {
+  createQuoteFromScan,
   importSupplierQuoteItems,
+  type ScanQuoteLine,
   type SupplierQuoteRow,
 } from "../../actions";
 
-type Phase = "idle" | "extracting" | "review" | "saving" | "done" | "error";
+type Phase =
+  | "idle"
+  | "extracting"
+  | "review"
+  | "saving"
+  | "creating"
+  | "done"
+  | "error";
 
 type ReviewRow = {
   id: string;
   include: boolean;
   name: string;
   unit: string;
+  quantity: string; // kept as string for the input; parsed on use
   price: string; // kept as string for the input; parsed on save
   sku: string | null;
   lowConfidence: boolean;
@@ -36,6 +48,8 @@ type ExtractResponse = {
   items: Array<{
     name: string;
     unit: string;
+    quantity?: number | null;
+    pieces?: number | null;
     price: number | null;
     sku: string | null;
     confidence: number;
@@ -46,6 +60,7 @@ type ExtractResponse = {
 const MAX_BYTES = 8 * 1024 * 1024;
 
 export function QuoteImportClient({ currency }: { currency: string }) {
+  const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
   const [phase, setPhase] = useState<Phase>("idle");
   const [fileName, setFileName] = useState<string>("");
@@ -122,6 +137,12 @@ export function QuoteImportClient({ currency }: { currency: string }) {
           include: it.price !== null && it.price > 0,
           name: it.name,
           unit: it.unit,
+          quantity:
+            it.quantity != null
+              ? String(it.quantity)
+              : it.pieces != null
+                ? String(it.pieces)
+                : "",
           price: it.price !== null ? String(it.price) : "",
           sku: it.sku,
           lowConfidence: it.confidence < 0.6,
@@ -146,6 +167,10 @@ export function QuoteImportClient({ currency }: { currency: string }) {
     const p = Number(r.price);
     return r.include && r.name.trim() && Number.isFinite(p) && p > 0;
   });
+
+  // A quote mirrors every ticked, named line (a $0 line is allowed — the
+  // tradie can price it on the review screen).
+  const createable = rows.filter((r) => r.include && r.name.trim());
 
   async function save() {
     if (includable.length === 0) {
@@ -179,6 +204,37 @@ export function QuoteImportClient({ currency }: { currency: string }) {
       setPhase("done");
     } catch {
       setError("Could not save to your library. Please try again.");
+      setPhase("review");
+    }
+  }
+
+  async function createQuote() {
+    const quoteLines: ScanQuoteLine[] = createable.map((r) => ({
+      name: r.name.trim(),
+      unit: r.unit.trim() || "each",
+      quantity: Number(r.quantity) || 0,
+      price: Number(r.price) || 0,
+    }));
+    if (quoteLines.length === 0) {
+      setError("Tick at least one line with a name to build a quote.");
+      return;
+    }
+    setError("");
+    setPhase("creating");
+    try {
+      const res = await createQuoteFromScan(quoteLines, {
+        supplier: supplier.trim() || null,
+        gstInclusive,
+      });
+      if (res.error || !res.id) {
+        setError(res.error ?? "Could not create the quote.");
+        setPhase("review");
+        return;
+      }
+      // Land on the normal review-your-quote screen with the mirror.
+      router.push(`/app/quotes/preview/${res.id}`);
+    } catch {
+      setError("Could not create the quote. Please try again.");
       setPhase("review");
     }
   }
@@ -290,7 +346,7 @@ export function QuoteImportClient({ currency }: { currency: string }) {
       )}
 
       {/* Review */}
-      {(phase === "review" || phase === "saving") && (
+      {(phase === "review" || phase === "saving" || phase === "creating") && (
         <div className="mt-4 space-y-4">
           <div className="t2q-card-pro p-4 sm:p-5">
             <div className="font-mono text-[10px] uppercase tracking-[0.25em] text-brand">
@@ -360,6 +416,16 @@ export function QuoteImportClient({ currency }: { currency: string }) {
                       />
                       <div className="mt-2 flex flex-wrap items-center gap-2">
                         <input
+                          type="number"
+                          step="any"
+                          min="0"
+                          value={r.quantity}
+                          onChange={(e) => patchRow(r.id, { quantity: e.target.value })}
+                          aria-label="Quantity"
+                          placeholder="Qty"
+                          className="w-16 rounded-sm border border-ink-700 bg-ink-900 px-2 py-1.5 text-sm text-white outline-none focus:border-brand"
+                        />
+                        <input
                           type="text"
                           value={r.unit}
                           onChange={(e) => patchRow(r.id, { unit: e.target.value })}
@@ -415,10 +481,30 @@ export function QuoteImportClient({ currency }: { currency: string }) {
           <div className="sticky bottom-2 z-10 flex flex-wrap items-center gap-3 rounded-sm border border-ink-700 bg-ink-950/95 p-3 shadow-lg">
             <button
               type="button"
-              onClick={save}
-              disabled={phase === "saving" || includable.length === 0}
-              data-testid="quote-import-save"
+              onClick={createQuote}
+              disabled={
+                phase === "creating" ||
+                phase === "saving" ||
+                createable.length === 0
+              }
+              data-testid="quote-import-create"
               className="t2q-btn-primary-pro inline-flex h-11 px-5 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <Receipt size={18} weight="bold" />
+              {phase === "creating"
+                ? "Building quote…"
+                : `Create quote (${createable.length})`}
+            </button>
+            <button
+              type="button"
+              onClick={save}
+              disabled={
+                phase === "saving" ||
+                phase === "creating" ||
+                includable.length === 0
+              }
+              data-testid="quote-import-save"
+              className="t2q-btn-ghost-pro inline-flex h-11 px-5 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <Check size={18} weight="bold" />
               {phase === "saving"

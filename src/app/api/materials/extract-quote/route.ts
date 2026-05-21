@@ -79,6 +79,8 @@ Return STRICT JSON only — no prose, no markdown, no code fences:
     {
       "name": string,
       "unit": string,
+      "quantity": number | null,
+      "pieces": number | null,
       "price": number | null,
       "sku": string | null,
       "confidence": number
@@ -93,6 +95,8 @@ Field rules:
 - "gst_inclusive": true if the UNIT prices shown INCLUDE GST, false if they EXCLUDE GST, null if you can't tell. NZ trade quotes are usually GST-exclusive.
 - "name": the product description as printed.
 - "unit": each, m, m², m³, sheet, length, bag, box, kg, pair, roll … default "each".
+- "quantity": the line quantity in the SAME unit as the unit price, so that quantity × price = the line total printed on the quote. null if not shown.
+- "pieces": when the line shows an "N/length" breakdown (e.g. "19/4.8m" = 19 lengths), the piece count (19), else null.
 - "price": the UNIT price (price for ONE unit), as a number, no "$" or commas. If the line only shows a quantity and a line total, divide total by quantity to get the unit price and LOWER the confidence. null if there is no usable price.
 - "sku": the product/SKU/order code if printed, else null.
 - "confidence": 0..1 — your confidence in this row. Lower it when the text is unclear or you derived the unit price.

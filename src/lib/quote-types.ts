@@ -87,6 +87,12 @@ export type QuoteLineItem = {
    * Server-side only.
    */
   takeoff_flags?: string[];
+  /**
+   * Wave 47 — row-level warning badges, e.g. supplier-estimate sanity
+   * checks ("2 pile kits for 12 piles — likely undercount"). Stored in
+   * quote_data JSONB; server-side only (never on PublicLineItem).
+   */
+  warnings?: string[];
 };
 
 /**

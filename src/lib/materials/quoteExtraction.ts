@@ -22,6 +22,14 @@ export type ExtractedSupplierItem = {
   price: number | null;
   /** Supplier SKU / product code if printed. */
   sku: string | null;
+  /** Line quantity in the printed unit — used when building a quote 1:1. */
+  quantity: number | null;
+  /**
+   * Piece count when the line shows a "N/length" breakdown (e.g. "19/4.8m"
+   * → 19 pieces). When present it's authoritative: the supplier already did
+   * the stock-length maths, so we don't re-round.
+   */
+  pieces: number | null;
   /** [0,1] — the model's confidence in this row (lower when derived/unclear). */
   confidence: number;
 };
@@ -125,6 +133,11 @@ export function parseSupplierQuoteExtraction(raw: unknown): ParseResult {
       priceRaw === null ? null : Math.max(0, Math.round(priceRaw * 100) / 100);
     const sku =
       typeof r.sku === "string" && r.sku.trim() ? r.sku.trim() : null;
+    const qtyRaw = toNumber(r.quantity);
+    const quantity = qtyRaw === null ? null : Math.max(0, qtyRaw);
+    const piecesRaw = toNumber(r.pieces);
+    const pieces =
+      piecesRaw === null || piecesRaw <= 0 ? null : Math.round(piecesRaw);
     const confidence = clampConfidence(r.confidence);
 
     // Dedupe identical name+unit rows the model may have read twice.
@@ -132,7 +145,7 @@ export function parseSupplierQuoteExtraction(raw: unknown): ParseResult {
     if (seen.has(key)) continue;
     seen.add(key);
 
-    items.push({ name, unit, price, sku, confidence });
+    items.push({ name, unit, price, sku, quantity, pieces, confidence });
   }
 
   const supplier =

@@ -3,6 +3,13 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { NZ_DEFAULTS } from "@/lib/quote-defaults";
+import {
+  buildMirrorQuoteLines,
+  computeQuoteTotals,
+} from "@/lib/materials/estimateToQuote";
+import type { ExtractedSupplierItem } from "@/lib/materials/quoteExtraction";
+import type { QuoteData } from "@/lib/quote-types";
 import type { ActionResult } from "./_state";
 
 // `ActionResult` and `ACTION_INITIAL` live in `./_state.ts` — Next 16
@@ -380,4 +387,148 @@ export async function importSupplierQuoteItems(
   });
   revalidatePath("/app/materials");
   return { inserted, updated, failed };
+}
+
+// ───────────────────────────────────────────────────────────────────────
+// Scan → quote (Wave 47).
+//
+// Turns a reviewed supplier-quote scan straight into a draft customer
+// quote that MIRRORS the supplier quote 1:1 — same line items, same
+// quantities, same prices, and (with markup = 0) the same total. No
+// takeoff, no waste, no library substitution: "nothing changes in the
+// numbers". The tradie lands on the normal review-your-quote screen and
+// can fill in the client + edit from there.
+// ───────────────────────────────────────────────────────────────────────
+
+export type ScanQuoteLine = {
+  name: string;
+  unit: string;
+  quantity: number;
+  price: number;
+};
+
+export async function createQuoteFromScan(
+  lines: ScanQuoteLine[],
+  meta: { supplier: string | null; gstInclusive: boolean },
+): Promise<{ id?: string; error?: string }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  if (!Array.isArray(lines) || lines.length === 0) {
+    return { error: "No lines to turn into a quote." };
+  }
+
+  const { data: profileRow } = await supabase
+    .from("profiles")
+    .select("tax_label, tax_rate, currency")
+    .eq("id", user.id)
+    .maybeSingle();
+  const currency = profileRow?.currency ?? NZ_DEFAULTS.currency;
+  const taxLabel = profileRow?.tax_label ?? NZ_DEFAULTS.tax_label;
+  const taxRate = Number(profileRow?.tax_rate ?? NZ_DEFAULTS.tax_rate);
+
+  // Map the reviewed rows into the extractor's item shape so the mirror
+  // builder is the single source of the pass-through rules.
+  const items: ExtractedSupplierItem[] = lines
+    .map((l) => ({
+      name: typeof l.name === "string" ? l.name.trim() : "",
+      unit: typeof l.unit === "string" && l.unit.trim() ? l.unit.trim() : "each",
+      price:
+        Number.isFinite(Number(l.price)) && Number(l.price) > 0
+          ? Math.round(Number(l.price) * 100) / 100
+          : null,
+      sku: null,
+      quantity:
+        Number.isFinite(Number(l.quantity)) && Number(l.quantity) > 0
+          ? Number(l.quantity)
+          : null,
+      pieces: null,
+      confidence: 1,
+    }))
+    .filter((i) => i.name.length > 0);
+  if (items.length === 0) {
+    return { error: "No valid lines to turn into a quote." };
+  }
+
+  const lineItems = buildMirrorQuoteLines(items, {
+    gstInclusive: meta?.gstInclusive ?? false,
+    taxRate: taxRate / 100,
+  });
+
+  // markup 0 — a faithful mirror; total equals the supplier quote total.
+  const totals = computeQuoteTotals(lineItems, {
+    default_markup_pct: 0,
+    tax_rate: taxRate,
+  });
+
+  const supplierName =
+    typeof meta?.supplier === "string" && meta.supplier.trim()
+      ? meta.supplier.trim()
+      : null;
+
+  const quoteData: QuoteData = {
+    client: { name: "To be confirmed", address: null, email: null, phone: null, contact: null },
+    job_summary: supplierName
+      ? `Imported from ${supplierName} supplier quote`
+      : "Imported from supplier quote",
+    line_items: lineItems,
+    materials_subtotal: totals.materials_subtotal,
+    labour_subtotal: totals.labour_subtotal,
+    markup_pct: 0,
+    markup_amount: totals.markup_amount,
+    subtotal_before_tax: totals.subtotal_before_tax,
+    tax_amount: totals.tax_amount,
+    total: totals.total,
+    currency,
+    tax_label: taxLabel,
+    tax_rate: taxRate,
+    terms: "",
+    notes: [],
+  };
+
+  const { data, error } = await supabase
+    .from("quotes")
+    .insert({
+      user_id: user.id,
+      voice_transcript: supplierName
+        ? `Scanned ${supplierName} supplier quote`
+        : "Scanned supplier quote",
+      status: "draft",
+      quote_data: quoteData,
+      ai_snapshot: quoteData,
+      total_amount: totals.total,
+      currency,
+    })
+    .select("id")
+    .single();
+  if (error || !data) {
+    console.error("createQuoteFromScan insert failed", error);
+    return { error: "Could not create the quote." };
+  }
+
+  const { error: iErr } = await supabase.from("quote_items").insert(
+    lineItems.map((it) => ({
+      quote_id: data.id,
+      type: it.type,
+      description: it.description,
+      quantity: it.quantity,
+      unit: it.unit,
+      unit_price: it.unit_price,
+      line_total: it.line_total,
+    })),
+  );
+  if (iErr) {
+    console.error("createQuoteFromScan items insert failed", iErr);
+  }
+
+  console.log("[import-quote] created quote from scan", {
+    userId: user.id,
+    quoteId: data.id,
+    lines: lineItems.length,
+  });
+
+  return { id: data.id };
 }
