@@ -87,10 +87,10 @@ export function MobileCollapsibleCard({
         aria-expanded={open}
         aria-controls={`mc-body-${sectionId}`}
         data-testid={`mc-toggle-${sectionId}`}
-        className="flex w-full min-h-[44px] items-center justify-between gap-3 rounded-sm border border-ink-700 bg-ink-900/60 px-4 py-3 text-left transition-colors hover:border-ink-500 md:hidden"
+        className="flex w-full min-h-[44px] items-center justify-between gap-3 rounded-sm border border-ink-700 border-l-4 border-l-brand bg-ink-900/60 px-4 py-3.5 text-left transition-colors hover:border-ink-500 md:hidden"
       >
         <span className="min-w-0 flex-1">
-          <span className="block font-display text-lg uppercase tracking-tight text-white">
+          <span className="block font-display text-xl uppercase tracking-tight text-white">
             {title}
           </span>
           <span

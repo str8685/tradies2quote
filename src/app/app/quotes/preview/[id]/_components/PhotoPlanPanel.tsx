@@ -140,9 +140,15 @@ export function PhotoPlanPanel({ onAddItems, onAddNotes, isAccepted }: Props) {
       <details className="group">
         <summary className="flex cursor-pointer list-none items-start justify-between gap-4 p-5 sm:p-6 [&::-webkit-details-marker]:hidden">
           <div className="min-w-0 flex-1">
-            <h3 className="font-display text-lg uppercase tracking-tight">
-              Photo / <span className="text-brand">plan</span>
-            </h3>
+            <div className="flex items-center gap-2.5">
+              <span
+                aria-hidden="true"
+                className="inline-block h-6 w-1.5 shrink-0 rounded-full bg-brand"
+              />
+              <h3 className="font-display text-xl uppercase tracking-tight sm:text-2xl">
+                Photo / <span className="text-brand">plan</span>
+              </h3>
+            </div>
             <p className="mt-1 truncate font-mono text-[11px] uppercase tracking-[0.18em] text-ink-400">
               {summaryLine}
             </p>

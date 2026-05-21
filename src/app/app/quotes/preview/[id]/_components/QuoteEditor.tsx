@@ -816,7 +816,7 @@ function ItemsSection({
       className="t2q-card-pro p-4 sm:p-5"
     >
       <div className="flex items-center justify-between">
-        <h3 className="font-display text-lg uppercase tracking-tight">
+        <h3 className="font-display text-xl uppercase tracking-tight sm:text-2xl">
           <span className={accent === "brand" ? "text-brand" : "text-white"}>
             {title}
           </span>
@@ -1267,9 +1267,12 @@ function TotalsRow({
     <div
       data-testid={testId}
       className={[
-        "flex items-baseline justify-between gap-3 py-1.5",
-        divider ? "mt-2 border-t border-ink-700 pt-3" : "",
-        emphasis ? "mt-2 border-t border-ink-700 pt-3" : "",
+        "flex items-baseline justify-between gap-3",
+        emphasis
+          ? "mt-3 rounded-xl border border-brand/40 bg-brand/10 px-3.5 py-3"
+          : divider
+            ? "mt-2 border-t border-ink-700 pt-3 py-1.5"
+            : "py-1.5",
       ]
         .filter(Boolean)
         .join(" ")}
@@ -1277,7 +1280,7 @@ function TotalsRow({
       <span
         className={
           emphasis
-            ? "min-w-0 truncate font-display text-base uppercase tracking-tight"
+            ? "min-w-0 truncate font-mono text-sm font-semibold uppercase tracking-[0.2em] text-white"
             : "min-w-0 truncate font-mono text-xs uppercase tracking-[0.2em] text-ink-300"
         }
       >
@@ -1286,7 +1289,7 @@ function TotalsRow({
       <span
         className={
           emphasis
-            ? "shrink-0 whitespace-nowrap font-display text-xl tabular-nums text-brand sm:text-2xl"
+            ? "shrink-0 whitespace-nowrap font-semibold tabular-nums text-white"
             : "shrink-0 whitespace-nowrap tabular-nums text-white"
         }
       >

@@ -1386,22 +1386,20 @@ h1, h2, h3, h4, h5 {
 [data-shell="app"] .text-ink-500 { color: #8C8C8C; }
 [data-shell="app"] .t2q-section-label-pro { color: rgba(255, 255, 255, 0.62); }
 
-/* ─── Floating bottom-nav FAB ─────────────────────────────────────────────
-   Stowe-style raised centre action button (New quote). Pokes above the
-   floating pill bar; the border acts as a "gap" ring against the bar and
-   is theme-aware so it reads as separation in both dark + light. */
+/* ─── Bottom-nav centre FAB ───────────────────────────────────────────────
+   Centre "New quote" action button. Sits INLINE inside the floating pill
+   bar (vertically centred with the other tiles), not raised above it — so
+   it reads as part of the bar instead of floating on top of it. */
 .t2q-bottomnav-fab {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  height: 3.5rem;
-  width: 3.5rem;
-  margin-top: -1.75rem;
+  height: 3rem;
+  width: 3rem;
   border-radius: 9999px;
   background: #FF5F15;
   color: #0A0A0A;
-  border: 3px solid #0E0E10;
-  box-shadow: 0 10px 24px -6px rgba(255, 95, 21, 0.6);
+  box-shadow: 0 4px 14px -4px rgba(255, 95, 21, 0.55);
   transition: transform 120ms ease, background-color 150ms ease;
 }
 .t2q-bottomnav-fab:hover {
@@ -1409,7 +1407,4 @@ h1, h2, h3, h4, h5 {
 }
 .t2q-bottomnav-fab:active {
   transform: scale(0.94);
-}
-[data-theme="light"] .t2q-bottomnav-fab {
-  border-color: #F5F4EE;
 }
