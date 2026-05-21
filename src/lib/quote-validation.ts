@@ -1,4 +1,5 @@
 import type { QuoteData, QuoteLineItem, QuoteStatus } from "./quote-types";
+import { round2 } from "./quote-defaults";
 
 export type SendValidationError =
   | "client_name_missing"
@@ -82,6 +83,42 @@ export function assessQuoteTakeoffSafety(
     for (const r of evaluation.reasons) block_reasons.push(r);
     if (evaluation.reasons.length === 0) {
       block_reasons.push("Automated check flagged the takeoff as unreliable.");
+    }
+  }
+
+  // PHASE 4 — supplier-import source fidelity (HARD BLOCK, no override).
+  // Re-checked LIVE against the current quote_data, never the frozen
+  // import-time status, so a quote the tradie has since corrected is no
+  // longer blocked. A quote that claims to mirror a supplier quote must
+  // still match it: every supplier-sourced line's live total must equal
+  // its printed source, and the printed subtotal must equal the sum of the
+  // sourced lines (a gap = a dropped/duplicated line). Lines the tradie
+  // ADDED (no source_line_total) are ignored here so legitimate additions
+  // don't false-block.
+  const SUPPLIER_TOL = 0.02;
+  const sourcedLines = items.filter((it) => it.source_line_total != null);
+  if (sourcedLines.length > 0) {
+    const changed = sourcedLines.filter((it) => {
+      const live = round2(
+        (Number(it.quantity) || 0) * (Number(it.unit_price) || 0),
+      );
+      return Math.abs(live - (it.source_line_total as number)) > SUPPLIER_TOL;
+    });
+    if (changed.length > 0) {
+      block_reasons.push(
+        `${changed.length} line(s) no longer match the supplier quote: ${lineLabels(changed)}. Snap to the supplier value or correct the price.`,
+      );
+    }
+    const supplierSubtotal = quote_data?.supplier_source?.subtotal ?? null;
+    if (supplierSubtotal != null) {
+      const sourcedSum = round2(
+        sourcedLines.reduce((s, it) => s + (it.source_line_total as number), 0),
+      );
+      if (Math.abs(sourcedSum - supplierSubtotal) > SUPPLIER_TOL) {
+        block_reasons.push(
+          "The supplier subtotal doesn't match the imported lines — a line may be missing or duplicated. Re-scan or fix before sending.",
+        );
+      }
     }
   }
 

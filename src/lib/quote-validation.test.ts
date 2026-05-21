@@ -172,6 +172,67 @@ describe("assessQuoteTakeoffSafety", () => {
   });
 });
 
+describe("assessQuoteTakeoffSafety — supplier source fidelity (phase 4)", () => {
+  it("allows a clean supplier import (lines + subtotal tie out)", () => {
+    const a = assessQuoteTakeoffSafety(
+      qd({
+        line_items: [
+          li({ quantity: 10, unit_price: 20, line_total: 200, source_line_total: 200 }),
+        ],
+        supplier_source: { supplier: "ITM", subtotal: 200, gst: 30, total: 230 },
+      }),
+    );
+    expect(a.can_send).toBe(true);
+  });
+
+  it("HARD-blocks when a sourced line no longer matches the supplier value", () => {
+    const a = assessQuoteTakeoffSafety(
+      qd({
+        // price edited 20 → 25, line is now 250 but source is 200
+        line_items: [
+          li({ quantity: 10, unit_price: 25, line_total: 250, source_line_total: 200 }),
+        ],
+        supplier_source: { supplier: "ITM", subtotal: 200, gst: 30, total: 230 },
+      }),
+    );
+    expect(a.can_send).toBe(false);
+    expect(a.requires_acknowledgement).toBe(false); // no override
+    expect(a.block_reasons.join(" ")).toMatch(/supplier quote/i);
+  });
+
+  it("HARD-blocks when the supplier subtotal doesn't match the imported lines", () => {
+    const a = assessQuoteTakeoffSafety(
+      qd({
+        line_items: [
+          li({ quantity: 10, unit_price: 20, line_total: 200, source_line_total: 200 }),
+        ],
+        // subtotal claims 350 but only 200 of sourced lines present
+        supplier_source: { supplier: "ITM", subtotal: 350, gst: 52.5, total: 402.5 },
+      }),
+    );
+    expect(a.can_send).toBe(false);
+    expect(a.block_reasons.join(" ")).toMatch(/missing|duplicated|supplier subtotal/i);
+  });
+
+  it("does NOT false-block a tradie-added line (no source_line_total)", () => {
+    const a = assessQuoteTakeoffSafety(
+      qd({
+        line_items: [
+          li({ quantity: 10, unit_price: 20, line_total: 200, source_line_total: 200 }),
+          li({ type: "labour", description: "Install", quantity: 1, unit_price: 400, line_total: 400 }),
+        ],
+        supplier_source: { supplier: "ITM", subtotal: 200, gst: 30, total: 230 },
+      }),
+    );
+    expect(a.can_send).toBe(true);
+  });
+
+  it("ignores supplier checks entirely for non-supplier quotes", () => {
+    const a = assessQuoteTakeoffSafety(qd({ line_items: [li()] }));
+    expect(a.can_send).toBe(true);
+  });
+});
+
 describe("validateQuoteForSending — takeoff gate", () => {
   const args = (o: Partial<QuoteData>, acknowledged?: boolean) => ({
     status: "draft",
