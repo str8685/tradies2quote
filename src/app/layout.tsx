@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import Script from "next/script";
-import { Archivo_Black, IBM_Plex_Sans, IBM_Plex_Mono, Fraunces } from "next/font/google";
+import { Archivo_Black, IBM_Plex_Sans, IBM_Plex_Mono, Fraunces, Inter } from "next/font/google";
 import "./globals.css";
 import { ThemeBoot } from "./_components/ThemeBoot";
 import { FloatingInstallButton } from "./_components/FloatingInstallButton";
@@ -31,6 +31,15 @@ const fraunces = Fraunces({
   variable: "--font-fraunces",
   weight: ["400", "500", "600"],
   style: ["normal", "italic"],
+  subsets: ["latin"],
+});
+
+// Neutral UI sans for the in-app experience — close to Stowe's clean
+// SF-style body face. Scoped to /app via `[data-shell="app"]` in
+// globals.css so the marketing landing keeps IBM Plex Sans.
+const inter = Inter({
+  variable: "--font-inter",
+  weight: ["400", "500", "600", "700"],
   subsets: ["latin"],
 });
 
@@ -160,7 +169,7 @@ export default function RootLayout({
       // here in dev. Suppress only on the <html> element so other
       // mismatches still surface.
       suppressHydrationWarning
-      className={`${archivoblack.variable} ${ibmPlexSans.variable} ${ibmPlexMono.variable} ${fraunces.variable} h-full`}
+      className={`${archivoblack.variable} ${ibmPlexSans.variable} ${ibmPlexMono.variable} ${fraunces.variable} ${inter.variable} h-full`}
     >
       <head>
         <Script

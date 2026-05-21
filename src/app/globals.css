@@ -858,7 +858,7 @@ h1, h2, h3, h4, h5 {
 }
 
 .t2q-section-label-pro {
-  font-family: var(--font-ibm-plex-sans), "IBM Plex Sans", system-ui, sans-serif;
+  font-family: var(--font-sans), "Inter", system-ui, sans-serif;
   font-size: 0.6875rem;
   font-weight: 600;
   letter-spacing: 0.16em;
@@ -879,7 +879,7 @@ h1, h2, h3, h4, h5 {
   background: #FF5F15;
   color: #111111;
   border-radius: 9999px;
-  font-family: var(--font-ibm-plex-sans), "IBM Plex Sans", system-ui, sans-serif;
+  font-family: var(--font-sans), "Inter", system-ui, sans-serif;
   font-weight: 600;
   font-size: 0.9375rem;
   letter-spacing: 0;
@@ -915,7 +915,7 @@ h1, h2, h3, h4, h5 {
   color: #F5F5F5;
   border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 9999px;
-  font-family: var(--font-ibm-plex-sans), "IBM Plex Sans", system-ui, sans-serif;
+  font-family: var(--font-sans), "Inter", system-ui, sans-serif;
   font-weight: 600;
   font-size: 0.9375rem;
   letter-spacing: 0;
@@ -1068,7 +1068,7 @@ h1, h2, h3, h4, h5 {
   min-height: 52px;
   border-radius: 1rem;
   padding: 0.5rem 0.5rem;
-  font-family: var(--font-ibm-plex-sans), "IBM Plex Sans", system-ui, sans-serif;
+  font-family: var(--font-sans), "Inter", system-ui, sans-serif;
   font-size: 0.625rem;
   letter-spacing: 0.06em;
   text-transform: none;
@@ -1318,6 +1318,17 @@ h1, h2, h3, h4, h5 {
 [data-shell="app"] h1 {
   font-weight: 600;
   letter-spacing: -0.02em;
+}
+
+/* App-wide UI sans → Inter (Stowe-style neutral sans). Sets the inherited
+   default for all in-app text and remaps the `--font-sans` token so the
+   `font-sans` utility and the `.t2q-*-pro` primitives follow. The
+   marketing landing sits outside `[data-shell="app"]` and keeps IBM Plex
+   Sans. Headings still win via the serif rule above; `font-mono` labels
+   still win via their own utility. */
+[data-shell="app"] {
+  --font-sans: var(--font-inter), "Inter", system-ui, sans-serif;
+  font-family: var(--font-inter), "Inter", system-ui, sans-serif;
 }
 
 /* Optional helper for non-heading elements that should read as a serif
