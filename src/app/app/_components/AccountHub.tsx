@@ -23,6 +23,7 @@ import {
   uploadAvatarAction,
   type AvatarActionResult,
 } from "./account-hub-actions";
+import { PushToggle } from "./PushToggle";
 
 /**
  * Shared body of the account hub.
@@ -216,6 +217,11 @@ export function AccountHub({
           <HubLinkRow key={`${it.href}${it.hash ?? ""}`} item={it} onClose={onClose} />
         ))}
       </ul>
+
+      <p className="mt-5 mb-2 font-mono text-[9px] uppercase tracking-[0.2em] text-ink-400">
+        {"// notifications"}
+      </p>
+      <PushToggle />
 
       {ownerItems.length > 0 ? (
         <>

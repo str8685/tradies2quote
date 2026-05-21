@@ -1,6 +1,8 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { adminClient } from "@/lib/supabase/admin";
 import { uploadSignature } from "@/lib/quote-storage";
+import { sendPushToUser } from "@/lib/push";
+import { quoteNumber } from "@/lib/quote-defaults";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -93,7 +95,9 @@ export async function POST(
   const admin = adminClient();
   const { data: quoteRaw } = await admin
     .from("quotes")
-    .select("id, status, expires_at, total_amount, accepted_quote_version")
+    .select(
+      "id, status, expires_at, total_amount, accepted_quote_version, user_id, created_at",
+    )
     .eq("public_token", token)
     .maybeSingle();
   const quote = quoteRaw as
@@ -103,6 +107,8 @@ export async function POST(
         expires_at: string | null;
         total_amount: number | null;
         accepted_quote_version: number | null;
+        user_id: string;
+        created_at: string;
       }
     | null;
   if (!quote) {
@@ -161,6 +167,16 @@ export async function POST(
           : 404;
     return NextResponse.json({ error: result.error }, { status });
   }
+
+  // Notify the quote owner via push that their quote was just accepted.
+  // sendPushToUser never throws and no-ops when push isn't configured, so
+  // this can't break the customer's accept flow.
+  await sendPushToUser(quote.user_id, {
+    title: "Quote accepted",
+    body: `${name} accepted ${quoteNumber(quote.id, quote.created_at)}`,
+    url: `/app/quotes/preview/${quote.id}`,
+    tag: `quote-accepted-${quote.id}`,
+  });
 
   return NextResponse.json({ ok: true });
 }
