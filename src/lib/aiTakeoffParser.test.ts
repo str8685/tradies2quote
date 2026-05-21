@@ -375,6 +375,26 @@ describe("structured [T2Q_PLAN] marker", () => {
   // then ran with 28.8 as `lengthM`, overrode the correct 6×4.8
   // marker, and the calculator produced 72 joists / 2027m of decking
   // — a 30+ × 6 deck. This locks the m² guard.
+  it("rejects a standalone side that ≈ the plan's AREA (area-vs-length guard)", () => {
+    // Defence-in-depth for the m² extractor hole seen in production: the
+    // text offered 28.8 (= 6 × 4.8, the area) as a side length with no `²`
+    // symbol to filter on. Even though 28.8 'disagrees' >25% with the
+    // 6×4.8 plan, it's an area mistaken for a length, so the AI plan must
+    // win — otherwise the calculator builds a 28.8×6 monster (72 joists).
+    const t =
+      "[T2Q_PLAN] type=deck length_m=6 width_m=4.8\n\n" +
+      "Job type: Deck.\n" +
+      "DIMENSIONS (tradie-confirmed):\n28.8m\n6.0m\n" +
+      "STRUCTURAL ELEMENTS:\nJoists 140x45 H3.2";
+    const r = parseTakeoffDescription(t);
+    if (r.type !== "deck") throw new Error("not deck");
+    expect(r.input.deckLengthM).toBeCloseTo(6, 3);
+    expect(r.input.deckWidthM).toBeCloseTo(4.8, 3);
+    expect(
+      r.assumptions.some((a) => a.includes("looked like an area")),
+    ).toBe(true);
+  });
+
   it("ignores `28.8m²` (area mention) — does not treat as plan dim", () => {
     const t =
       "[T2Q_PLAN] type=deck length_m=6 width_m=4.8\n\n" +

@@ -586,11 +586,30 @@ function parseDeckDescription(
         TOLERANCE ||
         Math.abs(marker.widthM! - standalone.widthM) / standalone.widthM >
           TOLERANCE);
-    if (disagrees) {
+    // Plausibility guard: the standalone-dim extractor sometimes offers an
+    // AREA figure (e.g. 28.8 = 6 × 4.8) or another oversized number as a
+    // side length. Don't let the text override a sane AI plan when a side
+    // ≈ the plan's area or is implausibly large for a residential deck —
+    // that bug turned a 6×4.8 deck into 28.8×6 (72 joists).
+    const deckMarkerArea = marker.lengthM! * marker.widthM!;
+    const standaloneSuspect =
+      !!standalone &&
+      ((deckMarkerArea > 0 &&
+        Math.abs(standalone.lengthM - deckMarkerArea) / deckMarkerArea < 0.1) ||
+        (deckMarkerArea > 0 &&
+          Math.abs(standalone.widthM - deckMarkerArea) / deckMarkerArea < 0.1) ||
+        Math.max(standalone.lengthM, standalone.widthM) > 25);
+    if (disagrees && !standaloneSuspect) {
       input.deckLengthM = standalone.lengthM;
       input.deckWidthM = standalone.widthM;
       assumptions.push(
         `AI's structured plan (${marker.lengthM}m × ${marker.widthM}m) disagreed with the dimensions text (${standalone.lengthM}m × ${standalone.widthM}m). Using the dimensions text.`,
+      );
+    } else if (disagrees && standaloneSuspect && standalone) {
+      input.deckLengthM = marker.lengthM;
+      input.deckWidthM = marker.widthM;
+      assumptions.push(
+        `Dimensions text (${standalone.lengthM}m × ${standalone.widthM}m) looked like an area or an implausible length — kept the AI plan (${marker.lengthM}m × ${marker.widthM}m).`,
       );
     } else {
       input.deckLengthM = marker.lengthM;
@@ -763,11 +782,30 @@ function parseSubfloorDescription(
         TOLERANCE ||
         Math.abs(marker.widthM! - standalone.widthM) / standalone.widthM >
           TOLERANCE);
-    if (disagrees) {
+    // Plausibility guard (same as the deck path): reject a standalone side
+    // that ≈ the plan's area, or is implausibly large for a residential
+    // floor, so an area-as-length read can't override a sane AI plan.
+    const floorMarkerArea = marker.lengthM! * marker.widthM!;
+    const standaloneSuspect =
+      !!standalone &&
+      ((floorMarkerArea > 0 &&
+        Math.abs(standalone.lengthM - floorMarkerArea) / floorMarkerArea <
+          0.1) ||
+        (floorMarkerArea > 0 &&
+          Math.abs(standalone.widthM - floorMarkerArea) / floorMarkerArea <
+            0.1) ||
+        Math.max(standalone.lengthM, standalone.widthM) > 25);
+    if (disagrees && !standaloneSuspect) {
       input.floorLengthM = standalone.lengthM;
       input.floorWidthM = standalone.widthM;
       assumptions.push(
         `AI's structured plan (${marker.lengthM}m × ${marker.widthM}m) disagreed with the dimensions text (${standalone.lengthM}m × ${standalone.widthM}m). Using the dimensions text.`,
+      );
+    } else if (disagrees && standaloneSuspect && standalone) {
+      input.floorLengthM = marker.lengthM;
+      input.floorWidthM = marker.widthM;
+      assumptions.push(
+        `Dimensions text (${standalone.lengthM}m × ${standalone.widthM}m) looked like an area or an implausible length — kept the AI plan (${marker.lengthM}m × ${marker.widthM}m).`,
       );
     } else {
       input.floorLengthM = marker.lengthM;
