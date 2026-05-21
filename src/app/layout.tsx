@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import Script from "next/script";
-import { Archivo_Black, IBM_Plex_Sans, IBM_Plex_Mono } from "next/font/google";
+import { Archivo_Black, IBM_Plex_Sans, IBM_Plex_Mono, Fraunces } from "next/font/google";
 import "./globals.css";
 import { ThemeBoot } from "./_components/ThemeBoot";
 import { FloatingInstallButton } from "./_components/FloatingInstallButton";
@@ -20,6 +20,17 @@ const ibmPlexSans = IBM_Plex_Sans({
 const ibmPlexMono = IBM_Plex_Mono({
   variable: "--font-ibm-plex-mono",
   weight: ["400", "500", "600", "700"],
+  subsets: ["latin"],
+});
+
+// Soft-serif headline face for the in-app experience (scoped to /app via
+// `[data-shell="app"]` in globals.css so the marketing landing keeps its
+// Archivo Black brutalist headings). Optical sizing on for refined display
+// rendering at large sizes.
+const fraunces = Fraunces({
+  variable: "--font-fraunces",
+  weight: ["400", "500", "600"],
+  style: ["normal", "italic"],
   subsets: ["latin"],
 });
 
@@ -149,7 +160,7 @@ export default function RootLayout({
       // here in dev. Suppress only on the <html> element so other
       // mismatches still surface.
       suppressHydrationWarning
-      className={`${archivoblack.variable} ${ibmPlexSans.variable} ${ibmPlexMono.variable} h-full`}
+      className={`${archivoblack.variable} ${ibmPlexSans.variable} ${ibmPlexMono.variable} ${fraunces.variable} h-full`}
     >
       <head>
         <Script

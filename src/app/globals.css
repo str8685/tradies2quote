@@ -34,6 +34,7 @@
   --font-display: var(--font-archivo-black), "Archivo Black", system-ui, sans-serif;
   --font-sans:    var(--font-ibm-plex-sans), "IBM Plex Sans", system-ui, sans-serif;
   --font-mono:    var(--font-ibm-plex-mono), "IBM Plex Mono", ui-monospace, monospace;
+  --font-serif:   var(--font-fraunces), "Fraunces", Georgia, "Times New Roman", serif;
 
   /* Animations */
   --animate-marquee:    marquee 40s linear infinite;
@@ -823,7 +824,7 @@ h1, h2, h3, h4, h5 {
     linear-gradient(180deg, rgba(255, 255, 255, 0.035) 0%, rgba(255, 255, 255, 0) 60%),
     #181818;
   border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 0.625rem;
+  border-radius: 1.5rem;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.05),
     0 1px 2px rgba(0, 0, 0, 0.18),
@@ -857,10 +858,10 @@ h1, h2, h3, h4, h5 {
 }
 
 .t2q-section-label-pro {
-  font-family: var(--font-ibm-plex-mono), ui-monospace, monospace;
-  font-size: 0.625rem;
+  font-family: var(--font-ibm-plex-sans), "IBM Plex Sans", system-ui, sans-serif;
+  font-size: 0.6875rem;
   font-weight: 600;
-  letter-spacing: 0.22em;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
   color: rgba(255, 255, 255, 0.42);
 }
@@ -873,15 +874,16 @@ h1, h2, h3, h4, h5 {
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  height: 2.75rem;
-  padding: 0 1.125rem;
+  height: 3rem;
+  padding: 0 1.5rem;
   background: #FF5F15;
   color: #111111;
-  border-radius: 0.5rem;
-  font-family: 'Archivo Black', system-ui, sans-serif;
+  border-radius: 9999px;
+  font-family: var(--font-ibm-plex-sans), "IBM Plex Sans", system-ui, sans-serif;
+  font-weight: 600;
   font-size: 0.9375rem;
-  letter-spacing: -0.005em;
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   white-space: nowrap;
   box-shadow:
     0 1px 2px rgba(0, 0, 0, 0.2),
@@ -907,16 +909,17 @@ h1, h2, h3, h4, h5 {
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  height: 2.75rem;
-  padding: 0 1.125rem;
+  height: 3rem;
+  padding: 0 1.5rem;
   background: transparent;
   color: #F5F5F5;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 0.5rem;
-  font-family: 'Archivo Black', system-ui, sans-serif;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 9999px;
+  font-family: var(--font-ibm-plex-sans), "IBM Plex Sans", system-ui, sans-serif;
+  font-weight: 600;
   font-size: 0.9375rem;
-  letter-spacing: -0.005em;
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   white-space: nowrap;
   transition: border-color 150ms ease, background-color 150ms ease, color 150ms ease;
 }
@@ -1291,4 +1294,39 @@ h1, h2, h3, h4, h5 {
 }
 @media (prefers-reduced-motion: reduce) {
   .t2q-install-pulse { animation: none; }
+}
+
+/* =========================================================================
+   SOFT-SERIF REFRESH — in-app visual language.
+
+   Goal: give /app/* a calm, refined feel (elegant serif headlines, soft
+   rounded cards, pill buttons, airy labels) while keeping the existing
+   palette (orange #FF5F15, hi-vis #FFEA00, ink scale) and leaving the
+   marketing landing's Archivo Black brutalist identity untouched.
+
+   Headings are scoped to `[data-shell="app"]` (set on the /app shell
+   wrapper). The `.t2q-*-pro` primitives are never used on the landing, so
+   their pill/round restyle above is global and safe. These rules are
+   unlayered, so they win over Tailwind's layered utilities — meaning a
+   page title written as `<h1 class="font-display uppercase tracking-tight">`
+   still flips to sentence-case serif without editing any JSX.
+   ========================================================================= */
+
+[data-shell="app"] :is(h1, h2, h3, h4, h5) {
+  font-family: var(--font-fraunces), "Fraunces", Georgia, serif;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  text-transform: none;
+}
+[data-shell="app"] h1 {
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+/* Optional helper for non-heading elements that should read as a serif
+   headline (e.g. a hero line rendered in a <p> or <span>). */
+.t2q-serif {
+  font-family: var(--font-fraunces), "Fraunces", Georgia, serif !important;
+  text-transform: none !important;
+  letter-spacing: -0.01em;
 }
