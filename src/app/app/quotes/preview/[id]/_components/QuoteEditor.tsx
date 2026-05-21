@@ -560,6 +560,51 @@ export function QuoteEditor({
             </span>
           </div>
 
+          {/* Verdict banner — makes the reconciliation result (and WHY a
+              send is blocked) unmissable, tying the visible diff to the
+              hard-block send gate. Driven by the deterministic
+              reconciliation_status, never a guess. */}
+          {reconciliation.reconciliation_status !== "ok" && (
+            <div
+              data-testid="reconcile-banner"
+              data-status={reconciliation.reconciliation_status}
+              className={`mt-3 rounded-lg border px-3.5 py-3 ${
+                reconciliation.reconciliation_status === "blocked"
+                  ? "border-red-500/40 bg-red-500/10"
+                  : "border-hivis/40 bg-hivis/10"
+              }`}
+            >
+              <p
+                className={`flex items-start gap-1.5 text-sm font-semibold ${
+                  reconciliation.reconciliation_status === "blocked"
+                    ? "text-red-200"
+                    : "text-hivis"
+                }`}
+              >
+                <Warning size={14} weight="fill" className="mt-0.5 shrink-0" />
+                <span>
+                  {reconciliation.reconciliation_status === "blocked"
+                    ? "This quote doesn't match the supplier quote — fix the flagged lines (or “use supplier value”) before it can be sent."
+                    : "Some values need a check against the supplier quote."}
+                </span>
+              </p>
+              {reconciliation.reconciliation_reasons.length > 0 && (
+                <ul className="mt-2 space-y-0.5 text-xs text-ink-200">
+                  {reconciliation.reconciliation_reasons
+                    .slice(0, 4)
+                    .map((reason, i) => (
+                      <li key={i} className="flex gap-1.5">
+                        <span aria-hidden="true" className="text-ink-500">
+                          ·
+                        </span>
+                        <span>{reason}</span>
+                      </li>
+                    ))}
+                </ul>
+              )}
+            </div>
+          )}
+
           {(() => {
             const mismatches = items
               .map((it, idx) => ({
