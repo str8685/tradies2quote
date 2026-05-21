@@ -76,9 +76,36 @@ export type SupplierQuoteExtraction = {
   notes: string[];
 };
 
+/**
+ * A row the strict parser REJECTED (malformed value / no name / not an
+ * object). Surfaced so the failure is visible to the tradie + the debug
+ * trace — never silently dropped or "fixed".
+ */
+export type RowFailure = {
+  index: number;
+  reason: string;
+  raw_text: string | null;
+};
+
 export type ParseResult =
-  | { ok: true; value: SupplierQuoteExtraction }
+  | {
+      ok: true;
+      value: SupplierQuoteExtraction;
+      /** Rows rejected as malformed (visible, not silently dropped). */
+      rowFailures: RowFailure[];
+      /** Non-fatal notes (e.g. de-dupe drops) — visible, not silent. */
+      warnings: string[];
+    }
   | { ok: false; errors: string[] };
+
+/** Deterministic verdict on how trustworthy an extraction is. */
+export type ExtractionStatus = "ok" | "needs_review" | "blocked";
+
+/** One AI extraction attempt (value + the rows it rejected). */
+export type ExtractionAttempt = {
+  value: SupplierQuoteExtraction;
+  rowFailures: RowFailure[];
+};
 
 // Common NZ-merchant unit spellings → canonical form.
 const UNIT_ALIASES: Record<string, string> = {
@@ -140,6 +167,52 @@ function clampConfidence(v: unknown): number {
   return Math.max(0, Math.min(1, n));
 }
 
+const round2 = (n: number): number => Math.round(n * 100) / 100;
+
+// Intentional "no price" markers — NOT a misread, so they read as ABSENT
+// (kept row, null value), never a malformed rejection.
+const NON_PRICE_MARKERS = new Set([
+  "",
+  "-",
+  "—",
+  "poa",
+  "por",
+  "tbc",
+  "tba",
+  "n/a",
+  "na",
+  "ask",
+  "call",
+]);
+
+type NumClass =
+  | { kind: "number"; value: number }
+  | { kind: "absent" }
+  | { kind: "malformed" };
+
+/**
+ * Classify a numeric field's raw value with three outcomes so the parser
+ * can be strict WITHOUT over-rejecting:
+ *   - number    → a usable value (tolerates "$1,234.50")
+ *   - absent    → genuinely no value (null / "" / a "POA"/"TBC" marker)
+ *   - malformed → present but unreadable (e.g. "12.4O") → reject the row
+ */
+function classifyNumeric(raw: unknown): NumClass {
+  if (raw === null || raw === undefined) return { kind: "absent" };
+  if (typeof raw === "number") {
+    return Number.isFinite(raw) ? { kind: "number", value: raw } : { kind: "malformed" };
+  }
+  if (typeof raw === "string") {
+    const trimmed = raw.trim();
+    if (NON_PRICE_MARKERS.has(trimmed.toLowerCase())) return { kind: "absent" };
+    const cleaned = trimmed.replace(/[$,\s]/g, "");
+    if (cleaned === "") return { kind: "absent" };
+    const n = Number(cleaned);
+    return Number.isFinite(n) ? { kind: "number", value: n } : { kind: "malformed" };
+  }
+  return { kind: "malformed" };
+}
+
 /**
  * Parse + sanitise the raw model JSON. Always returns ok:true with a
  * (possibly empty) item list unless the payload isn't even an object —
@@ -154,34 +227,66 @@ export function parseSupplierQuoteExtraction(raw: unknown): ParseResult {
   const rawItems = Array.isArray(obj.items) ? obj.items : [];
   const seen = new Set<string>();
   const items: ExtractedSupplierItem[] = [];
-  for (const it of rawItems) {
-    if (typeof it !== "object" || it === null) continue;
+  const rowFailures: RowFailure[] = [];
+  const warnings: string[] = [];
+
+  rawItems.forEach((it, index) => {
+    if (typeof it !== "object" || it === null) {
+      rowFailures.push({ index, reason: "row is not an object", raw_text: null });
+      return;
+    }
     const r = it as Record<string, unknown>;
-    const name = typeof r.name === "string" ? r.name.trim() : "";
-    if (!name) continue; // a row with no name is useless
-    const unit = normaliseUnit(r.unit);
-    const priceRaw = toNumber(r.price);
-    const price =
-      priceRaw === null ? null : Math.max(0, Math.round(priceRaw * 100) / 100);
-    const sku =
-      typeof r.sku === "string" && r.sku.trim() ? r.sku.trim() : null;
-    const qtyRaw = toNumber(r.quantity);
-    const quantity = qtyRaw === null ? null : Math.max(0, qtyRaw);
-    const piecesRaw = toNumber(r.pieces);
-    const pieces =
-      piecesRaw === null || piecesRaw <= 0 ? null : Math.round(piecesRaw);
-    const sltRaw = toNumber(r.line_total);
-    const source_line_total =
-      sltRaw === null ? null : Math.round(sltRaw * 100) / 100;
     const raw_text =
       typeof r.raw_text === "string" && r.raw_text.trim()
         ? r.raw_text.trim()
         : null;
+    const name = typeof r.name === "string" ? r.name.trim() : "";
+    if (!name) {
+      rowFailures.push({ index, reason: "row has no product name", raw_text });
+      return;
+    }
+
+    // Strict: a PRESENT-but-unreadable numeric value rejects the row (it's a
+    // misread we must surface, not silently null). A genuinely ABSENT value
+    // (null / "" / a "POA"/"TBC" marker) is allowed through.
+    const priceC = classifyNumeric(r.price);
+    const qtyC = classifyNumeric(r.quantity);
+    const ltC = classifyNumeric(r.line_total);
+    const piecesC = classifyNumeric(r.pieces);
+    const malformed: string[] = [];
+    if (priceC.kind === "malformed") malformed.push("unit price");
+    if (qtyC.kind === "malformed") malformed.push("quantity");
+    if (ltC.kind === "malformed") malformed.push("line total");
+    if (piecesC.kind === "malformed") malformed.push("pieces");
+    if (malformed.length > 0) {
+      rowFailures.push({
+        index,
+        reason: `${malformed.join(", ")} couldn't be read for "${name}"`,
+        raw_text,
+      });
+      return;
+    }
+
+    const unit = normaliseUnit(r.unit);
+    const price =
+      priceC.kind === "number" ? Math.max(0, round2(priceC.value)) : null;
+    const quantity = qtyC.kind === "number" ? Math.max(0, qtyC.value) : null;
+    const pieces =
+      piecesC.kind === "number" && piecesC.value > 0
+        ? Math.round(piecesC.value)
+        : null;
+    const source_line_total =
+      ltC.kind === "number" ? round2(ltC.value) : null;
+    const sku =
+      typeof r.sku === "string" && r.sku.trim() ? r.sku.trim() : null;
     const confidence = clampConfidence(r.confidence);
 
-    // Dedupe identical name+unit rows the model may have read twice.
+    // De-dupe identical name+unit rows — recorded as a VISIBLE warning.
     const key = `${name.toLowerCase()}|${unit}`;
-    if (seen.has(key)) continue;
+    if (seen.has(key)) {
+      warnings.push(`Dropped duplicate row "${name}" (${unit}).`);
+      return;
+    }
     seen.add(key);
 
     items.push({
@@ -195,7 +300,7 @@ export function parseSupplierQuoteExtraction(raw: unknown): ParseResult {
       raw_text,
       confidence,
     });
-  }
+  });
 
   const supplier =
     typeof obj.supplier === "string" && obj.supplier.trim()
@@ -231,6 +336,127 @@ export function parseSupplierQuoteExtraction(raw: unknown): ParseResult {
       total,
       notes,
     },
+    rowFailures,
+    warnings,
+  };
+}
+
+/**
+ * Deterministic verdict on an extraction's trustworthiness.
+ *
+ *   blocked       — too incomplete to trust/reconcile (no usable items, or
+ *                   rejected rows with no printed totals to reconcile the
+ *                   partial against).
+ *   needs_review  — partial but reviewable (rejected rows WITH printed
+ *                   totals, no totals at all, a priceless line, or low
+ *                   confidence).
+ *   ok            — no critical extraction issues.
+ */
+export function assessExtraction(
+  value: SupplierQuoteExtraction,
+  rowFailures: RowFailure[],
+): { status: ExtractionStatus; reasons: string[] } {
+  const items = value.items;
+  const noTotals = value.subtotal == null && value.total == null;
+
+  if (items.length === 0) {
+    return {
+      status: "blocked",
+      reasons: ["No usable product lines were extracted."],
+    };
+  }
+  if (rowFailures.length > 0 && noTotals) {
+    return {
+      status: "blocked",
+      reasons: [
+        `${rowFailures.length} row(s) couldn't be read and there's no printed subtotal/total to reconcile the partial against.`,
+        ...rowFailures.map((f) => f.reason),
+      ],
+    };
+  }
+
+  const reasons: string[] = [];
+  if (rowFailures.length > 0) {
+    reasons.push(
+      `${rowFailures.length} row(s) couldn't be read: ${rowFailures
+        .map((f) => f.reason)
+        .join("; ")}`,
+    );
+  }
+  if (noTotals) {
+    reasons.push("No printed subtotal or total to reconcile against.");
+  }
+  const priceless = items.filter(
+    (it) => it.price == null && it.source_line_total == null,
+  );
+  if (priceless.length > 0) {
+    reasons.push(`${priceless.length} line(s) have no price or line total.`);
+  }
+  const meanConfidence =
+    items.reduce((s, it) => s + (it.confidence ?? 0), 0) / items.length;
+  if (meanConfidence < 0.5) {
+    reasons.push(`Low extraction confidence (${meanConfidence.toFixed(2)}).`);
+  }
+
+  return reasons.length > 0
+    ? { status: "needs_review", reasons }
+    : { status: "ok", reasons: [] };
+}
+
+/** How far the extracted lines are from the printed subtotal/total (lower =
+ *  more reconcilable). Infinity when there's nothing to reconcile against. */
+function reconciliationScore(value: SupplierQuoteExtraction): number {
+  const sumLines = round2(
+    value.items.reduce((s, it) => {
+      const lt =
+        it.source_line_total != null
+          ? it.source_line_total
+          : it.quantity != null && it.price != null
+            ? it.quantity * it.price
+            : 0;
+      return s + lt;
+    }, 0),
+  );
+  if (value.subtotal != null) return Math.abs(value.subtotal - sumLines);
+  if (value.total != null) return Math.abs(value.total - sumLines);
+  return Number.POSITIVE_INFINITY;
+}
+
+const EXTRACTION_STATUS_RANK: Record<ExtractionStatus, number> = {
+  ok: 0,
+  needs_review: 1,
+  blocked: 2,
+};
+
+/**
+ * Pick the best of several extraction attempts (initial + retries). Prefers
+ * the MOST RECONCILABLE result (lines tie out to the printed totals) over a
+ * merely cleaner-looking one, then best status, then fewest rejected rows,
+ * then most items.
+ */
+export function chooseBestExtraction(
+  attempts: ExtractionAttempt[],
+): ExtractionAttempt & { status: ExtractionStatus; reasons: string[] } {
+  const scored = attempts.map((a) => {
+    const { status, reasons } = assessExtraction(a.value, a.rowFailures);
+    return { ...a, status, reasons, score: reconciliationScore(a.value) };
+  });
+  scored.sort((x, y) => {
+    if (x.score !== y.score) return x.score - y.score; // most reconcilable
+    if (EXTRACTION_STATUS_RANK[x.status] !== EXTRACTION_STATUS_RANK[y.status]) {
+      return EXTRACTION_STATUS_RANK[x.status] - EXTRACTION_STATUS_RANK[y.status];
+    }
+    if (x.rowFailures.length !== y.rowFailures.length) {
+      return x.rowFailures.length - y.rowFailures.length;
+    }
+    return y.value.items.length - x.value.items.length;
+  });
+  const best = scored[0];
+  return {
+    value: best.value,
+    rowFailures: best.rowFailures,
+    status: best.status,
+    reasons: best.reasons,
   };
 }
 

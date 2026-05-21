@@ -1,8 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
+  assessExtraction,
+  chooseBestExtraction,
   normaliseUnit,
   parseSupplierQuoteExtraction,
   toExGst,
+  type ExtractedSupplierItem,
+  type SupplierQuoteExtraction,
 } from "./quoteExtraction";
 
 describe("normaliseUnit", () => {
@@ -122,5 +126,193 @@ describe("toExGst", () => {
   });
   it("leaves an exclusive price untouched", () => {
     expect(toExGst(100, false)).toBe(100);
+  });
+});
+
+// ── #2 strict extraction + retry assessment ──────────────────────────────
+
+function vitem(
+  p: Partial<ExtractedSupplierItem> & Pick<ExtractedSupplierItem, "name">,
+): ExtractedSupplierItem {
+  return {
+    name: p.name,
+    unit: p.unit ?? "each",
+    price: p.price ?? null,
+    sku: p.sku ?? null,
+    quantity: p.quantity ?? null,
+    pieces: p.pieces ?? null,
+    source_line_total: p.source_line_total ?? null,
+    raw_text: p.raw_text ?? null,
+    confidence: p.confidence ?? 0.9,
+  };
+}
+function val(p: Partial<SupplierQuoteExtraction> = {}): SupplierQuoteExtraction {
+  return {
+    supplier: null,
+    quote_number: null,
+    currency: "NZD",
+    gst_inclusive: false,
+    items: [],
+    subtotal: null,
+    gst: null,
+    total: null,
+    notes: [],
+    ...p,
+  };
+}
+
+describe("parseSupplierQuoteExtraction — strict rows", () => {
+  it("rejects a malformed (present-but-unreadable) price as a rowFailure, not a silent null", () => {
+    const r = parseSupplierQuoteExtraction({
+      items: [
+        { name: "Garbled", unit: "each", price: "12.4O", line_total: "235.60" },
+        { name: "Good", unit: "each", price: 10, line_total: 10 },
+      ],
+    });
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.value.items.map((i) => i.name)).toEqual(["Good"]);
+    expect(r.rowFailures).toHaveLength(1);
+    expect(r.rowFailures[0].reason).toMatch(/price/i);
+  });
+
+  it("keeps a row with an absent / POA price (intentional non-price), no failure", () => {
+    const r = parseSupplierQuoteExtraction({
+      items: [
+        { name: "Custom flashing", unit: "each", price: "POA", line_total: null },
+      ],
+    });
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.value.items).toHaveLength(1);
+    expect(r.value.items[0].price).toBeNull();
+    expect(r.rowFailures).toHaveLength(0);
+  });
+
+  it("records a no-name row as a visible rowFailure", () => {
+    const r = parseSupplierQuoteExtraction({
+      items: [{ unit: "m", price: 3 }, { name: "OK", price: 1 }],
+    });
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.value.items).toHaveLength(1);
+    expect(r.rowFailures.some((f) => /name/i.test(f.reason))).toBe(true);
+  });
+
+  it("surfaces a dedupe drop as a visible warning (not silent)", () => {
+    const r = parseSupplierQuoteExtraction({
+      items: [
+        { name: "GIB 13mm", unit: "sheet", price: 22 },
+        { name: "gib 13mm", unit: "sheet", price: 22 },
+      ],
+    });
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.value.items).toHaveLength(1);
+    expect(r.warnings.join(" ")).toMatch(/duplicate/i);
+  });
+});
+
+describe("assessExtraction — status rules (locked)", () => {
+  it("ok: clean items + printed totals, no failures", () => {
+    const v = val({
+      items: [vitem({ name: "A", price: 10, quantity: 1, source_line_total: 10 })],
+      subtotal: 10,
+      gst: 1.5,
+      total: 11.5,
+    });
+    expect(assessExtraction(v, []).status).toBe("ok");
+  });
+
+  it("blocked: zero usable items", () => {
+    expect(assessExtraction(val({ items: [] }), []).status).toBe("blocked");
+  });
+
+  it("blocked: rejected rows AND nothing to reconcile against", () => {
+    const v = val({
+      items: [vitem({ name: "A", price: 10, source_line_total: 10 })],
+      subtotal: null,
+      total: null,
+    });
+    const rf = [{ index: 1, reason: "price unreadable", raw_text: null }];
+    expect(assessExtraction(v, rf).status).toBe("blocked");
+  });
+
+  it("needs_review: rejected rows BUT a printed subtotal remains (partial reconcilable)", () => {
+    const v = val({
+      items: [vitem({ name: "A", price: 10, source_line_total: 10 })],
+      subtotal: 35,
+      total: 40.25,
+    });
+    const rf = [{ index: 1, reason: "price unreadable", raw_text: null }];
+    expect(assessExtraction(v, rf).status).toBe("needs_review");
+  });
+
+  it("needs_review: no printed totals at all", () => {
+    const v = val({
+      items: [vitem({ name: "A", price: 10, source_line_total: 10 })],
+    });
+    expect(assessExtraction(v, []).status).toBe("needs_review");
+  });
+
+  it("needs_review: a row missing both price and line total", () => {
+    const v = val({
+      items: [vitem({ name: "A", price: null, source_line_total: null })],
+      subtotal: 0,
+      total: 0,
+    });
+    expect(assessExtraction(v, []).status).toBe("needs_review");
+  });
+
+  it("needs_review: low mean confidence", () => {
+    const v = val({
+      items: [
+        vitem({ name: "A", price: 10, source_line_total: 10, confidence: 0.2 }),
+      ],
+      subtotal: 10,
+      total: 11.5,
+    });
+    expect(assessExtraction(v, []).status).toBe("needs_review");
+  });
+});
+
+describe("chooseBestExtraction — prefer the most reconcilable", () => {
+  it("prefers the attempt whose lines tie out to the subtotal, even over a cleaner-status one", () => {
+    const reconciles = {
+      value: val({
+        items: [
+          vitem({ name: "A", price: 600, quantity: 1, source_line_total: 600 }),
+          vitem({ name: "B", price: 400, quantity: 1, source_line_total: 400 }),
+        ],
+        subtotal: 1000,
+        total: 1150,
+      }),
+      rowFailures: [{ index: 2, reason: "price unreadable", raw_text: null }],
+    };
+    const doesNotReconcile = {
+      value: val({
+        items: [vitem({ name: "A", price: 600, quantity: 1, source_line_total: 600 })],
+        subtotal: 1000,
+        total: 1150,
+      }),
+      rowFailures: [],
+    };
+    const best = chooseBestExtraction([doesNotReconcile, reconciles]);
+    expect(best.value.items).toHaveLength(2);
+  });
+
+  it("falls back to status / fewest failures / most items when neither reconciles", () => {
+    const a = {
+      value: val({ items: [vitem({ name: "A", price: 10 })] }),
+      rowFailures: [{ index: 1, reason: "x", raw_text: null }],
+    };
+    const b = {
+      value: val({
+        items: [vitem({ name: "A", price: 10 }), vitem({ name: "B", price: 5 })],
+      }),
+      rowFailures: [],
+    };
+    const best = chooseBestExtraction([a, b]);
+    expect(best.value.items).toHaveLength(2);
   });
 });
