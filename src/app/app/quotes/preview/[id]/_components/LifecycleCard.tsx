@@ -123,6 +123,11 @@ export function LifecycleCard({
   });
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  // Job date for the schedule step (writes quotes.scheduled_for).
+  // Defaults to tomorrow; clamped to today as the minimum.
+  const [scheduleDate, setScheduleDate] = useState(() => localISODate(1));
+  const minDate = localISODate(0);
+  const isScheduleStep = out.nextAction?.action === "scheduleJob";
 
   function run(action: () => Promise<LifecycleResult>) {
     setError(null);
@@ -194,12 +199,32 @@ export function LifecycleCard({
           current stage allows it. */}
       {(out.nextAction || canDecline) ? (
         <div className="mt-5 flex flex-wrap items-center gap-3">
+          {isScheduleStep ? (
+            <label className="inline-flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.2em] text-ink-300">
+              Job date
+              <input
+                type="date"
+                value={scheduleDate}
+                min={minDate}
+                onChange={(e) => setScheduleDate(e.target.value)}
+                aria-label="Job date"
+                data-testid="lifecycle-schedule-date"
+                className="h-11 rounded-full border border-ink-600 bg-ink-900 px-4 text-sm text-white outline-none focus:border-brand"
+              />
+            </label>
+          ) : null}
           {out.nextAction ? (
             <button
               type="button"
               data-testid={`lifecycle-action-${out.nextAction.action}`}
-              disabled={pending}
-              onClick={() => run(() => actionFor(out.nextAction!.action)(quoteId))}
+              disabled={pending || (isScheduleStep && !scheduleDate)}
+              onClick={() =>
+                run(() =>
+                  isScheduleStep
+                    ? scheduleJob(quoteId, scheduleDate)
+                    : actionFor(out.nextAction!.action)(quoteId),
+                )
+              }
               className="t2q-btn-primary-pro inline-flex h-11 items-center gap-2 px-5"
             >
               {pending ? "Working…" : out.nextAction.buttonLabel}
@@ -282,6 +307,14 @@ export function LifecycleCard({
       ) : null}
     </section>
   );
+}
+
+/** Local YYYY-MM-DD (not UTC) so the date picker matches the tradie's day. */
+function localISODate(offsetDays = 0): string {
+  const d = new Date();
+  d.setDate(d.getDate() + offsetDays);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
 type ActionFn = (id: string) => Promise<LifecycleResult>;

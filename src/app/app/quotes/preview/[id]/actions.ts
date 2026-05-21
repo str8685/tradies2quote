@@ -284,8 +284,34 @@ export async function declineQuote(quoteId: string): Promise<LifecycleResult> {
   return transition(quoteId, "declined");
 }
 
-export async function scheduleJob(quoteId: string): Promise<LifecycleResult> {
-  return transition(quoteId, "scheduled");
+export async function scheduleJob(
+  quoteId: string,
+  scheduledFor?: string,
+): Promise<LifecycleResult> {
+  const res = await transition(quoteId, "scheduled");
+  // Persist the chosen job date alongside the status change. The
+  // transition RPC only flips status + writes the audit row; the actual
+  // calendar date lives in quotes.scheduled_for. Best-effort: a failed
+  // date write must never undo a successful schedule transition.
+  if ("ok" in res && scheduledFor) {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (user) {
+      const { error } = await supabase
+        .from("quotes")
+        .update({ scheduled_for: scheduledFor })
+        .eq("id", quoteId)
+        .eq("user_id", user.id);
+      if (error) {
+        console.error("scheduleJob scheduled_for write failed", error);
+      }
+      revalidatePath(`/app/quotes/preview/${quoteId}`);
+      revalidatePath("/app");
+    }
+  }
+  return res;
 }
 
 export async function markInProgress(

@@ -12,6 +12,7 @@ import {
   Receipt,
   Robot,
   SignOut,
+  Stack,
   Trash,
   UserCircle,
   UsersThree,
@@ -105,6 +106,12 @@ const PRIMARY_ITEMS: ReadonlyArray<HubLink> = [
     label: "Invoice defaults",
     caption: "Due date, terms",
     Icon: Receipt,
+  },
+  {
+    href: "/app/materials",
+    label: "Materials",
+    caption: "Your price library",
+    Icon: Stack,
   },
   {
     href: "/app/clients",
