@@ -1466,3 +1466,16 @@ h1, h2, h3, h4, h5 {
 @media (prefers-reduced-motion: reduce) {
   .t2q-avatar-online { animation: none; }
 }
+
+/* Float the mobile account avatar at the top-right of the viewport.
+   Declared AFTER .t2q-avatar-online so its `position: fixed` wins over
+   that block's `position: relative` (both unlayered → source order
+   decides). Real CSS calc() here (not a Tailwind arbitrary value) so the
+   env() + rem maths is valid — a Tailwind `top-[calc(...)]` dropped the
+   spaces around `+` and produced invalid CSS, killing the offset. */
+.t2q-avatar-float {
+  position: fixed;
+  top: calc(env(safe-area-inset-top, 0px) + 0.6rem);
+  right: 1rem;
+  z-index: 40;
+}
