@@ -5,7 +5,11 @@ import {
   validateQuoteForSending,
   validateQuoteForSmsSending,
 } from "./quote-validation";
-import type { QuoteData, QuoteLineItem } from "./quote-types";
+import type {
+  DimensionConfirmation,
+  QuoteData,
+  QuoteLineItem,
+} from "./quote-types";
 
 describe("normalizePhone", () => {
   it("returns empty string for empty input", () => {
@@ -283,6 +287,110 @@ describe("assessQuoteTakeoffSafety — AI-supplied quantity (phase 7)", () => {
   it("treats legacy lines (no quantity_source) as not AI", () => {
     const a = assessQuoteTakeoffSafety(qd({ line_items: [li()] }));
     expect(a.can_send).toBe(true);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────
+// #1 — Drawing key-dimension confirmation (HARD BLOCK, no override).
+//
+// A risky drawing's key dimensions must all be confirmed before the quote
+// can be sent. Like the supplier-fidelity and AI-quantity blocks, this can
+// NOT be overridden by an acknowledgement. Absent / not-required / fully
+// confirmed → no block (no friction).
+// ─────────────────────────────────────────────────────────────────────────
+describe("assessQuoteTakeoffSafety — drawing dimension confirmation (#1)", () => {
+  const dc = (o: Partial<DimensionConfirmation> = {}): DimensionConfirmation => ({
+    required: true,
+    reasons: ["low_confidence"],
+    takeoff_type: "deck",
+    dimensions: [
+      { key: "deckLengthM", label: "Deck length", value: 4.8, unit: "m", confirmed: false },
+      { key: "deckWidthM", label: "Deck width", value: 3, unit: "m", confirmed: false },
+    ],
+    confirmed_by: null,
+    confirmed_at: null,
+    ...o,
+  });
+
+  it("HARD-blocks a risky drawing whose key dimensions aren't all confirmed", () => {
+    const a = assessQuoteTakeoffSafety(
+      qd({ line_items: [li({ takeoff_status: "ok", quantity_source: "calculator" })], dimension_confirmation: dc() }),
+    );
+    expect(a.can_send).toBe(false);
+    expect(a.requires_acknowledgement).toBe(false); // no override
+    expect(a.block_reasons.join(" ")).toMatch(/dimension/i);
+  });
+
+  it("blocks when only SOME of the key dimensions are confirmed", () => {
+    const a = assessQuoteTakeoffSafety(
+      qd({
+        line_items: [li({ takeoff_status: "ok", quantity_source: "calculator" })],
+        dimension_confirmation: dc({
+          dimensions: [
+            { key: "deckLengthM", label: "Deck length", value: 4.8, unit: "m", confirmed: true },
+            { key: "deckWidthM", label: "Deck width", value: 3, unit: "m", confirmed: false },
+          ],
+        }),
+      }),
+    );
+    expect(a.can_send).toBe(false);
+  });
+
+  it("allows the quote once every key dimension is confirmed", () => {
+    const a = assessQuoteTakeoffSafety(
+      qd({
+        line_items: [li({ takeoff_status: "ok", quantity_source: "calculator" })],
+        dimension_confirmation: dc({
+          confirmed_by: "user-123",
+          confirmed_at: "2026-05-22T00:00:00.000Z",
+          dimensions: [
+            { key: "deckLengthM", label: "Deck length", value: 4.8, unit: "m", confirmed: true },
+            { key: "deckWidthM", label: "Deck width", value: 3, unit: "m", confirmed: true },
+          ],
+        }),
+      }),
+    );
+    expect(a.can_send).toBe(true);
+  });
+
+  it("does not block when confirmation is not required", () => {
+    const a = assessQuoteTakeoffSafety(
+      qd({
+        line_items: [li({ takeoff_status: "ok", quantity_source: "calculator" })],
+        dimension_confirmation: dc({ required: false }),
+      }),
+    );
+    expect(a.can_send).toBe(true);
+  });
+
+  it("does not block legacy / voice quotes (no dimension_confirmation)", () => {
+    const a = assessQuoteTakeoffSafety(qd({ line_items: [li({ takeoff_status: "ok" })] }));
+    expect(a.can_send).toBe(true);
+  });
+
+  it("surfaces the reason for confirmation + the dimension labels in the block", () => {
+    const a = assessQuoteTakeoffSafety(
+      qd({
+        line_items: [li({ takeoff_status: "ok", quantity_source: "calculator" })],
+        dimension_confirmation: dc({ reasons: ["no_scale"] }),
+      }),
+    );
+    const joined = a.block_reasons.join(" ");
+    expect(joined).toMatch(/Deck length|Deck width/);
+  });
+
+  it("acknowledgement can NOT override the dimension-confirmation block", () => {
+    const r = validateQuoteForSending({
+      status: "draft",
+      total_amount: 11.5,
+      quote_data: qd({
+        line_items: [li({ takeoff_status: "ok", quantity_source: "calculator" })],
+        dimension_confirmation: dc(),
+      }),
+      acknowledged: true,
+    });
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error).toBe("takeoff_blocked");
   });
 });
 

@@ -152,6 +152,57 @@ describe("buildQuoteTrace", () => {
     expect(t.lines[0].issues).toEqual([]);
   });
 
+  it("surfaces an unconfirmed risky-drawing dimension confirmation + blocks send", () => {
+    const t = buildQuoteTrace(
+      qd([li({ takeoff_status: "ok", quantity_source: "calculator" })], {
+        dimension_confirmation: {
+          required: true,
+          reasons: ["low_confidence", "no_scale"],
+          takeoff_type: "deck",
+          confirmed_by: null,
+          confirmed_at: null,
+          dimensions: [
+            { key: "deckLengthM", label: "Deck length", value: 4.8, unit: "m", confirmed: false },
+            { key: "deckWidthM", label: "Deck width", value: 3, unit: "m", confirmed: true },
+          ],
+        },
+      }),
+    );
+    expect(t.dimension_confirmation?.required).toBe(true);
+    expect(t.dimension_confirmation?.reasons).toEqual(
+      expect.arrayContaining(["low_confidence", "no_scale"]),
+    );
+    // Only the unconfirmed dimension is reported as outstanding.
+    expect(t.dimension_confirmation?.unconfirmed).toEqual(["Deck length"]);
+    expect(t.send.can_send).toBe(false);
+  });
+
+  it("confirmed dimension confirmation: no block, confirmed_by surfaced", () => {
+    const t = buildQuoteTrace(
+      qd([li({ takeoff_status: "ok", quantity_source: "calculator" })], {
+        dimension_confirmation: {
+          required: true,
+          reasons: ["low_confidence"],
+          takeoff_type: "deck",
+          confirmed_by: "user-123",
+          confirmed_at: "2026-05-22T00:00:00.000Z",
+          dimensions: [
+            { key: "deckLengthM", label: "Deck length", value: 4.8, unit: "m", confirmed: true },
+            { key: "deckWidthM", label: "Deck width", value: 3, unit: "m", confirmed: true },
+          ],
+        },
+      }),
+    );
+    expect(t.dimension_confirmation?.unconfirmed).toEqual([]);
+    expect(t.dimension_confirmation?.confirmed_by).toBe("user-123");
+    expect(t.send.can_send).toBe(true);
+  });
+
+  it("no dimension confirmation on a non-drawing quote", () => {
+    const t = buildQuoteTrace(qd([li({ quantity_source: "user" })]));
+    expect(t.dimension_confirmation).toBeNull();
+  });
+
   it("OCR-messy supplier import: a line that no longer matches its source is flagged + blocks", () => {
     // OCR misread the unit price (28.4 → 30), so the app line total
     // (19×30=570) no longer equals the printed source line total (539.6).

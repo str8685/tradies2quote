@@ -138,6 +138,24 @@ export function assessQuoteTakeoffSafety(
     );
   }
 
+  // #1 — a risky drawing's key dimensions must all be confirmed before send
+  // (HARD BLOCK, no override). Only present when buildDimensionConfirmation
+  // flagged the drawing as risky; safe drawings and voice/typed quotes carry
+  // no confirmation object, so they never block here.
+  const dimConfirm = quote_data?.dimension_confirmation ?? null;
+  if (dimConfirm?.required) {
+    const unconfirmed = (dimConfirm.dimensions ?? []).filter(
+      (d) => !d.confirmed,
+    );
+    if (unconfirmed.length > 0) {
+      const labels = unconfirmed.map((d) => d.label).join(", ");
+      const why = (dimConfirm.reasons ?? []).join(", ");
+      block_reasons.push(
+        `Confirm the key dimensions read off the drawing before sending: ${labels}${why ? ` (${why})` : ""}.`,
+      );
+    }
+  }
+
   if (needsReview.length > 0) {
     warning_reasons.push(
       `${needsReview.length} line(s) flagged for review: ${lineLabels(needsReview)}.`,

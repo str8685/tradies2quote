@@ -55,6 +55,18 @@ export type QuoteTrace = {
   /** #2 — strict-extraction verdict captured at scan time (provenance). */
   extraction_status: string | null;
   extraction_reasons: string[];
+  /**
+   * #1 — risky-drawing key-dimension confirmation. Null on voice/typed
+   * quotes and safe drawings. `unconfirmed` lists the labels still
+   * outstanding (empty once the tradie has confirmed them all).
+   */
+  dimension_confirmation: {
+    required: boolean;
+    reasons: string[];
+    unconfirmed: string[];
+    confirmed_by: string | null;
+    confirmed_at: string | null;
+  } | null;
   stored_totals: {
     materials_subtotal: number;
     labour_subtotal: number;
@@ -159,6 +171,7 @@ export function buildQuoteTrace(quoteData: QuoteData): QuoteTrace {
     moneyEquals(computed_totals.tax_amount, stored_totals.tax_amount);
 
   const supplier = quoteData.supplier_source ?? null;
+  const dc = quoteData.dimension_confirmation ?? null;
 
   return {
     is_supplier_import: !!supplier,
@@ -177,6 +190,17 @@ export function buildQuoteTrace(quoteData: QuoteData): QuoteTrace {
     reconciliation_reasons: supplier?.reconciliation_reasons ?? [],
     extraction_status: supplier?.extraction_status ?? null,
     extraction_reasons: supplier?.extraction_reasons ?? [],
+    dimension_confirmation: dc
+      ? {
+          required: !!dc.required,
+          reasons: dc.reasons ?? [],
+          unconfirmed: (dc.dimensions ?? [])
+            .filter((d) => !d.confirmed)
+            .map((d) => d.label),
+          confirmed_by: dc.confirmed_by ?? null,
+          confirmed_at: dc.confirmed_at ?? null,
+        }
+      : null,
     stored_totals,
     computed_totals,
     totals_match,

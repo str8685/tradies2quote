@@ -159,6 +159,50 @@ export type TakeoffInputsSnapshot = Partial<{
   wastePercent: number;
 }>;
 
+// ---------------------------------------------------------------------------
+// #1 — Drawing key-dimension confirmation.
+//
+// A drawing scan can mis-read the numbers that DRIVE a takeoff (deck length,
+// floor width, wall height). For RISKY drawings we freeze the exact extracted
+// key dimensions and require the tradie to confirm (or correct) them before
+// the quote can be sent. Confirmation is a HARD send-gate block — never
+// produced for voice/typed inputs or safe drawings, so safe jobs see no
+// friction. Server-side only; never exposed via PublicLineItem/PublicQuote.
+// ---------------------------------------------------------------------------
+
+/** Why a drawing's key dimensions need confirming before send. */
+export type DimensionConfirmationReason =
+  | "low_confidence"
+  | "plan_text_disagree"
+  | "no_scale"
+  | "large_quantity";
+
+/**
+ * One key dimension the tradie must confirm or correct. `key` is the
+ * deterministic calculator INPUT FIELD NAME (e.g. "deckLengthM") so a
+ * correction maps straight back onto the calculator with no translation.
+ */
+export type ConfirmableDimension = {
+  key: string;
+  label: string;
+  value: number;
+  unit: string;
+  confirmed: boolean;
+};
+
+export type DimensionConfirmation = {
+  /** True when the drawing was risky enough to require confirmation. */
+  required: boolean;
+  reasons: DimensionConfirmationReason[];
+  /** Which calculator drives these dimensions (for recompute on edit). */
+  takeoff_type: "deck" | "subfloor" | "cladding" | "wall";
+  dimensions: ConfirmableDimension[];
+  /** Auth user id that confirmed; set when the tradie confirms. */
+  confirmed_by?: string | null;
+  /** ISO timestamp the dimensions were confirmed. */
+  confirmed_at?: string | null;
+};
+
 export type LibraryMaterial = {
   id: string;
   name: string;
@@ -333,6 +377,13 @@ export type QuoteData = {
    * quotes — the editor only shows the reconciliation panel when present.
    */
   supplier_source?: SupplierSource | null;
+  /**
+   * #1 — frozen key-dimension confirmation for a risky drawing takeoff.
+   * Read by the pre-send safety gate (hard-blocks until all required
+   * dimensions are confirmed). Absent on voice/typed quotes and on safe
+   * drawings (no friction). Server-side only — never in PublicQuotePayload.
+   */
+  dimension_confirmation?: DimensionConfirmation | null;
 };
 
 export type SupplierSource = {

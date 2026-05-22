@@ -8,6 +8,7 @@ import {
   parseTakeoffDescription,
   runTakeoff,
 } from "@/lib/aiTakeoffParser";
+import { buildDimensionConfirmation } from "@/lib/dimensionConfirmation";
 import {
   materialMatchingEnabledFromEnv,
   safelyEnrichLineItemsWithCatalogue,
@@ -306,6 +307,12 @@ export async function POST(request: NextRequest) {
   // material lines are dropped below so no AI-guessed quantity reaches the
   // final quote. (Voice/typed quotes have no marker and are unaffected.)
   const isDrawing = /\[T2Q_(?:PLAN|TIMBER)\]/i.test(transcript);
+  // #1 — a drawing whose scan produced NO structured plan marker means the
+  // AI couldn't lock onto a confident, scaled set of plan dimensions (the
+  // calculator then runs off looser prose dims). Treat that as "no usable
+  // scale" — one of the risk signals that requires the tradie to confirm the
+  // key dimensions before sending.
+  const noScale = isDrawing && !/\[T2Q_PLAN\]/i.test(transcript);
 
   // PHASE 7 — a takeoff scope the calculator/orchestrator could not compute
   // (missing / uncertain / impossible dimensions) becomes an explicit
@@ -546,6 +553,27 @@ export async function POST(request: NextRequest) {
       parsed.notes = [...parsedTakeoff.assumptions, ...(parsed.notes ?? [])];
     }
     parsed.takeoff_inputs = parsedTakeoff.input as TakeoffInputsSnapshot;
+
+    // #1 — for a RISKY drawing (low confidence, plan/prose disagreement, no
+    // scale, or a large footprint) freeze the exact key dimensions the
+    // calculator used and require the tradie to confirm or correct them
+    // before the quote can be sent. Safe drawings (and all voice/typed
+    // quotes) get null here — no friction.
+    if (isDrawing) {
+      const confirmation = buildDimensionConfirmation({
+        isDrawing: true,
+        parsed: parsedTakeoff,
+        noScale,
+      });
+      if (confirmation) {
+        parsed.dimension_confirmation = confirmation;
+        console.log("[takeoff] drawing needs dimension confirmation", {
+          quoteId: quote.id,
+          takeoff_type: confirmation.takeoff_type,
+          reasons: confirmation.reasons,
+        });
+      }
+    }
   }
 
   // Wave 44 — append orchestrator-only scopes (the ones the legacy

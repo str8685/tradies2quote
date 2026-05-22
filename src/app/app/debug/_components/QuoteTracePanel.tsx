@@ -105,6 +105,20 @@ export function QuoteTracePanel({ recent, selectedId, trace, currency }: Props) 
                 label={`extraction · ${trace.extraction_status}`}
               />
             )}
+            {trace.dimension_confirmation?.required && (
+              <Badge
+                tone={
+                  trace.dimension_confirmation.unconfirmed.length > 0
+                    ? "bad"
+                    : "ok"
+                }
+                label={
+                  trace.dimension_confirmation.unconfirmed.length > 0
+                    ? "dimensions · unconfirmed"
+                    : "dimensions · confirmed"
+                }
+              />
+            )}
             {trace.is_takeoff && <Badge tone="info" label="takeoff" />}
             <Badge
               tone={trace.totals_match ? "ok" : "bad"}
@@ -141,6 +155,21 @@ export function QuoteTracePanel({ recent, selectedId, trace, currency }: Props) 
               reasons={trace.extraction_reasons}
             />
           )}
+          {trace.dimension_confirmation?.required &&
+            trace.dimension_confirmation.unconfirmed.length > 0 && (
+              <ReasonList
+                title="Confirm key dimensions"
+                tone="bad"
+                reasons={[
+                  ...trace.dimension_confirmation.unconfirmed.map(
+                    (l) => `${l} — read off the drawing, not yet confirmed`,
+                  ),
+                  ...trace.dimension_confirmation.reasons.map(
+                    (r) => `flagged: ${r}`,
+                  ),
+                ]}
+              />
+            )}
 
           {/* Totals: stored vs computed */}
           <div>

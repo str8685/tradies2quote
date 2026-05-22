@@ -6,7 +6,13 @@ import { createClient } from "@/lib/supabase/server";
 import { computeQuoteTotals, round2 } from "@/lib/quote-defaults";
 import { applyMaterialCorrections } from "@/lib/quoteEditLearning";
 import { buildQuoteEditDiff, diffIsNonEmpty } from "@/lib/quoteEditDiff";
-import type { QuoteData, QuoteStatus } from "@/lib/quote-types";
+import { confirmAndRecalc, type DimensionEdit } from "@/lib/dimensionConfirmation";
+import type {
+  DimensionConfirmation,
+  QuoteData,
+  QuoteLineItem,
+  QuoteStatus,
+} from "@/lib/quote-types";
 import { assessQuoteTakeoffSafety } from "@/lib/quote-validation";
 import { canTransition } from "@/lib/lifecycle/stages";
 import {
@@ -144,6 +150,128 @@ export async function saveQuoteChanges(
   }
 
   return { ok: true, materialsLearned: learn.materialsLearned };
+}
+
+type ConfirmDimsResult =
+  | {
+      ok: true;
+      lineItems: QuoteLineItem[];
+      dimensionConfirmation: DimensionConfirmation;
+      changed: boolean;
+    }
+  | { error: string };
+
+/**
+ * #1 — confirm (or correct) a risky drawing's key dimensions.
+ *
+ * Operates on the tradie's CURRENT quote data (passed from the editor, like
+ * saveQuoteChanges) so any unsaved edits are preserved. Confirming with no
+ * change keeps every number; correcting a dimension re-runs the SAME
+ * deterministic calculator (never the AI) and replaces the calculator lines.
+ * Records who confirmed and when. Persists quote + line items so the
+ * pre-send gate (which hard-blocks until all required dims are confirmed)
+ * unblocks.
+ */
+export async function confirmDimensions(
+  id: string,
+  data: QuoteData,
+  edits: DimensionEdit[],
+): Promise<ConfirmDimsResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const { data: priorRow } = await supabase
+    .from("quotes")
+    .select("status, user_id")
+    .eq("id", id)
+    .single();
+  if (!priorRow || priorRow.user_id !== user.id) {
+    return { error: "Quote not found." };
+  }
+  if (priorRow.status === "accepted") {
+    return { error: "Quote already accepted — edits are locked." };
+  }
+
+  const result = confirmAndRecalc(data, edits, {
+    confirmedBy: user.id,
+    confirmedAt: new Date().toISOString(),
+  });
+  if (!result) {
+    return { error: "There are no drawing dimensions to confirm on this quote." };
+  }
+
+  const items = result.line_items.map((it) => {
+    const qty = Number(it.quantity) || 0;
+    const price = Number(it.unit_price) || 0;
+    return { ...it, quantity: qty, unit_price: price, line_total: round2(qty * price) };
+  });
+  const markup_pct = Number(data.markup_pct) || 0;
+  const tax_rate = Number(data.tax_rate) || 0;
+  const totals = computeQuoteTotals(items, markup_pct, tax_rate);
+
+  const next: QuoteData = {
+    ...data,
+    line_items: items,
+    markup_pct,
+    ...totals,
+    dimension_confirmation: result.dimension_confirmation,
+  };
+
+  const { data: updatedRows, error: uErr } = await supabase
+    .from("quotes")
+    .update({
+      quote_data: next,
+      total_amount: totals.total,
+      currency: next.currency,
+    })
+    .eq("id", id)
+    .select("id");
+  if (uErr || !updatedRows || updatedRows.length === 0) {
+    console.error("confirmDimensions update failed", uErr);
+    return { error: "Could not save the confirmation." };
+  }
+
+  const { error: dErr } = await supabase
+    .from("quote_items")
+    .delete()
+    .eq("quote_id", id);
+  if (dErr) {
+    console.error("confirmDimensions delete items failed", dErr);
+    return { error: "Could not refresh line items." };
+  }
+  if (items.length > 0) {
+    const { error: iErr } = await supabase.from("quote_items").insert(
+      items.map((it) => ({
+        quote_id: id,
+        type: it.type,
+        description: it.description,
+        quantity: it.quantity,
+        unit: it.unit,
+        unit_price: it.unit_price,
+        line_total: it.line_total,
+      })),
+    );
+    if (iErr) {
+      console.error("confirmDimensions insert items failed", iErr);
+      return { error: "Could not write line items." };
+    }
+  }
+
+  console.log("[takeoff] dimensions confirmed", {
+    quoteId: id,
+    userId: user.id,
+    changed: result.changed,
+  });
+  revalidatePath(`/app/quotes/preview/${id}`);
+  return {
+    ok: true,
+    lineItems: items,
+    dimensionConfirmation: result.dimension_confirmation,
+    changed: result.changed,
+  };
 }
 
 /* -------------------------------------------------------------------------

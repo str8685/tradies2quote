@@ -23,12 +23,17 @@ import {
 } from "@/lib/quote-defaults";
 import { validateSupplierQuote } from "@/lib/materials/quoteValidation";
 import type {
+  DimensionConfirmation,
   LibraryMaterial,
   QuoteData,
   QuoteItemType,
   QuoteLineItem,
   QuoteStatus,
 } from "@/lib/quote-types";
+import {
+  confirmAndRecalc,
+  type DimensionEdit,
+} from "@/lib/dimensionConfirmation";
 import { matchToLibrary } from "@/lib/materials";
 import {
   lineConfidence,
@@ -38,7 +43,7 @@ import {
 import { explainFormula } from "@/lib/explainFormula";
 import type { MaterialTakeoffResult } from "@/lib/materialCalculator";
 import type { PhotoPlanItem } from "@/lib/agents/photo-plan";
-import { saveQuoteChanges } from "../actions";
+import { confirmDimensions, saveQuoteChanges } from "../actions";
 import { TakeoffPanel } from "./TakeoffPanel";
 import { PhotoPlanPanel } from "./PhotoPlanPanel";
 import { SendQuoteButton } from "./SendQuoteButton";
@@ -58,6 +63,14 @@ type Props = {
 type SaveStatus = "idle" | "saving" | "saved" | "error";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+// #1 — plain-English reason a drawing's key dimensions need confirming.
+const DIM_REASON_LABEL: Record<string, string> = {
+  low_confidence: "the drawing was hard to read",
+  plan_text_disagree: "the plan and the written dimensions disagreed",
+  no_scale: "no clear scale was found on the drawing",
+  large_quantity: "it's a large job — a small dimension error costs a lot",
+};
 
 function migrateLegacyContact(
   c: QuoteData["client"] | null | undefined,
@@ -197,6 +210,87 @@ export function QuoteEditor({
     );
   }
 
+  // #1 — risky-drawing key-dimension confirmation. Present only when the
+  // generate route flagged this drawing as risky (low confidence, plan/prose
+  // disagreement, no scale, or a large footprint). HARD-blocks send until
+  // every key dimension is confirmed. Voice/typed and safe drawings carry no
+  // confirmation object, so this whole panel is absent for them.
+  const [dimConfirm, setDimConfirm] = useState<DimensionConfirmation | null>(
+    initialData.dimension_confirmation ?? null,
+  );
+  const [dimDraft, setDimDraft] = useState<Record<string, string>>(() =>
+    Object.fromEntries(
+      (initialData.dimension_confirmation?.dimensions ?? []).map((d) => [
+        d.key,
+        String(d.value),
+      ]),
+    ),
+  );
+  const [dimError, setDimError] = useState<string>("");
+
+  const dimEdits: DimensionEdit[] = (dimConfirm?.dimensions ?? []).map((d) => ({
+    key: d.key,
+    value: Number(dimDraft[d.key]),
+  }));
+
+  // Live, deterministic preview of the quantities a correction would produce
+  // — the SAME pure recompute the server runs on confirm. Shown on the same
+  // screen as the dimensions so the tradie sees the impact before confirming.
+  const dimPreview = useMemo(() => {
+    if (!dimConfirm) return null;
+    return confirmAndRecalc(
+      { ...initialData, line_items: items, dimension_confirmation: dimConfirm },
+      dimEdits,
+      { confirmedBy: "", confirmedAt: "" },
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dimConfirm, items, dimDraft, initialData]);
+
+  const dimUnconfirmed = (dimConfirm?.dimensions ?? []).filter(
+    (d) => !d.confirmed,
+  );
+  const dimNeedsConfirm =
+    !!dimConfirm?.required && dimUnconfirmed.length > 0;
+
+  function handleConfirmDimensions() {
+    if (!dimConfirm) return;
+    // Validate the draft values before sending.
+    for (const d of dimConfirm.dimensions) {
+      const v = Number(dimDraft[d.key]);
+      if (!Number.isFinite(v) || v <= 0) {
+        setDimError(`${d.label} must be a positive number.`);
+        return;
+      }
+    }
+    setDimError("");
+    setStatus("saving");
+    setErrorMessage("");
+    startTransition(async () => {
+      const result = await confirmDimensions(
+        quoteId,
+        buildCurrentQuoteData(),
+        dimEdits,
+      );
+      if ("error" in result) {
+        setStatus("error");
+        setErrorMessage(result.error);
+        return;
+      }
+      setItems(result.lineItems);
+      setDimConfirm(result.dimensionConfirmation);
+      setDimDraft(
+        Object.fromEntries(
+          result.dimensionConfirmation.dimensions.map((d) => [
+            d.key,
+            String(d.value),
+          ]),
+        ),
+      );
+      setStatus("saved");
+      setTimeout(() => setStatus("idle"), 2500);
+    });
+  }
+
   function removeItem(idx: number) {
     setItems((prev) => prev.filter((_, i) => i !== idx));
   }
@@ -287,6 +381,9 @@ export function QuoteEditor({
       tax_rate: taxRate,
       tax_label: taxLabel,
       currency,
+      // Persist the live confirmation state so a normal Save never reverts a
+      // dimension confirmation back to the stale generated value.
+      dimension_confirmation: dimConfirm,
     };
   }
 
@@ -723,6 +820,171 @@ export function QuoteEditor({
               );
             })}
           </div>
+        </section>
+      )}
+
+      {dimConfirm?.required && (
+        <section
+          data-testid="dimension-confirm"
+          data-confirmed={dimNeedsConfirm ? "false" : "true"}
+          className={`t2q-card-pro border p-5 sm:p-6 ${
+            dimNeedsConfirm ? "border-red-500/40" : "border-emerald-500/30"
+          }`}
+        >
+          <div className="flex items-center justify-between gap-3">
+            <p className="t2q-section-label-pro">
+              {"// confirm key dimensions"}
+            </p>
+            <span
+              className={`rounded-sm px-2 py-0.5 font-mono text-[9px] uppercase tracking-[0.15em] ${
+                dimNeedsConfirm
+                  ? "bg-red-500/15 text-red-300"
+                  : "bg-emerald-500/15 text-emerald-300"
+              }`}
+            >
+              {dimNeedsConfirm ? "from drawing · unconfirmed" : "confirmed"}
+            </span>
+          </div>
+
+          {dimNeedsConfirm ? (
+            <>
+              <p className="mt-3 flex items-start gap-1.5 text-sm font-semibold text-red-200">
+                <Warning size={14} weight="fill" className="mt-0.5 shrink-0" />
+                <span>
+                  We read these key dimensions off your drawing. Confirm or
+                  correct each one — the quote can&apos;t be sent until they&apos;re
+                  confirmed.
+                </span>
+              </p>
+              {dimConfirm.reasons.length > 0 && (
+                <ul className="mt-2 space-y-0.5 text-xs text-ink-300">
+                  {dimConfirm.reasons.map((r) => (
+                    <li key={r} className="flex gap-1.5">
+                      <span aria-hidden="true" className="text-ink-500">
+                        ·
+                      </span>
+                      <span>
+                        Flagged because {DIM_REASON_LABEL[r] ?? r}.
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+
+              {/* Editable dimensions — editing recalculates live below. */}
+              <div className="mt-4 space-y-2">
+                {dimConfirm.dimensions.map((d) => (
+                  <div
+                    key={d.key}
+                    className="flex flex-wrap items-center justify-between gap-2 rounded-sm border border-ink-700/60 px-3 py-2"
+                  >
+                    <span className="text-sm text-white">{d.label}</span>
+                    <span className="inline-flex items-center gap-1.5">
+                      <input
+                        type="number"
+                        inputMode="decimal"
+                        step="0.01"
+                        min="0"
+                        value={dimDraft[d.key] ?? ""}
+                        disabled={isAccepted}
+                        data-testid={`dimension-input-${d.key}`}
+                        onChange={(e) =>
+                          setDimDraft((prev) => ({
+                            ...prev,
+                            [d.key]: e.target.value,
+                          }))
+                        }
+                        className="w-24 rounded-sm border border-ink-700 bg-ink-900 px-2 py-1 text-right font-mono text-sm tabular-nums text-white focus:border-brand focus:outline-none"
+                      />
+                      <span className="font-mono text-[11px] text-ink-400">
+                        {d.unit}
+                      </span>
+                    </span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Resulting recalculated quantities — same deterministic
+                  calculator the server will run on confirm. */}
+              {dimPreview && dimPreview.line_items.some((i) => i.is_calculated_takeoff) && (
+                <div className="mt-4 border-t border-white/5 pt-3">
+                  <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-ink-400">
+                    {dimPreview.changed
+                      ? "Recalculated quantities (preview)"
+                      : "Resulting quantities"}
+                  </p>
+                  <ul className="mt-2 space-y-1">
+                    {dimPreview.line_items
+                      .filter((i) => i.is_calculated_takeoff)
+                      .map((i, n) => {
+                        const before = items.find(
+                          (x) =>
+                            x.is_calculated_takeoff &&
+                            (x.price_match_key ?? x.description) ===
+                              (i.price_match_key ?? i.description),
+                        );
+                        const changed =
+                          dimPreview.changed &&
+                          before != null &&
+                          Math.abs((before.quantity ?? 0) - i.quantity) > 1e-9;
+                        return (
+                          <li
+                            key={n}
+                            className="flex items-center justify-between gap-2 text-sm"
+                          >
+                            <span className="min-w-0 flex-1 truncate text-ink-200">
+                              {i.description}
+                            </span>
+                            <span className="shrink-0 font-mono text-[12px] tabular-nums text-white">
+                              {changed && before && (
+                                <span className="mr-1.5 text-ink-500 line-through">
+                                  {before.quantity}
+                                </span>
+                              )}
+                              {i.quantity} {i.unit}
+                            </span>
+                          </li>
+                        );
+                      })}
+                  </ul>
+                </div>
+              )}
+
+              {dimError && (
+                <p className="mt-3 text-xs text-red-300">{dimError}</p>
+              )}
+
+              <button
+                type="button"
+                onClick={handleConfirmDimensions}
+                disabled={isAccepted || isPending}
+                data-testid="confirm-dimensions"
+                className="t2q-btn-primary mt-4 w-full justify-center sm:w-auto"
+              >
+                <Check size={14} weight="bold" />
+                {dimPreview?.changed
+                  ? "Save corrected dimensions"
+                  : "Confirm dimensions"}
+              </button>
+            </>
+          ) : (
+            <div className="mt-3 space-y-1.5">
+              <p className="flex items-start gap-1.5 text-sm text-emerald-200">
+                <Check size={14} weight="bold" className="mt-0.5 shrink-0" />
+                <span>Key dimensions confirmed.</span>
+              </p>
+              <ul className="space-y-0.5 text-xs text-ink-300">
+                {dimConfirm.dimensions.map((d) => (
+                  <li key={d.key} className="flex justify-between gap-2">
+                    <span>{d.label}</span>
+                    <span className="font-mono tabular-nums text-ink-200">
+                      {d.value} {d.unit}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </section>
       )}
 
