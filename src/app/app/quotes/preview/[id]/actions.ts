@@ -10,6 +10,10 @@ import { confirmAndRecalc, type DimensionEdit } from "@/lib/dimensionConfirmatio
 import { isOwnerEmail } from "@/lib/owner";
 import { suggestPriceAgentEnabledFromEnv } from "@/lib/agents/suggestPrice";
 import { normalizeSuggestedMaterial } from "@/lib/agents/suggestPrice/apply";
+import {
+  ingestFromAcceptedPrice,
+  ingestFromQuoteSave,
+} from "@/lib/tradieBrain/ingest";
 import type {
   DimensionConfirmation,
   QuoteData,
@@ -170,6 +174,17 @@ export async function saveQuoteChanges(
   } catch (e) {
     console.warn("quote_edit_events insert failed (non-fatal)", e);
   }
+
+  // Tradie Brain (v1, observe-only) — learn the tradie's own preferences from
+  // this save: preferred materials/prices, supplier, exclusions, markup habit,
+  // job type, and repeated corrections. Owner-only + soft-failing: it can
+  // never block or undo the save above, and writes nothing for other users.
+  // No memory is fed to any AI yet — this is silent collection only.
+  await ingestFromQuoteSave(supabase, user, {
+    quote: next,
+    diff: isHumanEdit ? editDiff : null,
+    quoteId: id,
+  });
 
   return { ok: true, materialsLearned: learn.materialsLearned };
 }
@@ -364,6 +379,14 @@ export async function saveSuggestedMaterial(input: {
       return { error: "Could not save to library." };
     }
   }
+
+  // Tradie Brain (v1, observe-only) — accepting a suggested price is a strong
+  // "this is my price for X" signal. Owner-only + soft-failing.
+  await ingestFromAcceptedPrice(supabase, user, {
+    name: mat.name,
+    unit: mat.unit,
+    price: mat.default_unit_price,
+  });
 
   revalidatePath("/app/materials");
   return { ok: true };

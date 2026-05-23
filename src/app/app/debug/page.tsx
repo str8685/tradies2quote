@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import {
+  Brain,
+  CaretRight,
   CheckCircle,
   Info,
   Warning,
@@ -302,6 +305,25 @@ export default async function DebugPage({
             compact
           />
         </div>
+
+        {/* Tradie Brain — owner-only memory inspector (observe-only v1) */}
+        <Link
+          href="/app/debug/brain"
+          data-testid="debug-brain-link"
+          className="t2q-card-pro mb-8 flex items-center gap-4 p-5 transition-colors hover:border-brand/40 sm:p-6"
+        >
+          <Brain size={26} weight="duotone" className="shrink-0 text-brand" />
+          <div className="min-w-0 flex-1">
+            <p className="font-display text-base uppercase tracking-tight text-white">
+              Tradie Brain
+            </p>
+            <p className="mt-0.5 text-xs text-ink-300">
+              Memories learned from your quotes — preferences, prices, markup,
+              corrections. Observe-only: collected, never fed to AI yet.
+            </p>
+          </div>
+          <CaretRight size={16} weight="bold" className="shrink-0 text-ink-400" />
+        </Link>
 
         {/* Quote traceability — Phase 8 */}
         <QuoteTracePanel
