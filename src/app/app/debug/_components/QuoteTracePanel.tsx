@@ -170,6 +170,23 @@ export function QuoteTracePanel({ recent, selectedId, trace, currency }: Props) 
                 ]}
               />
             )}
+          {trace.dimension_confirmation?.required &&
+            trace.dimension_confirmation.unconfirmed.length === 0 && (
+              <p className="font-mono text-[11px] text-brand">
+                key dimensions confirmed
+                {trace.dimension_confirmation.confirmed_by
+                  ? ` · by ${trace.dimension_confirmation.confirmed_by}`
+                  : ""}
+                {trace.dimension_confirmation.confirmed_at
+                  ? ` · ${trace.dimension_confirmation.confirmed_at
+                      .replace("T", " ")
+                      .slice(0, 16)} UTC`
+                  : ""}
+                {trace.dimension_confirmation.reasons.length > 0
+                  ? ` · flagged: ${trace.dimension_confirmation.reasons.join(", ")}`
+                  : ""}
+              </p>
+            )}
 
           {/* Totals: stored vs computed */}
           <div>
