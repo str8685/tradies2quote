@@ -4,6 +4,7 @@ import { MobileBottomNav } from "./_components/MobileBottomNav";
 import { OnboardingTourGate } from "./_components/OnboardingTourGate";
 import { TopProgressBar } from "./_components/TopProgressBar";
 import { TrialBanner } from "./_components/TrialBanner";
+import { BetaNoticeBanner } from "./_components/BetaNoticeBanner";
 
 /**
  * Visual layout for /app/* routes.
@@ -75,6 +76,9 @@ export default function AppLayout({
             nothing for paid users or users still well inside their
             trial; surfaces only when there's something to act on. */}
         <TrialBanner />
+        {/* Dismissible beta safety reminder — once per session, client-side
+            (sessionStorage). Sits below the trial/beta-payments banner. */}
+        <BetaNoticeBanner />
         {children}
       </div>
       <div aria-hidden="true" className="hidden lg:block" />
