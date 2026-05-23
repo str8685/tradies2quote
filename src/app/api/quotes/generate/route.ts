@@ -18,6 +18,7 @@ import {
   safelyReviewQuote,
 } from "@/lib/compliance";
 import { runTakeoff as runOrchestratedTakeoff } from "@/lib/takeoff";
+import { legacyScopeCoverage } from "@/lib/takeoff/legacyCoverage";
 import { cleanTranscript } from "@/lib/transcriptCleanup";
 import type {
   LibraryMaterial,
@@ -349,15 +350,11 @@ export async function POST(request: NextRequest) {
   // want to lose. We map legacy parser type → orchestrator scope to
   // decide which orchestrator scopes are NEW (not already covered).
   const orchestrated = runOrchestratedTakeoff(transcript);
-  const LEGACY_SCOPE_COVERAGE: Record<string, string[]> = {
-    deck: ["deck"],
-    cladding: ["cladding"],
-    wall: ["framing", "lining", "insulation", "fixing"],
-    subfloor: ["framing", "lining"],
-  };
-  const legacyCovers = useCalculator
-    ? new Set(LEGACY_SCOPE_COVERAGE[parsedTakeoff.type] ?? [])
-    : new Set<string>();
+  // Which orchestrator scopes the legacy calculator already covers for
+  // this drawing — see src/lib/takeoff/legacyCoverage.ts. Notably `deck`
+  // covers `framing`/`fixing` so the boilerplate "…board / stud / plate…"
+  // scan instruction can't raise a phantom blocked framing line.
+  const legacyCovers = legacyScopeCoverage(parsedTakeoff.type, useCalculator);
 
   const systemPrompt = buildQuotePrompt(profile, library, {
     skipTakeoffMaterials: useCalculator,

@@ -1,0 +1,40 @@
+import type { ScopeType } from "./schemas";
+
+// Maps the legacy aiTakeoffParser type → the orchestrator scopes it
+// already covers. When the legacy deterministic calculator runs for a
+// drawing (useCalculator === true), any orchestrator scope listed here is
+// suppressed in the generate route so the orchestrator can neither
+// double-up materials nor raise a phantom BLOCKED line for a sub-scope the
+// legacy calculator already handles.
+//
+// `deck` covers `framing` and `fixing`: a deck's joists/bearers ARE its
+// structural framing (the deck calculator emits them), and the scan's
+// boilerplate "Calculate board / stud / plate / decking counts"
+// instruction trips the framing scope-router on the word "stud" for EVERY
+// deck drawing — the framing extractor then has no wall dimensions and
+// returns status "blocked". Without this coverage that became a
+// "framing takeoff — needs dimensions before it can be quoted" line that
+// hard-blocked sending on every deck drawing. A deck-typed scan never
+// carries a genuinely-separate wall-framing or interior-fixing scope, so
+// suppressing them here is safe.
+export const LEGACY_SCOPE_COVERAGE: Record<string, ScopeType[]> = {
+  deck: ["deck", "framing", "fixing"],
+  cladding: ["cladding"],
+  wall: ["framing", "lining", "insulation", "fixing"],
+  subfloor: ["framing", "lining"],
+};
+
+/**
+ * The set of orchestrator scopes already covered by the legacy
+ * calculator for this drawing. Empty when the legacy calculator did not
+ * run (useCalculator === false) — in that case every orchestrator scope
+ * is "orchestrator-only".
+ */
+export function legacyScopeCoverage(
+  legacyType: string,
+  useCalculator: boolean,
+): Set<ScopeType> {
+  return useCalculator
+    ? new Set(LEGACY_SCOPE_COVERAGE[legacyType] ?? [])
+    : new Set<ScopeType>();
+}
