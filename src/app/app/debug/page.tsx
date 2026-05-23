@@ -6,6 +6,7 @@ import {
   CaretRight,
   CheckCircle,
   Info,
+  Microphone,
   Warning,
   XCircle,
 } from "@phosphor-icons/react/dist/ssr";
@@ -320,6 +321,25 @@ export default async function DebugPage({
             <p className="mt-0.5 text-xs text-ink-300">
               Memories learned from your quotes — preferences, prices, markup,
               corrections. Observe-only: collected, never fed to AI yet.
+            </p>
+          </div>
+          <CaretRight size={16} weight="bold" className="shrink-0 text-ink-400" />
+        </Link>
+
+        {/* Transcript cleanup — owner-only audit of raw vs cleaned + corrections */}
+        <Link
+          href="/app/debug/transcripts"
+          data-testid="debug-transcripts-link"
+          className="t2q-card-pro mb-8 flex items-center gap-4 p-5 transition-colors hover:border-brand/40 sm:p-6"
+        >
+          <Microphone size={26} weight="duotone" className="shrink-0 text-brand" />
+          <div className="min-w-0 flex-1">
+            <p className="font-display text-base uppercase tracking-tight text-white">
+              Transcript cleanup
+            </p>
+            <p className="mt-0.5 text-xs text-ink-300">
+              Raw vs cleaned transcripts + every domain-term correction
+              (before/after, source, confidence) and flagged terms.
             </p>
           </div>
           <CaretRight size={16} weight="bold" className="shrink-0 text-ink-400" />
