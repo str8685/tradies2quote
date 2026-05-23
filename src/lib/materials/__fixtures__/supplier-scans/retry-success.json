@@ -1,0 +1,73 @@
+{
+  "_note": "Two passes: a blurry first read, then a clean retry that reconciles. chooseBestExtraction must pick attempt 2 (ok).",
+  "attempts": [
+    {
+      "supplier": "ITM",
+      "quote_number": "Q-91000",
+      "currency": "NZD",
+      "gst_inclusive": false,
+      "items": [
+        {
+          "name": "140x45 H3.2 SG8 Pine",
+          "unit": "length",
+          "price": "28.4O",
+          "quantity": 19,
+          "line_total": null,
+          "pieces": null,
+          "sku": "TIM14045",
+          "raw_text": "140x45 H3.2 19  28.4? (blur)",
+          "confidence": 0.6
+        },
+        {
+          "name": "Stainless Decking Screws 10g x 50mm",
+          "unit": "box",
+          "price": 89.0,
+          "quantity": 2,
+          "line_total": 178.0,
+          "pieces": null,
+          "sku": "SCR1050",
+          "raw_text": "SS screws 2 box  178.00",
+          "confidence": 0.7
+        }
+      ],
+      "subtotal": null,
+      "gst": null,
+      "total": null,
+      "notes": ["First pass blurry"]
+    },
+    {
+      "supplier": "ITM",
+      "quote_number": "Q-91000",
+      "currency": "NZD",
+      "gst_inclusive": false,
+      "items": [
+        {
+          "name": "140x45 H3.2 SG8 Pine",
+          "unit": "length",
+          "price": 28.4,
+          "quantity": 19,
+          "line_total": 539.6,
+          "pieces": null,
+          "sku": "TIM14045",
+          "raw_text": "140x45 H3.2 19/4.8m  539.60",
+          "confidence": 0.95
+        },
+        {
+          "name": "Stainless Decking Screws 10g x 50mm",
+          "unit": "box",
+          "price": 89.0,
+          "quantity": 2,
+          "line_total": 178.0,
+          "pieces": null,
+          "sku": "SCR1050",
+          "raw_text": "SS screws 2 box  178.00",
+          "confidence": 0.93
+        }
+      ],
+      "subtotal": 717.6,
+      "gst": 107.64,
+      "total": 825.24,
+      "notes": []
+    }
+  ]
+}

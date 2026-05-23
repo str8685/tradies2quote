@@ -428,6 +428,10 @@ export async function createQuoteFromScan(
     /** #2 — strict-extraction verdict from the scan route (provenance). */
     extractionStatus?: "ok" | "needs_review" | "blocked";
     extractionReasons?: string[];
+    /** Ops — rows the strict parser rejected (persisted for the review queue). */
+    rowFailures?: Array<{ index: number; reason: string; raw_text: string | null }>;
+    /** Ops — how many AI passes ran (1 = no retry). For the retry-rate metric. */
+    extractionAttempts?: number;
   },
 ): Promise<{ id?: string; error?: string; blocked?: boolean }> {
   const supabase = await createClient();
@@ -576,6 +580,10 @@ export async function createQuoteFromScan(
       // #2 — strict-extraction verdict (scan-time provenance for the trace).
       extraction_status: meta?.extractionStatus,
       extraction_reasons: meta?.extractionReasons,
+      // Ops — rejected rows + attempt count, persisted so the owner
+      // extraction-review queue + metrics can read them without re-scanning.
+      row_failures: meta?.rowFailures ?? [],
+      extraction_attempts: meta?.extractionAttempts ?? 1,
     },
   };
 

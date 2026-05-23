@@ -417,6 +417,37 @@ export type SupplierSource = {
    */
   extraction_status?: "ok" | "needs_review" | "blocked";
   extraction_reasons?: string[];
+  /**
+   * Ops layer — rows the strict parser REJECTED at scan time (index,
+   * reason, raw_text). Persisted so the owner extraction-review queue can
+   * show exactly which rows failed without re-running the scan. Same shape
+   * as `RowFailure` in `materials/quoteExtraction.ts` (inlined to keep
+   * quote-types dependency-free). Absent on clean reads.
+   */
+  row_failures?: Array<{
+    index: number;
+    reason: string;
+    raw_text: string | null;
+  }>;
+  /**
+   * Ops layer — how many AI extraction attempts ran (1 = first pass clean,
+   * 2 = a retry fired). Drives the retry-rate metric. Absent on legacy rows.
+   */
+  extraction_attempts?: number;
+  /**
+   * Ops layer — set true once a human edited / completed a flagged supplier
+   * import (the deterministic correction-capture path in saveQuoteChanges).
+   * No re-extraction is implied; this is "a person fixed it" provenance.
+   */
+  extraction_corrected?: boolean;
+  corrected_by?: string | null;
+  corrected_at?: string | null;
+  /**
+   * Ops layer — when the owner explicitly marked this flagged extraction
+   * handled from the review queue. Reviewed entries drop out of the default
+   * queue while keeping their original extraction_status for the record.
+   */
+  extraction_reviewed_at?: string | null;
 };
 
 export type QuoteProfile = {

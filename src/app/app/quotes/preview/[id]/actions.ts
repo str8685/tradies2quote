@@ -73,6 +73,26 @@ export async function saveQuoteChanges(
     ...totals,
   };
 
+  // Computed once: drives BOTH the correction-capture stamp below and the
+  // Wave-40 eval-loop log further down. Diffed against the frozen AI
+  // snapshot so a no-op save doesn't count as a human correction.
+  const editDiff = buildQuoteEditDiff(aiSnapshot, next);
+  const isHumanEdit = diffIsNonEmpty(editDiff);
+
+  // Ops layer — when a human edits / completes a SUPPLIER-IMPORT quote, stamp
+  // correction provenance on supplier_source so the extraction-review queue +
+  // metrics know it was fixed. No re-extraction is implied (this is "a person
+  // touched the numbers"). Non-supplier quotes and no-op saves are untouched.
+  if (next.supplier_source && isHumanEdit) {
+    const now = new Date().toISOString();
+    next.supplier_source = {
+      ...next.supplier_source,
+      extraction_corrected: true,
+      corrected_by: user.id,
+      corrected_at: now,
+    };
+  }
+
   const { data: updatedRows, error: uErr } = await supabase
     .from("quotes")
     .update({
@@ -136,13 +156,12 @@ export async function saveQuoteChanges(
   // edit, so the signal stays clean across multiple saves. Failures
   // are swallowed: logging is a side benefit, not part of the save.
   try {
-    const diff = buildQuoteEditDiff(aiSnapshot, next);
-    if (diffIsNonEmpty(diff)) {
+    if (isHumanEdit) {
       await supabase.from("quote_edit_events").insert({
         quote_id: id,
         user_id: user.id,
         edited_data: next,
-        diff,
+        diff: editDiff,
       });
     }
   } catch (e) {

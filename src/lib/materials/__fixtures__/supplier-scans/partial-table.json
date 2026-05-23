@@ -1,0 +1,56 @@
+{
+  "supplier": "PlaceMakers",
+  "quote_number": "PM-6004",
+  "currency": "NZD",
+  "gst_inclusive": false,
+  "items": [
+    {
+      "name": "Pink Batts R2.6 Wall",
+      "unit": "pack",
+      "price": 78.0,
+      "quantity": 6,
+      "line_total": 468.0,
+      "pieces": null,
+      "sku": "PB26",
+      "raw_text": "Pink Batts R2.6 6 pk  468.00",
+      "confidence": 0.9
+    },
+    {
+      "name": "Building Wrap 1.5m",
+      "unit": "roll",
+      "price": "8O.00",
+      "quantity": 3,
+      "line_total": null,
+      "pieces": null,
+      "sku": "BW15",
+      "raw_text": "building wrap 3 roll  8?.00",
+      "confidence": 0.6
+    },
+    {
+      "name": "Cavity Battens 18mm",
+      "unit": "length",
+      "price": 6.2,
+      "quantity": "1O",
+      "line_total": null,
+      "pieces": null,
+      "sku": "CB18",
+      "raw_text": "cavity battens 1? lengths",
+      "confidence": 0.55
+    },
+    {
+      "name": "Flashing Tape 100mm",
+      "unit": "roll",
+      "price": 24.0,
+      "quantity": 4,
+      "line_total": 96.0,
+      "pieces": null,
+      "sku": "FT100",
+      "raw_text": "flashing tape 4 roll  96.00",
+      "confidence": 0.85
+    }
+  ],
+  "subtotal": null,
+  "gst": null,
+  "total": null,
+  "notes": ["Bottom of quote cut off — no totals visible"]
+}

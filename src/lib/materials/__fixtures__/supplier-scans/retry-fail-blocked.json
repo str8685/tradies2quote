@@ -1,0 +1,73 @@
+{
+  "_note": "Both passes stay unreadable (malformed rows, no printed totals). chooseBestExtraction can only return blocked.",
+  "attempts": [
+    {
+      "supplier": "ITM",
+      "quote_number": "Q-92000",
+      "currency": "NZD",
+      "gst_inclusive": false,
+      "items": [
+        {
+          "name": "90x45 H1.2 SG8 Pine",
+          "unit": "length",
+          "price": 11.2,
+          "quantity": 30,
+          "line_total": 336.0,
+          "pieces": null,
+          "sku": "TIM9045",
+          "raw_text": "90x45 30  336.00",
+          "confidence": 0.55
+        },
+        {
+          "name": "GIB Standard 13mm",
+          "unit": "sheet",
+          "price": "12.4O",
+          "quantity": 24,
+          "line_total": null,
+          "pieces": null,
+          "sku": "GIB13",
+          "raw_text": "GIB 13mm 24  12.4? (blur)",
+          "confidence": 0.5
+        }
+      ],
+      "subtotal": null,
+      "gst": null,
+      "total": null,
+      "notes": ["First pass blurry"]
+    },
+    {
+      "supplier": "ITM",
+      "quote_number": "Q-92000",
+      "currency": "NZD",
+      "gst_inclusive": false,
+      "items": [
+        {
+          "name": "90x45 H1.2 SG8 Pine",
+          "unit": "length",
+          "price": 11.2,
+          "quantity": 30,
+          "line_total": 336.0,
+          "pieces": null,
+          "sku": "TIM9045",
+          "raw_text": "90x45 30  336.00",
+          "confidence": 0.5
+        },
+        {
+          "name": "GIB Standard 13mm",
+          "unit": "sheet",
+          "price": "1O.OO",
+          "quantity": "2O",
+          "line_total": null,
+          "pieces": null,
+          "sku": "GIB13",
+          "raw_text": "GIB 13mm ?? (still blurry)",
+          "confidence": 0.45
+        }
+      ],
+      "subtotal": null,
+      "gst": null,
+      "total": null,
+      "notes": ["Retry still blurry"]
+    }
+  ]
+}

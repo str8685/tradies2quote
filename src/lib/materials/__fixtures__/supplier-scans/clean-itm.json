@@ -1,0 +1,45 @@
+{
+  "supplier": "ITM",
+  "quote_number": "Q-88421",
+  "currency": "NZD",
+  "gst_inclusive": false,
+  "items": [
+    {
+      "name": "140x45 H3.2 SG8 Pine",
+      "unit": "length",
+      "price": 28.4,
+      "quantity": 19,
+      "line_total": 539.6,
+      "pieces": null,
+      "sku": "TIM14045",
+      "raw_text": "140x45 H3.2 SG8 19/4.8m  539.60",
+      "confidence": 0.96
+    },
+    {
+      "name": "140x19 Kwila Decking",
+      "unit": "m",
+      "price": 12.5,
+      "quantity": 96,
+      "line_total": 1200.0,
+      "pieces": null,
+      "sku": "DEK14019",
+      "raw_text": "Kwila decking 96m  1200.00",
+      "confidence": 0.94
+    },
+    {
+      "name": "Stainless Decking Screws 10g x 50mm",
+      "unit": "box",
+      "price": 89.0,
+      "quantity": 2,
+      "line_total": 178.0,
+      "pieces": null,
+      "sku": "SCR1050",
+      "raw_text": "SS decking screws 2 box  178.00",
+      "confidence": 0.92
+    }
+  ],
+  "subtotal": 1917.6,
+  "gst": 287.64,
+  "total": 2205.24,
+  "notes": []
+}

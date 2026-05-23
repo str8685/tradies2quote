@@ -71,6 +71,8 @@ type ExtractResponse = {
   extraction_reasons?: string[];
   row_failures?: Array<{ index: number; reason: string; raw_text: string | null }>;
   warnings?: string[];
+  /** Ops layer — how many AI passes ran (1 = no retry). */
+  attempts?: number;
 };
 
 const MAX_BYTES = 8 * 1024 * 1024;
@@ -101,6 +103,7 @@ export function QuoteImportClient({ currency }: { currency: string }) {
     reasons: string[];
     rowFailures: Array<{ index: number; reason: string; raw_text: string | null }>;
     warnings: string[];
+    attempts: number;
   } | null>(null);
   const [result, setResult] = useState<{
     inserted: number;
@@ -181,6 +184,7 @@ export function QuoteImportClient({ currency }: { currency: string }) {
         reasons: data.extraction_reasons ?? [],
         rowFailures: data.row_failures ?? [],
         warnings: data.warnings ?? [],
+        attempts: data.attempts ?? 1,
       });
       setRows(
         data.items.map((it) => ({
@@ -335,6 +339,8 @@ export function QuoteImportClient({ currency }: { currency: string }) {
         acknowledge: acknowledged,
         extractionStatus: extraction?.status,
         extractionReasons: extraction?.reasons,
+        rowFailures: extraction?.rowFailures,
+        extractionAttempts: extraction?.attempts,
       });
       if (res.error || !res.id) {
         setError(res.error ?? "Could not create the quote.");

@@ -1,0 +1,34 @@
+{
+  "supplier": "PlaceMakers",
+  "quote_number": "PM-5521",
+  "currency": "NZD",
+  "gst_inclusive": true,
+  "items": [
+    {
+      "name": "Ready Mix Concrete 25MPa",
+      "unit": "m³",
+      "price": 310.5,
+      "quantity": 5.4,
+      "line_total": 1676.7,
+      "pieces": null,
+      "sku": "RMX25",
+      "raw_text": "25MPa 5.4m3  1676.70 incl",
+      "confidence": 0.95
+    },
+    {
+      "name": "Reinforcing Mesh SE62",
+      "unit": "sheet",
+      "price": 92.0,
+      "quantity": 4,
+      "line_total": 368.0,
+      "pieces": null,
+      "sku": "SE62",
+      "raw_text": "SE62 mesh 4 sht  368.00 incl",
+      "confidence": 0.93
+    }
+  ],
+  "subtotal": null,
+  "gst": null,
+  "total": 2044.7,
+  "notes": ["GST-inclusive quote — no subtotal line printed"]
+}

@@ -1,0 +1,45 @@
+{
+  "supplier": "ITM",
+  "quote_number": "Q-90013",
+  "currency": "NZD",
+  "gst_inclusive": false,
+  "items": [
+    {
+      "name": "90x45 H1.2 SG8 Pine",
+      "unit": "length",
+      "price": 11.2,
+      "quantity": 30,
+      "line_total": 336.0,
+      "pieces": null,
+      "sku": "TIM9045",
+      "raw_text": "90x45 H1.2 30/4.8m  336.00",
+      "confidence": 0.9
+    },
+    {
+      "name": "GIB Standard 13mm 1200x2400",
+      "unit": "sheet",
+      "price": "12.4O",
+      "quantity": 24,
+      "line_total": null,
+      "pieces": null,
+      "sku": "GIB13",
+      "raw_text": "GIB 13mm 24 sht  12.4? (smudged)",
+      "confidence": 0.7
+    },
+    {
+      "name": "Batten Screws 8g x 40mm",
+      "unit": "box",
+      "price": 42.0,
+      "quantity": 1,
+      "line_total": 42.0,
+      "pieces": null,
+      "sku": "BSC840",
+      "raw_text": "batten screws 1 box  42.00",
+      "confidence": 0.88
+    }
+  ],
+  "subtotal": 700.0,
+  "gst": 105.0,
+  "total": 805.0,
+  "notes": ["Row 2 unit price smudged"]
+}

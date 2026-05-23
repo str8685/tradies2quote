@@ -394,5 +394,8 @@ export async function POST(request: NextRequest) {
     extraction_reasons: best.reasons,
     row_failures: best.rowFailures,
     warnings: bestWarnings,
+    // Ops layer — surface how many passes ran so the review queue can show a
+    // retry rate. Purely informational; the retry behaviour itself is unchanged.
+    attempts: attempts.length,
   });
 }

@@ -24,6 +24,9 @@ import {
   QuoteTracePanel,
   type RecentTraceRow,
 } from "./_components/QuoteTracePanel";
+import { ExtractionMetricsPanel } from "./_components/ExtractionMetricsPanel";
+import { toExtractionQueueRows } from "@/lib/materials/extractionQueue";
+import { computeExtractionMetrics } from "@/lib/materials/extractionMetrics";
 
 export const metadata: Metadata = {
   title: "Debug",
@@ -89,6 +92,31 @@ export default async function DebugPage({
         : 0,
     };
   });
+
+  // Supplier-extraction metrics (ops layer). Owner-scoped read of supplier
+  // imports; pure counts feed the compact panel + link to the review queue.
+  const { data: supplierRows } = await supabase
+    .from("quotes")
+    .select("id, created_at, quote_data")
+    .eq("user_id", user.id)
+    .is("deleted_at", null)
+    .order("created_at", { ascending: false })
+    .limit(200);
+  const extractionRows = toExtractionQueueRows(
+    (supplierRows ?? []).map((r) => ({
+      id: r.id as string,
+      created_at: r.created_at as string,
+      quote_data: (r.quote_data ?? null) as QuoteData | null,
+    })),
+  );
+  const extractionMetrics = computeExtractionMetrics(
+    extractionRows.map((r) => ({
+      status: r.status,
+      supplier: r.supplier,
+      attempts: r.attempts,
+      corrected: r.corrected,
+    })),
+  );
 
   let selectedTrace: QuoteTrace | null = null;
   let traceCurrency = "NZD";
@@ -265,6 +293,15 @@ export default async function DebugPage({
             ))}
           </ul>
         </section>
+
+        {/* Supplier-extraction metrics + link to the review queue (ops layer) */}
+        <div className="mb-8">
+          <ExtractionMetricsPanel
+            metrics={extractionMetrics}
+            href="/app/debug/extraction"
+            compact
+          />
+        </div>
 
         {/* Quote traceability — Phase 8 */}
         <QuoteTracePanel
