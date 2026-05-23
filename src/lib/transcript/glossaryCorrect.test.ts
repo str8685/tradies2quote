@@ -84,6 +84,40 @@ describe("applyGlossaryCorrections — user custom vocabulary", () => {
   });
 });
 
+describe("applyGlossaryCorrections — plural suppression", () => {
+  it("does not flag regular plurals of known terms", () => {
+    const r = applyGlossaryCorrections(
+      "replace the weatherboards, joists and bearers",
+      global,
+    );
+    expect(r.clarifications).toHaveLength(0);
+    // and never auto-corrects them either
+    expect(r.cleanedText).toBe("replace the weatherboards, joists and bearers");
+    expect(r.corrections).toHaveLength(0);
+  });
+
+  it("suppresses the plural noise but STILL flags a genuine near-miss", () => {
+    const r = applyGlossaryCorrections(
+      "the weatherboards and the colourstel roof",
+      global,
+    );
+    expect(r.clarifications).toHaveLength(1);
+    expect(r.clarifications[0].question).toContain("Coloursteel");
+    expect(r.clarifications.some((c) => c.phrase === "weatherboards")).toBe(false);
+  });
+
+  it("handles -ies and -es plurals of known terms", () => {
+    const vocab = {
+      entries: [
+        ...global.entries,
+        { canonical: "gantry", aliases: ["gantry"], type: "trade_term" as const, source: "user_history" as const },
+      ],
+    };
+    const r = applyGlossaryCorrections("two gantries on site", vocab);
+    expect(r.clarifications).toHaveLength(0);
+  });
+});
+
 describe("applyGlossaryCorrections — low-confidence / safety", () => {
   it("leaves a correctly-spelled plural alone (no corruption, no flag)", () => {
     const r = applyGlossaryCorrections("fix the studs and the joists", global);

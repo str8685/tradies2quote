@@ -87,6 +87,28 @@ const hasDigit = (s: string) => /\d/.test(s);
 /** A name worth normalising the casing of: a proper noun (has a cap or digit). */
 const isProperNoun = (s: string) => /[A-Z0-9]/.test(s);
 
+/**
+ * True when `lower` is just a regular plural of a term we already know exactly
+ * (canonical or alias). "weatherboards" → "weatherboard", "joists" → "joist",
+ * "fascias" → "fascia", "gantries" → "gantry". These are valid plurals of
+ * valid terms — there's nothing to correct, so we suppress the noisy fuzzy
+ * "did you mean…" flag rather than nag the tradie about their own correct word.
+ * We never AUTO-CORRECT a plural here; only the explicit alias/canonical pass
+ * (phase A) ever rewrites, and plurals aren't aliases.
+ */
+function isRegularPluralOfKnown(lower: string, knownExact: Set<string>): boolean {
+  if (lower.length > 4 && lower.endsWith("ies") && knownExact.has(lower.slice(0, -3) + "y")) {
+    return true;
+  }
+  if (lower.length > 3 && lower.endsWith("es") && knownExact.has(lower.slice(0, -2))) {
+    return true;
+  }
+  if (lower.length > 2 && lower.endsWith("s") && knownExact.has(lower.slice(0, -1))) {
+    return true;
+  }
+  return false;
+}
+
 // Fuzzy thresholds — auto-apply NEVER uses these (phase A is exact only).
 const FUZZY_MIN_LEN = 5;
 const FUZZY_MAX_DIST = 2;
@@ -175,6 +197,8 @@ export function applyGlossaryCorrections(
     const lower = tok.toLowerCase();
     if (tok.length < FUZZY_MIN_LEN || hasDigit(tok)) continue;
     if (STOPWORDS.has(lower) || knownExact.has(lower) || flagged.has(lower)) continue;
+    // Don't nag about a correct plural of a known term (weatherboards, joists…).
+    if (isRegularPluralOfKnown(lower, knownExact)) continue;
 
     let best: { canonical: string; entry: VocabEntry; r: number } | null = null;
     for (const c of candidates) {

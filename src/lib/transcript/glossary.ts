@@ -91,6 +91,7 @@ const TRADE_TERMS: VocabEntry[] = [
   g("dwang", "trade_term", ["dwong", "dwhang"]),
   g("nog", "trade_term", ["nogg"]),
   g("stud", "trade_term", []),
+  g("bearer", "trade_term", []),
   g("joist", "trade_term", ["joyst", "joice"]),
   g("rafter", "trade_term", ["rafta"]),
   g("purlin", "trade_term", ["pearlin", "perlin"]),
