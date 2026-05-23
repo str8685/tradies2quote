@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { cleanTranscript } from "@/lib/transcriptCleanup";
+import { loadUserVocab } from "@/lib/transcript/vocab";
 import {
   buildClarificationsWithOptions,
   type Clarification,
@@ -78,12 +79,20 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  // Load the caller's controlled vocabulary (global glossary + their own
+  // materials / suppliers / Tradie Brain terms / recent quote lines) so the
+  // cleanup glossary pass can fix domain-term spellings. Never throws.
+  const vocab = await loadUserVocab(supabase, user.id, {
+    includeRecentQuotes: true,
+  });
+
   // Cleanup never throws — it has built-in fallbacks for the LLM
   // summary call. If the Anthropic key is missing it just returns
   // null for `summary` and the questions list is whatever the
-  // deterministic regex pass produced.
+  // deterministic regex + glossary pass produced.
   const cleaned = await cleanTranscript(transcript, {
     apiKey: process.env.ANTHROPIC_API_KEY,
+    vocab,
   });
 
   // Merge the regex-pass clarifications with the LLM summary's

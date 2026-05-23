@@ -6,6 +6,43 @@ import {
 } from "./transcriptCleanup";
 
 // ===========================================================================
+// Glossary vocab integration — optional, backwards-compatible
+// ===========================================================================
+
+describe("applyDeterministicCorrections — vocab glossary pass", () => {
+  const vocab = {
+    entries: [
+      {
+        canonical: "PlaceMakers",
+        aliases: ["place makers"],
+        type: "supplier" as const,
+        source: "global" as const,
+      },
+    ],
+  };
+
+  it("is unchanged from legacy behaviour when no vocab is passed", () => {
+    const r = applyDeterministicCorrections("order from place makers");
+    expect(r.cleanedTranscript).toContain("place makers");
+    expect(r.corrections).toHaveLength(0);
+  });
+
+  it("applies glossary corrections when vocab is passed, tagging source", () => {
+    const r = applyDeterministicCorrections("order from place makers", vocab);
+    expect(r.cleanedTranscript).toContain("PlaceMakers");
+    const c = r.corrections.find((x) => x.after === "PlaceMakers");
+    expect(c?.source).toBe("global");
+    expect(c?.confidence).toBeGreaterThan(0);
+  });
+
+  it("tags regex-origin corrections with source 'regex'", () => {
+    const r = applyDeterministicCorrections("framing in h32 pine", vocab);
+    const reg = r.corrections.find((x) => x.after === "H3.2");
+    expect(reg?.source).toBe("regex");
+  });
+});
+
+// ===========================================================================
 // applyDeterministicCorrections — no LLM, fully testable
 // ===========================================================================
 

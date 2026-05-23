@@ -33,6 +33,9 @@
  *     the cleaned transcript and a clarification question is emitted.
  */
 
+import { applyGlossaryCorrections } from "./transcript/glossaryCorrect";
+import type { VocabSet, VocabTermType } from "./transcript/glossary";
+
 // ---------------------------------------------------------------------------
 // Public types
 // ---------------------------------------------------------------------------
@@ -42,7 +45,19 @@ export type CorrectionType =
   | "brand_plasterboard"
   | "brand_insulation"
   | "size"
+  | "supplier"
+  | "brand_name"
+  | "material_name"
+  | "trade_term"
   | "other";
+
+/** Where a correction came from, for the audit log. */
+export type CorrectionSource =
+  | "regex"
+  | "global"
+  | "supplier"
+  | "materials_library"
+  | "user_history";
 
 export type Correction = {
   /** What was in the raw transcript. */
@@ -59,6 +74,12 @@ export type Correction = {
    * to double-check.
    */
   contextual?: boolean;
+  /** Which vocabulary source drove the correction. Defaults to "regex". */
+  source?: CorrectionSource;
+  /** Plain-English why-it-changed, for the audit log. */
+  reason?: string;
+  /** 0..1 confidence in the correction. Auto-applied ones are high. */
+  confidence?: number;
 };
 
 export type ClarificationItem = {
@@ -120,12 +141,35 @@ function nearbyMatch(text: string, pos: number, len: number, re: RegExp, span = 
   return re.test(text.slice(start, end));
 }
 
+/** Map a glossary term type onto the transcript CorrectionType union. */
+function glossaryTypeToCorrectionType(t: VocabTermType): CorrectionType {
+  switch (t) {
+    case "supplier":
+      return "supplier";
+    case "brand":
+      return "brand_name";
+    case "material":
+      return "material_name";
+    case "trade_term":
+      return "trade_term";
+  }
+}
+
 /**
- * Apply all deterministic regex corrections. Returns the cleaned text,
- * an audit list of corrections, and a list of clarification questions
- * for ambiguous fragments we refuse to guess.
+ * Apply all deterministic regex corrections, then (optionally) a vocabulary-
+ * driven glossary pass. Returns the cleaned text, an audit list of
+ * corrections, and clarification questions for ambiguous fragments we refuse
+ * to guess.
+ *
+ * `vocab` is optional and backwards-compatible: without it the behaviour is
+ * exactly the legacy regex-only pass. With it, supplier / brand / material /
+ * trade-term spellings are corrected against the controlled vocabulary
+ * (numbers preserved; only known terms applied; novel mishears flagged).
  */
-export function applyDeterministicCorrections(raw: string): {
+export function applyDeterministicCorrections(
+  raw: string,
+  vocab?: VocabSet,
+): {
   cleanedTranscript: string;
   corrections: Correction[];
   clarificationQuestions: ClarificationItem[];
@@ -283,6 +327,36 @@ export function applyDeterministicCorrections(raw: string): {
       return m;
     },
   );
+
+  // Tag the regex-origin corrections before merging the glossary ones.
+  for (const c of corrections) c.source ??= "regex";
+
+  // Vocabulary-driven glossary pass (optional). Runs over the already
+  // regex-cleaned text so the two never fight; appends its corrections +
+  // clarifications. Pure, no LLM, numbers preserved.
+  if (vocab && vocab.entries.length > 0) {
+    const glossary = applyGlossaryCorrections(text, vocab);
+    text = glossary.cleanedText;
+    for (const gc of glossary.corrections) {
+      corrections.push({
+        before: gc.before,
+        after: gc.after,
+        type: glossaryTypeToCorrectionType(gc.type),
+        index: gc.index,
+        source: gc.source,
+        reason: gc.reason,
+        confidence: gc.confidence,
+      });
+    }
+    for (const gq of glossary.clarifications) {
+      clarifications.push({
+        id: gq.id,
+        question: gq.question,
+        why: gq.why,
+        phrase: gq.phrase,
+      });
+    }
+  }
 
   // Sort corrections by position so the panel can highlight in order.
   corrections.sort((a, b) => a.index - b.index);
@@ -487,6 +561,11 @@ export async function buildSummary(
 export type CleanTranscriptOptions = BuildSummaryOptions & {
   /** Skip the LLM summary call entirely (used by tests + offline mode). */
   summaryDisabled?: boolean;
+  /**
+   * Controlled vocabulary for the glossary correction pass (suppliers,
+   * brands, materials, trade terms). Omit for the legacy regex-only behaviour.
+   */
+  vocab?: VocabSet;
 };
 
 /**
@@ -497,7 +576,7 @@ export async function cleanTranscript(
   raw: string,
   options: CleanTranscriptOptions = {},
 ): Promise<CleanedTranscript> {
-  const det = applyDeterministicCorrections(raw);
+  const det = applyDeterministicCorrections(raw, options.vocab);
 
   if (options.summaryDisabled) {
     return {

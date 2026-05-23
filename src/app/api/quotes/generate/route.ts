@@ -20,6 +20,7 @@ import {
 import { runTakeoff as runOrchestratedTakeoff } from "@/lib/takeoff";
 import { legacyScopeCoverage } from "@/lib/takeoff/legacyCoverage";
 import { cleanTranscript } from "@/lib/transcriptCleanup";
+import { loadUserVocab } from "@/lib/transcript/vocab";
 import type {
   LibraryMaterial,
   QuoteData,
@@ -804,8 +805,12 @@ export async function POST(request: NextRequest) {
   // does not project it (PublicQuotePayload has no transcript field) and
   // the runtime test in `src/lib/transcriptCleanup.public.test.ts`
   // confirms the projection.
+  const vocab = await loadUserVocab(supabase, user.id, {
+    includeRecentQuotes: true,
+  });
   const cleaned = await cleanTranscript(transcript, {
     apiKey,
+    vocab,
   });
   parsed.transcript = {
     raw: transcript,
