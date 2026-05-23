@@ -12,6 +12,7 @@ import {
   type Icon,
 } from "@phosphor-icons/react";
 import { TiltCard } from "./TiltCard";
+import { AppShowcase } from "./AppShowcase";
 
 /**
  * Describe → AI Review → Takeoff → Quote — the four-step workflow that
@@ -110,6 +111,11 @@ export function QuoteWorkflow() {
             and renders a branded quote PDF you can send before you&apos;ve packed
             up the ute. <span className="text-white">Demo data shown.</span>
           </div>
+        </div>
+
+        {/* Animated in-app tour — full width under the headline row. */}
+        <div className="mb-16">
+          <AppShowcase />
         </div>
 
         <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
