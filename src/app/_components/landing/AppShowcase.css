@@ -88,9 +88,9 @@
   /* Warm brand-tinted base instead of flat black — orange top-left,
      yellow bottom-right, over a slightly warmed dark gradient. */
   background:
-    radial-gradient(70% 55% at 14% 16%, rgba(255,95,21,0.12), transparent 60%),
-    radial-gradient(65% 55% at 86% 86%, rgba(255,234,0,0.08), transparent 60%),
-    linear-gradient(180deg, rgba(26,21,17,0.96), rgba(10,10,10,0.97));
+    radial-gradient(72% 58% at 12% 14%, rgba(255,95,21,0.20), transparent 60%),
+    radial-gradient(68% 58% at 88% 88%, rgba(255,234,0,0.14), transparent 60%),
+    linear-gradient(180deg, rgba(32,24,18,0.96), rgba(10,10,10,0.97));
   border: 1px solid var(--line);
   overflow: hidden;
   min-height: 700px;
@@ -99,21 +99,43 @@
 
 /* Animated colour flow inside the stage so it never reads as flat/boring.
    Sits behind the slides (and the 3D canvas), washes drift slowly in the
-   corners. Centre stays calm so headline + phone keep their contrast. */
+   corners. Centre stays calmer so headline + phone keep their contrast. */
 .t2q-tour .stage::before {
   content: ""; position: absolute; inset: -12%;
   z-index: 0; pointer-events: none;
   background:
-    radial-gradient(34% 40% at 12% 16%, rgba(255,95,21,0.24), transparent 60%),
-    radial-gradient(32% 38% at 88% 84%, rgba(255,234,0,0.16), transparent 60%),
-    radial-gradient(30% 34% at 72% 20%, rgba(255,95,21,0.10), transparent 64%);
-  filter: blur(10px);
-  animation: t2q-flow 16s ease-in-out infinite alternate;
+    radial-gradient(36% 42% at 10% 14%, rgba(255,95,21,0.38), transparent 60%),
+    radial-gradient(34% 40% at 90% 86%, rgba(255,234,0,0.30), transparent 60%),
+    radial-gradient(30% 34% at 74% 18%, rgba(255,95,21,0.18), transparent 64%),
+    radial-gradient(28% 32% at 28% 80%, rgba(255,95,21,0.14), transparent 64%);
+  filter: blur(8px);
+  animation: t2q-flow 14s ease-in-out infinite alternate;
 }
 @keyframes t2q-flow {
-  0%   { transform: translate3d(-2%, -1%, 0) scale(1);    }
-  50%  { transform: translate3d(3%,  2%, 0)  scale(1.08); }
-  100% { transform: translate3d(-1%, -2%, 0) scale(1.04); }
+  0%   { transform: translate3d(-3%, -2%, 0) scale(1);    }
+  50%  { transform: translate3d(4%,  3%, 0)  scale(1.1);  }
+  100% { transform: translate3d(-2%, -3%, 0) scale(1.05); }
+}
+
+/* Slow diagonal sheen sweeping across the stage — adds movement/life. */
+.t2q-tour .stage::after {
+  content: ""; position: absolute; top: -20%; bottom: -20%;
+  left: -65%; width: 55%; z-index: 0; pointer-events: none;
+  transform: rotate(8deg);
+  background: linear-gradient(
+    100deg,
+    transparent,
+    rgba(255,95,21,0.12) 42%,
+    rgba(255,234,0,0.10) 58%,
+    transparent
+  );
+  filter: blur(26px);
+  animation: t2q-sheen 13s ease-in-out infinite;
+}
+@keyframes t2q-sheen {
+  0%        { left: -65%; opacity: 0; }
+  15%       { opacity: 1; }
+  70%, 100% { left: 130%; opacity: 0; }
 }
 
 .t2q-tour .stage-chrome {
@@ -409,6 +431,7 @@
 
 @media (prefers-reduced-motion: reduce) {
   .t2q-tour .stage::before,
+  .t2q-tour .stage::after,
   .t2q-tour .slide,
   .t2q-tour .slide.active .step-tag,
   .t2q-tour .slide.active .slide-headline,

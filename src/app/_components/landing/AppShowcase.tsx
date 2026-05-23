@@ -503,15 +503,19 @@ export function AppShowcase() {
       scene.add(d2);
 
       type BoltData = { sx: number; sy: number; vy: number };
-      const N = 40;
+      const N = 70;
       const bolts: Mesh<IcosahedronGeometry, MeshStandardMaterial>[] = [];
       for (let k = 0; k < N; k++) {
+        const color = k % 3 === 0 ? 0xff5f15 : k % 3 === 1 ? 0xffea00 : 0xb0b0b0;
         const m = new Mesh(
-          new IcosahedronGeometry(0.06 + Math.random() * 0.05, 0),
+          new IcosahedronGeometry(0.08 + Math.random() * 0.07, 0),
           new MeshStandardMaterial({
-            color: k % 3 === 0 ? 0xff5f15 : k % 3 === 1 ? 0xffea00 : 0x888888,
-            metalness: 0.7,
-            roughness: 0.3,
+            color,
+            // Self-glow so the bolts pop against the dark stage.
+            emissive: color,
+            emissiveIntensity: k % 3 === 2 ? 0.15 : 0.45,
+            metalness: 0.6,
+            roughness: 0.25,
           }),
         );
         m.position.set((Math.random() - 0.5) * 16, (Math.random() - 0.5) * 10, (Math.random() - 0.5) * 6 - 2);
@@ -521,7 +525,7 @@ export function AppShowcase() {
       }
       const ring = new LineSegments(
         new EdgesGeometry(new TorusGeometry(3.5, 0.06, 8, 64)),
-        new LineBasicMaterial({ color: 0xff5f15, transparent: true, opacity: 0.18 }),
+        new LineBasicMaterial({ color: 0xff5f15, transparent: true, opacity: 0.32 }),
       );
       ring.rotation.x = Math.PI / 2;
       scene.add(ring);
