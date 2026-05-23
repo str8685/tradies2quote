@@ -44,6 +44,14 @@ export type SuggestPriceArgs = {
   library: LibraryMaterial[];
   history?: HistoryLine[];
   apiKey: string;
+  /**
+   * Tradie Brain (optional) — advisory context block from the tradie's own
+   * past patterns. Used ONLY in the fuzzy LLM branch; it never changes the
+   * deterministic short-circuits (a strong library match still wins, and zero
+   * internal evidence still routes to manual — memory never conjures a
+   * suggestion from nothing in v1).
+   */
+  memoryContext?: string;
   /** Injectable for tests. */
   fetchImpl?: typeof fetch;
 };
@@ -121,7 +129,14 @@ export async function suggestPrice(
         temperature: 0,
         system: SUGGEST_PRICE_SYSTEM_PROMPT,
         messages: [
-          { role: "user", content: buildSuggestPriceUserMessage(target, evidence) },
+          {
+            role: "user",
+            content: buildSuggestPriceUserMessage(
+              target,
+              evidence,
+              args.memoryContext,
+            ),
+          },
           { role: "assistant", content: "{" },
         ],
       }),

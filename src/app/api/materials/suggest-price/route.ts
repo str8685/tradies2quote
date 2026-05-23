@@ -8,6 +8,9 @@ import {
   type HistoryLine,
   type SuggestPriceTargetLine,
 } from "@/lib/agents/suggestPrice";
+import { tradieBrainEnabledFromEnv } from "@/lib/tradieBrain";
+import { getRelevantMemories } from "@/lib/tradieBrain/retrieve";
+import { formatMemoriesForPrompt } from "@/lib/tradieBrain/format";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -116,10 +119,37 @@ export async function POST(request: NextRequest) {
     if (history.length >= 40) break;
   }
 
+  // Tradie Brain consumption (Chunk 4) — only when TRADIE_BRAIN_ENABLED is on
+  // (separate from the suggest-price flag). Adds the tradie's own past
+  // patterns as ADVISORY context to the LLM branch; never overrides the
+  // deterministic short-circuits or the strict output parser. Soft-failing:
+  // a memory hiccup must never break the suggestion.
+  let memoryContext: string | undefined;
+  if (tradieBrainEnabledFromEnv()) {
+    try {
+      const memories = await getRelevantMemories(
+        supabase,
+        user.id,
+        {
+          surface: "material_price_suggestion",
+          materialDescriptions: [description],
+          jobType: target.job_type,
+          limit: 6,
+        },
+        { markUsed: true },
+      );
+      const block = formatMemoriesForPrompt(memories);
+      if (block) memoryContext = block;
+    } catch (e) {
+      console.warn("[suggest-price] memory retrieval failed (non-fatal)", e);
+    }
+  }
+
   const result = await suggestPrice({
     target,
     library,
     history,
+    memoryContext,
     apiKey: process.env.ANTHROPIC_API_KEY ?? "",
   });
 

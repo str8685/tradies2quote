@@ -91,6 +91,55 @@ describe("suggestPrice — fuzzy path (LLM)", () => {
     expect(r.recommendation.suggested_unit_price).toBe(85);
   });
 
+  it("injects Tradie Brain memoryContext into the LLM request body", async () => {
+    const modelJson = {
+      recommendation: {
+        status: "suggested",
+        best_match_name: "Stainless screws box",
+        best_match_material_id: null,
+        suggested_unit_price: 85,
+        suggested_price_range_low: null,
+        suggested_price_range_high: null,
+        confidence: "medium",
+        should_save_mapping_if_accepted: false,
+        recommended_action: "use_once",
+      },
+      reasoning: { summary: "ok", evidence_ranked: [], risk_flags: [], missing_information: [] },
+      alternatives: [],
+    };
+    let sentBody = "";
+    const fetchImpl = vi.fn(async (_url: string, init: RequestInit) => {
+      sentBody = String(init.body);
+      return claudeResponse(modelJson);
+    });
+    await suggestPrice({
+      target: { description: "decking screws stainless", quantity: 2, unit: "box" },
+      library: [lib({ name: "Stainless screws box", unit: "box", default_unit_price: 89 })],
+      memoryContext:
+        "Context from this tradie's own past quotes (advisory only):\n- (high) Usually prices \"stainless screws box\" around $86/box",
+      apiKey: "test",
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    });
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    expect(sentBody).toContain("TRADIE BRAIN");
+    expect(sentBody).toContain("around $86/box");
+  });
+
+  it("ignores memoryContext on a strong library match (no LLM call at all)", async () => {
+    const fetchImpl = vi.fn(() => {
+      throw new Error("LLM must not be called on a strong library match");
+    });
+    const r = await suggestPrice({
+      target: { description: "140x45 H3.2 SG8 Pine", quantity: 19, unit: "length" },
+      library: [lib({ name: "140x45 H3.2 SG8 Pine", unit: "length", default_unit_price: 28.4 })],
+      memoryContext: "- (high) some memory that must NOT trigger an LLM call",
+      apiKey: "test",
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    });
+    expect(fetchImpl).not.toHaveBeenCalled();
+    expect(r.recommendation.suggested_unit_price).toBe(28.4);
+  });
+
   it("falls back to manual when the LLM call is not ok", async () => {
     const fetchImpl = vi.fn(async () => ({ ok: false }) as unknown as Response);
     const r = await suggestPrice({
