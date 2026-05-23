@@ -36,7 +36,7 @@ export function QuoteWorkflow() {
               From voice <br />
               <span className="text-brand">to quote.</span>
               <br />
-              In four steps.
+              Start to finish.
             </h2>
           </div>
           <div className="text-lg leading-relaxed text-ink-200 lg:col-span-7 lg:pt-4">
