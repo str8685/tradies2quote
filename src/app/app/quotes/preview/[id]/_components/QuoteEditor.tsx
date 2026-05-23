@@ -44,6 +44,8 @@ import { explainFormula } from "@/lib/explainFormula";
 import type { MaterialTakeoffResult } from "@/lib/materialCalculator";
 import type { PhotoPlanItem } from "@/lib/agents/photo-plan";
 import { confirmDimensions, saveQuoteChanges } from "../actions";
+import { canSuggestPrice } from "@/lib/agents/suggestPrice/apply";
+import { SuggestPricePanel } from "./SuggestPricePanel";
 import { TakeoffPanel } from "./TakeoffPanel";
 import { PhotoPlanPanel } from "./PhotoPlanPanel";
 import { SendQuoteButton } from "./SendQuoteButton";
@@ -58,6 +60,8 @@ type Props = {
   quoteStatus: QuoteStatus;
   publicToken: string | null;
   hasPdf: boolean;
+  /** Owner-only + flag gated. Enables the on-demand Suggest-a-Price button. */
+  suggestPriceEnabled?: boolean;
 };
 
 type SaveStatus = "idle" | "saving" | "saved" | "error";
@@ -100,6 +104,7 @@ export function QuoteEditor({
   quoteStatus,
   publicToken,
   hasPdf,
+  suggestPriceEnabled = false,
 }: Props) {
   const [client, setClient] = useState(() =>
     migrateLegacyContact(initialData.client),
@@ -441,6 +446,13 @@ export function QuoteEditor({
         x.it.quantity_source === "ai" &&
         x.it.quantity_confirmed !== true,
     );
+
+  // #agents — unpriced material lines eligible for an on-demand price
+  // suggestion. Only populated when the owner-only flag is on; empty
+  // otherwise so the section never renders for normal users.
+  const unpricedMaterials = items
+    .map((it, i) => ({ it, i }))
+    .filter((x) => canSuggestPrice(x.it, suggestPriceEnabled));
 
   // Wave 19.10 — summary strings for the mobile-collapsible cards.
   const materialMissingPrices = materialIndices.filter(
@@ -1025,6 +1037,41 @@ export function QuoteEditor({
                   confirm qty
                 </button>
               </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {suggestPriceEnabled && unpricedMaterials.length > 0 && (
+        <section
+          data-testid="suggest-price-section"
+          className="t2q-card-pro border border-brand/25 p-5 sm:p-6"
+        >
+          <p className="t2q-section-label-pro text-brand">
+            {"// suggest a price (beta)"}
+          </p>
+          <p className="mt-2 text-sm text-ink-200">
+            {unpricedMaterials.length} material line
+            {unpricedMaterials.length === 1 ? "" : "s"} have no price. Get a
+            suggestion from your library + past quotes, then confirm — nothing
+            is applied until you tap a button.
+          </p>
+          <ul className="mt-3 space-y-2">
+            {unpricedMaterials.map(({ it, i }) => (
+              <SuggestPricePanel
+                key={i}
+                line={{
+                  description: it.description,
+                  quantity: Number(it.quantity) || 0,
+                  unit: it.unit ?? null,
+                }}
+                onUseOnce={(price) =>
+                  updateItem(i, { unit_price: price, is_missing_price: false })
+                }
+                onSavedAndApply={(price) =>
+                  updateItem(i, { unit_price: price, is_missing_price: false })
+                }
+              />
             ))}
           </ul>
         </section>

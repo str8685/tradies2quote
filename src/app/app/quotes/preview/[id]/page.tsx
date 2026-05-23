@@ -7,6 +7,7 @@ import type { LibraryMaterial, QuoteData, QuoteStatus } from "@/lib/quote-types"
 import { quoteNumber } from "@/lib/quote-defaults";
 import type { ComplianceLineItem, ComplianceReview } from "@/lib/compliance";
 import { isOwnerEmail } from "@/lib/owner";
+import { suggestPriceAgentEnabledFromEnv } from "@/lib/agents/suggestPrice";
 import type { InvoiceSummary, InvoiceStatus } from "@/lib/types/invoice";
 import { orchestrate } from "@/lib/lifecycle/orchestrator";
 import {
@@ -354,6 +355,9 @@ export default async function QuotePreviewPage({
               quoteStatus={(quote.status ?? "draft") as QuoteStatus}
               publicToken={quote.public_token ?? null}
               hasPdf={quote.pdf_path !== null && quote.pdf_path !== undefined}
+              suggestPriceEnabled={
+                suggestPriceAgentEnabledFromEnv() && isOwnerEmail(user.email)
+              }
             />
 
             {/* Wave 14 — Invoice draft card. Self-hides unless the

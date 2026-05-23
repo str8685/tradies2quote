@@ -7,6 +7,9 @@ import { computeQuoteTotals, round2 } from "@/lib/quote-defaults";
 import { applyMaterialCorrections } from "@/lib/quoteEditLearning";
 import { buildQuoteEditDiff, diffIsNonEmpty } from "@/lib/quoteEditDiff";
 import { confirmAndRecalc, type DimensionEdit } from "@/lib/dimensionConfirmation";
+import { isOwnerEmail } from "@/lib/owner";
+import { suggestPriceAgentEnabledFromEnv } from "@/lib/agents/suggestPrice";
+import { normalizeSuggestedMaterial } from "@/lib/agents/suggestPrice/apply";
 import type {
   DimensionConfirmation,
   QuoteData,
@@ -291,6 +294,79 @@ export async function confirmDimensions(
     dimensionConfirmation: result.dimension_confirmation,
     changed: result.changed,
   };
+}
+
+type SaveMaterialResult = { ok: true } | { error: string };
+
+/**
+ * #agents (Suggest-a-Price) — explicitly save a price the tradie ACCEPTED
+ * into their materials library. This is the only write the agent flow can
+ * trigger, and only on a human "Save to library" click. Owner + flag gated
+ * (mirrors the route). Deduped by name. Never runs automatically; never sets
+ * a quote total. Validation via normalizeSuggestedMaterial means no junk
+ * (no name / $0 / NaN price) can ever be persisted.
+ */
+export async function saveSuggestedMaterial(input: {
+  name: string;
+  unit: string | null;
+  price: number;
+}): Promise<SaveMaterialResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+  if (!suggestPriceAgentEnabledFromEnv() || !isOwnerEmail(user.email)) {
+    return { error: "Not available." };
+  }
+
+  const mat = normalizeSuggestedMaterial(input);
+  if (!mat) return { error: "Need a material name and a price above zero." };
+
+  const { data: existing } = await supabase
+    .from("materials")
+    .select("id, name")
+    .eq("user_id", user.id);
+  const match = (existing ?? []).find(
+    (m) => m.name.trim().toLowerCase() === mat.name.toLowerCase(),
+  );
+
+  if (match) {
+    const { error } = await supabase
+      .from("materials")
+      .update({
+        unit: mat.unit,
+        default_unit_price: mat.default_unit_price,
+        is_ai_estimated: false,
+        price_source: "user_library",
+        notes: "Saved from a price suggestion.",
+      })
+      .eq("id", match.id)
+      .eq("user_id", user.id);
+    if (error) {
+      console.error("saveSuggestedMaterial update failed", error);
+      return { error: "Could not save to library." };
+    }
+  } else {
+    const { error } = await supabase.from("materials").insert({
+      user_id: user.id,
+      name: mat.name,
+      unit: mat.unit,
+      default_unit_price: mat.default_unit_price,
+      is_ai_estimated: false,
+      price_source: "user_library",
+      price_confidence: "high",
+      gst_included: false,
+      notes: "Saved from a price suggestion.",
+    });
+    if (error) {
+      console.error("saveSuggestedMaterial insert failed", error);
+      return { error: "Could not save to library." };
+    }
+  }
+
+  revalidatePath("/app/materials");
+  return { ok: true };
 }
 
 /* -------------------------------------------------------------------------
