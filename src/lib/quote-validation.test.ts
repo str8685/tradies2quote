@@ -394,6 +394,89 @@ describe("assessQuoteTakeoffSafety — drawing dimension confirmation (#1)", () 
   });
 });
 
+// ─────────────────────────────────────────────────────────────────────────
+// Beta safety — unpriced material guard. A material line with no price (or
+// $0) silently undercharges the quote. It must require an acknowledgement
+// before sending (a flag, not a hard block — a $0 line can be intentional).
+// ─────────────────────────────────────────────────────────────────────────
+describe("assessQuoteTakeoffSafety — unpriced material guard", () => {
+  it("WARNS (requires ack, not a hard block) on an is_missing_price material line", () => {
+    const a = assessQuoteTakeoffSafety(
+      qd({ line_items: [li({ is_missing_price: true, unit_price: 0, line_total: 0 })] }),
+    );
+    expect(a.can_send).toBe(true);
+    expect(a.requires_acknowledgement).toBe(true);
+    expect(a.warning_reasons.join(" ")).toMatch(/price/i);
+  });
+
+  it("WARNS on a material line with a $0 price and a real quantity", () => {
+    const a = assessQuoteTakeoffSafety(
+      qd({ line_items: [li({ unit_price: 0, quantity: 3, line_total: 0 })] }),
+    );
+    expect(a.requires_acknowledgement).toBe(true);
+  });
+
+  it("does NOT warn when every material line is priced", () => {
+    const a = assessQuoteTakeoffSafety(
+      qd({ line_items: [li({ unit_price: 12, quantity: 2, line_total: 24 })] }),
+    );
+    expect(a.requires_acknowledgement).toBe(false);
+  });
+
+  it("does NOT flag a $0 non-material line (labour/other allowance)", () => {
+    const a = assessQuoteTakeoffSafety(
+      qd({
+        line_items: [
+          li({ unit_price: 50, line_total: 50 }),
+          li({ type: "other", description: "Disposal — included", unit_price: 0, quantity: 1, line_total: 0 }),
+        ],
+      }),
+    );
+    expect(a.requires_acknowledgement).toBe(false);
+  });
+
+  it("does NOT double-flag a blocked takeoff line (qty 0) as unpriced", () => {
+    const a = assessQuoteTakeoffSafety(
+      qd({ line_items: [li({ takeoff_status: "blocked", quantity: 0, unit_price: 0, line_total: 0 })] }),
+    );
+    expect(a.can_send).toBe(false); // hard-blocked by takeoff
+    expect(a.requires_acknowledgement).toBe(false); // block supersedes any warning
+  });
+
+  it("a hard block supersedes the unpriced warning", () => {
+    const a = assessQuoteTakeoffSafety(
+      qd({
+        line_items: [
+          li({ is_missing_price: true, unit_price: 0, line_total: 0, quantity: 2 }),
+          li({ takeoff_status: "blocked", quantity: 0, unit_price: 0, line_total: 0 }),
+        ],
+      }),
+    );
+    expect(a.can_send).toBe(false);
+    expect(a.requires_acknowledgement).toBe(false);
+  });
+});
+
+describe("validateQuoteForSending — unpriced material", () => {
+  const data = qd({
+    line_items: [
+      li({ unit_price: 50, line_total: 50 }),
+      li({ is_missing_price: true, unit_price: 0, line_total: 0, description: "GIB sheets" }),
+    ],
+  });
+
+  it("requires acknowledgement to send a quote with an unpriced material line", () => {
+    const r = validateQuoteForSending({ status: "draft", total_amount: 50, quote_data: data });
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error).toBe("takeoff_unconfirmed");
+  });
+
+  it("sends once acknowledged", () => {
+    const r = validateQuoteForSending({ status: "draft", total_amount: 50, quote_data: data, acknowledged: true });
+    expect(r.ok).toBe(true);
+  });
+});
+
 describe("validateQuoteForSending — takeoff gate", () => {
   const args = (o: Partial<QuoteData>, acknowledged?: boolean) => ({
     status: "draft",

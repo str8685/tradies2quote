@@ -173,6 +173,26 @@ export function assessQuoteTakeoffSafety(
     }
   }
 
+  // BETA SAFETY — unpriced material guard. A material line with no price (or
+  // $0) quotes that material at $0 and silently undercharges the job. This is
+  // the common gap when a calculated / library-unmatched material has no
+  // stored price. Flag it as a caution so the tradie must acknowledge before
+  // sending rather than shipping a $0 line unnoticed — never a silent send.
+  // Quantity-0 lines (e.g. blocked takeoffs) are excluded; the block path
+  // already handles those. A flag, not a hard block: a $0 line can be a
+  // deliberate allowance, so the tradie can acknowledge and proceed.
+  const unpriced = items.filter(
+    (it) =>
+      it.type === "material" &&
+      (Number(it.quantity) || 0) > 0 &&
+      (it.is_missing_price === true || (Number(it.unit_price) || 0) <= 0),
+  );
+  if (unpriced.length > 0) {
+    warning_reasons.push(
+      `${unpriced.length} material line(s) have no price set and will quote at $0: ${lineLabels(unpriced)}. Add a price or confirm it's intentional before sending.`,
+    );
+  }
+
   const can_send = block_reasons.length === 0;
   return {
     can_send,
