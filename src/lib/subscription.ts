@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { adminClient } from "@/lib/supabase/admin";
 import { isStripeConfigured } from "@/lib/stripe-client";
 import { isOwnerEmail } from "@/lib/owner";
@@ -220,6 +221,26 @@ export async function getSubscriptionStatus(args: {
     betaFreeUntil: null,
   };
 }
+
+/**
+ * Request-scoped cache for server components that need the same billing
+ * answer during one render. `/app/quotes/new` and `<TrialBanner>` both ask
+ * this question on the New Quote route, so primitive args let React dedupe
+ * the admin reads without changing the public `getSubscriptionStatus` API.
+ */
+export const getCachedSubscriptionStatus = cache(
+  async (
+    userId: string,
+    signedUpAtISO: string | null,
+    email?: string | null,
+  ): Promise<SubscriptionStatus> => {
+    return getSubscriptionStatus({
+      userId,
+      signedUpAt: signedUpAtISO ? new Date(signedUpAtISO) : new Date(),
+      email,
+    });
+  },
+);
 
 /** Convenience: can the user create new quotes / use write features? */
 export function canWrite(status: SubscriptionStatus): boolean {

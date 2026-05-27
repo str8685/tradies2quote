@@ -1,5 +1,5 @@
-import { createClient } from "@/lib/supabase/server";
 import { getCachedAuthUser } from "@/lib/supabase/auth";
+import { getCachedAvatarUrl } from "@/lib/supabase/profile";
 import { isOwnerEmail } from "@/lib/owner";
 import { MobileBottomNavClient } from "./MobileBottomNavClient";
 
@@ -23,29 +23,11 @@ import { MobileBottomNavClient } from "./MobileBottomNavClient";
  * returning real URLs.
  */
 export async function MobileBottomNav() {
-  // Wave 18.1 — perf — see AppHeader for the rationale. `getCachedAuthUser`
-  // + cached `createClient` collapse three sequential auth calls per
-  // /app/* render into one shared call.
+  // Wave 18.1/42 — perf — see AppHeader for the rationale. Auth and
+  // avatar reads are shared per server render.
   const { user } = await getCachedAuthUser();
-  const supabase = await createClient();
   const isOwner = isOwnerEmail(user?.email);
-
-  let avatarUrl: string | null = null;
-  if (user?.id) {
-    try {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("avatar_url")
-        .eq("id", user.id)
-        .maybeSingle();
-      if (!error && data && typeof (data as { avatar_url?: unknown }).avatar_url === "string") {
-        avatarUrl = (data as { avatar_url: string }).avatar_url;
-      }
-    } catch {
-      // Column probably doesn't exist yet. Initials fallback is fine
-      // — never crash the bottom nav.
-    }
-  }
+  const avatarUrl = user?.id ? await getCachedAvatarUrl(user.id) : null;
 
   return (
     <MobileBottomNavClient

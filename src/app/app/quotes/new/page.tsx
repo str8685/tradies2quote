@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
-import { canWrite, getSubscriptionStatus } from "@/lib/subscription";
+import { getCachedAuthUser } from "@/lib/supabase/auth";
+import { canWrite, getCachedSubscriptionStatus } from "@/lib/subscription";
 import { AppHeader } from "../../_components/AppHeader";
 import { QuoteInputTabs } from "./_components/QuoteInputTabs";
 
@@ -10,10 +10,7 @@ export const metadata: Metadata = {
 };
 
 export default async function NewQuotePage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { user } = await getCachedAuthUser();
 
   if (!user) {
     redirect("/login");
@@ -23,12 +20,11 @@ export default async function NewQuotePage() {
   // recorder. They can still view + send existing quotes (those pages
   // don't gate), so this is the single chokepoint that enforces the
   // read-only contract my trial-end emails promised.
-  const sub = await getSubscriptionStatus({
-    userId: user.id,
-    // eslint-disable-next-line react-hooks/purity -- server component, one-shot per request
-    signedUpAt: new Date(user.created_at ?? Date.now()),
-    email: user.email,
-  });
+  const sub = await getCachedSubscriptionStatus(
+    user.id,
+    user.created_at ?? null,
+    user.email,
+  );
   if (!canWrite(sub)) {
     redirect("/app/upgrade?from=new-quote");
   }

@@ -1,5 +1,5 @@
-import { createClient } from "@/lib/supabase/server";
 import { getCachedAuthUser } from "@/lib/supabase/auth";
+import { getCachedAvatarUrl } from "@/lib/supabase/profile";
 import { isOwnerEmail } from "@/lib/owner";
 import { AppHeaderClient } from "./AppHeaderClient";
 
@@ -27,33 +27,13 @@ interface Props {
 }
 
 export async function AppHeader({ context }: Props) {
-  // Wave 18.1 — perf — `getCachedAuthUser` + `createClient` are both
-  // wrapped in React `cache()`, so the auth roundtrip + Supabase
-  // client are shared with `<MobileBottomNav>` and the page itself
-  // within the same render. One network call instead of three.
+  // Wave 18.1/42 — perf — auth and avatar reads are cached per render,
+  // so this header shares the same user/profile work with
+  // `<MobileBottomNav>` and the page instead of issuing duplicate
+  // Supabase round trips.
   const { user } = await getCachedAuthUser();
-  const supabase = await createClient();
   const isOwner = isOwnerEmail(user?.email);
-
-  let avatarUrl: string | null = null;
-  if (user?.id) {
-    try {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("avatar_url")
-        .eq("id", user.id)
-        .maybeSingle();
-      if (
-        !error &&
-        data &&
-        typeof (data as { avatar_url?: unknown }).avatar_url === "string"
-      ) {
-        avatarUrl = (data as { avatar_url: string }).avatar_url;
-      }
-    } catch {
-      // Column not present yet — initials fallback is fine.
-    }
-  }
+  const avatarUrl = user?.id ? await getCachedAvatarUrl(user.id) : null;
 
   return (
     <AppHeaderClient

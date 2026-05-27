@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { ArrowRight, Lightning } from "@phosphor-icons/react/dist/ssr";
-import { createClient } from "@/lib/supabase/server";
+import { getCachedAuthUser } from "@/lib/supabase/auth";
 import {
-  getSubscriptionStatus,
+  getCachedSubscriptionStatus,
   shouldShowTrialBanner,
 } from "@/lib/subscription";
 
@@ -20,19 +20,14 @@ import {
  * because the layout is already paying for an auth cookie read).
  */
 export async function TrialBanner() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { user } = await getCachedAuthUser();
   if (!user) return null;
 
-  // eslint-disable-next-line react-hooks/purity -- server component, runs once per request
-  const signedUpAt = new Date(user.created_at ?? Date.now());
-  const sub = await getSubscriptionStatus({
-    userId: user.id,
-    signedUpAt,
-    email: user.email,
-  });
+  const sub = await getCachedSubscriptionStatus(
+    user.id,
+    user.created_at ?? null,
+    user.email,
+  );
 
   // Beta window — universal free access, render a celebratory banner
   // so the tradie (and their mates) know payments are paused. Self-
