@@ -855,6 +855,26 @@ export async function POST(request: NextRequest) {
     }
   }
 
+  // ───────────────────────────────────────────────────────────────────────
+  // PRICES OFF — until ITM / supplier integration lands, every line in a
+  // newly-generated quote is emitted with NO pre-filled price. The tradie
+  // fills in unit prices manually, or imports a real supplier quote via
+  // /app/materials/import-quote (which keeps its source prices). This
+  // avoids shipping AI-guessed or stale-library prices to a customer.
+  //
+  // Flip PRICES_OFF to `false` (or remove this block) once a real supplier
+  // pricing source is wired in.
+  // ───────────────────────────────────────────────────────────────────────
+  const PRICES_OFF = true;
+  if (PRICES_OFF) {
+    for (const it of parsed.line_items) {
+      it.unit_price = 0;
+      it.line_total = 0;
+      it.is_ai_estimated = false;
+      it.is_missing_price = true;
+    }
+  }
+
   const totals = computeQuoteTotals(
     parsed.line_items,
     profile.default_markup_pct,
