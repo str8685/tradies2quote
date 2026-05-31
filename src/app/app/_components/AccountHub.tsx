@@ -172,7 +172,15 @@ export function AccountHub({
         // Panel: fixed width ~320px, rounded all around, lives in the
         // desktop header dropdown wrapper.
         mode === "sheet"
-          ? "w-full rounded-t-2xl border-t border-ink-700 bg-ink-950 p-5 pb-[calc(env(safe-area-inset-bottom,0)+1.25rem)]"
+          ? // `max-h` + `overflow-y-auto` make the sheet body scroll on
+            // its own when the content is taller than the screen (it is —
+            // Account / Profile / Business / Quote defaults / Invoice
+            // defaults / Clients all stack here). `overscroll-contain`
+            // stops scroll-chaining into the page behind, so dragging
+            // past the top/bottom doesn't get stuck against the global
+            // `overscroll-behavior: none`. Uses `dvh` so iOS Safari's
+            // URL-bar movement doesn't clip the last field.
+            "w-full max-h-[85dvh] overflow-y-auto overscroll-contain rounded-t-2xl border-t border-ink-700 bg-ink-950 p-5 pb-[calc(env(safe-area-inset-bottom,0)+1.25rem)]"
           : "w-[20rem] rounded-md border border-ink-700 bg-ink-950 p-4 shadow-2xl"
       }
     >
