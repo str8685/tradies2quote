@@ -42,6 +42,13 @@ const VARIANTS = [
       "Iridescent gradient borders, glassy reflective fills. Brand colours used sparingly as highlights.",
     accent: "bg-brand/15 text-brand",
   },
+  {
+    href: "/mocks/v5",
+    name: "Xero-style",
+    description:
+      "Clean cream/white surface like the Xero accounting app: paper backdrop, soft white cards, compact data lists, status pills, orange as primary CTA.",
+    accent: "bg-brand text-white",
+  },
 ] as const;
 
 export default function MocksIndex() {
