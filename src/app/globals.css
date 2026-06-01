@@ -1407,6 +1407,166 @@ h1, h2, h3, h4, h5 {
 [data-shell="app"] .text-ink-500 { color: #8C8C8C; }
 [data-shell="app"] .t2q-section-label-pro { color: rgba(255, 255, 255, 0.62); }
 
+/* =========================================================================
+   XERO MODE — light, Xero-accounting-app-style refresh for /app.
+
+   The /app shell is now permanently rendered with `data-theme="light"`
+   set alongside `data-shell="app"` (see src/app/app/layout.tsx). Every
+   rule below scopes to `[data-shell="app"][data-theme="light"]` so:
+
+   - the marketing landing's existing ThemeToggle still works untouched
+   - the landing's dark theme is unaffected
+   - the in-app light theme picks up the existing `[data-theme="light"]`
+     token remap PLUS these Xero polish layers on top.
+
+   Goal: cream paper backdrop, flat-white cards with hairline borders,
+   compact data lists, sans throughout (no serif), brand orange as the
+   primary CTA where Xero uses blue.
+   ========================================================================= */
+
+[data-shell="app"][data-theme="light"] {
+  color-scheme: light;
+}
+
+/* Canvas — cream paper, no aurora glows (the dark-mode gradients lose
+   their visual job on light, they just muddy the page). */
+[data-shell="app"][data-theme="light"] .t2q-app-canvas {
+  background: #F5F4EE !important;
+  background-attachment: scroll;
+}
+
+/* Cards — flat white, hairline border, tight 1-2px shadow. Overrides
+   the warm gradient + softer shadow from the original `[data-theme=
+   "light"]` block with a flatter, more Xero-aligned surface. */
+[data-shell="app"][data-theme="light"] .t2q-card-pro,
+[data-shell="app"][data-theme="light"] .t2q-card,
+[data-shell="app"][data-theme="light"] .t2q-premium-card,
+[data-shell="app"][data-theme="light"] .t2q-premium-card-static {
+  background: #FFFFFF !important;
+  border: 1px solid #E8E6DD !important;
+  border-radius: 1rem;
+  box-shadow: 0 1px 2px rgba(10, 10, 10, 0.04) !important;
+}
+
+/* Bottom nav — flat white, hairline border, soft upward drop shadow.
+   The floating-pill dark backdrop is replaced with a Xero-style bar. */
+[data-shell="app"][data-theme="light"] .t2q-bottomnav-bar {
+  background: #FFFFFF !important;
+  border: 1px solid #E8E6DD !important;
+  box-shadow: 0 -2px 12px rgba(10, 10, 10, 0.05) !important;
+}
+[data-shell="app"][data-theme="light"] .t2q-bottomnav-tile {
+  color: #6B6B6B;
+}
+[data-shell="app"][data-theme="light"] .t2q-bottomnav-tile:hover {
+  color: #0A0A0A;
+}
+[data-shell="app"][data-theme="light"] .t2q-bottomnav-tile[aria-current="page"] {
+  color: #FF5F15;
+  background: rgba(255, 95, 21, 0.08);
+}
+
+/* Headings — undo the in-app serif remap; Xero is clean sans
+   throughout. Keep tracking-tight and weight 600 for definition. */
+[data-shell="app"][data-theme="light"] :is(h1, h2, h3, h4, h5),
+[data-shell="app"][data-theme="light"] .font-display {
+  font-family: var(--font-inter), Inter, system-ui, sans-serif !important;
+  font-weight: 600;
+  letter-spacing: -0.012em;
+  text-transform: none;
+}
+[data-shell="app"][data-theme="light"] h1 {
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+/* `.t2q-serif` is opt-in serif — also flip to sans inside the light
+   shell so the splash title / serif accents fall in line. */
+[data-shell="app"][data-theme="light"] .t2q-serif {
+  font-family: var(--font-inter), Inter, system-ui, sans-serif !important;
+  font-weight: 600;
+  letter-spacing: -0.012em;
+}
+
+/* Primary CTA — solid orange, soft shadow, modest 0.5rem radius. Replaces
+   the pill-rounded gradient with a Xero-feel button. */
+[data-shell="app"][data-theme="light"] .t2q-btn-primary-pro {
+  background: #FF5F15 !important;
+  color: #FFFFFF !important;
+  border-radius: 0.5rem;
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  height: 2.625rem;
+  padding: 0 1.125rem;
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+[data-shell="app"][data-theme="light"] .t2q-btn-primary-pro:hover {
+  background: #E04F0A !important;
+  box-shadow: 0 6px 14px -4px rgba(255, 95, 21, 0.32);
+  transform: translateY(-0.5px);
+}
+[data-shell="app"][data-theme="light"] .t2q-btn-ghost-pro {
+  background: #FFFFFF !important;
+  color: #0A0A0A !important;
+  border-radius: 0.5rem;
+  border: 1px solid #E8E6DD !important;
+  height: 2.625rem;
+  padding: 0 1.125rem;
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+[data-shell="app"][data-theme="light"] .t2q-btn-ghost-pro:hover {
+  background: #F9F8F2 !important;
+  border-color: #D8D6CC !important;
+  color: #0A0A0A !important;
+}
+
+/* Eyebrow / section labels — quieter grey on white than the dark-mode
+   42%-white default reads as. */
+[data-shell="app"][data-theme="light"] .t2q-section-label-pro {
+  color: #6B6B6B !important;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+}
+
+/* Ink token re-tint for the white surface — the dark-mode brightening
+   from the soft-serif refresh makes these too light against white.
+   Bring them back to high-contrast greys that read confidently on
+   cream/white. */
+[data-shell="app"][data-theme="light"] .text-ink-400 { color: #6B6B6B !important; }
+[data-shell="app"][data-theme="light"] .text-ink-500 { color: #525252 !important; }
+[data-shell="app"][data-theme="light"] .text-ink-300 { color: #404040 !important; }
+[data-shell="app"][data-theme="light"] .text-ink-200 { color: #2A2A2A !important; }
+[data-shell="app"][data-theme="light"] .text-ink-100 { color: #1A1A1A !important; }
+
+/* Backdrop-blur tiles (the StickyActionBar floating bar uses
+   bg-ink-900/95) need a flat white surface in Xero mode. */
+[data-shell="app"][data-theme="light"] .bg-ink-900\/95 {
+  background-color: rgba(255, 255, 255, 0.95) !important;
+}
+
+/* Translucent-white utilities that ride on top of dark surfaces in dark
+   mode (`border-white/10`, `bg-white/[0.04]` etc.) become invisible on
+   the new cream surface — remap to subtle cream tones so the borders
+   read and the glass fills don't disappear. */
+[data-shell="app"][data-theme="light"] .border-white\/5,
+[data-shell="app"][data-theme="light"] .border-white\/10,
+[data-shell="app"][data-theme="light"] .border-white\/15 {
+  border-color: #E8E6DD !important;
+}
+[data-shell="app"][data-theme="light"] .bg-white\/\[0\.02\],
+[data-shell="app"][data-theme="light"] .bg-white\/\[0\.03\],
+[data-shell="app"][data-theme="light"] .bg-white\/\[0\.04\],
+[data-shell="app"][data-theme="light"] .bg-white\/\[0\.06\],
+[data-shell="app"][data-theme="light"] .bg-white\/\[0\.08\] {
+  background-color: #FBFAF6 !important;
+}
+[data-shell="app"][data-theme="light"] .divide-white\/5 > * + *,
+[data-shell="app"][data-theme="light"] .divide-white\/10 > * + * {
+  border-color: #F0EFE9 !important;
+}
+
 /* ─── Bottom-nav centre FAB ───────────────────────────────────────────────
    Centre "New quote" action button. Sits INLINE inside the floating pill
    bar (vertically centred with the other tiles), not raised above it — so

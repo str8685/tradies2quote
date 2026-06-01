@@ -39,7 +39,11 @@ export default function AppLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div data-shell="app" className="t2q-app-canvas min-h-screen overflow-x-hidden lg:grid lg:grid-cols-[24px_1fr_24px]">
+    <div
+      data-shell="app"
+      data-theme="light"
+      className="t2q-app-canvas min-h-screen overflow-x-hidden lg:grid lg:grid-cols-[24px_1fr_24px]"
+    >
       {/*
         Wave 19.10 — status-bar safe-area backdrop. A translucent
         ink-950 strip sits behind the iOS notch / Android cutout so

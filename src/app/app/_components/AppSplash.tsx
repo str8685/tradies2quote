@@ -97,14 +97,16 @@ export default function AppSplash({
       }`}
       data-testid="app-splash"
       style={{
+        // Xero-mode splash — cream paper backdrop with a faint warm-orange
+        // wash up top so the brand hue still greets the user on first
+        // paint. Matches the live /app shell which is `data-theme="light"`.
         background:
-          "radial-gradient(70% 55% at 50% 18%, rgba(255,95,21,0.16) 0%, transparent 60%)," +
-          "radial-gradient(80% 60% at 50% 110%, rgba(255,234,0,0.06) 0%, transparent 60%)," +
-          "linear-gradient(180deg, #0E0E10 0%, #0A0A0A 60%)",
+          "radial-gradient(60% 45% at 50% 12%, rgba(255,95,21,0.10) 0%, transparent 65%)," +
+          "linear-gradient(180deg, #F8F7F1 0%, #F2F0EA 60%)",
       }}
     >
       <div className="relative flex flex-col items-center px-8 text-center">
-        <div className="t2q-app-splash-logo text-white">
+        <div className="t2q-app-splash-logo text-ink-900">
           <LogoMark size={72} />
         </div>
 
