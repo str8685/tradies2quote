@@ -9,6 +9,7 @@ import {
   Bug,
   Camera,
   GearSix,
+  Lifebuoy,
   Receipt,
   Robot,
   SignOut,
@@ -119,6 +120,12 @@ const PRIMARY_ITEMS: ReadonlyArray<HubLink> = [
     label: "Clients",
     caption: "Saved contacts",
     Icon: UsersThree,
+  },
+  {
+    href: "/help",
+    label: "Help & FAQ",
+    caption: "How things work + email support",
+    Icon: Lifebuoy,
   },
 ];
 
