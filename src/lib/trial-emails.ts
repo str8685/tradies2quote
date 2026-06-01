@@ -202,7 +202,7 @@ function renderTrialMinus2(args: TemplateArgs): RenderedEmail {
 
 Heads up — your 7-day trial ends on ${args.trialEndsLabel}. No card on file so nothing auto-charges.
 
-If you're getting value, the cheapest plan is $29/mo and unlocks unlimited quotes. If not, no drama, your account just goes read-only after the trial ends — you can still log in and grab any PDFs you sent.
+If you're getting value, the cheapest plan is $49/mo and unlocks unlimited quotes. If not, no drama, your account just goes read-only after the trial ends — you can still log in and grab any PDFs you sent.
 
 Manage your account: ${settingsUrl}
 
@@ -210,7 +210,7 @@ Manage your account: ${settingsUrl}
   const html = shell(`
 <p>Hi ${escapeHtml(args.firstName)},</p>
 <p>Heads up — your 7-day trial ends on <strong>${escapeHtml(args.trialEndsLabel)}</strong>. No card on file so nothing auto-charges.</p>
-<p>If you're getting value, the cheapest plan is $29/mo and unlocks unlimited quotes. If not, no drama, your account just goes read-only after the trial ends — you can still log in and grab any PDFs you sent.</p>
+<p>If you're getting value, the cheapest plan is $49/mo and unlocks unlimited quotes. If not, no drama, your account just goes read-only after the trial ends — you can still log in and grab any PDFs you sent.</p>
 ${btn(settingsUrl, "Manage your account")}
 <p>— Challis</p>
 `);
@@ -224,7 +224,7 @@ function renderTrialDay0(args: TemplateArgs): RenderedEmail {
 
 Today's the last day of your free trial. After tonight your account flips to read-only — quotes you've already sent keep working, but you can't make new ones until you upgrade.
 
-If you've been on the fence, $29/mo is the easy answer. Click below to pick a plan.
+If you've been on the fence, $49/mo is the easy answer. Click below to pick a plan.
 
 ${settingsUrl}
 
@@ -232,7 +232,7 @@ ${settingsUrl}
   const html = shell(`
 <p>Hi ${escapeHtml(args.firstName)},</p>
 <p>Today's the last day of your free trial. After tonight your account flips to read-only — quotes you've already sent keep working, but you can't make new ones until you upgrade.</p>
-<p>If you've been on the fence, <strong>$29/mo</strong> is the easy answer. Pick a plan below.</p>
+<p>If you've been on the fence, <strong>$49/mo</strong> is the easy answer. Pick a plan below.</p>
 ${btn(settingsUrl, "Upgrade now")}
 <p>— Challis</p>
 `);
@@ -246,7 +246,7 @@ function renderTrialPlus3(args: TemplateArgs): RenderedEmail {
 
 Your trial ended three days ago. Your quotes are still saved and your account is right where you left it — you just can't make new ones without a plan.
 
-If now's not the time, no worries. If you want to give it another go, $29/mo unlocks everything: ${settingsUrl}
+If now's not the time, no worries. If you want to give it another go, $49/mo unlocks everything: ${settingsUrl}
 
 Either way, hit reply if there's something I can fix.
 
@@ -254,7 +254,7 @@ Either way, hit reply if there's something I can fix.
   const html = shell(`
 <p>Hi ${escapeHtml(args.firstName)},</p>
 <p>Your trial ended three days ago. Your quotes are still saved and your account is right where you left it — you just can't make new ones without a plan.</p>
-<p>If now's not the time, no worries. If you want to give it another go, $29/mo unlocks everything.</p>
+<p>If now's not the time, no worries. If you want to give it another go, $49/mo unlocks everything.</p>
 ${btn(settingsUrl, "Reactivate")}
 <p style="color: #666; font-size: 13px;">Either way, hit reply if there's something I can fix.</p>
 <p>— Challis</p>

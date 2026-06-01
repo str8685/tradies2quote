@@ -13,7 +13,7 @@ export const dynamic = "force-dynamic";
 /**
  * POST /api/stripe/checkout
  *
- * Mints a Stripe Checkout session for the single $29/mo plan and
+ * Mints a Stripe Checkout session for the single $49/mo plan and
  * returns its hosted URL. Client should redirect (window.location =
  * url). We use checkout-session redirect (not embedded checkout)
  * because:

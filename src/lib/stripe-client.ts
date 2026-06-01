@@ -54,7 +54,7 @@ export function isStripeConfigured(): boolean {
   );
 }
 
-/** The single recurring price (NZD $29/mo). Defined as a Stripe Price
+/** The single recurring price (NZD $49/mo). Defined as a Stripe Price
  *  in the dashboard and referenced by id via env var so we don't have
  *  to redeploy to change pricing. */
 export function getPlanPriceId(): string | null {

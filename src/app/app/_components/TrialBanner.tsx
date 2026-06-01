@@ -75,7 +75,7 @@ export async function TrialBanner() {
             Trial ended · Read-only mode · New quotes paused
           </p>
           <span className="inline-flex items-center gap-1 font-mono text-[11px] uppercase tracking-[0.18em] text-white">
-            Subscribe — $29/mo
+            Subscribe — $49/mo
             <ArrowRight size={12} weight="bold" />
           </span>
         </div>
@@ -105,7 +105,7 @@ export async function TrialBanner() {
           {label} — keep things flowing
         </p>
         <span className="inline-flex items-center gap-1 font-mono text-[11px] uppercase tracking-[0.18em] text-white">
-          Subscribe — $29/mo
+          Subscribe — $49/mo
           <ArrowRight size={12} weight="bold" />
         </span>
       </div>
