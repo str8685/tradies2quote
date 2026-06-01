@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, Lightning } from "@phosphor-icons/react/dist/ssr";
+import { ArrowRight, Lightning, ShieldCheck } from "@phosphor-icons/react/dist/ssr";
 import { getCachedAuthUser } from "@/lib/supabase/auth";
 import {
   getCachedSubscriptionStatus,
@@ -38,20 +38,22 @@ export async function TrialBanner() {
       month: "short",
     });
     return (
-      <div
+      <Link
+        href="/app/beta"
         data-testid="beta-banner"
-        className="border-b border-brand/40 bg-brand/10 px-4 py-2.5 sm:px-6"
+        className="block border-b border-white/[0.06] bg-white/[0.025] px-4 py-2.5 transition-colors hover:bg-white/[0.04] sm:px-6"
       >
         <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-2">
-          <p className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.18em] text-brand">
-            <Lightning size={14} weight="bold" />
-            Beta open — free for everyone until {endsLabel}
+          <p className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.18em] text-ink-200">
+            <ShieldCheck size={14} weight="bold" className="text-brand" />
+            Beta access active until {endsLabel}
           </p>
-          <span className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-300">
-            Send the link to your mates
+          <span className="inline-flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-[0.18em] text-brand">
+            Review beta guidance
+            <ArrowRight size={12} weight="bold" />
           </span>
         </div>
-      </div>
+      </Link>
     );
   }
 

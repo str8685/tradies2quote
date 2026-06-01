@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Warning, X } from "@phosphor-icons/react/dist/ssr";
+import { ArrowRight, ShieldCheck, X } from "@phosphor-icons/react/dist/ssr";
 
 /**
  * Lightweight, dismissible beta safety reminder.
@@ -52,36 +52,58 @@ export function BetaNoticeBanner() {
   return (
     <div
       data-testid="beta-review-notice"
-      className="border-b border-hivis/30 bg-hivis/[0.07] px-4 py-2.5 sm:px-6"
+      className="border-b border-white/[0.06] bg-ink-950/92 px-4 py-3 shadow-[0_10px_30px_rgba(0,0,0,0.18)] backdrop-blur sm:px-6"
     >
-      <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-x-3 gap-y-1.5">
-        <p className="flex min-w-0 flex-1 items-start gap-2 text-xs text-ink-200">
-          <Warning size={14} weight="fill" className="mt-0.5 shrink-0 text-hivis" />
-          <span className="min-w-0">
-            <span className="mr-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-hivis">
-              {"// beta"}
+      <div className="mx-auto flex max-w-5xl items-start gap-3">
+        <span
+          aria-hidden="true"
+          className="mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-brand/30 bg-brand/10 text-brand"
+        >
+          <ShieldCheck size={18} weight="bold" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-brand">
+              Beta review
             </span>
-            You&apos;re on the Tradies2Quote beta — the app flags the risky
-            stuff, but you&apos;re the final check. Review every quote
-            (materials, quantities, prices) before you send it.
-          </span>
-        </p>
+            <span className="hidden h-1 w-1 rounded-full bg-ink-600 sm:inline-block" />
+            <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-400">
+              Human approval required
+            </span>
+          </div>
+          <p className="mt-1 text-sm leading-relaxed text-ink-200">
+            Tradies2Quote is in beta. Treat AI-generated scopes, quantities,
+            materials, and prices as draft recommendations, and review each
+            quote before sending it to a client.
+          </p>
+        </div>
         <Link
           href="/app/beta"
           data-testid="beta-review-link"
-          className="shrink-0 font-mono text-[10px] uppercase tracking-[0.15em] text-brand hover:text-white"
+          className="hidden shrink-0 items-center gap-1.5 rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-200 transition-colors hover:border-brand/40 hover:text-brand sm:inline-flex"
         >
-          Read before sending quotes →
+          Beta guide
+          <ArrowRight size={12} weight="bold" />
         </Link>
         <button
           type="button"
           onClick={dismiss}
           aria-label="Dismiss beta notice"
           data-testid="beta-review-dismiss"
-          className="shrink-0 rounded-sm p-0.5 text-ink-400 hover:text-white"
+          className="shrink-0 rounded-lg p-2 text-ink-400 transition-colors hover:bg-white/[0.04] hover:text-white"
         >
           <X size={16} weight="bold" />
         </button>
+      </div>
+      <div className="mx-auto mt-2 max-w-5xl pl-12 sm:hidden">
+        <Link
+          href="/app/beta"
+          data-testid="beta-review-link-mobile"
+          className="inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-brand hover:text-white"
+        >
+          Open beta guide
+          <ArrowRight size={12} weight="bold" />
+        </Link>
       </div>
     </div>
   );
