@@ -1,6 +1,13 @@
 import type { Metadata, Viewport } from "next";
 import Script from "next/script";
-import { Archivo_Black, IBM_Plex_Sans, IBM_Plex_Mono, Fraunces, Inter } from "next/font/google";
+import {
+  Archivo_Black,
+  IBM_Plex_Sans,
+  IBM_Plex_Mono,
+  Fraunces,
+  Inter,
+  Plus_Jakarta_Sans,
+} from "next/font/google";
 import "./globals.css";
 import { ThemeBoot } from "./_components/ThemeBoot";
 import { FloatingInstallButton } from "./_components/FloatingInstallButton";
@@ -34,12 +41,23 @@ const fraunces = Fraunces({
   subsets: ["latin"],
 });
 
-// Neutral UI sans for the in-app experience — close to Stowe's clean
-// SF-style body face. Scoped to /app via `[data-shell="app"]` in
-// globals.css so the marketing landing keeps IBM Plex Sans.
+// Neutral UI sans for the in-app experience — Inter is kept around as a
+// fallback / for any place we explicitly reach for it via `--font-inter`.
 const inter = Inter({
   variable: "--font-inter",
   weight: ["400", "500", "600", "700"],
+  subsets: ["latin"],
+});
+
+// Xero-style in-app UI sans. Plus Jakarta Sans is the closest free
+// Google Font dupe of Xero's proprietary Sailec — geometric grotesque
+// with humanist warmth, open apertures, single-story 'a'. Used as the
+// `--font-sans` inside `[data-shell="app"][data-theme="light"]` so the
+// /app shell reads like Xero while the marketing landing keeps its
+// Archivo / IBM Plex pairing.
+const plusJakartaSans = Plus_Jakarta_Sans({
+  variable: "--font-plus-jakarta",
+  weight: ["400", "500", "600", "700", "800"],
   subsets: ["latin"],
 });
 
@@ -169,7 +187,7 @@ export default function RootLayout({
       // here in dev. Suppress only on the <html> element so other
       // mismatches still surface.
       suppressHydrationWarning
-      className={`${archivoblack.variable} ${ibmPlexSans.variable} ${ibmPlexMono.variable} ${fraunces.variable} ${inter.variable} h-full`}
+      className={`${archivoblack.variable} ${ibmPlexSans.variable} ${ibmPlexMono.variable} ${fraunces.variable} ${inter.variable} ${plusJakartaSans.variable} h-full`}
     >
       <head>
         <Script

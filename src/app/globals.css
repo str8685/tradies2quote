@@ -469,6 +469,7 @@ h1, h2, h3, h4, h5 {
 [data-theme="light"] .bg-ink-900\/70 { background-color: rgba(245,244,238,0.85) !important; }
 [data-theme="light"] .bg-ink-900\/95 { background-color: rgba(245,244,238,0.96) !important; }
 [data-theme="light"] .bg-ink-950\/85 { background-color: rgba(238,237,230,0.88) !important; }
+[data-theme="light"] .bg-ink-950\/92 { background-color: rgba(255,255,255,0.92) !important; }
 [data-theme="light"] .bg-ink-950\/95 { background-color: rgba(238,237,230,0.96) !important; }
 
 /* Borders */
@@ -896,7 +897,7 @@ h1, h2, h3, h4, h5 {
 }
 
 .t2q-section-label-pro {
-  font-family: var(--font-sans), "Inter", system-ui, sans-serif;
+  font-family: var(--font-sans), "Plus Jakarta Sans", "Inter", system-ui, sans-serif;
   font-size: 0.6875rem;
   font-weight: 600;
   letter-spacing: 0.16em;
@@ -917,7 +918,7 @@ h1, h2, h3, h4, h5 {
   background: #FF5F15;
   color: #111111;
   border-radius: 9999px;
-  font-family: var(--font-sans), "Inter", system-ui, sans-serif;
+  font-family: var(--font-sans), "Plus Jakarta Sans", "Inter", system-ui, sans-serif;
   font-weight: 600;
   font-size: 0.9375rem;
   letter-spacing: 0;
@@ -953,7 +954,7 @@ h1, h2, h3, h4, h5 {
   color: #F5F5F5;
   border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 9999px;
-  font-family: var(--font-sans), "Inter", system-ui, sans-serif;
+  font-family: var(--font-sans), "Plus Jakarta Sans", "Inter", system-ui, sans-serif;
   font-weight: 600;
   font-size: 0.9375rem;
   letter-spacing: 0;
@@ -1106,7 +1107,7 @@ h1, h2, h3, h4, h5 {
   min-height: 52px;
   border-radius: 1rem;
   padding: 0.5rem 0.5rem;
-  font-family: var(--font-sans), "Inter", system-ui, sans-serif;
+  font-family: var(--font-sans), "Plus Jakarta Sans", "Inter", system-ui, sans-serif;
   font-size: 0.625rem;
   letter-spacing: 0.06em;
   text-transform: none;
@@ -1426,6 +1427,12 @@ h1, h2, h3, h4, h5 {
 
 [data-shell="app"][data-theme="light"] {
   color-scheme: light;
+  /* Plus Jakarta Sans — closest free Google Font to Xero's proprietary
+     Sailec. Replaces Inter as the in-app UI sans so the whole shell
+     reads with Xero's geometric-with-warmth letterforms. Inter stays
+     loaded as the `--font-inter` fallback. */
+  --font-sans: var(--font-plus-jakarta), "Plus Jakarta Sans", "Inter", system-ui, sans-serif;
+  font-family: var(--font-plus-jakarta), "Plus Jakarta Sans", "Inter", system-ui, sans-serif;
 }
 
 /* Canvas — cream paper, no aurora glows (the dark-mode gradients lose
@@ -1470,7 +1477,7 @@ h1, h2, h3, h4, h5 {
    throughout. Keep tracking-tight and weight 600 for definition. */
 [data-shell="app"][data-theme="light"] :is(h1, h2, h3, h4, h5),
 [data-shell="app"][data-theme="light"] .font-display {
-  font-family: var(--font-inter), Inter, system-ui, sans-serif !important;
+  font-family: var(--font-plus-jakarta), "Plus Jakarta Sans", "Inter", system-ui, sans-serif !important;
   font-weight: 600;
   letter-spacing: -0.012em;
   text-transform: none;
@@ -1482,7 +1489,7 @@ h1, h2, h3, h4, h5 {
 /* `.t2q-serif` is opt-in serif — also flip to sans inside the light
    shell so the splash title / serif accents fall in line. */
 [data-shell="app"][data-theme="light"] .t2q-serif {
-  font-family: var(--font-inter), Inter, system-ui, sans-serif !important;
+  font-family: var(--font-plus-jakarta), "Plus Jakarta Sans", "Inter", system-ui, sans-serif !important;
   font-weight: 600;
   letter-spacing: -0.012em;
 }
