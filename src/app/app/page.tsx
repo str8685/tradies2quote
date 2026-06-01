@@ -316,6 +316,54 @@ async function DashboardData({
         </Link>
       ) : null}
 
+      {/* Xero-style KPI strip — four headline numbers at the top of the
+          dashboard: this month's quoted total, replies awaiting, locked-in
+          revenue, drafts. Each is a real aggregate from `computeLifecycleStats`.
+          Hidden on empty accounts so the dashboard doesn't fake activity
+          for fresh signups. */}
+      {stats.totalQuotes > 0 && (
+        <section
+          data-testid="dashboard-kpi-strip"
+          aria-label="Headline metrics"
+          className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-4"
+        >
+          <KpiCard
+            label="This month"
+            value={formatCurrency(stats.thisMonthAmount, statsCurrency)}
+            sub={`${stats.thisMonth} quote${stats.thisMonth === 1 ? "" : "s"} started`}
+            tone="brand"
+          />
+          <KpiCard
+            label="Awaiting reply"
+            value={String(stats.byStage.sent + stats.byStage.viewed)}
+            sub={
+              stats.byStage.viewed > 0
+                ? `${stats.byStage.viewed} viewed by client`
+                : "Sent + viewed"
+            }
+          />
+          <KpiCard
+            label="Accepted"
+            value={formatCurrency(stats.acceptedAmount, statsCurrency)}
+            sub={`${
+              stats.byStage.accepted +
+              stats.byStage.scheduled +
+              stats.byStage.in_progress +
+              stats.byStage.completed
+            } locked in`}
+            tone="positive"
+          />
+          <KpiCard
+            label="Drafts"
+            value={String(stats.byStage.draft)}
+            sub={
+              stats.byStage.draft > 0 ? "Needs your finish" : "All clear"
+            }
+            tone={stats.byStage.draft > 0 ? "warning" : "neutral"}
+          />
+        </section>
+      )}
+
       {/* Wave 13 — lifecycle stage tiles. Each tile is a real DB
           count for this user, keyed by the same quote_status enum
           the orchestrator drives. Tiles link into /app/quotes with
@@ -524,6 +572,12 @@ interface LifecycleStats {
   totalQuotes: number;
   thisMonth: number;
   totalAmount: number;
+  /** Sum of `total_amount` for quotes created this calendar month. */
+  thisMonthAmount: number;
+  /** Sum of `total_amount` for quotes that have moved past "sent" into
+   *  accepted / scheduled / in_progress / completed — the locked-in
+   *  revenue figure that drives the "Accepted" KPI card. */
+  acceptedAmount: number;
   currency: string;
   byStage: Record<QuoteStatus, number>;
 }
@@ -539,6 +593,8 @@ function computeLifecycleStats(
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
   let thisMonth = 0;
+  let thisMonthAmount = 0;
+  let acceptedAmount = 0;
   let totalAmount = 0;
   let currency = "NZD";
   const byStage: Record<QuoteStatus, number> = {
@@ -552,19 +608,34 @@ function computeLifecycleStats(
     declined: 0,
     expired: 0,
   };
+  // Stages that count as "locked in" revenue for the Xero-style
+  // "Accepted" KPI. Sent / viewed are excluded — they haven't been
+  // accepted yet. Declined / expired are excluded — they're lost.
+  const LOCKED_IN: ReadonlySet<QuoteStatus> = new Set([
+    "accepted",
+    "scheduled",
+    "in_progress",
+    "completed",
+  ]);
   for (const row of rows) {
     const total = Number(row.total_amount) || 0;
     totalAmount += total;
     if (row.currency) currency = row.currency;
     const stage = (row.status ?? "draft") as QuoteStatus;
     if (stage in byStage) byStage[stage] += 1;
+    if (LOCKED_IN.has(stage)) acceptedAmount += total;
     const created = Date.parse(row.created_at);
-    if (!Number.isNaN(created) && created >= monthStart) thisMonth += 1;
+    if (!Number.isNaN(created) && created >= monthStart) {
+      thisMonth += 1;
+      thisMonthAmount += total;
+    }
   }
   return {
     totalQuotes: rows.length,
     thisMonth,
     totalAmount: Math.round(totalAmount * 100) / 100,
+    thisMonthAmount: Math.round(thisMonthAmount * 100) / 100,
+    acceptedAmount: Math.round(acceptedAmount * 100) / 100,
     currency,
     byStage,
   };
@@ -629,6 +700,47 @@ function SecondaryStat({
       <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.2em] text-ink-300">
         {label}
       </p>
+    </div>
+  );
+}
+
+/** Xero-style headline KPI card. Used in the four-up strip above the
+ *  pipeline section. `tone` colours the big number for quick scanning:
+ *  brand = this-month spotlight; positive = locked-in money; warning =
+ *  pending action; neutral = plain count. */
+function KpiCard({
+  label,
+  value,
+  sub,
+  tone = "neutral",
+}: {
+  label: string;
+  value: string;
+  sub?: string;
+  tone?: "brand" | "positive" | "warning" | "neutral";
+}) {
+  const valueTone =
+    tone === "brand"
+      ? "text-brand"
+      : tone === "positive"
+        ? "text-emerald-700"
+        : tone === "warning"
+          ? "text-amber-700"
+          : "text-ink-100";
+  return (
+    <div
+      data-testid={`kpi-${label.toLowerCase().replace(/\s+/g, "-")}`}
+      className="t2q-card-pro p-4 sm:p-5"
+    >
+      <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-500">
+        {label}
+      </p>
+      <p
+        className={`mt-2 text-2xl font-semibold tabular-nums sm:text-3xl ${valueTone}`}
+      >
+        {value}
+      </p>
+      {sub && <p className="mt-1 text-xs text-ink-500">{sub}</p>}
     </div>
   );
 }
