@@ -7,9 +7,15 @@ import {
   CircleNotch,
 } from "@phosphor-icons/react";
 
+// Fallback VAPID public key — only used in local dev when NEXT_PUBLIC_VAPID_PUBLIC_KEY
+// isn't injected. Paired with the matching VAPID_PRIVATE_KEY rotated in Vercel
+// after the Stripe-secret-contamination cleanup. If you ever rotate the keypair
+// again, regenerate via `npx web-push generate-vapid-keys` and update BOTH this
+// string AND the Vercel env vars (VAPID_PUBLIC_KEY, NEXT_PUBLIC_VAPID_PUBLIC_KEY,
+// VAPID_PRIVATE_KEY) in the same commit so they stay matched.
 const VAPID_PUBLIC_KEY =
   process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ||
-  "BMh1wyMbQoDS3zhC02ejkeknqX3v6wtZiN7ewUsaBjggVnPqHdDNKarEkcsQrvuPZI3tPFNQ-AvIWFfsfqfePLI";
+  "BM7pVHs5Nf2CSkOcrXxpaADkS4P4sq-6LjrtQ01bZUtxi0Om1jyja4NXW32CNG0KqwwtFcluG26_61xVT2xdGP0";
 
 /** Convert a base64url VAPID key into the Uint8Array the Push API wants. */
 function urlBase64ToUint8Array(base64String: string): Uint8Array {
