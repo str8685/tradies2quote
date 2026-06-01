@@ -29,6 +29,7 @@ import type {
   TakeoffInputsSnapshot,
 } from "@/lib/quote-types";
 import { canWrite, getSubscriptionStatus } from "@/lib/subscription";
+import { consumeDailyQuota, tooManyRequestsResponse } from "@/lib/rate-limit";
 
 const TAKEOFF_MATERIAL_PATTERNS: RegExp[] = [
   // Wall framing
@@ -161,6 +162,10 @@ export async function POST(request: NextRequest) {
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  // Per-user daily cap — cheap circuit-breaker on quote-generation spend.
+  const quota = consumeDailyQuota(`generate:${user.id}`, 150);
+  if (!quota.ok) return tooManyRequestsResponse(quota.resetAt);
 
   // Defence-in-depth gate. The /app/quotes/new page already redirects
   // expired-trial users to /app/upgrade, but a determined client could

@@ -5,6 +5,7 @@ import {
   buildAsrPrompt,
   STATIC_TRADE_VOCAB_PROMPT,
 } from "@/lib/transcript/asrHints";
+import { consumeDailyQuota, tooManyRequestsResponse } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -32,6 +33,10 @@ export async function POST(request: NextRequest) {
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  // Per-user daily cap — cheap circuit-breaker on transcription spend.
+  const quota = consumeDailyQuota(`transcribe:${user.id}`, 150);
+  if (!quota.ok) return tooManyRequestsResponse(quota.resetAt);
 
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {

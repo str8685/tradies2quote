@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { canWrite, getSubscriptionStatus } from "@/lib/subscription";
 import { resolveDocumentType } from "@/lib/scanClassify";
+import { consumeDailyQuota, tooManyRequestsResponse } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -202,6 +203,10 @@ export async function POST(request: NextRequest) {
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  // Per-user daily cap — cheap circuit-breaker on drawing-scan (vision) spend.
+  const quota = consumeDailyQuota(`scan-drawing:${user.id}`, 60);
+  if (!quota.ok) return tooManyRequestsResponse(quota.resetAt);
 
   const sub = await getSubscriptionStatus({
     userId: user.id,
