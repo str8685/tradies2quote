@@ -1567,6 +1567,40 @@ h1, h2, h3, h4, h5 {
   border-color: #F0EFE9 !important;
 }
 
+/* Status pills — soften the dark-mode chip palette into a Xero ring
+   style: lighter Tailwind-200-shade borders (almost a ring), cleaner
+   Tailwind-50-shade fills, dark Tailwind-700-shade text. Covers every
+   place a quote-status pill renders (dashboard recent list, /app/quotes
+   list filters, StickyActionBar status, lifecycle card, etc.) with no
+   JSX edits — the class strings stay identical. */
+[data-shell="app"][data-theme="light"] .border-blue-500\/40   { border-color: #BFDBFE !important; }
+[data-shell="app"][data-theme="light"] .bg-blue-500\/10       { background-color: #EFF6FF !important; }
+[data-shell="app"][data-theme="light"] .border-emerald-500\/40 { border-color: #BBF7D0 !important; }
+[data-shell="app"][data-theme="light"] .bg-emerald-500\/10    { background-color: #ECFDF5 !important; }
+[data-shell="app"][data-theme="light"] .text-emerald-300      { color: #047857 !important; }
+[data-shell="app"][data-theme="light"] .border-red-500\/40    { border-color: #FECACA !important; }
+[data-shell="app"][data-theme="light"] .bg-red-500\/10        { background-color: #FEF2F2 !important; }
+[data-shell="app"][data-theme="light"] .text-red-300          { color: #B91C1C !important; }
+[data-shell="app"][data-theme="light"] .border-amber-500\/40  { border-color: #FDE68A !important; }
+[data-shell="app"][data-theme="light"] .bg-amber-500\/10      { background-color: #FFFBEB !important; }
+[data-shell="app"][data-theme="light"] .text-amber-300        { color: #B45309 !important; }
+[data-shell="app"][data-theme="light"] .border-cyan-500\/40   { border-color: #A5F3FC !important; }
+[data-shell="app"][data-theme="light"] .bg-cyan-500\/10       { background-color: #ECFEFF !important; }
+[data-shell="app"][data-theme="light"] .text-cyan-300         { color: #0E7490 !important; }
+[data-shell="app"][data-theme="light"] .border-brand\/40      { border-color: rgba(255, 95, 21, 0.32) !important; }
+[data-shell="app"][data-theme="light"] .bg-brand\/10          { background-color: #FFF1EA !important; }
+[data-shell="app"][data-theme="light"] .border-hivis\/40      { border-color: #FDE68A !important; }
+[data-shell="app"][data-theme="light"] .bg-hivis\/10          { background-color: #FFFBEB !important; }
+[data-shell="app"][data-theme="light"] .text-hivis            { color: #B45309 !important; }
+/* The /15 and /20 brand washes used on filter tabs + accepted accents. */
+[data-shell="app"][data-theme="light"] .bg-brand\/15          { background-color: #FFE4D2 !important; }
+[data-shell="app"][data-theme="light"] .bg-brand\/20          { background-color: #FFD4B8 !important; }
+[data-shell="app"][data-theme="light"] .bg-hivis\/15          { background-color: #FEF3C7 !important; }
+[data-shell="app"][data-theme="light"] .bg-hivis\/20          { background-color: #FDE68A !important; }
+[data-shell="app"][data-theme="light"] .bg-blue-500\/15       { background-color: #DBEAFE !important; }
+[data-shell="app"][data-theme="light"] .text-blue-200,
+[data-shell="app"][data-theme="light"] .text-blue-300         { color: #1D4ED8 !important; }
+
 /* ─── Bottom-nav centre FAB ───────────────────────────────────────────────
    Centre "New quote" action button. Sits INLINE inside the floating pill
    bar (vertically centred with the other tiles), not raised above it — so
