@@ -104,6 +104,15 @@ export function Footer() {
               </li>
               <li>
                 <Link
+                  href="/install"
+                  data-testid="footer-link-install"
+                  className="hover:text-white"
+                >
+                  Install the app
+                </Link>
+              </li>
+              <li>
+                <Link
                   href="/support"
                   data-testid="footer-link-support"
                   className="hover:text-white"

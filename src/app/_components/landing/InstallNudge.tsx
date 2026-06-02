@@ -200,13 +200,22 @@ export default function InstallNudge() {
               )}
 
               {open === "ios-help" && (
-                <button
-                  onClick={() => snooze(7)}
-                  className="mt-4 w-full t2q-btn-ghost h-11 text-sm"
-                  data-testid="install-nudge-ios-done"
-                >
-                  Got it
-                </button>
+                <>
+                  <a
+                    href="/install"
+                    data-testid="install-nudge-fullguide"
+                    className="mt-3 block text-center font-mono text-[10px] uppercase tracking-[0.2em] text-brand hover:underline"
+                  >
+                    {"// full step-by-step guide →"}
+                  </a>
+                  <button
+                    onClick={() => snooze(7)}
+                    className="mt-3 w-full t2q-btn-ghost h-11 text-sm"
+                    data-testid="install-nudge-ios-done"
+                  >
+                    Got it
+                  </button>
+                </>
               )}
             </div>
           </div>

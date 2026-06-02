@@ -223,9 +223,13 @@ function IosHelp({
           </ol>
         )}
         <div className="mt-6 flex items-center justify-between">
-          <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-ink-500">
-            {"// works offline once installed"}
-          </span>
+          <a
+            href="/install"
+            data-testid="install-pwa-fullguide"
+            className="font-mono text-[10px] uppercase tracking-[0.2em] text-brand hover:underline"
+          >
+            {"// full step-by-step guide →"}
+          </a>
           <button
             onClick={onClose}
             className="t2q-btn-ghost h-10 px-4 text-sm"
