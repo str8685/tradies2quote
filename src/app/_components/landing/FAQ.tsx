@@ -25,7 +25,7 @@ const FAQS = [
   {
     slug: "regions",
     q: "What if I'm in NZ / AU / UK / US / CA?",
-    a: "NZ today — that's where the beta is live with GST 15% baked in. AU, UK, US and CA are queued; drop your country at signup and we'll email you the day it switches on in your region.",
+    a: "NZ today — that's where we've launched, with GST 15% baked in and NZ supplier integrations on the way (ITM, Mitre 10, Bunnings). AU, UK, US and CA are queued; drop your country at signup and we'll email you the day it switches on in your region.",
   },
   {
     slug: "edit-quote",

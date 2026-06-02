@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { DEFAULT_NZ_CONTRACT_TERMS } from "@/lib/default-contract";
 import { NZ_DEFAULTS, computeQuoteTotals, round2 } from "@/lib/quote-defaults";
 import { buildQuotePrompt, type PastQuoteSummary } from "@/lib/quote-prompt";
 import { matchToLibrary } from "@/lib/materials";
@@ -486,7 +487,14 @@ export async function POST(request: NextRequest) {
     address: null,
     contact: null,
   };
-  parsed.terms = typeof parsed.terms === "string" ? parsed.terms : "";
+  // Coerce + fall back to the default NZ tradie contract template if the
+  // AI returned nothing usable. Tradies can edit/replace per quote via
+  // the Terms section in the editor; this just makes sure every quote
+  // ships with a defensible starter contract instead of an empty box.
+  // When `profiles.default_terms` lands as a configurable field
+  // (post-launch), prefer that over the hardcoded default.
+  const aiTerms = typeof parsed.terms === "string" ? parsed.terms.trim() : "";
+  parsed.terms = aiTerms.length > 0 ? aiTerms : DEFAULT_NZ_CONTRACT_TERMS;
 
   const usedLibraryIds = new Set<string>();
   const calculatorItems: QuoteLineItem[] = [];

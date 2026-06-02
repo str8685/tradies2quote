@@ -21,7 +21,7 @@ const TIERS = [
     name: "Solo",
     slug: "solo",
     tag: "For 1-man bands",
-    price: 29,
+    price: 49,
     highlight: false,
     comingSoon: false,
     features: [
@@ -85,10 +85,10 @@ export function Pricing() {
             <span className="text-brand">Saves your Sundays.</span>
           </h2>
           <p className="mt-5 text-lg text-ink-200">
-            7-day free trial. No credit card. Cancel by text if you want.
+            7-day free trial. No credit card up front. Cancel any time.
           </p>
           <p className="mt-3 font-mono text-xs uppercase tracking-[0.2em] text-hivis">
-            {"// beta tradies pay $0 until launch — these rates lock when we go live"}
+            {"// gst inclusive · nz tradies · built by a tradie"}
           </p>
         </div>
 
