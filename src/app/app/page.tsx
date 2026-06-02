@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import {
   ArrowRight,
   Bug,
+  Gauge,
   Plus,
   Robot,
   Warning,
@@ -475,6 +476,42 @@ async function DashboardData({
           </div>
           <span className="hidden items-center gap-1 font-mono text-[10px] uppercase tracking-[0.25em] text-brand sm:inline-flex">
             Open agents
+            <ArrowRight size={12} weight="bold" />
+          </span>
+          <ArrowRight
+            size={18}
+            weight="bold"
+            className="shrink-0 text-brand sm:hidden"
+            aria-hidden="true"
+          />
+        </Link>
+      ) : null}
+
+      {/* Owner-only Ops cockpit — live revenue, trials running out, and
+          per-connector budget/health. Server-rendered behind `isOwner`
+          so it never appears in a non-owner's HTML. */}
+      {isOwner ? (
+        <Link
+          href="/app/admin"
+          data-testid="dashboard-ops-card"
+          className="t2q-card-pro t2q-card-pro-hover mt-4 flex items-center gap-4 p-4 sm:p-5"
+        >
+          <span
+            aria-hidden="true"
+            className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-lg border border-hivis/40 bg-hivis/10 text-hivis"
+          >
+            <Gauge size={22} weight="bold" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="font-display text-base uppercase tracking-tight text-white sm:text-lg">
+              Ops cockpit.
+            </p>
+            <p className="mt-0.5 text-sm text-ink-300">
+              Live revenue, trials running out, and connector budgets — all in one place.
+            </p>
+          </div>
+          <span className="hidden items-center gap-1 font-mono text-[10px] uppercase tracking-[0.25em] text-brand sm:inline-flex">
+            Open ops
             <ArrowRight size={12} weight="bold" />
           </span>
           <ArrowRight
