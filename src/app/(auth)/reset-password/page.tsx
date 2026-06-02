@@ -41,8 +41,14 @@ export default async function ResetPasswordPage({
 
       <header className="relative z-10 border-b border-ink-600">
         <div className="mx-auto flex h-16 max-w-6xl items-center px-6">
-          <Link href="/" aria-label="tradies2Quote home" className="inline-flex">
-            {/* Wave 12.3 — new Tradies2Quote brand PNG. */}
+          <Link
+            href="/"
+            aria-label="tradies2Quote home"
+            className="inline-flex w-fit items-center rounded-lg bg-[#0A0A0A] px-2.5 py-1.5"
+          >
+            {/* Dark plate so the near-white T/Q glyphs stay legible on the
+                cream light-theme background (literal #0A0A0A, not
+                bg-ink-950 which the light theme remaps to cream). */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src="/logo-horizontal.png?v=21"

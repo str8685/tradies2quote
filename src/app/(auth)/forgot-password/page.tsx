@@ -27,9 +27,14 @@ export default async function ForgotPasswordPage({
 
       <header className="relative z-10 border-b border-ink-600">
         <div className="mx-auto flex h-16 max-w-6xl items-center px-6">
-          <Link href="/" aria-label="tradies2Quote home" className="inline-flex">
-            {/* Wave 12.3 — new Tradies2Quote brand PNG on a small white
-                pill. Replaces the old inline Site-Safe Badge. */}
+          <Link
+            href="/"
+            aria-label="tradies2Quote home"
+            className="inline-flex w-fit items-center rounded-lg bg-[#0A0A0A] px-2.5 py-1.5"
+          >
+            {/* Dark plate so the near-white T/Q glyphs stay legible on the
+                cream light-theme background (bg-ink-950 would remap to
+                cream, so use a literal #0A0A0A). */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src="/logo-horizontal.png?v=21"

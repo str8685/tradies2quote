@@ -33,13 +33,15 @@ export default function InstallPage() {
       <header className="border-b border-ink-600">
         <div className="mx-auto flex max-w-2xl items-center justify-between px-5 py-4">
           <Link href="/" className="flex items-center gap-2.5">
-            <Image
-              src="/logo-mark.png"
-              alt="Tradies2Quote"
-              width={32}
-              height={32}
-              className="rounded-md"
-            />
+            <span className="inline-flex rounded-md bg-[#0A0A0A] p-1">
+              <Image
+                src="/logo-mark.png"
+                alt="Tradies2Quote"
+                width={32}
+                height={32}
+                className="rounded-sm"
+              />
+            </span>
             <span className="font-display text-sm uppercase tracking-tight">
               tradies<span className="text-brand">2</span>quote
             </span>
@@ -57,7 +59,7 @@ export default function InstallPage() {
       <main className="mx-auto max-w-2xl px-5 py-10 sm:py-14">
         {/* Hero */}
         <div className="mb-9 flex flex-col items-center text-center">
-          <span className="t2q-shadow-brutal mb-5 grid h-20 w-20 place-items-center rounded-2xl bg-ink-950">
+          <span className="t2q-shadow-brutal mb-5 grid h-20 w-20 place-items-center rounded-2xl bg-[#0A0A0A]">
             <Image
               src="/logo-mark.png"
               alt=""

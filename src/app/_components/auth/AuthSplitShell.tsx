@@ -75,13 +75,14 @@ export function AuthSplitShell({
           <Link
             href="/"
             aria-label="tradies2Quote home"
-            className="lg:hidden inline-flex items-center justify-center rounded-md bg-ink-950 px-2 py-1.5"
+            className="lg:hidden inline-flex items-center justify-center rounded-md bg-[#0A0A0A] px-2 py-1.5"
           >
             {/* The brand mark's T and Q glyphs are near-white. On the
                 cream light-mode auth shell that left only the orange
                 "2" visible — the T and Q vanished into the background.
-                The dark pill wrapper restores contrast in either
-                theme without needing a separate asset. */}
+                The dark pill restores contrast; it must use a literal
+                #0A0A0A, NOT bg-ink-950 (the light theme remaps
+                .bg-ink-950 to cream, which is what broke this before). */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src="/logo-mark.png?v=21"
@@ -97,8 +98,10 @@ export function AuthSplitShell({
           <Link
             href="/"
             aria-label="tradies2Quote home"
-            className="hidden lg:inline-flex mb-10"
+            className="mb-10 hidden w-fit items-center rounded-lg bg-[#0A0A0A] px-3 py-2 lg:inline-flex"
           >
+            {/* Dark plate so the near-white T/Q glyphs stay legible on the
+                cream light-theme form side (see mobile logo note above). */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src="/logo-horizontal.png?v=21"
