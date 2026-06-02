@@ -57,10 +57,24 @@ export async function POST(_request: NextRequest) {
     process.env.NEXT_PUBLIC_APP_URL || "https://tradies2quote.com";
 
   const stripe = stripeClient();
-  const session = await stripe.billingPortal.sessions.create({
-    customer: customerId,
-    return_url: `${appUrl}/app/settings`,
-  });
-
-  return NextResponse.json({ ok: true, url: session.url });
+  // Same try/catch pattern as /api/stripe/checkout — surface upstream
+  // Stripe failures (rate limit, network, invalid customer ref) to the
+  // client as a clean 502 instead of a Next.js crash.
+  try {
+    const session = await stripe.billingPortal.sessions.create({
+      customer: customerId,
+      return_url: `${appUrl}/app/settings`,
+    });
+    return NextResponse.json({ ok: true, url: session.url });
+  } catch (err) {
+    console.error("[stripe/portal] failed", err);
+    return NextResponse.json(
+      {
+        error: "portal_create_failed",
+        message:
+          "Could not open the billing portal — please try again. If it keeps happening, email support@tradies2quote.com.",
+      },
+      { status: 502 },
+    );
+  }
 }

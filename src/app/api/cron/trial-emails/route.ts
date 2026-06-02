@@ -67,6 +67,10 @@ async function handle(request: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
+  // Wrap the whole run in try/catch — Vercel Cron retries on 500, and
+  // partial progress (counters) is preserved across the catch so the
+  // log line always tells us what actually got sent before the error.
+  try {
   const admin = adminClient();
   const now = new Date();
   const counters: Counters = {
@@ -234,4 +238,14 @@ async function handle(request: NextRequest): Promise<NextResponse> {
     kinds: EMAIL_KINDS,
     ...counters,
   });
+  } catch (err) {
+    console.error("[cron/trial-emails] run failed", err);
+    return NextResponse.json(
+      {
+        error: "cron_run_failed",
+        message: err instanceof Error ? err.message : String(err),
+      },
+      { status: 500 },
+    );
+  }
 }

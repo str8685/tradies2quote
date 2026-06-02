@@ -65,6 +65,12 @@ export async function POST(_request: NextRequest) {
   const admin = adminClient();
   const stripe = stripeClient();
 
+  // Wrap every Stripe + admin-DB call in a single try/catch so any
+  // upstream failure (Stripe rate limit, network blip, customer-create
+  // race, malformed price id, etc.) is surfaced to the client as a
+  // clean 502 instead of a vague Next.js crash page. The user sees a
+  // toast and can retry; we log the full error server-side for triage.
+  try {
   // Reuse an existing Customer if the user has one. Otherwise create
   // one keyed to the user's email + a metadata pointer back to their
   // t2q user_id (so a future Stripe-side audit can correlate without
@@ -143,4 +149,15 @@ export async function POST(_request: NextRequest) {
   }
 
   return NextResponse.json({ ok: true, url: session.url });
+  } catch (err) {
+    console.error("[stripe/checkout] failed", err);
+    return NextResponse.json(
+      {
+        error: "checkout_create_failed",
+        message:
+          "Could not start checkout — please try again in a moment. If it keeps happening, email support@tradies2quote.com.",
+      },
+      { status: 502 },
+    );
+  }
 }
