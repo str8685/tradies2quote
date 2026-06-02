@@ -79,6 +79,32 @@ const BRANDS: VocabEntry[] = [
   g("Dulux", "brand", ["dewlux", "doolux"]),
   g("Marley", "brand", ["marlee"]),
   g("Coloursteel", "brand", ["colour steel", "color steel", "colorsteel"]),
+  g("Colorbond", "brand", ["colour bond", "color bond"]),
+  // James Hardie cladding ranges — distinctive proper nouns. Aliases are
+  // unambiguous mishears only (never a real English word like "linear").
+  g("Linea", "brand", ["linea weatherboard"]),
+  g("Axon", "brand", ["axon panel"]),
+  g("Stria", "brand", ["stria cladding"]),
+  g("RAB", "brand", ["rab board"]),
+  g("Shadowclad", "brand", ["shadow clad"]),
+  g("Pinex", "brand", []),
+  g("Customwood", "brand", ["custom wood"]),
+  // Structural connectors / fixings brands.
+  g("Lumberlok", "brand", ["lumber lock", "lumberlock"]),
+  g("Pryda", "brand", ["prida"]),
+  g("Paslode", "brand", ["pas load"]),
+  // Building wrap / insulation / membranes.
+  g("Tyvek", "brand", ["tie vek", "tivek"]),
+  g("Thermakraft", "brand", ["therma kraft", "thermacraft"]),
+  g("Expol", "brand", ["ex pol"]),
+  g("Earthwool", "brand", ["earth wool"]),
+  g("Knauf", "brand", []),
+  // Roofing.
+  g("Dimondek", "brand", ["diamond deck", "dimond deck"]),
+  g("Metrotile", "brand", ["metro tile"]),
+  // Sealants / adhesives.
+  g("Bostik", "brand", []),
+  g("Selleys", "brand", ["sellys"]),
 ];
 
 // ── Common NZ trade terms ─────────────────────────────────────────────────
@@ -104,6 +130,21 @@ const TRADE_TERMS: VocabEntry[] = [
   g("rimu", "trade_term", ["reemu"]),
   g("kwila", "trade_term", ["quila", "kwilla", "kweela"]),
   g("flashing", "trade_term", ["flashin"]),
+  // Interior linings + trims — distinctive enough not to clash with common words.
+  g("architrave", "trade_term", ["archi trave", "arkitrave"]),
+  g("skirting", "trade_term", ["skerting"]),
+  g("scotia", "trade_term", ["scocia", "scosha"]),
+  g("lintel", "trade_term", ["lintol"]),
+  g("villaboard", "trade_term", ["villa board"]),
+  g("plasterboard", "trade_term", ["plaster board"]),
+  g("particleboard", "trade_term", ["particle board"]),
+  // Cladding / exterior carcass.
+  g("plywood", "trade_term", ["ply wood"]),
+  g("cladding", "trade_term", []),
+  g("sarking", "trade_term", []),
+  g("bargeboard", "trade_term", ["barge board"]),
+  g("subfloor", "trade_term", ["sub floor"]),
+  g("downpipe", "trade_term", ["down pipe"]),
 ];
 
 /** The curated global glossary (suppliers + brands + trade terms). */

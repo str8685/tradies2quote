@@ -182,6 +182,35 @@ describe("applyDeterministicCorrections — size normalisation", () => {
     expect(r.cleanedTranscript).toContain("90x45");
     expect(r.corrections.find((c) => c.type === "size")).toBeUndefined();
   });
+
+  it("'13 mil GIB' → '13mm GIB'", () => {
+    expect(
+      applyDeterministicCorrections("13 mil GIB standard").cleanedTranscript,
+    ).toContain("13mm GIB");
+  });
+
+  it("'12 mils ply' and '18 millimetres' → mm", () => {
+    expect(applyDeterministicCorrections("12 mils ply").cleanedTranscript).toContain("12mm ply");
+    expect(
+      applyDeterministicCorrections("18 millimetres particleboard").cleanedTranscript,
+    ).toContain("18mm particleboard");
+  });
+
+  it("'12 mm' (spaced) tightens to '12mm'", () => {
+    expect(applyDeterministicCorrections("12 mm ply").cleanedTranscript).toContain("12mm ply");
+  });
+
+  it("'12mm' is unchanged (already canonical, no correction emitted)", () => {
+    const r = applyDeterministicCorrections("12mm ply");
+    expect(r.cleanedTranscript).toContain("12mm");
+    expect(r.corrections.find((c) => c.before === "12mm")).toBeUndefined();
+  });
+
+  it("does NOT mangle 'million' (no false mil→mm match)", () => {
+    expect(
+      applyDeterministicCorrections("2 million dollar build").cleanedTranscript,
+    ).toContain("2 million");
+  });
 });
 
 describe("applyDeterministicCorrections — empty input", () => {

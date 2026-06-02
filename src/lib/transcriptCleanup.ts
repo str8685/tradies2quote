@@ -306,6 +306,28 @@ export function applyDeterministicCorrections(
   );
 
   // -------------------------------------------------------------------------
+  // 4b. Thickness — "12 mil" / "12 mils" / "12 millimetres" → "12mm", and
+  // tighten a spaced "12 mm" to "12mm". Tradies say "mil" for millimetres
+  // (13 mil GIB, 12 mil ply). Bounded to 1–3 digits so it only ever touches
+  // real thicknesses, and "million" is safe (the \b after "mil" never
+  // matches inside "million").
+  // -------------------------------------------------------------------------
+  text = text.replace(
+    /\b(\d{1,3})\s*(?:mils?|millimet(?:re|er)s?|mm)\b/gi,
+    (m, n: string, offset: number) => {
+      const target = `${n}mm`;
+      if (m === target) return m; // already canonical "12mm"
+      corrections.push({
+        before: m,
+        after: target,
+        type: "size",
+        index: offset,
+      });
+      return target;
+    },
+  );
+
+  // -------------------------------------------------------------------------
   // 5. "battens" emit a clarification when an insulation-context word is
   // nearby — covered already in step 3 for the Pink Batts case, but a
   // bare "battens" with insulation context is also worth flagging.
