@@ -124,14 +124,14 @@ export function Footer() {
           </div>
         </div>
 
-        <div className="mt-12 pt-6 border-t border-ink-800 grid gap-3 text-xs font-mono uppercase tracking-[0.18em] text-ink-500">
+        <div className="mt-12 pt-6 border-t border-ink-800 grid gap-3 text-xs font-mono uppercase tracking-[0.18em] text-ink-400">
           <div className="flex flex-col md:flex-row gap-3 justify-between">
             <span>© {new Date().getFullYear()} tradies2Quote · Built in NZ</span>
             <span>Voice in. Quote out. Under 60 sec.</span>
           </div>
           <div
             data-testid="footer-operator"
-            className="text-[10px] tracking-[0.2em] text-ink-500/80 normal-case"
+            className="text-[10px] tracking-[0.2em] text-ink-400/90 normal-case"
           >
             Operated by {LEGAL.companyName}
             {LEGAL.nzbn ? <> (NZBN {LEGAL.nzbn})</> : null}, {LEGAL.address}.

@@ -110,7 +110,10 @@ export function Features() {
             className="object-cover"
             priority={false}
           />
-          <div className="absolute inset-0 bg-gradient-to-r from-ink-950 via-ink-950/70 to-transparent" />
+          {/* Stronger left-to-right scrim so the heading reads cleanly over
+              the photo — the old `to-transparent` left the second line
+              ("weekends to quotes.") sitting on bare light concrete. */}
+          <div className="absolute inset-0 bg-gradient-to-r from-ink-950 via-ink-950/85 to-ink-950/45" />
           <div className="absolute inset-0 flex items-center px-8 md:px-12">
             <div className="max-w-md">
               <div className="t2q-section-label mb-2">{"// reality check"}</div>

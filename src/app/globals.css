@@ -484,6 +484,39 @@ h1, h2, h3, h4, h5 {
 [data-theme="light"] .text-ink-400 { color: #5C5C5C !important; }
 [data-theme="light"] .text-ink-500 { color: #6E6E6E !important; }
 
+/* Brand orange + eyebrow labels on light surfaces — contrast fix.
+   #FF5F15 on the cream/white sections only hits 2.76:1, which fails WCAG
+   AA for both the large two-tone accent words ("Zero forms.", "at site
+   speed.") and the small // eyebrow labels — the "can't read the orange"
+   problem, on the landing AND the /help, /login, /signup pages. On the
+   light theme we retint orange TEXT to the burnt-orange #C2410C already
+   used by the in-app theme: 4.65:1 on cream, 5.2:1 on white. Buttons and
+   backgrounds keep the bright brand orange; only text is darkened. A live
+   audit confirmed the ONLY orange-text-on-dark element in light theme is
+   the rotated "Coming soon" pricing badge (bg-ink-900/90) — re-brightened
+   below so it stays legible on its dark chip. */
+[data-theme="light"] .text-brand,
+[data-theme="light"] .t2q-section-label {
+  color: #C2410C !important;
+}
+[data-theme="light"] .bg-ink-900\/90.text-brand,
+[data-theme="light"] .bg-ink-900\/90 .text-brand {
+  color: #FF5F15 !important;
+}
+
+/* "Reality check" visual band (Features.tsx) sits on a dark photo + dark
+   scrim, so its text must stay LIGHT in both themes. Without this the
+   light-theme .text-white remap (→ #0A0A0A) turns the heading near-black
+   on a near-black image (invisible), and the orange-eyebrow darkening
+   above dims the label. Re-force white heading + bright orange eyebrow
+   inside the band only. */
+[data-theme="light"] [data-testid="features-visual-band"] .text-white {
+  color: #FFFFFF !important;
+}
+[data-theme="light"] [data-testid="features-visual-band"] .t2q-section-label {
+  color: #FF5F15 !important;
+}
+
 [data-theme="light"] h1,
 [data-theme="light"] h2,
 [data-theme="light"] h3 { color: #0A0A0A; }
@@ -1216,7 +1249,7 @@ h1, h2, h3, h4, h5 {
 
 /* Hi-vis yellow text on cream backgrounds becomes a darker amber so it
    stays readable. Dark mode still gets the hi-vis. */
-[data-theme="light"] .text-hivis { color: #8A6D00 !important; }
+[data-theme="light"] .text-hivis { color: #7A5C00 !important; }
 
 /* Hi-vis bordered + tinted boxes (used as warning/attention surfaces) get
    a darker amber pair on light mode. */
