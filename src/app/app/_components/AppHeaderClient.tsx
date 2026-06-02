@@ -182,6 +182,7 @@ export function AppHeaderClient({
               ref={triggerRef}
               type="button"
               data-testid="app-header-avatar"
+              data-tour="account-menu"
               aria-haspopup="menu"
               aria-expanded={hubOpen}
               aria-label="Account hub"

@@ -1641,6 +1641,196 @@ h1, h2, h3, h4, h5 {
 [data-shell="app"][data-theme="light"] .text-blue-200,
 [data-shell="app"][data-theme="light"] .text-blue-300         { color: #1D4ED8 !important; }
 
+/* =========================================================================
+   XERO-STYLE PROFESSIONAL FINISH — scoped to the signed-in app only.
+
+   This tightens the earlier light-mode direction into a calmer accounting
+   SaaS shell: white header, flat information panels, slate body text and
+   orange as the primary action/active colour. No data, server actions, or
+   business logic are touched by this section.
+   ========================================================================= */
+
+[data-shell="app"][data-theme="light"] {
+  --t2q-app-page: #F4F7FA;
+  --t2q-app-surface: #FFFFFF;
+  --t2q-app-surface-muted: #F8FAFC;
+  --t2q-app-border: #DDE5EC;
+  --t2q-app-border-soft: #E8EEF3;
+  --t2q-app-text: #17212B;
+  --t2q-app-muted: #607383;
+  --t2q-app-orange-soft: #FFF1EA;
+}
+
+[data-shell="app"][data-theme="light"].t2q-app-canvas {
+  background: var(--t2q-app-page) !important;
+}
+
+[data-shell="app"][data-theme="light"] main {
+  color: var(--t2q-app-text);
+}
+
+[data-shell="app"][data-theme="light"] [data-testid="app-header"] {
+  background: rgba(255, 255, 255, 0.96) !important;
+  border-color: var(--t2q-app-border) !important;
+  box-shadow: 0 1px 0 rgba(15, 23, 42, 0.04);
+  backdrop-filter: blur(12px) saturate(140%);
+  -webkit-backdrop-filter: blur(12px) saturate(140%);
+}
+
+[data-shell="app"][data-theme="light"] [data-testid="app-header"] > div {
+  max-width: 72rem;
+}
+
+[data-shell="app"][data-theme="light"] .t2q-logo-chip {
+  background: #17212B !important;
+  border-color: #17212B !important;
+  border-radius: 0.625rem;
+  box-shadow: none;
+}
+
+[data-shell="app"][data-theme="light"] .t2q-nav-tab {
+  height: 2.375rem;
+  border-radius: 0.5rem;
+  color: #415466;
+  font-family: var(--font-plus-jakarta), "Inter", system-ui, sans-serif;
+  font-size: 0.875rem;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+[data-shell="app"][data-theme="light"] .t2q-nav-tab:hover {
+  color: var(--t2q-app-text);
+  background: var(--t2q-app-surface-muted);
+}
+
+[data-shell="app"][data-theme="light"] .t2q-nav-tab[aria-current="page"] {
+  color: #C2410C;
+  background: var(--t2q-app-orange-soft);
+  border-color: #FFD4B8;
+  font-weight: 700;
+}
+
+[data-shell="app"][data-theme="light"] .t2q-nav-tab[aria-current="page"]::after {
+  content: none;
+}
+
+[data-shell="app"][data-theme="light"] .t2q-card-pro,
+[data-shell="app"][data-theme="light"] .t2q-premium-card,
+[data-shell="app"][data-theme="light"] .t2q-premium-card-static {
+  background: var(--t2q-app-surface) !important;
+  border-color: var(--t2q-app-border-soft) !important;
+  border-radius: 0.875rem;
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.04),
+    0 8px 20px -18px rgba(15, 23, 42, 0.28) !important;
+}
+
+[data-shell="app"][data-theme="light"] .t2q-card-pro-hover:hover {
+  border-color: #FFD4B8 !important;
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.04),
+    0 12px 24px -18px rgba(255, 95, 21, 0.40) !important;
+}
+
+[data-shell="app"][data-theme="light"] .t2q-section-label-pro {
+  color: var(--t2q-app-muted) !important;
+  font-family: var(--font-plus-jakarta), "Inter", system-ui, sans-serif;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+[data-shell="app"][data-theme="light"] .t2q-btn-primary-pro,
+[data-shell="app"][data-theme="light"] .t2q-bottomnav-fab {
+  background: #FF5F15 !important;
+  color: #FFFFFF !important;
+  border: 1px solid #FF5F15;
+}
+
+[data-shell="app"][data-theme="light"] .t2q-btn-primary-pro {
+  min-height: 2.75rem;
+  height: 2.75rem;
+  border-radius: 0.5rem;
+}
+
+[data-shell="app"][data-theme="light"] .t2q-btn-ghost-pro {
+  background: #FFFFFF !important;
+  color: var(--t2q-app-text) !important;
+  border-color: var(--t2q-app-border) !important;
+  border-radius: 0.5rem;
+  min-height: 2.75rem;
+  height: 2.75rem;
+}
+
+[data-shell="app"][data-theme="light"] .t2q-btn-ghost-pro:hover {
+  background: var(--t2q-app-surface-muted) !important;
+  border-color: #FFD4B8 !important;
+  color: #C2410C !important;
+}
+
+[data-shell="app"][data-theme="light"] input,
+[data-shell="app"][data-theme="light"] textarea,
+[data-shell="app"][data-theme="light"] select {
+  background: #FFFFFF !important;
+  border-color: #CBD5E1 !important;
+  border-radius: 0.5rem !important;
+  color: var(--t2q-app-text) !important;
+}
+
+[data-shell="app"][data-theme="light"] input:focus,
+[data-shell="app"][data-theme="light"] textarea:focus,
+[data-shell="app"][data-theme="light"] select:focus {
+  border-color: #FF5F15 !important;
+  box-shadow: 0 0 0 3px rgba(255, 95, 21, 0.18) !important;
+}
+
+[data-shell="app"][data-theme="light"] .t2q-bottomnav-bar {
+  background: rgba(255, 255, 255, 0.98) !important;
+  border-color: var(--t2q-app-border) !important;
+  border-radius: 1.125rem;
+  box-shadow: 0 -10px 24px -18px rgba(15, 23, 42, 0.34) !important;
+}
+
+[data-shell="app"][data-theme="light"] .t2q-bottomnav-tile {
+  color: #52677A;
+}
+
+[data-shell="app"][data-theme="light"] .t2q-bottomnav-tile[aria-current="page"] {
+  color: #C2410C;
+  background: var(--t2q-app-orange-soft);
+}
+
+[data-shell="app"][data-theme="light"] .t2q-avatar-online {
+  animation: none;
+  border-color: var(--t2q-app-border) !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+}
+
+[data-shell="app"][data-theme="light"] .t2q-avatar-online::after {
+  border-color: #FFFFFF;
+}
+
+[data-shell="app"][data-theme="light"] [data-testid="side-measure-tape"] {
+  display: none;
+}
+
+[data-shell="app"][data-theme="light"] [data-testid="account-hub"] {
+  background: #FFFFFF !important;
+  border-color: var(--t2q-app-border) !important;
+  box-shadow: 0 18px 48px rgba(15, 23, 42, 0.16);
+}
+
+[data-shell="app"][data-theme="light"] [data-testid="account-hub"] a,
+[data-shell="app"][data-theme="light"] [data-testid="account-hub"] button:not([type="submit"]) {
+  border-radius: 0.625rem;
+}
+
+[data-shell="app"][data-theme="light"] [data-testid="top-progress-bar"] > div {
+  background: #FF5F15 !important;
+}
+
 /* ─── Bottom-nav centre FAB ───────────────────────────────────────────────
    Centre "New quote" action button. Sits INLINE inside the floating pill
    bar (vertically centred with the other tiles), not raised above it — so

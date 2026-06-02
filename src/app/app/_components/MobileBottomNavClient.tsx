@@ -116,6 +116,7 @@ export function MobileBottomNavClient({ isOwner, userEmail, avatarUrl }: Props) 
       <button
         type="button"
         data-testid="app-mobile-avatar"
+        data-tour="account-menu"
         aria-label="Account menu"
         aria-expanded={sheetOpen}
         onClick={() => setSheetOpen(true)}
@@ -155,6 +156,7 @@ export function MobileBottomNavClient({ isOwner, userEmail, avatarUrl }: Props) 
             prefetch={true}
             aria-label="New quote"
             data-testid="app-bottom-nav-new"
+            data-tour="new-quote"
             className="t2q-bottomnav-fab"
           >
             <Plus size={26} weight="bold" aria-hidden="true" />

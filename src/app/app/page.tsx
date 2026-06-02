@@ -73,12 +73,42 @@ export default async function DashboardPage() {
     <div className="min-h-screen text-white">
       <AppHeader />
 
-      <main className="mx-auto max-w-3xl px-4 py-10 sm:px-6 sm:py-14">
-        <div className="mb-7 sm:mb-8">
-          <div className="t2q-section-label-pro mb-2.5">{"// dashboard"}</div>
-          <h1 className="font-display text-[2rem] leading-[1.05] uppercase tracking-tight sm:text-[2.5rem]">
-            Welcome, <span className="text-brand">{username}.</span>
-          </h1>
+      <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6 sm:py-10">
+        <div
+          data-testid="dashboard-hero"
+          className="mb-7 flex flex-col gap-5 sm:mb-8 sm:flex-row sm:items-end sm:justify-between"
+        >
+          <div className="min-w-0">
+            <div className="t2q-section-label-pro mb-2.5">Dashboard</div>
+            <h1 className="font-display text-[2rem] leading-[1.05] uppercase tracking-tight sm:text-[2.5rem]">
+              Welcome, <span className="text-brand">{username}.</span>
+            </h1>
+            <p className="mt-2 max-w-2xl text-sm leading-relaxed text-ink-300 sm:text-base">
+              Track quotes, jobs, materials, and client follow-ups from one
+              tidy workspace.
+            </p>
+          </div>
+          <div
+            data-testid="dashboard-actions"
+            className="flex flex-col gap-2 sm:flex-row sm:items-center"
+          >
+            <Link
+              href="/app/quotes"
+              data-testid="dashboard-view-quotes"
+              className="t2q-btn-ghost-pro"
+            >
+              Quotes
+              <ArrowRight size={15} weight="bold" />
+            </Link>
+            <Link
+              href="/app/quotes/new"
+              data-testid="dashboard-new-quote"
+              className="t2q-btn-primary-pro"
+            >
+              <Plus size={18} weight="bold" />
+              New quote
+            </Link>
+          </div>
         </div>
 
         <Suspense fallback={<DashboardSkeleton />}>
@@ -787,4 +817,3 @@ function KpiCard({
 function serverTodayISO(): string {
   return new Date().toISOString().slice(0, 10);
 }
-

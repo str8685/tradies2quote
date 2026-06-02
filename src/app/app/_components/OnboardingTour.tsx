@@ -27,38 +27,37 @@ import "driver.js/dist/driver.css";
 
 const STORAGE_KEY = "t2q-tour-done";
 
-/** Brand overrides for Driver.js's default white popover. Injected
- *  once per page-load when the tour mounts so the popover picks up the
- *  ink + brand-orange palette instead of the library's vanilla white.
+/** Professional app-shell overrides for Driver.js's default popover.
  *  Scoped to `.t2q-tour` via popoverClass so it never leaks to any
  *  other Driver.js instance someone might add later. */
 const POPOVER_CSS = `
 .driver-popover.t2q-tour {
-  background-color: #0A0A0A;
-  color: #F5F5F5;
-  border: 1px solid #2A2A2A;
-  border-radius: 6px;
+  background-color: #FFFFFF;
+  color: #17212B;
+  border: 1px solid #DDE3EA;
+  border-radius: 12px;
   padding: 18px 18px 16px;
-  max-width: 320px;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+  max-width: 340px;
+  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.18);
 }
 .driver-popover.t2q-tour .driver-popover-title {
-  font-family: 'Archivo Black', system-ui, sans-serif;
+  font-family: var(--font-plus-jakarta), 'Inter', system-ui, sans-serif;
   font-size: 16px;
-  text-transform: uppercase;
+  font-weight: 700;
   letter-spacing: -0.01em;
-  color: #FFFFFF;
+  color: #17212B;
   margin-bottom: 8px;
 }
 .driver-popover.t2q-tour .driver-popover-description {
   font-size: 13.5px;
   line-height: 1.55;
-  color: #D4D4D4;
+  color: #4B5563;
 }
 .driver-popover.t2q-tour .driver-popover-progress-text {
-  font-family: 'IBM Plex Mono', ui-monospace, monospace;
-  font-size: 10px;
-  letter-spacing: 0.2em;
+  font-family: var(--font-plus-jakarta), 'Inter', system-ui, sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
   color: #FF5F15;
 }
@@ -66,35 +65,34 @@ const POPOVER_CSS = `
   margin-top: 16px;
 }
 .driver-popover.t2q-tour .driver-popover-footer button {
-  font-family: 'Archivo Black', system-ui, sans-serif;
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.02em;
+  font-family: var(--font-plus-jakarta), 'Inter', system-ui, sans-serif;
+  font-size: 12px;
+  font-weight: 700;
   padding: 8px 14px;
-  border-radius: 3px;
-  border: 1px solid #2A2A2A;
-  background: #1A1A1A;
-  color: #F5F5F5;
+  border-radius: 8px;
+  border: 1px solid #DDE3EA;
+  background: #FFFFFF;
+  color: #17212B;
   text-shadow: none;
   transition: background-color 0.15s, color 0.15s, border-color 0.15s;
 }
 .driver-popover.t2q-tour .driver-popover-footer button:hover {
-  background: #2A2A2A;
-  border-color: #FF5F15;
-  color: #FF5F15;
+  background: #F8FAFC;
+  border-color: #FFB68A;
+  color: #E04F0A;
 }
 .driver-popover.t2q-tour .driver-popover-next-btn {
   background: #FF5F15 !important;
-  color: #111111 !important;
+  color: #FFFFFF !important;
   border-color: #FF5F15 !important;
 }
 .driver-popover.t2q-tour .driver-popover-next-btn:hover {
   background: #E04F0A !important;
   border-color: #E04F0A !important;
-  color: #111111 !important;
+  color: #FFFFFF !important;
 }
 .driver-popover.t2q-tour .driver-popover-close-btn {
-  color: #737373;
+  color: #94A3B8;
   font-size: 22px;
   width: 36px;
   height: 32px;
@@ -104,12 +102,19 @@ const POPOVER_CSS = `
   color: #FF5F15;
 }
 .driver-popover.t2q-tour .driver-popover-arrow {
-  border-color: #0A0A0A;
+  border-color: #FFFFFF;
 }
 .driver-popover.t2q-tour .driver-popover-arrow-side-top { border-bottom-color: transparent; border-left-color: transparent; border-right-color: transparent; }
 .driver-popover.t2q-tour .driver-popover-arrow-side-bottom { border-top-color: transparent; border-left-color: transparent; border-right-color: transparent; }
 .driver-popover.t2q-tour .driver-popover-arrow-side-left { border-right-color: transparent; border-top-color: transparent; border-bottom-color: transparent; }
 .driver-popover.t2q-tour .driver-popover-arrow-side-right { border-left-color: transparent; border-top-color: transparent; border-bottom-color: transparent; }
+.driver-overlay {
+  background: rgba(15, 23, 42, 0.42) !important;
+}
+.driver-active-element {
+  border-radius: 12px !important;
+  box-shadow: 0 0 0 3px rgba(255, 95, 21, 0.28) !important;
+}
 `;
 
 const STYLE_TAG_ID = "t2q-tour-overrides";
@@ -138,11 +143,52 @@ const ALL_STEPS: ReadonlyArray<DriveStep> = [
   {
     // Welcome step — no element, popover renders centered.
     popover: {
-      title: "Welcome to T2Q",
+      title: "Welcome to Tradies2Quote",
       description:
-        "Talk through a job for 60 seconds and get a branded quote PDF — before you've packed up the ute. Quick tour: 4 stops.",
+        "This quick tour shows the main work areas: creating quotes, tracking the pipeline, reviewing jobs, and finding settings.",
       showButtons: ["next", "close"],
-      nextBtnText: "Start tour →",
+      nextBtnText: "Start tour",
+    },
+  },
+  {
+    element: '[data-testid="beta-review-notice"]',
+    popover: {
+      title: "Review beta guidance",
+      description:
+        "During beta, treat generated scopes, quantities, and prices as drafts. This notice links to the checklist to review before sending a quote.",
+      side: "bottom",
+      align: "center",
+    },
+  },
+  {
+    element: '[data-testid="dashboard-actions"]',
+    popover: {
+      title: "Top actions",
+      description:
+        "Use these buttons to open your quote list or start a new quote. The orange action is the main next step on each screen.",
+      side: "bottom",
+      align: "end",
+    },
+  },
+  {
+    element:
+      '[data-testid="dashboard-new-quote"], [data-tour="new-quote"], [data-testid="dashboard-empty-cta"]',
+    popover: {
+      title: "Create a quote",
+      description:
+        "Open New quote to record, type, or scan the job details. This is where the quote workflow begins.",
+      side: "bottom",
+      align: "center",
+    },
+  },
+  {
+    element: '[data-testid="dashboard-kpi-strip"]',
+    popover: {
+      title: "Headline numbers",
+      description:
+        "These cards summarise current quoting activity: this month, replies waiting, accepted work, and drafts needing attention.",
+      side: "bottom",
+      align: "center",
     },
   },
   {
@@ -153,9 +199,9 @@ const ALL_STEPS: ReadonlyArray<DriveStep> = [
     // and lets the popover sit cleanly below it.
     element: '[data-testid="dashboard-stage-tiles"]',
     popover: {
-      title: "Your pipeline",
+      title: "Quote pipeline",
       description:
-        "Every quote you create lives here, grouped by stage: Draft → Sent → Viewed → Accepted → Scheduled → In progress → Completed. Tap any stage tile to filter.",
+        "Quotes move through stages from draft to completed. Tap a stage tile to open the quote list filtered to that stage.",
       side: "bottom",
       align: "center",
     },
@@ -167,29 +213,70 @@ const ALL_STEPS: ReadonlyArray<DriveStep> = [
     // created their first quote yet.
     element: '[data-testid="dashboard-pipeline-empty"]',
     popover: {
-      title: "Your pipeline",
+      title: "Quote pipeline",
       description:
-        "This is where every quote you create will live, grouped by stage. Create your first quote and you'll see it appear here.",
+        "Your quotes will appear here grouped by stage once you create the first one.",
       side: "bottom",
       align: "center",
     },
   },
   {
-    element: '[data-testid="dashboard-new-quote"]',
+    element: '[data-testid="dashboard-calendar"]',
     popover: {
-      title: "Start a quote",
+      title: "Schedule",
       description:
-        "Hit New quote to open the recorder. Talk through the job — client, site, what's being done, rough materials. T2Q handles pricing, labour and markup.",
+        "Scheduled jobs and personal day notes live here. Select a date to see what is booked and add reminders.",
       side: "top",
-      align: "end",
+      align: "center",
+    },
+  },
+  {
+    element: '[data-testid="quotes-list-client"], [data-testid="dashboard-empty"]',
+    popover: {
+      title: "Recent quotes",
+      description:
+        "Your latest quote drafts and sent quotes show here. Open one to review, edit, send, or create a PDF.",
+      side: "top",
+      align: "center",
+    },
+  },
+  {
+    element: '[data-testid="app-header-tabs"], [data-testid="app-bottom-nav"]',
+    popover: {
+      title: "Main navigation",
+      description:
+        "Use the navigation to move between Home, Quotes, Invoices, and Materials. Active sections use your orange brand accent.",
+      side: "bottom",
+      align: "center",
+    },
+  },
+  {
+    element:
+      '[data-testid="app-header-tab-materials"], [data-testid="app-bottom-nav-materials"]',
+    popover: {
+      title: "Materials library",
+      description:
+        "Materials is where your commonly used items and prices live. Keeping it updated makes future quotes more accurate.",
+      side: "top",
+      align: "center",
+    },
+  },
+  {
+    element: '[data-tour="account-menu"]',
+    popover: {
+      title: "Account and settings",
+      description:
+        "Open this menu for business details, quote defaults, invoice defaults, clients, notifications, and sign out.",
+      side: "left",
+      align: "start",
     },
   },
   {
     // Final wrap-up step — no element, popover renders centered.
     popover: {
-      title: "You're set",
+      title: "You're ready",
       description:
-        "To open T2Q without the browser bar, add it to your home screen: tap the Share icon in Safari → Add to Home Screen. Full manual: Me → Settings → User guide.",
+        "Start with New quote, then review drafts before sending. You can replay guidance from Settings if you need a refresher.",
       showButtons: ["previous", "close"],
       doneBtnText: "Get started",
     },
@@ -246,7 +333,7 @@ export function OnboardingTour() {
     const waitForSplash = () => {
       if (cancelled) return;
       const splash = document.querySelector(
-        '[data-testid="loading-screen"]',
+        '[data-testid="loading-screen"], [data-testid="app-splash"]',
       );
       const elapsed = Date.now() - startedAt;
       if (!splash || elapsed > MAX_WAIT_MS) {
@@ -258,13 +345,62 @@ export function OnboardingTour() {
 
     const kickOff = () => {
       try {
-        // Filter steps to only those whose element exists in the DOM
-        // right now. Welcome + final steps have no element and always
-        // run.
-        const steps = ALL_STEPS.filter((step) => {
-          if (typeof step.element !== "string") return true;
-          return document.querySelector(step.element) !== null;
-        });
+        // Resolve each step to the element the user can ACTUALLY SEE.
+        //
+        // The nav steps use comma selectors that list the desktop header
+        // element first (e.g. app-header-tabs, app-header-tab-materials).
+        // On mobile those nodes still exist in the DOM but are
+        // display:none — and Driver.js's querySelector would grab that
+        // first, hidden, zero-size node, parking the popover at the top of
+        // the screen pointing at nothing (the "stuck at the top" bug on
+        // steps 9–12). We pick the first VISIBLE match instead, and pass
+        // the resolved HTMLElement straight to Driver.js.
+        const firstVisible = (selector: string): HTMLElement | null => {
+          const nodes = Array.from(
+            document.querySelectorAll<HTMLElement>(selector),
+          );
+          for (const el of nodes) {
+            const r = el.getBoundingClientRect();
+            const cs = getComputedStyle(el);
+            if (
+              r.width > 1 &&
+              r.height > 1 &&
+              cs.visibility !== "hidden" &&
+              cs.display !== "none"
+            ) {
+              return el;
+            }
+          }
+          return null;
+        };
+
+        const vh =
+          window.innerHeight || document.documentElement.clientHeight || 0;
+
+        const steps: DriveStep[] = [];
+        for (const step of ALL_STEPS) {
+          // Welcome + final steps have no element and always run centred.
+          if (typeof step.element !== "string") {
+            steps.push(step);
+            continue;
+          }
+          const el = firstVisible(step.element);
+          if (!el) continue; // no visible anchor right now — skip it
+          // Auto-correct the popover side for elements pinned to a screen
+          // edge so the bubble never lands off-screen: a fixed bottom nav
+          // gets the bubble ABOVE it; a sticky top header gets it BELOW.
+          const rect = el.getBoundingClientRect();
+          let side = step.popover?.side;
+          if (vh > 0 && rect.top > vh * 0.6) side = "top";
+          else if (vh > 0 && rect.bottom < vh * 0.25) side = "bottom";
+          steps.push({
+            ...step,
+            element: el,
+            popover: step.popover
+              ? { ...step.popover, side }
+              : step.popover,
+          });
+        }
 
         // If only the welcome + done steps survived, there's nothing
         // useful to highlight — skip the tour and mark it done so we
@@ -278,12 +414,12 @@ export function OnboardingTour() {
           showProgress: true,
           progressText: "Step {{current}} of {{total}}",
           allowClose: true,
-          overlayOpacity: 0.7,
-          stagePadding: 6,
-          stageRadius: 6,
+          overlayOpacity: 0.42,
+          stagePadding: 8,
+          stageRadius: 12,
           popoverClass: "t2q-tour",
-          nextBtnText: "Next →",
-          prevBtnText: "← Back",
+          nextBtnText: "Next",
+          prevBtnText: "Back",
           doneBtnText: "Done",
           // Scroll the highlighted element into view before positioning
           // the popover. Without this, an anchor that's even partially
