@@ -70,7 +70,7 @@ const FAQS: ReadonlyArray<{ q: string; a: React.ReactNode }> = [
         This is on purpose during the beta. Tradies2Quote does <strong>not</strong>{" "}
         guess prices for you — AI-generated unit prices have been turned off so
         we never send a customer a number the AI made up. Every material starts
-        with a <em>"Needs price"</em> badge and you fill in your real
+        with a <em>&ldquo;Needs price&rdquo;</em> badge and you fill in your real
         prices. Once you set them in the{" "}
         <Link href="/app/materials" className="text-brand hover:underline">
           Materials library
