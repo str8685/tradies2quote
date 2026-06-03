@@ -12,6 +12,7 @@ import {
   Receipt,
   Trash,
   Warning,
+  X,
 } from "@phosphor-icons/react";
 import { toExGst } from "@/lib/materials/quoteExtraction";
 import type { SupplierQuoteExtraction } from "@/lib/materials/quoteExtraction";
@@ -46,6 +47,8 @@ type ReviewRow = {
   /** Printed line total as scanned — read-only SOURCE for reconciliation. */
   sourceLineTotal: number | null;
   lowConfidence: boolean;
+  /** Exactly what the scanner read for this row — provenance for spot-checks. */
+  rawText: string | null;
 };
 
 type ExtractResponse = {
@@ -62,6 +65,7 @@ type ExtractResponse = {
     line_total?: number | null;
     sku: string | null;
     confidence: number;
+    raw_text?: string | null;
   }>;
   subtotal?: number | null;
   gst?: number | null;
@@ -88,6 +92,9 @@ export function QuoteImportClient({ currency }: { currency: string }) {
   // ref too so we can revoke the previous URL on replace / unmount.
   const [previewUrl, setPreviewUrl] = useState<string>("");
   const previewUrlRef = useRef<string>("");
+  // Full-screen view of the scan so the tradie can compare each line to the
+  // original photo while reviewing.
+  const [zoomOpen, setZoomOpen] = useState<boolean>(false);
   const [error, setError] = useState<string>("");
   const [supplier, setSupplier] = useState<string>("");
   const [gstInclusive, setGstInclusive] = useState<boolean>(false);
@@ -220,7 +227,11 @@ export function QuoteImportClient({ currency }: { currency: string }) {
           price: it.price !== null ? String(it.price) : "",
           sku: it.sku,
           sourceLineTotal: it.line_total ?? null,
-          lowConfidence: it.confidence < 0.6,
+          // Raised from 0.6 → 0.8: in pursuit of "1000% correct" we'd rather
+          // flag a few extra lines for a 2-second eyeball than let a quiet
+          // misread (smudged digit, derived unit price) through.
+          lowConfidence: it.confidence < 0.8,
+          rawText: it.raw_text ?? null,
         })),
       );
       setPhase("review");
@@ -530,9 +541,36 @@ export function QuoteImportClient({ currency }: { currency: string }) {
       {(phase === "review" || phase === "saving" || phase === "creating") && (
         <div className="mt-4 space-y-4">
           <div className="t2q-card-pro p-4 sm:p-5">
-            <div className="font-mono text-[10px] uppercase tracking-[0.25em] text-brand">
-              {"// step 2 — check the lines"}
+            <div className="flex items-center justify-between gap-3">
+              <div className="font-mono text-[10px] uppercase tracking-[0.25em] text-brand">
+                {"// step 2 — check the lines"}
+              </div>
+              {previewUrl && (
+                <button
+                  type="button"
+                  onClick={() => setZoomOpen(true)}
+                  data-testid="quote-import-view-scan"
+                  className="inline-flex items-center gap-1.5 rounded-sm border border-ink-700 px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.15em] text-ink-200 hover:border-brand hover:text-brand"
+                >
+                  <ImageIcon size={13} weight="bold" />
+                  View scan
+                </button>
+              )}
             </div>
+            {(() => {
+              const n = rows.filter((r) => r.lowConfidence).length;
+              if (n === 0) return null;
+              return (
+                <p
+                  data-testid="quote-import-lowconf-tally"
+                  className="mt-2 flex items-center gap-1.5 rounded-sm border border-hivis/40 bg-hivis/10 px-2.5 py-1.5 text-xs text-hivis"
+                >
+                  <Warning size={13} weight="fill" className="shrink-0" />
+                  {n} line{n === 1 ? "" : "s"} to double-check — the amber ones
+                  below show what the scanner read; tap “View scan” to compare.
+                </p>
+              );
+            })()}
             <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-end sm:gap-4">
               <label className="flex-1">
                 <span className="block font-mono text-[10px] uppercase tracking-[0.2em] text-ink-400">
@@ -694,6 +732,17 @@ export function QuoteImportClient({ currency }: { currency: string }) {
                       {badPrice && r.include && (
                         <p className="mt-1 text-[11px] text-red-300">
                           Add a price above zero, or untick this line.
+                        </p>
+                      )}
+                      {r.rawText && (
+                        <p
+                          data-testid="quote-import-rawtext"
+                          className={`mt-1.5 break-words font-mono text-[10px] leading-snug ${
+                            r.lowConfidence ? "text-hivis" : "text-ink-500"
+                          }`}
+                        >
+                          <span className="opacity-70">Scanned as: </span>
+                          {r.rawText}
                         </p>
                       )}
                       {(() => {
@@ -876,6 +925,32 @@ export function QuoteImportClient({ currency }: { currency: string }) {
               Cancel
             </Link>
           </div>
+        </div>
+      )}
+
+      {/* Full-screen scan viewer — lets the tradie zoom the original photo to
+          verify any flagged line against the source. */}
+      {zoomOpen && previewUrl && (
+        <div
+          data-testid="quote-import-scan-zoom"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4"
+          onClick={() => setZoomOpen(false)}
+        >
+          <button
+            type="button"
+            aria-label="Close scan view"
+            onClick={() => setZoomOpen(false)}
+            className="absolute right-4 top-4 grid h-10 w-10 place-items-center rounded-full bg-white/10 text-white hover:bg-white/20"
+          >
+            <X size={20} weight="bold" />
+          </button>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={previewUrl}
+            alt="Scanned supplier quote"
+            onClick={(e) => e.stopPropagation()}
+            className="max-h-full max-w-full rounded-lg object-contain"
+          />
         </div>
       )}
     </section>

@@ -83,6 +83,12 @@ function buildPlanMarker(
     if (plan.length_m > 0) parts.push(`length_m=${plan.length_m}`);
     if (plan.width_m > 0) parts.push(`width_m=${plan.width_m}`);
   }
+  // Composite/primitive footprints carry a deterministically-computed area
+  // (L-shape, triangle, …). Pass it through so area-based calculators use the
+  // true figure instead of length×width of the bounding box.
+  if (plan.area_m2 && plan.area_m2 > 0 && plan.shape_label) {
+    parts.push(`area_m2=${plan.area_m2}`);
+  }
   if (plan.height_m && plan.height_m > 0) {
     parts.push(`height_m=${plan.height_m}`);
   }
@@ -657,6 +663,29 @@ function DimensionReview({
           </p>
         )}
       </div>
+
+      {plan && (plan.area_m2 != null || plan.perimeter_m != null) && (
+        <div
+          data-testid="scan-geometry"
+          className="mt-3 flex flex-wrap items-center gap-2"
+        >
+          {plan.shape_label && (
+            <span className="inline-flex items-center gap-1 rounded-sm bg-brand/15 px-2 py-1 font-mono text-[10px] uppercase tracking-[0.15em] text-brand">
+              {plan.shape_label}
+            </span>
+          )}
+          {plan.area_m2 != null && (
+            <span className="rounded-sm border border-ink-700 px-2 py-1 font-mono text-[10px] uppercase tracking-[0.15em] text-ink-200">
+              Area {plan.area_m2} m²
+            </span>
+          )}
+          {plan.perimeter_m != null && (
+            <span className="rounded-sm border border-ink-700 px-2 py-1 font-mono text-[10px] uppercase tracking-[0.15em] text-ink-200">
+              Perimeter {plan.perimeter_m} m
+            </span>
+          )}
+        </div>
+      )}
 
       {plan && (
         <div

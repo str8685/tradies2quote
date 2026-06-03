@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { canWrite, getSubscriptionStatus } from "@/lib/subscription";
 import { resolveDocumentType } from "@/lib/scanClassify";
 import { consumeDailyQuota, tooManyRequestsResponse } from "@/lib/rate-limit";
+import { computePlanGeometry, type Region } from "@/lib/takeoff/geometry";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -111,9 +112,16 @@ Output shape:
   "structural": string,
   "notes": string,
   "plan": {
-    "shape": "rect" | "l_shape" | "line" | "other",
+    "shape": "rect" | "l_shape" | "line" | "triangle" | "circle" | "trapezoid" | "other",
     "width_m": number,
     "length_m": number,
+    "regions": [ { "width_m": number, "length_m": number, "label": string | null } ] | null,
+    "tri_base_m": number | null,
+    "tri_height_m": number | null,
+    "radius_m": number | null,
+    "trap_a_m": number | null,
+    "trap_b_m": number | null,
+    "trap_h_m": number | null,
     "post_count": number | null,
     "post_spacing_m": number | null,
     "joist_spacing_mm": number | null,
@@ -129,7 +137,14 @@ Where:
 - "dimensions" is the PRIMARY DIMENSIONS section ONLY — one dimension per line, no headers, no extra commentary. This is what the tradie will review first to catch misreads. 4–20 lines typically.
 - "structural" is sections 3–6 (structural elements, fixings, concrete, accessories) joined with newlines.
 - "notes" is sections 7–9 (tradie's labels, assumptions, missing info) joined with newlines.
-- "plan" is the smallest structured summary that a programmatic renderer can use to draw a clean schematic of what's being built. Use NULL for any field you can't extract from the drawing. Use NULL for the entire plan if the sketch is too ambiguous to produce a confident shape. Width and length in metres, joist spacing in millimetres. "line" shape is for fences (length_m only matters). "joist_orientation" is which axis the joists span across — "width" means joists run parallel to the width edge, "length" means parallel to the length edge.`;
+- "plan" is the smallest structured summary that a programmatic renderer can use to draw a clean schematic of what's being built. Use NULL for any field you can't extract from the drawing. Use NULL for the entire plan if the sketch is too ambiguous to produce a confident shape. Width and length in metres, joist spacing in millimetres. "line" shape is for fences (length_m only matters). "joist_orientation" is which axis the joists span across — "width" means joists run parallel to the width edge, "length" means parallel to the length edge.
+- SHAPE — get the footprint right; do NOT flatten everything to a rectangle:
+  - If the footprint is a simple rectangle, set shape "rect" and fill width_m + length_m.
+  - If it is an L / T / U / stepped footprint, set shape "l_shape" and BREAK IT INTO "regions" — a list of NON-OVERLAPPING sub-rectangles whose areas add up to the true footprint (e.g. an L is two rectangles). Still fill width_m + length_m with the OVERALL bounding box.
+  - If it is a triangle, set shape "triangle" and fill tri_base_m + tri_height_m (perpendicular height).
+  - If it is a circle / round pad, set shape "circle" and fill radius_m.
+  - If it is a trapezoid, set shape "trapezoid" and fill trap_a_m + trap_b_m (the two parallel sides) + trap_h_m (height between them).
+  - The app computes the real area and perimeter from these numbers itself — you only READ the dimensions, you do NOT compute areas. Never invent a dimension that isn't drawn.`;
 }
 
 interface AnthropicResponse {
@@ -138,9 +153,22 @@ interface AnthropicResponse {
 }
 
 export interface ScannedPlan {
-  shape: "rect" | "l_shape" | "line" | "other";
+  shape: "rect" | "l_shape" | "line" | "triangle" | "circle" | "trapezoid" | "other";
   width_m: number;
   length_m: number;
+  /** Composite footprint (L/T/U/stepped) as non-overlapping sub-rectangles. */
+  regions: Region[] | null;
+  /** Deterministically computed by the app — NOT read off the drawing. */
+  area_m2: number | null;
+  perimeter_m: number | null;
+  /** Human label for the computed shape, e.g. "L-shape (2 regions)". */
+  shape_label: string | null;
+  tri_base_m: number | null;
+  tri_height_m: number | null;
+  radius_m: number | null;
+  trap_a_m: number | null;
+  trap_b_m: number | null;
+  trap_h_m: number | null;
   post_count: number | null;
   post_spacing_m: number | null;
   joist_spacing_mm: number | null;
@@ -161,13 +189,40 @@ interface ScanPayload {
 }
 
 
+const VALID_SHAPES = new Set([
+  "rect",
+  "l_shape",
+  "line",
+  "triangle",
+  "circle",
+  "trapezoid",
+]);
+
+/** Parse the model's `regions` array into clean sub-rectangles. */
+function sanitiseRegions(raw: unknown): Region[] | null {
+  if (!Array.isArray(raw)) return null;
+  const out: Region[] = [];
+  for (const item of raw) {
+    if (!item || typeof item !== "object") continue;
+    const o = item as Record<string, unknown>;
+    const w = Number(o.width_m);
+    const l = Number(o.length_m);
+    if (!Number.isFinite(w) || !Number.isFinite(l) || w <= 0 || l <= 0) continue;
+    out.push({
+      width_m: w,
+      length_m: l,
+      label: typeof o.label === "string" && o.label.trim() ? o.label.trim() : null,
+    });
+  }
+  return out.length > 0 ? out : null;
+}
+
 function sanitisePlan(raw: unknown): ScannedPlan | null {
   if (!raw || typeof raw !== "object") return null;
   const r = raw as Record<string, unknown>;
-  const shape =
-    r.shape === "rect" || r.shape === "l_shape" || r.shape === "line"
-      ? r.shape
-      : "other";
+  const shape = (
+    typeof r.shape === "string" && VALID_SHAPES.has(r.shape) ? r.shape : "other"
+  ) as ScannedPlan["shape"];
   const w = Number(r.width_m);
   const l = Number(r.length_m);
   // Reject the plan outright if we don't have at least a width AND length —
@@ -183,16 +238,68 @@ function sanitisePlan(raw: unknown): ScannedPlan | null {
     r.joist_orientation === "width" || r.joist_orientation === "length"
       ? r.joist_orientation
       : null;
+  const regions = sanitiseRegions(r.regions);
+  const tri_base_m = optNum(r.tri_base_m);
+  const tri_height_m = optNum(r.tri_height_m);
+  const radius_m = optNum(r.radius_m);
+  const trap_a_m = optNum(r.trap_a_m);
+  const trap_b_m = optNum(r.trap_b_m);
+  const trap_h_m = optNum(r.trap_h_m);
+
+  // Deterministic geometry — the app computes area/perimeter, never the model.
+  const geo = computePlanGeometry({
+    shape,
+    width_m: Math.max(0, w),
+    length_m: Math.max(0, l),
+    regions,
+    tri_base_m,
+    tri_height_m,
+    radius_m,
+    trap_a_m,
+    trap_b_m,
+    trap_h_m,
+  });
+
   return {
     shape,
     width_m: Math.max(0, w),
     length_m: Math.max(0, l),
+    regions,
+    area_m2: geo.area_m2 > 0 ? geo.area_m2 : null,
+    perimeter_m: geo.perimeter_m,
+    shape_label: geo.composite ? geo.label : null,
+    tri_base_m,
+    tri_height_m,
+    radius_m,
+    trap_a_m,
+    trap_b_m,
+    trap_h_m,
     post_count: optNum(r.post_count),
     post_spacing_m: optNum(r.post_spacing_m),
     joist_spacing_mm: optNum(r.joist_spacing_mm),
     joist_orientation: orientation,
     height_m: optNum(r.height_m),
   };
+}
+
+/**
+ * When the footprint is a real shape (composite/triangle/circle/…), the model
+ * may not have written a clean total area in the dimensions text. Prepend the
+ * deterministically-computed area + perimeter so the downstream regex takeoff
+ * (extractAreaM2 / extractPerimeterM) uses OUR numbers, not a bounding-box
+ * guess. We only do this for composite/primitive shapes — a plain rectangle's
+ * existing length×width path is left byte-for-byte unchanged.
+ */
+function geometryPreamble(plan: ScannedPlan | null): string {
+  if (!plan || !plan.shape_label) return "";
+  const lines: string[] = [];
+  if (plan.area_m2 && plan.area_m2 > 0) {
+    lines.push(`Computed area = ${plan.area_m2} m² (${plan.shape_label})`);
+  }
+  if (plan.perimeter_m && plan.perimeter_m > 0) {
+    lines.push(`Computed perimeter = ${plan.perimeter_m} m`);
+  }
+  return lines.join("\n");
 }
 
 export async function POST(request: NextRequest) {
@@ -444,6 +551,15 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  const plan = sanitisePlan(parsed.plan);
+  // Prepend deterministic geometry for composite/primitive shapes so the
+  // downstream takeoff uses the true area/perimeter, not a bounding box.
+  const preamble = geometryPreamble(plan);
+  const baseDimensions = dimensions || legacyTranscript;
+  const finalDimensions = preamble
+    ? `${preamble}\n${baseDimensions}`.trim()
+    : baseDimensions;
+
   return NextResponse.json({
     document_type: resolveDocumentType(
       parsed.document_type,
@@ -453,10 +569,10 @@ export async function POST(request: NextRequest) {
       typeof parsed.buildType === "string" ? parsed.buildType.trim() : "",
     summary:
       typeof parsed.summary === "string" ? parsed.summary.trim() : "",
-    dimensions: dimensions || legacyTranscript,
+    dimensions: finalDimensions,
     structural,
     notes,
-    plan: sanitisePlan(parsed.plan),
+    plan,
     jobType,
     timberLength,
   });
