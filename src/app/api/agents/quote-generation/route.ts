@@ -67,6 +67,9 @@ export async function POST(req: NextRequest) {
         typeof body.labourRate === "number" ? body.labourRate : undefined,
       markupPct:
         typeof body.markupPct === "number" ? body.markupPct : undefined,
+      // Enables learned-memory injection when TRADIE_BRAIN_ENABLED=true.
+      // No-op otherwise — the agent ignores it unless the flag is on.
+      memory: { supabase, userId: user.id },
     });
     logAgentRunFinish({
       agentName: "Quote Generation Agent",
