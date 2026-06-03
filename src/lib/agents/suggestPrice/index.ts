@@ -12,6 +12,7 @@
 // ─────────────────────────────────────────────────────────────────────────
 
 import type { LibraryMaterial } from "../../quote-types";
+import { runStructuredAgent } from "../runtime";
 import { assembleEvidence, type HistoryLine } from "./evidence";
 import { parseSuggestion, safeManualFallback } from "./parse";
 import { SUGGEST_PRICE_SYSTEM_PROMPT, buildSuggestPriceUserMessage } from "./prompt";
@@ -35,9 +36,56 @@ export function suggestPriceAgentEnabledFromEnv(): boolean {
   return process.env.SUGGEST_PRICE_AGENT_ENABLED === "true";
 }
 
-const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
-const MODEL = "claude-sonnet-4-20250514";
 const MAX_TOKENS = 1024;
+
+/**
+ * The tool the model is forced to call. parseSuggestion() is fully tolerant of
+ * partial/odd input (it always returns a valid result or a safe manual
+ * fallback), so the schema guides the model without needing to be exhaustive.
+ */
+const SUGGEST_PRICE_TOOL = {
+  name: "emit_price_suggestion",
+  description: "Return the price suggestion (or a manual-pricing fallback).",
+  schema: {
+    type: "object",
+    required: ["recommendation", "reasoning"],
+    properties: {
+      recommendation: {
+        type: "object",
+        properties: {
+          status: {
+            type: "string",
+            enum: ["suggested", "needs_manual_pricing", "no_safe_match"],
+          },
+          best_match_name: { type: ["string", "null"] },
+          best_match_material_id: { type: ["string", "null"] },
+          suggested_unit_price: { type: ["number", "null"] },
+          suggested_price_range_low: { type: ["number", "null"] },
+          suggested_price_range_high: { type: ["number", "null"] },
+          confidence: {
+            type: "string",
+            enum: ["high", "medium", "low", "none"],
+          },
+          should_save_mapping_if_accepted: { type: "boolean" },
+          recommended_action: {
+            type: "string",
+            enum: ["use_once", "save_to_library", "ask_user", "manual_price"],
+          },
+        },
+      },
+      reasoning: {
+        type: "object",
+        properties: {
+          summary: { type: "string" },
+          evidence_ranked: { type: "array", items: { type: "object" } },
+          risk_flags: { type: "array", items: { type: "string" } },
+          missing_information: { type: "array", items: { type: "string" } },
+        },
+      },
+      alternatives: { type: "array", items: { type: "object" } },
+    },
+  },
+};
 
 export type SuggestPriceArgs = {
   target: SuggestPriceTargetLine;
@@ -113,46 +161,22 @@ export async function suggestPrice(
     );
   }
 
-  // 3. Fuzzy middle ground — ask the model, then strictly validate.
+  // 3. Fuzzy middle ground — ask the model via the shared runtime (structured
+  //    tool output + prompt caching + monitor logging), then strictly validate.
+  //    parseSuggestion is tolerant, so the runtime never needs to retry; any
+  //    transport/shape error falls back to safe manual pricing — never throws.
   try {
-    const fetchImpl = args.fetchImpl ?? fetch;
-    const res = await fetchImpl(ANTHROPIC_URL, {
-      method: "POST",
-      headers: {
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({
-        model: MODEL,
-        max_tokens: MAX_TOKENS,
-        temperature: 0,
-        system: SUGGEST_PRICE_SYSTEM_PROMPT,
-        messages: [
-          {
-            role: "user",
-            content: buildSuggestPriceUserMessage(
-              target,
-              evidence,
-              args.memoryContext,
-            ),
-          },
-          { role: "assistant", content: "{" },
-        ],
-      }),
+    const result = await runStructuredAgent<SuggestPriceResult>({
+      agentName: "Suggest Price",
+      system: SUGGEST_PRICE_SYSTEM_PROMPT,
+      user: buildSuggestPriceUserMessage(target, evidence, args.memoryContext),
+      tool: SUGGEST_PRICE_TOOL,
+      parse: (input) => ({ ok: true, value: parseSuggestion(input, target) }),
+      maxTokens: MAX_TOKENS,
+      apiKey,
+      fetchImpl: args.fetchImpl,
     });
-    if (!res.ok) {
-      return safeManualFallback(
-        target,
-        "Couldn't reach the pricing helper — price this line manually.",
-      );
-    }
-    const payload = (await res.json()) as {
-      content?: Array<{ type: string; text?: string }>;
-    };
-    const text = payload.content?.find((c) => c.type === "text")?.text ?? "";
-    const json = JSON.parse("{" + text);
-    return parseSuggestion(json, target);
+    return result.value;
   } catch {
     return safeManualFallback(
       target,

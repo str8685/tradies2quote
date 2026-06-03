@@ -17,12 +17,16 @@ function lib(o: Partial<LibraryMaterial> & { name: string }): LibraryMaterial {
   };
 }
 
-/** Build a Claude-shaped response whose text is the body after the "{" prefill. */
+/** Build a Claude-shaped response with the forced tool_use block. */
 function claudeResponse(obj: unknown) {
-  const text = JSON.stringify(obj).slice(1); // drop leading "{"
   return {
     ok: true,
-    json: async () => ({ content: [{ type: "text", text }] }),
+    status: 200,
+    text: async () => "",
+    json: async () => ({
+      content: [{ type: "tool_use", name: "emit_price_suggestion", input: obj }],
+      usage: {},
+    }),
   } as unknown as Response;
 }
 
@@ -141,7 +145,10 @@ describe("suggestPrice — fuzzy path (LLM)", () => {
   });
 
   it("falls back to manual when the LLM call is not ok", async () => {
-    const fetchImpl = vi.fn(async () => ({ ok: false }) as unknown as Response);
+    const fetchImpl = vi.fn(
+      async () =>
+        ({ ok: false, status: 500, text: async () => "" }) as unknown as Response,
+    );
     const r = await suggestPrice({
       target: { description: "decking screws stainless", quantity: 2, unit: "box" },
       library: [lib({ name: "Stainless screws box", unit: "box", default_unit_price: 89 })],
@@ -153,7 +160,16 @@ describe("suggestPrice — fuzzy path (LLM)", () => {
   });
 
   it("falls back to manual when the LLM throws / returns junk", async () => {
-    const fetchImpl = vi.fn(async () => ({ ok: true, json: async () => ({ content: [{ type: "text", text: "not json" }] }) }) as unknown as Response);
+    const fetchImpl = vi.fn(
+      async () =>
+        ({
+          ok: true,
+          status: 200,
+          text: async () => "",
+          // No tool_use block → runtime can't extract → safe manual fallback.
+          json: async () => ({ content: [{ type: "text", text: "not json" }] }),
+        }) as unknown as Response,
+    );
     const r = await suggestPrice({
       target: { description: "decking screws stainless", quantity: 2, unit: "box" },
       library: [lib({ name: "Stainless screws box", unit: "box", default_unit_price: 89 })],
