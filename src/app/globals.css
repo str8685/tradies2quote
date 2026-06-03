@@ -1671,6 +1671,23 @@ h1, h2, h3, h4, h5 {
 [data-shell="app"][data-theme="light"] .text-blue-200,
 [data-shell="app"][data-theme="light"] .text-blue-300         { color: #1D4ED8 !important; }
 
+/* Faded warning shades that lacked a light override and rendered as
+   near-invisible pink/pale text on the cream app shell (the
+   reconciliation + "add client name" warnings the user reported as
+   unreadable). Map the pale 100/200/400 ramps and the low-alpha red
+   washes to readable, intentional values. */
+[data-shell="app"][data-theme="light"] .text-red-100,
+[data-shell="app"][data-theme="light"] .text-red-200          { color: #B3261E !important; }
+[data-shell="app"][data-theme="light"] .text-red-400          { color: #C0392B !important; }
+[data-shell="app"][data-theme="light"] .text-emerald-200      { color: #047857 !important; }
+[data-shell="app"][data-theme="light"] .text-amber-200        { color: #92400E !important; }
+[data-shell="app"][data-theme="light"] .bg-red-500\/5         { background-color: #FDECEA !important; }
+[data-shell="app"][data-theme="light"] .bg-red-500\/15        { background-color: #FAD9D4 !important; }
+[data-shell="app"][data-theme="light"] .bg-red-600            { background-color: #C0291F !important; }
+[data-shell="app"][data-theme="light"] .border-red-500\/30    { border-color: #F0B4AE !important; }
+[data-shell="app"][data-theme="light"] .border-red-500\/50,
+[data-shell="app"][data-theme="light"] .border-red-500\/60    { border-color: #E0837A !important; }
+
 /* =========================================================================
    XERO-STYLE PROFESSIONAL FINISH — scoped to the signed-in app only.
 

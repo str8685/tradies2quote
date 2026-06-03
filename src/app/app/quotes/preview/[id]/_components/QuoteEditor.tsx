@@ -559,9 +559,15 @@ export function QuoteEditor({
               />
             </div>
             {clientPlaceholder && (
-              <p className="mt-2 font-mono text-xs uppercase tracking-[0.2em] text-hivis">
-                {"// add the client name before sending"}
-              </p>
+              <div
+                data-testid="client-name-required"
+                className="mt-2 flex items-center gap-2 rounded-lg bg-ink-900 px-3 py-2.5 shadow-sm"
+              >
+                <Warning size={16} weight="fill" className="shrink-0 text-hivis" />
+                <span className="font-mono text-xs uppercase tracking-[0.18em] text-hivis">
+                  Add the client&rsquo;s name before sending
+                </span>
+              </div>
             )}
           </div>
           <div className="grid grid-cols-2 gap-3 sm:max-w-xs sm:grid-cols-1 sm:text-right">
@@ -794,43 +800,54 @@ export function QuoteEditor({
             );
           })()}
 
-          <div className="mt-3 space-y-1.5 border-t border-white/5 pt-3">
-            {reconciliation.summary.map((c) => {
-              const bad = c.severity === "error";
-              const warn = c.severity === "warning";
-              return (
-                <div
-                  key={c.field}
-                  className="flex items-center justify-between gap-3 text-sm"
-                >
-                  <span className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-400">
-                    {c.field}
-                  </span>
-                  <div className="flex items-center gap-3 tabular-nums">
-                    <span className="text-ink-300">
-                      supplier{" "}
-                      {c.found != null ? formatCurrency(c.found, currency) : "—"}
-                    </span>
-                    <span className={bad ? "text-red-300" : "text-white"}>
-                      app{" "}
-                      {c.expected != null
-                        ? formatCurrency(c.expected, currency)
-                        : "—"}
-                    </span>
-                    {bad && (
-                      <span className="rounded-sm bg-red-500/15 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.15em] text-red-300">
-                        mismatch
-                      </span>
-                    )}
-                    {warn && (
-                      <span className="rounded-sm bg-hivis/15 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.15em] text-hivis">
-                        check
-                      </span>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
+          <div className="mt-3 overflow-hidden rounded-lg border border-[#E8E7E0]">
+            <table className="w-full text-sm tabular-nums">
+              <thead>
+                <tr className="bg-[#F4F3ED] font-mono text-[10px] uppercase tracking-[0.15em] text-[#8A8A82]">
+                  <th className="px-3 py-2 text-left font-medium">Field</th>
+                  <th className="px-3 py-2 text-right font-medium">Supplier</th>
+                  <th className="px-3 py-2 text-right font-medium">App</th>
+                  <th className="px-2 py-2" aria-label="Status" />
+                </tr>
+              </thead>
+              <tbody>
+                {reconciliation.summary.map((c) => {
+                  const bad = c.severity === "error";
+                  const warn = c.severity === "warning";
+                  return (
+                    <tr key={c.field} className="border-t border-[#ECEBE4]">
+                      <td className="px-3 py-2 font-mono text-[11px] uppercase tracking-[0.15em] text-ink-500">
+                        {c.field}
+                      </td>
+                      <td className="px-3 py-2 text-right text-ink-600">
+                        {c.found != null ? formatCurrency(c.found, currency) : "—"}
+                      </td>
+                      <td
+                        className={`px-3 py-2 text-right font-semibold ${
+                          bad ? "text-red-300" : "text-ink-900"
+                        }`}
+                      >
+                        {c.expected != null
+                          ? formatCurrency(c.expected, currency)
+                          : "—"}
+                      </td>
+                      <td className="px-2 py-2 text-right">
+                        {bad && (
+                          <span className="inline-block rounded bg-red-500/15 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.15em] text-red-300">
+                            mismatch
+                          </span>
+                        )}
+                        {warn && (
+                          <span className="inline-block rounded bg-hivis/15 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.15em] text-hivis">
+                            check
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         </section>
       )}

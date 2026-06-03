@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -84,6 +84,10 @@ export function QuoteImportClient({ currency }: { currency: string }) {
   const chosenFileRef = useRef<File | null>(null);
   const [phase, setPhase] = useState<Phase>("idle");
   const [fileName, setFileName] = useState<string>("");
+  // Object-URL for a visible thumbnail of the imported photo. Kept in a
+  // ref too so we can revoke the previous URL on replace / unmount.
+  const [previewUrl, setPreviewUrl] = useState<string>("");
+  const previewUrlRef = useRef<string>("");
   const [error, setError] = useState<string>("");
   const [supplier, setSupplier] = useState<string>("");
   const [gstInclusive, setGstInclusive] = useState<boolean>(false);
@@ -111,6 +115,19 @@ export function QuoteImportClient({ currency }: { currency: string }) {
     failed: number;
   } | null>(null);
 
+  // Revoke the last object-URL when the component unmounts.
+  useEffect(() => {
+    return () => {
+      if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
+    };
+  }, []);
+
+  function setPreview(url: string) {
+    if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
+    previewUrlRef.current = url;
+    setPreviewUrl(url);
+  }
+
   function pickFile() {
     fileRef.current?.click();
   }
@@ -126,6 +143,7 @@ export function QuoteImportClient({ currency }: { currency: string }) {
     if (f.size > MAX_BYTES) {
       setError("That photo is over 8 MB. Try a smaller image.");
       setFileName("");
+      setPreview("");
       chosenFileRef.current = null;
       return;
     }
@@ -133,6 +151,7 @@ export function QuoteImportClient({ currency }: { currency: string }) {
     // stash the chosen File rather than reading back off a single input.
     chosenFileRef.current = f;
     setFileName(f.name);
+    setPreview(URL.createObjectURL(f));
   }
 
   async function scan() {
@@ -449,12 +468,35 @@ export function QuoteImportClient({ currency }: { currency: string }) {
               <ImageIcon size={18} weight="bold" />
               Import photo
             </button>
-            {fileName && (
-              <span className="truncate font-mono text-xs text-ink-300" data-testid="quote-import-filename">
-                {fileName}
-              </span>
-            )}
           </div>
+          {previewUrl && (
+            <div
+              data-testid="quote-import-preview"
+              className="mt-4 flex items-center gap-3 rounded-lg border border-[#E8E7E0] bg-[#F4F3ED] p-3"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={previewUrl}
+                alt="Imported supplier quote"
+                className="h-20 w-20 shrink-0 rounded-md border border-[#E0DFD7] object-cover"
+              />
+              <div className="min-w-0">
+                <p className="flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-[0.18em] text-emerald-600">
+                  <CheckCircle size={14} weight="fill" />
+                  Photo imported
+                </p>
+                <p
+                  className="mt-1 truncate text-sm text-ink-700"
+                  data-testid="quote-import-filename"
+                >
+                  {fileName}
+                </p>
+                <p className="mt-0.5 text-xs text-ink-500">
+                  Tap “Scan quote” to read the lines.
+                </p>
+              </div>
+            </div>
+          )}
           <div className="mt-4">
             <button
               type="button"
@@ -716,60 +758,74 @@ export function QuoteImportClient({ currency }: { currency: string }) {
               <div className="font-mono text-[10px] uppercase tracking-[0.25em] text-brand">
                 {"// reconciliation — supplier vs app"}
               </div>
-              <div className="mt-3 space-y-1.5">
-                {validation.summary.map((c) => {
-                  const bad = c.severity === "error";
-                  const warn = c.severity === "warning";
-                  return (
-                    <div
-                      key={c.field}
-                      className="flex items-center justify-between gap-3 text-sm"
-                    >
-                      <span className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-400">
-                        {c.field}
-                      </span>
-                      <div className="flex items-center gap-3 tabular-nums">
-                        <span className="text-ink-300">
-                          supplier{" "}
-                          {c.found != null
-                            ? formatCurrency(c.found, currency)
-                            : "—"}
-                        </span>
-                        <span className={bad ? "text-red-300" : "text-white"}>
-                          app{" "}
-                          {c.expected != null
-                            ? formatCurrency(c.expected, currency)
-                            : "—"}
-                        </span>
-                        {bad && (
-                          <span className="rounded-sm bg-red-500/15 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.15em] text-red-300">
-                            mismatch
-                          </span>
-                        )}
-                        {warn && (
-                          <span className="rounded-sm bg-hivis/15 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.15em] text-hivis">
-                            check
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
+              <div className="mt-3 overflow-hidden rounded-lg border border-[#E8E7E0]">
+                <table className="w-full text-sm tabular-nums">
+                  <thead>
+                    <tr className="bg-[#F4F3ED] font-mono text-[10px] uppercase tracking-[0.15em] text-[#8A8A82]">
+                      <th className="px-3 py-2 text-left font-medium">Field</th>
+                      <th className="px-3 py-2 text-right font-medium">Supplier</th>
+                      <th className="px-3 py-2 text-right font-medium">App</th>
+                      <th className="px-2 py-2" aria-label="Status" />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {validation.summary.map((c) => {
+                      const bad = c.severity === "error";
+                      const warn = c.severity === "warning";
+                      return (
+                        <tr key={c.field} className="border-t border-[#ECEBE4]">
+                          <td className="px-3 py-2 font-mono text-[11px] uppercase tracking-[0.15em] text-ink-500">
+                            {c.field}
+                          </td>
+                          <td className="px-3 py-2 text-right text-ink-600">
+                            {c.found != null
+                              ? formatCurrency(c.found, currency)
+                              : "—"}
+                          </td>
+                          <td
+                            className={`px-3 py-2 text-right font-semibold ${
+                              bad ? "text-red-300" : "text-ink-900"
+                            }`}
+                          >
+                            {c.expected != null
+                              ? formatCurrency(c.expected, currency)
+                              : "—"}
+                          </td>
+                          <td className="px-2 py-2 text-right">
+                            {bad && (
+                              <span className="inline-block rounded bg-red-500/15 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.15em] text-red-300">
+                                mismatch
+                              </span>
+                            )}
+                            {warn && (
+                              <span className="inline-block rounded bg-hivis/15 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.15em] text-hivis">
+                                check
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
             </div>
           )}
 
           {validation.blocking && (
             <div
-              className="rounded-sm border border-red-500/50 bg-red-500/10 p-3"
+              className="rounded-lg border border-red-500/50 bg-red-500/10 p-4"
               data-testid="quote-import-block"
             >
-              <p className="text-sm text-red-200">
-                Some numbers don&rsquo;t reconcile with the supplier quote
-                (flagged above). Fix them — or tap &ldquo;use supplier
-                value&rdquo; — then create.
+              <p className="flex items-start gap-2 text-sm font-semibold text-red-200">
+                <Warning size={16} weight="fill" className="mt-0.5 shrink-0" />
+                <span>
+                  Some numbers don&rsquo;t reconcile with the supplier quote
+                  (flagged above). Fix them — or tap &ldquo;use supplier
+                  value&rdquo; — then create.
+                </span>
               </p>
-              <label className="mt-2 inline-flex cursor-pointer items-center gap-2 text-xs text-ink-100">
+              <label className="mt-3 inline-flex cursor-pointer items-center gap-2 text-sm text-ink-700">
                 <input
                   type="checkbox"
                   checked={acknowledged}
