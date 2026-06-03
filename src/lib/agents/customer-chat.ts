@@ -23,6 +23,7 @@
  */
 import "server-only";
 import type { PublicQuotePayload } from "@/lib/quote-types";
+import { runStructuredAgent, type ParseResult } from "./runtime";
 
 export const CHAT_INTENTS = [
   "explain_line_item",
@@ -70,13 +71,7 @@ export interface CustomerChatResult {
   confidence: number;
 }
 
-const MODEL = "claude-sonnet-4-20250514";
-const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
 const MAX_TOKENS = 800;
-
-interface AnthropicResponse {
-  content?: Array<{ type: string; text?: string }>;
-}
 
 const SYSTEM_PROMPT = `You are a polite, helpful chat assistant embedded inside a quote PDF a NZ tradie has just sent to a customer. You are working FOR the tradie — you represent them, not the customer.
 
@@ -99,12 +94,56 @@ How to behave:
 - For "small_talk_or_thanks", reply briefly and warmly. No noteToTradie needed.
 - If the customer goes off-topic (asking about other tradies, your AI nature, anything not quote-related), redirect politely.
 
-Output STRICT JSON. No prose. No fences. Exactly:
-{"intent":"...","reply":"...","noteToTradie":"..." or null,"confidence":0.0}
-- "intent" must be one of: explain_line_item, explain_terms, wants_cheaper_alternative, asks_about_timing, asks_about_warranty_or_consent, wants_scope_change, ready_to_accept, small_talk_or_thanks, general_question
+Return your answer by calling the emit_chat_reply tool:
 - "reply" is the visible message to the customer, max 4 short sentences
 - "noteToTradie" is null when no action needed from the tradie, otherwise a 1-2 sentence summary of what the customer is asking for
-- "confidence" is 0..1`;
+- "confidence" is 0..1
+Do not reply with prose — only the tool call.`;
+
+const CHAT_TOOL = {
+  name: "emit_chat_reply",
+  description: "Return the customer chat reply, intent, and optional tradie note.",
+  schema: {
+    type: "object",
+    required: ["intent", "reply", "confidence"],
+    properties: {
+      intent: { type: "string", enum: [...CHAT_INTENTS] },
+      reply: { type: "string", description: "Visible reply, max 4 short sentences." },
+      noteToTradie: {
+        type: ["string", "null"],
+        description: "1-2 sentence note when the tradie must action something, else null.",
+      },
+      confidence: { type: "number" },
+    },
+  },
+};
+
+/** Validate + normalise the model's emit_chat_reply tool input. Pure. */
+export function parseCustomerChat(
+  input: unknown,
+): ParseResult<CustomerChatResult> {
+  const parsed = (input ?? {}) as {
+    intent?: unknown;
+    reply?: unknown;
+    noteToTradie?: unknown;
+    confidence?: unknown;
+  };
+  const intent: ChatIntent = isChatIntent(parsed.intent)
+    ? parsed.intent
+    : "general_question";
+  const reply =
+    typeof parsed.reply === "string" && parsed.reply.trim().length > 0
+      ? parsed.reply.trim()
+      : "Thanks for the message — let me get back to you on that.";
+  const noteToTradie =
+    typeof parsed.noteToTradie === "string" && parsed.noteToTradie.trim().length > 0
+      ? parsed.noteToTradie.trim()
+      : undefined;
+  const rawConfidence =
+    typeof parsed.confidence === "number" ? parsed.confidence : 0.6;
+  const confidence = Math.max(0, Math.min(1, rawConfidence));
+  return { ok: true, value: { intent, reply, noteToTradie, confidence } };
+}
 
 /** Format the quote payload + history into the user-turn prompt. */
 function buildUserTurn(input: CustomerChatInput): string {
@@ -146,41 +185,9 @@ function buildUserTurn(input: CustomerChatInput): string {
   lines.push("NEW CUSTOMER MESSAGE:");
   lines.push(input.customerMessage);
   lines.push("");
-  lines.push("Reply with STRICT JSON per the schema. Do not add any other text.");
+  lines.push("Answer by calling the emit_chat_reply tool. Do not add any other text.");
 
   return lines.join("\n");
-}
-
-/**
- * Anthropic API caller. Throws on transport / non-2xx / non-JSON body.
- * The route handler catches and degrades to a polite fallback reply.
- */
-async function callAnthropic(apiKey: string, userTurn: string): Promise<string> {
-  const res = await fetch(ANTHROPIC_URL, {
-    method: "POST",
-    headers: {
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01",
-      "content-type": "application/json",
-    },
-    body: JSON.stringify({
-      model: MODEL,
-      max_tokens: MAX_TOKENS,
-      temperature: 0.3,
-      system: SYSTEM_PROMPT,
-      messages: [
-        { role: "user", content: userTurn },
-        { role: "assistant", content: "{" },
-      ],
-    }),
-  });
-  if (!res.ok) {
-    const detail = await res.text().catch(() => "");
-    throw new Error(`Anthropic ${res.status}: ${detail.slice(0, 200)}`);
-  }
-  const payload = (await res.json()) as AnthropicResponse;
-  const text = payload.content?.find((c) => c.type === "text")?.text ?? "";
-  return "{" + text;
 }
 
 function isChatIntent(value: unknown): value is ChatIntent {
@@ -198,46 +205,13 @@ function isChatIntent(value: unknown): value is ChatIntent {
 export async function runCustomerChat(
   input: CustomerChatInput,
 ): Promise<CustomerChatResult> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
-    throw new Error("ANTHROPIC_API_KEY is not configured.");
-  }
-
-  const userTurn = buildUserTurn(input);
-  const raw = await callAnthropic(apiKey, userTurn);
-
-  let parsed: {
-    intent?: unknown;
-    reply?: unknown;
-    noteToTradie?: unknown;
-    confidence?: unknown;
-  };
-  try {
-    parsed = JSON.parse(raw);
-  } catch (e) {
-    throw new Error(
-      `Customer-chat agent returned non-JSON: ${(e as Error).message}`,
-    );
-  }
-
-  const intent: ChatIntent = isChatIntent(parsed.intent)
-    ? parsed.intent
-    : "general_question";
-
-  const reply =
-    typeof parsed.reply === "string" && parsed.reply.trim().length > 0
-      ? parsed.reply.trim()
-      : "Thanks for the message — let me get back to you on that.";
-
-  const noteToTradie =
-    typeof parsed.noteToTradie === "string" &&
-    parsed.noteToTradie.trim().length > 0
-      ? parsed.noteToTradie.trim()
-      : undefined;
-
-  const rawConfidence =
-    typeof parsed.confidence === "number" ? parsed.confidence : 0.6;
-  const confidence = Math.max(0, Math.min(1, rawConfidence));
-
-  return { intent, reply, noteToTradie, confidence };
+  const result = await runStructuredAgent<CustomerChatResult>({
+    agentName: "Customer Chat",
+    system: SYSTEM_PROMPT,
+    user: buildUserTurn(input),
+    tool: CHAT_TOOL,
+    parse: parseCustomerChat,
+    maxTokens: MAX_TOKENS,
+  });
+  return result.value;
 }
