@@ -16,6 +16,11 @@
  * Server-only. Needs OPENAI_API_KEY at runtime.
  */
 import "server-only";
+import {
+  runOpenAIStructuredAgent,
+  type OpenAIContentBlock,
+} from "./openai-runtime";
+import type { ParseResult } from "./runtime";
 
 export interface PhotoPlanItem {
   /** Short label, e.g. "GIB plasterboard sheet (used)". */
@@ -48,7 +53,6 @@ export interface PhotoPlanInput {
   hint?: string | null;
 }
 
-const OPENAI_URL = "https://api.openai.com/v1/chat/completions";
 const MODEL = "gpt-4o-mini";
 const MAX_TOKENS = 1500;
 
@@ -70,18 +74,70 @@ Your job:
 
 CRITICAL: never claim a measurement (mm / m / m2) unless the image itself shows a scale bar, a tape measure, a labelled dimension, or a known-size reference (e.g. a standard 2400×1200 GIB sheet visibly intact). Default to "approx" or "unknown".
 
-Output STRICT JSON only, no prose or code fences:
-{
-  "description": "...",
-  "items": [{"label":"...","location":"...","note":"...","confidence":0.7,"ai_estimated":true}],
-  "reviewFlags": ["..."],
-  "quoteNote": "..."
-}`;
+Return your answer by calling the emit_photo_plan tool. Do not reply with prose — only the tool call.`;
 
-interface OpenAIChatResponse {
-  choices?: Array<{
-    message?: { content?: string };
-  }>;
+const PHOTO_PLAN_TOOL = {
+  name: "emit_photo_plan",
+  description: "Return what was seen in the trade photo / plan.",
+  schema: {
+    type: "object",
+    required: ["description", "items", "reviewFlags", "quoteNote"],
+    properties: {
+      description: { type: "string" },
+      items: {
+        type: "array",
+        items: {
+          type: "object",
+          required: ["label", "confidence", "ai_estimated"],
+          properties: {
+            label: { type: "string" },
+            location: { type: ["string", "null"] },
+            note: { type: ["string", "null"] },
+            confidence: { type: "number" },
+            ai_estimated: { type: "boolean" },
+          },
+        },
+      },
+      reviewFlags: { type: "array", items: { type: "string" } },
+      quoteNote: { type: "string" },
+    },
+  },
+};
+
+/** Validate + normalise the model's emit_photo_plan tool input. Pure. */
+export function parsePhotoPlan(input: unknown): ParseResult<PhotoPlanResult> {
+  const obj = (input ?? {}) as Partial<PhotoPlanResult>;
+  const items: PhotoPlanItem[] = Array.isArray(obj.items)
+    ? obj.items.map((rec) => {
+        const r = (rec ?? {}) as Partial<PhotoPlanItem>;
+        const c = typeof r.confidence === "number" ? r.confidence : 0.5;
+        return {
+          label: typeof r.label === "string" ? r.label.trim() : "(unlabelled item)",
+          location: typeof r.location === "string" ? r.location : null,
+          note: typeof r.note === "string" ? r.note : null,
+          confidence: c < 0 ? 0 : c > 1 ? 1 : c,
+          ai_estimated: typeof r.ai_estimated === "boolean" ? r.ai_estimated : true,
+        };
+      })
+    : [];
+
+  return {
+    ok: true,
+    value: {
+      description:
+        typeof obj.description === "string" && obj.description.length > 0
+          ? obj.description
+          : "(model returned no description)",
+      items,
+      reviewFlags: Array.isArray(obj.reviewFlags)
+        ? obj.reviewFlags.filter((s): s is string => typeof s === "string")
+        : [],
+      quoteNote:
+        typeof obj.quoteNote === "string" && obj.quoteNote.length > 0
+          ? obj.quoteNote
+          : "(model returned no quote note)",
+    },
+  };
 }
 
 const ALLOWED_MIME = new Set([
@@ -98,11 +154,6 @@ export const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 export async function runPhotoPlanAgent(
   input: PhotoPlanInput,
 ): Promise<PhotoPlanResult> {
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) {
-    throw new Error("OPENAI_API_KEY is not configured.");
-  }
-
   if (!input.imageBase64 || input.imageBase64.length === 0) {
     throw new Error("Image is empty.");
   }
@@ -118,76 +169,27 @@ export async function runPhotoPlanAgent(
   }
 
   const dataUrl = `data:${input.mimeType};base64,${input.imageBase64}`;
-  const userTextParts = [
+  const userText = [
     input.hint ? `Tradie note: ${input.hint}` : null,
-    "Analyse the image and return the JSON described in the system prompt.",
-  ].filter(Boolean) as string[];
+    "Analyse the image and call the emit_photo_plan tool.",
+  ]
+    .filter(Boolean)
+    .join("\n\n");
 
-  const res = await fetch(OPENAI_URL, {
-    method: "POST",
-    headers: {
-      authorization: `Bearer ${apiKey}`,
-      "content-type": "application/json",
-    },
-    body: JSON.stringify({
-      model: MODEL,
-      max_tokens: MAX_TOKENS,
-      temperature: 0,
-      response_format: { type: "json_object" },
-      messages: [
-        { role: "system", content: SYSTEM_PROMPT },
-        {
-          role: "user",
-          content: [
-            { type: "text", text: userTextParts.join("\n\n") },
-            { type: "image_url", image_url: { url: dataUrl } },
-          ],
-        },
-      ],
-    }),
+  const userContent: OpenAIContentBlock[] = [
+    { type: "text", text: userText },
+    { type: "image_url", image_url: { url: dataUrl } },
+  ];
+
+  const result = await runOpenAIStructuredAgent<PhotoPlanResult>({
+    agentName: "Photo Plan",
+    system: SYSTEM_PROMPT,
+    user: userContent,
+    tool: PHOTO_PLAN_TOOL,
+    parse: parsePhotoPlan,
+    model: MODEL,
+    maxTokens: MAX_TOKENS,
   });
 
-  if (!res.ok) {
-    const detail = await res.text().catch(() => "");
-    throw new Error(`OpenAI ${res.status}: ${detail.slice(0, 200)}`);
-  }
-
-  const payload = (await res.json()) as OpenAIChatResponse;
-  const raw = payload.choices?.[0]?.message?.content ?? "";
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(raw);
-  } catch (e) {
-    throw new Error(`OpenAI returned non-JSON: ${(e as Error).message}`);
-  }
-  const obj = parsed as Partial<PhotoPlanResult>;
-
-  const items: PhotoPlanItem[] = Array.isArray(obj.items)
-    ? obj.items.map((rec) => {
-        const r = (rec ?? {}) as Partial<PhotoPlanItem>;
-        const c = typeof r.confidence === "number" ? r.confidence : 0.5;
-        return {
-          label: typeof r.label === "string" ? r.label.trim() : "(unlabelled item)",
-          location: typeof r.location === "string" ? r.location : null,
-          note: typeof r.note === "string" ? r.note : null,
-          confidence: c < 0 ? 0 : c > 1 ? 1 : c,
-          ai_estimated: typeof r.ai_estimated === "boolean" ? r.ai_estimated : true,
-        };
-      })
-    : [];
-
-  return {
-    description:
-      typeof obj.description === "string" && obj.description.length > 0
-        ? obj.description
-        : "(model returned no description)",
-    items,
-    reviewFlags: Array.isArray(obj.reviewFlags)
-      ? obj.reviewFlags.filter((s): s is string => typeof s === "string")
-      : [],
-    quoteNote:
-      typeof obj.quoteNote === "string" && obj.quoteNote.length > 0
-        ? obj.quoteNote
-        : "(model returned no quote note)",
-  };
+  return result.value;
 }
