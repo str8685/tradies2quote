@@ -41,3 +41,7 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 .gstack/
+
+# local tooling / OS artifacts (not project source)
+.agents/
+.metadata_never_index
