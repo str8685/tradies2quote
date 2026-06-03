@@ -290,7 +290,7 @@ export default async function AgentsPage() {
             </span>
           </div>
           <p className="mt-3 max-w-2xl text-sm text-ink-300 sm:text-base">
-            Your personal AI team — not tied to any one project. Marketing,
+            Your personal T2Q team — not tied to any one project. Marketing,
             content, research, new ventures. Point them at any job.
           </p>
 

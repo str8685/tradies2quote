@@ -662,7 +662,12 @@ h1, h2, h3, h4, h5 {
       transparent 58%
     ),
     linear-gradient(180deg, #16110D 0%, #100D0C 26%, #0A0A0A 68%, #070707 100%);
-  background-attachment: fixed;
+  /* `scroll`, not `fixed`. `background-attachment: fixed` is notoriously
+     janky on iOS Safari — the background desyncs from content during
+     momentum scroll and URL-bar collapse, which makes the whole app look
+     like it "moves around inside the screen". Scrolling the background
+     with the content is rock-steady. */
+  background-attachment: scroll;
   background-repeat: no-repeat;
 }
 [data-theme="light"] .t2q-app-canvas {
@@ -679,7 +684,8 @@ h1, h2, h3, h4, h5 {
       transparent 65%
     ),
     linear-gradient(180deg, #F7F6F1 0%, #F2F0EA 100%);
-  background-attachment: fixed;
+  /* See dark variant above — `scroll` avoids iOS fixed-attachment jitter. */
+  background-attachment: scroll;
   background-repeat: no-repeat;
 }
 
@@ -1183,23 +1189,24 @@ h1, h2, h3, h4, h5 {
    their icon + label cluster to the bottom of the tile too. */
 .t2q-bottomnav-bar {
   position: fixed;
-  /* Soft-serif refresh — a floating, fully-rounded pill bar (Stowe
-     style) instead of the old edge-anchored strip. Sits a thumb's
-     width off the screen edges and above the iOS home indicator. */
-  bottom: max(env(safe-area-inset-bottom, 0px), 0.75rem);
-  left: 0.75rem;
-  right: 0.75rem;
+  /* LOCKED edge-anchored bar. The previous floating pill (a gap on
+     every side + a backdrop-filter blur) let page content show through
+     and drift underneath on iOS momentum scroll — that is what read as
+     the bar "floating" and the app "moving around inside the screen".
+     Pinning it flush to the bottom edge with an opaque fill and no blur
+     removes both and keeps it rock-steady across scroll and refresh. */
+  bottom: 0;
+  left: 0;
+  right: 0;
   display: flex;
   align-items: stretch;
-  background: rgba(16, 16, 16, 0.92);
-  backdrop-filter: blur(16px) saturate(140%);
-  -webkit-backdrop-filter: blur(16px) saturate(140%);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 1.5rem;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.05),
-    0 12px 32px -8px rgba(0, 0, 0, 0.6);
-  padding: 0.25rem 0.5rem;
+  background: #101010;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 0;
+  box-shadow: 0 -8px 24px -14px rgba(0, 0, 0, 0.7);
+  /* Tile padding + the iOS home-indicator inset baked into the bar so
+     the touch targets clear the gesture bar without a floating gap. */
+  padding: 0.25rem 0.5rem max(env(safe-area-inset-bottom, 0px), 0.25rem);
   z-index: 40;
 }
 /* The bottom nav is mobile-only. The component carries `sm:hidden` but
@@ -1214,13 +1221,34 @@ h1, h2, h3, h4, h5 {
   }
 }
 [data-theme="light"] .t2q-bottomnav-bar {
-  /* Floating pill in light mode — high-alpha cream so the page
-     barely bleeds through the blur, soft drop shadow. */
-  background: rgba(255, 255, 255, 0.92) !important;
+  /* Locked, opaque, edge-anchored bar (light). Solid fill so nothing
+     bleeds through; hairline top border + soft upward shadow only. */
+  background: #FFFFFF !important;
+  border-radius: 0 !important;
+  border-top: 1px solid #E3E2DA !important;
+  box-shadow: 0 -8px 24px -14px rgba(10, 10, 10, 0.16) !important;
+}
+
+/* ─── "Show working" disclosure — light-mode readability ──────────────────
+   The collapsible `// show working` panel on each material line was
+   styled for dark mode only (near-black `bg-ink-950/70` fill + grey
+   `text-ink-300` summary). The app shell is forced to light, so it
+   rendered as an ugly dark-grey bar with near-black, barely-legible
+   text inside the cream cards. These overrides give it a light surface
+   and dark, readable text/dividers in light mode. */
+[data-shell="app"][data-theme="light"] .t2q-show-working {
+  background: #F4F3ED !important;
   border-color: #E3E2DA !important;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.8),
-    0 12px 32px -8px rgba(10, 10, 10, 0.18) !important;
+}
+[data-shell="app"][data-theme="light"] .t2q-show-working > summary {
+  color: #4A4A45 !important;
+}
+[data-shell="app"][data-theme="light"] .t2q-show-working > summary:hover {
+  color: #0A0A0A !important;
+}
+[data-shell="app"][data-theme="light"] .t2q-show-working > div {
+  border-top-color: #E3E2DA !important;
+  color: #2A2A28 !important;
 }
 
 /* Wave 36 — LogoMark legibility on light mode.
@@ -1488,11 +1516,13 @@ h1, h2, h3, h4, h5 {
   box-shadow: 0 1px 2px rgba(10, 10, 10, 0.04) !important;
 }
 
-/* Bottom nav — flat white, hairline border, soft upward drop shadow.
-   The floating-pill dark backdrop is replaced with a Xero-style bar. */
+/* Bottom nav — flat white, edge-anchored, hairline top border, soft
+   upward drop shadow. Locked: no rounded pill, no float gap. */
 [data-shell="app"][data-theme="light"] .t2q-bottomnav-bar {
   background: #FFFFFF !important;
-  border: 1px solid #E8E6DD !important;
+  border: none !important;
+  border-top: 1px solid #E8E6DD !important;
+  border-radius: 0 !important;
   box-shadow: 0 -2px 12px rgba(10, 10, 10, 0.05) !important;
 }
 [data-shell="app"][data-theme="light"] .t2q-bottomnav-tile {
@@ -1787,9 +1817,12 @@ h1, h2, h3, h4, h5 {
 }
 
 [data-shell="app"][data-theme="light"] .t2q-bottomnav-bar {
-  background: rgba(255, 255, 255, 0.98) !important;
-  border-color: var(--t2q-app-border) !important;
-  border-radius: 1.125rem;
+  /* Locked: opaque fill, square, edge-anchored. (Was a translucent
+     rounded pill — the source of the "floating bar" the user reported.) */
+  background: #FFFFFF !important;
+  border: none !important;
+  border-top: 1px solid var(--t2q-app-border) !important;
+  border-radius: 0 !important;
   box-shadow: 0 -10px 24px -18px rgba(15, 23, 42, 0.34) !important;
 }
 

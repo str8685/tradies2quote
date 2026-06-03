@@ -132,7 +132,7 @@ export default async function UpgradePage({
             <Bullet>Invoice generation, send + mark-paid</Bullet>
             <Bullet>Branded PDFs with your logo</Bullet>
             <Bullet>Materials library + supplier price import</Bullet>
-            <Bullet>All AI agents (compliance, voice cleanup, follow-up, more)</Bullet>
+            <Bullet>All T2Q agents (compliance, voice cleanup, follow-up, more)</Bullet>
             <Bullet>NZ Building Code + GST compliance baked in</Bullet>
           </ul>
 

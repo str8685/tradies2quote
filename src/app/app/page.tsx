@@ -331,7 +331,7 @@ async function DashboardData({
             </p>
             <p className="mt-0.5 text-xs text-ink-300 sm:text-sm">
               Add the materials you use every week so future quotes pull
-              your real prices instead of AI estimates.
+              your real prices instead of T2Q estimates.
             </p>
           </div>
           <span className="hidden items-center gap-1 font-mono text-[10px] uppercase tracking-[0.25em] text-emerald-300 sm:inline-flex">

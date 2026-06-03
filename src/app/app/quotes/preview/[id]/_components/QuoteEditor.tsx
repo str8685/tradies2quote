@@ -1009,9 +1009,9 @@ export function QuoteEditor({
             <Warning size={14} weight="fill" className="mt-0.5 shrink-0" />
             <span>
               {aiQtyUnconfirmed.length} line
-              {aiQtyUnconfirmed.length === 1 ? "" : "s"} use an AI-estimated
+              {aiQtyUnconfirmed.length === 1 ? "" : "s"} use a T2Q-estimated
               quantity. Confirm or edit each before this quote can be sent —
-              the AI never sets a quantity on a sent quote unchecked.
+              T2Q never sets a quantity on a sent quote unchecked.
             </span>
           </p>
           <ul className="mt-3 space-y-1.5">
@@ -1283,7 +1283,7 @@ function ItemsSection({
               key={i}
               data-testid={`row-${i}`}
               data-confidence={confidence}
-              className={`rounded-sm border border-ink-700 bg-ink-900 p-2.5 ${confidenceClass}`}
+              className={`rounded-sm border border-ink-700 bg-ink-900 p-2 ${confidenceClass}`}
             >
               {showBadges && (
                 <ItemBadge
@@ -1319,7 +1319,7 @@ function ItemsSection({
                   <Trash size={16} weight="bold" />
                 </button>
               </div>
-              <div className="mt-1.5 grid grid-cols-3 gap-2">
+              <div className="mt-1 grid grid-cols-3 gap-2">
                 <NumberField
                   label="Qty"
                   value={it.quantity}
@@ -1339,7 +1339,7 @@ function ItemsSection({
                   disabled={disabled}
                 />
               </div>
-              <div className="mt-1.5 text-right font-mono text-xs uppercase tracking-[0.2em] text-ink-300">
+              <div className="mt-1 text-right font-mono text-xs uppercase tracking-[0.2em] text-ink-300">
                 Line total: <span className="text-white">{formatCurrency(it.line_total, currency)}</span>
               </div>
               {(it.formula || libMaterial) && (
@@ -1376,7 +1376,7 @@ function ShowWorking({
   // match — the parent already gates on that, but it's defensive here.
   if (!hasMath && !libraryName) return null;
   return (
-    <details className="mt-2 rounded-sm border border-ink-700 bg-ink-950/70 [&[open]>summary>span:last-child]:rotate-180">
+    <details className="t2q-show-working mt-1.5 rounded-sm border border-ink-700 bg-ink-950/70 [&[open]>summary>span:last-child]:rotate-180">
       <summary
         data-testid="show-working-toggle"
         className="flex cursor-pointer select-none items-center justify-between gap-2 px-3 py-2 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-300 hover:text-white"
@@ -1438,7 +1438,7 @@ function ConfidenceLegend({
       <ConfidenceChip
         color="hivis"
         count={tally.medium}
-        label="AI estimate"
+        label="T2Q estimate"
         testid="legend-medium"
       />
       <ConfidenceChip

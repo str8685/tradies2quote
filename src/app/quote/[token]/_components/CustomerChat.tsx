@@ -70,7 +70,7 @@ export function CustomerChat({ token, businessName, clientName }: Props) {
     const name = clientName ? clientName.split(" ")[0] : "there";
     const welcome: Message = {
       role: "assistant",
-      content: `Hi ${name}! I'm an AI assistant for ${tradie}. Ask me anything about this quote — line items, alternatives, timing, terms — and I'll answer using the actual numbers above. If I can't answer, I'll flag it for ${tradie} directly.`,
+      content: `Hi ${name}! I'm the T2Q assistant for ${tradie}. Ask me anything about this quote — line items, alternatives, timing, terms — and I'll answer using the actual numbers above. If I can't answer, I'll flag it for ${tradie} directly.`,
     };
     // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time welcome seed gated by hasSeenWelcome
     setMessages([welcome]);

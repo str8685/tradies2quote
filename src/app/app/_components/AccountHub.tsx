@@ -149,7 +149,7 @@ const OWNER_ITEMS: ReadonlyArray<HubLink> = [
   {
     href: "/app/agents/monitor",
     label: "Agent monitor",
-    caption: "Live runs + events + AI triage",
+    caption: "Live runs + events + T2Q triage",
     Icon: Pulse,
     ownerOnly: true,
   },

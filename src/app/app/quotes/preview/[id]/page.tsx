@@ -244,8 +244,8 @@ export default async function QuotePreviewPage({
               ? "running"
               : "complete",
         message: aiEngineOn
-          ? `Rule-based: ${report.flags.length} flags, ${report.suggestions.length} suggestions · AI engine on`
-          : `Rule-based: ${report.flags.length} flags, ${report.suggestions.length} suggestions · AI compliance engine off (no compliance_review data)`,
+          ? `Rule-based: ${report.flags.length} flags, ${report.suggestions.length} suggestions · T2Q engine on`
+          : `Rule-based: ${report.flags.length} flags, ${report.suggestions.length} suggestions · T2Q compliance engine off (no compliance_review data)`,
       });
     } catch {
       /* never break render */

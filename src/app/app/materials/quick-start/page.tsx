@@ -50,7 +50,7 @@ export default async function MaterialsQuickStartPage() {
             Add the materials you use every week.
           </h1>
           <p className="mt-3 max-w-prose text-sm text-ink-300 sm:text-base">
-            Every price you set here means one less line the AI has to
+            Every price you set here means one less line T2Q has to
             estimate on your future quotes. Skip the rows you don&rsquo;t
             buy — only filled-in prices get saved. You can always edit,
             add or remove materials later from the Materials page.

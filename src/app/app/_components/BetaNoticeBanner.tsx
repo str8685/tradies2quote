@@ -89,7 +89,7 @@ export function BetaNoticeBanner() {
             Beta
           </span>{" "}
           <span className="text-ink-300">
-            Treat AI scopes, quantities &amp; prices as drafts — review each
+            Treat T2Q scopes, quantities &amp; prices as drafts — review each
             quote before you send it.
           </span>
         </p>

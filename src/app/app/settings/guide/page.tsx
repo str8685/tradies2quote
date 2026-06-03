@@ -195,7 +195,7 @@ const SECTIONS: ReadonlyArray<Section> = [
       {
         label: "Tap an option per question",
         body:
-          "Each pick locks T2Q in to what you actually want — no more 'the AI just made it up'.",
+          "Each pick locks T2Q in to what you actually want — no more 'it just made it up'.",
       },
       {
         label: "Skip what you don't care about",
@@ -269,7 +269,7 @@ const SECTIONS: ReadonlyArray<Section> = [
       },
     ],
     tips: [
-      "Yellow 'T2Q estimate' pills mean the AI guessed the price. Replace those with your real numbers — and save the material to your library so future quotes use your real price automatically.",
+      "Yellow 'T2Q estimate' pills mean T2Q guessed the price. Replace those with your real numbers — and save the material to your library so future quotes use your real price automatically.",
       "The terms section is editable. Standard terms are baked in but you can tweak per quote.",
     ],
   },
@@ -322,13 +322,13 @@ const SECTIONS: ReadonlyArray<Section> = [
   },
   {
     id: "customer-chat",
-    title: "AI chat inside every quote",
+    title: "T2Q chat inside every quote",
     icon: ChatCircle,
     intro: (
       <>
         <p>
           When the customer opens the quote link, they see an orange chat
-          bubble bottom-right. Tap it → an AI assistant that knows the
+          bubble bottom-right. Tap it → a T2Q assistant that knows the
           exact quote answers their questions in seconds:{" "}
           <em>&ldquo;what does line 3 mean?&rdquo;</em>,{" "}
           <em>&ldquo;can we use cheaper insulation?&rdquo;</em>,{" "}
@@ -340,14 +340,14 @@ const SECTIONS: ReadonlyArray<Section> = [
       {
         label: "Customer asks anything",
         body:
-          "AI uses the actual line items, totals, and your terms — never invents prices or warranties.",
+          "T2Q uses the actual line items, totals, and your terms — never invents prices or warranties.",
       },
       {
-        label: "AI flags actionable items for you",
+        label: "T2Q flags actionable items for you",
         body: (
           <>
             If the customer wants something you have to decide (cheaper
-            alternative, scope change, scheduling), the AI flags a note
+            alternative, scope change, scheduling), T2Q flags a note
             for you. Open the quote in your app → Review Tools →{" "}
             <strong className="text-white">Customer chat</strong>{" "}
             collapsible — pending notes appear in a yellow panel at the
@@ -358,11 +358,11 @@ const SECTIONS: ReadonlyArray<Section> = [
       {
         label: "Full thread is logged",
         body:
-          "Every customer question and every AI reply is stored against the quote. You see exactly what was discussed.",
+          "Every customer question and every T2Q reply is stored against the quote. You see exactly what was discussed.",
       },
     ],
     tips: [
-      "Safety: the AI NEVER agrees to a price drop, NEVER quotes a new total for a scope change, NEVER accepts the quote on the customer's behalf. It always defers price/scope decisions back to you.",
+      "Safety: T2Q NEVER agrees to a price drop, NEVER quotes a new total for a scope change, NEVER accepts the quote on the customer's behalf. It always defers price/scope decisions back to you.",
       "Rate limited at 25 customer messages per quote per UTC day — stops abuse.",
     ],
   },
@@ -374,7 +374,7 @@ const SECTIONS: ReadonlyArray<Section> = [
       <>
         <p>
           The more materials you save to your library, the more accurate
-          future quotes get. T2Q matches the AI-generated line items
+          future quotes get. T2Q matches the generated line items
           against your library by name and replaces estimates with your
           real prices and supplier links automatically.
         </p>
@@ -416,7 +416,7 @@ const SECTIONS: ReadonlyArray<Section> = [
       },
     ],
     tips: [
-      "Materials with a yellow 'T2Q' pill came from an AI estimate — confirm the price and the yellow pill goes away.",
+      "Materials with a yellow 'T2Q' pill came from a T2Q estimate — confirm the price and the yellow pill goes away.",
       "When you edit a line price on a quote, T2Q doesn't auto-write that price back to the library — you save the material explicitly so you don't accidentally overwrite known good prices.",
     ],
     deepLink: { label: "Open Materials", href: "/app/materials" },
@@ -523,7 +523,7 @@ const SECTIONS: ReadonlyArray<Section> = [
       {
         label: "Customer chat",
         body:
-          "The conversation thread between your customer and T2Q's AI on the public quote link. Pending tradie-action notes are surfaced at the top.",
+          "The conversation thread between your customer and T2Q on the public quote link. Pending tradie-action notes are surfaced at the top.",
       },
       {
         label: "Quote Review Agent",
@@ -600,7 +600,7 @@ const SECTIONS: ReadonlyArray<Section> = [
       {
         label: "Chat bubble",
         body:
-          "Bottom-right corner. AI assistant for asking questions. See the 'AI chat inside every quote' section above.",
+          "Bottom-right corner. T2Q assistant for asking questions. See the 'T2Q chat inside every quote' section above.",
       },
       {
         label: "PDF download",
@@ -682,7 +682,7 @@ const SECTIONS: ReadonlyArray<Section> = [
       {
         label: "Business email / phone / address",
         body:
-          "Footer of the quote PDF, contact info for the customer to reach you back. Email + phone are also used by T2Q's chat AI to direct the customer if it can't answer.",
+          "Footer of the quote PDF, contact info for the customer to reach you back. Email + phone are also used by T2Q's chat to direct the customer if it can't answer.",
       },
       {
         label: "GST number",
