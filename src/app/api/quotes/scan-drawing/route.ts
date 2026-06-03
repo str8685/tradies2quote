@@ -20,7 +20,7 @@ const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
 // docs.anthropic.com is `claude-opus-4-7`. If we 502 again, the
 // improved error logging below will surface the actual Anthropic
 // response status + body so we can diagnose properly.
-const MODEL = "claude-opus-4-7";
+export const MODEL = "claude-opus-4-7";
 // Bumped from 2048 → 4096. A detailed hand-drawn plan (multiple
 // dimension labels, step heights, post depths, fastener notes) can
 // easily generate a long structured response: 6 sections of prose
@@ -73,7 +73,7 @@ const JOB_TYPE_GUIDANCE: Record<string, string> = {
 // cladding patterns automatically). That means scan-drawing piggybacks
 // on all the existing material-matching, pricing, library, compliance
 // and review tooling — no separate quote pipeline to maintain.
-function buildSystemPrompt(jobType: string, timberLength: number): string {
+export function buildSystemPrompt(jobType: string, timberLength: number): string {
   const guidance =
     JOB_TYPE_GUIDANCE[jobType] ?? JOB_TYPE_GUIDANCE.Other;
   return `You are an NZ-builder takeoff reader. The user uploaded a photo or scan of a hand-drawn construction plan/sketch.
@@ -217,7 +217,7 @@ function sanitiseRegions(raw: unknown): Region[] | null {
   return out.length > 0 ? out : null;
 }
 
-function sanitisePlan(raw: unknown): ScannedPlan | null {
+export function sanitisePlan(raw: unknown): ScannedPlan | null {
   if (!raw || typeof raw !== "object") return null;
   const r = raw as Record<string, unknown>;
   const shape = (

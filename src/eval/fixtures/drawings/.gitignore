@@ -1,0 +1,5 @@
+# Don't commit drawing photos — they can be large and may contain job/site
+# details. The eval reads whatever is present locally; keep the docs tracked.
+*
+!.gitignore
+!README.md
