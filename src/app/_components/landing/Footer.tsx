@@ -17,7 +17,7 @@ export function Footer() {
                 still styles the TRADIES2QUOTE wordmark text beside it. */}
             <Logo size={40} className="text-white" />
             <p className="mt-4 text-ink-400 text-sm max-w-sm">
-              Voice in. Quote out. Built by a builder running STR8 Builders in New Zealand.
+              Voice in. Quote out. Built in New Zealand by a qualified builder — made for the trades.
             </p>
           </div>
           <div>

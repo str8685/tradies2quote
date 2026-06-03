@@ -253,13 +253,16 @@ export function Hero() {
               {HERO_LINE_2.join(" ")}
             </motion.span>
 
-            {/* Line 3 — white words again, delayed so they overlap the
-                tail end of line 2's wipe. */}
+            {/* Line 3 — the payoff line. Rendered in hi-vis yellow so the
+                "get paid faster" promise pops off the dark hero (it was
+                previously text-ink-900, i.e. near-black on black, so it
+                barely showed). White → brand orange → hi-vis gives the
+                three lines a deliberate escalating hierarchy. */}
             <motion.span
               variants={lineContainer(0.95)}
               initial="hidden"
               animate="visible"
-              className="block text-ink-900"
+              className="block text-hivis"
             >
               {HERO_LINE_3.map((w, i) => (
                 <Fragment key={`l3-${i}`}>
