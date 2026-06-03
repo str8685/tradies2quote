@@ -78,7 +78,7 @@ export function SettingsForm({ initial }: Props) {
             onChange={setField("business_name")}
             data-testid="settings-business-name"
             className={INPUT_CLASS}
-            placeholder="STR8 Builders"
+            placeholder="e.g. Bayside Builders Ltd"
           />
         </Field>
         <Field id="email" label="Email">

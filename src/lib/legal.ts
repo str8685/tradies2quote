@@ -39,7 +39,7 @@ export interface LegalConfig {
 }
 
 export const LEGAL: LegalConfig = {
-  companyName: "STR8 Builders Ltd",
+  companyName: "tradies2Quote",
   nzbn: null,
   address: "Tauranga, New Zealand",
   productName: "tradies2Quote",

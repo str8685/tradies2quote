@@ -93,7 +93,7 @@ export default function MockXero() {
             Welcome back, Challis
           </h1>
           <p className="mt-1 text-sm text-ink-500">
-            Tuesday, 2 June 2026 · STR8 Builders
+            Tuesday, 2 June 2026 · Bayside Builders
           </p>
         </div>
 

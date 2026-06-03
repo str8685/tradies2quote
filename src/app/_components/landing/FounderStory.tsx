@@ -59,7 +59,7 @@ export function FounderStory() {
           </div>
           <div className="lg:col-span-7 lg:pt-4">
             <p className="text-lg text-ink-200 leading-relaxed">
-              I&apos;m Challis — qualified builder, running STR8 Builders out of NZ. I built
+              I&apos;m Challis — a qualified builder based in New Zealand. I built
               this for myself first because I was sick of losing Sundays to quoting. Now it&apos;s
               in beta with a small crew of mates and I&apos;m opening it up.
             </p>

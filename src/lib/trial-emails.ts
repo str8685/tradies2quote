@@ -179,7 +179,7 @@ function renderOnboarding3day(args: TemplateArgs): RenderedEmail {
 
 Three days in and still no quote on the system. That usually means one of three things — voice flow felt off, the editor is fiddly, or there's a job type the AI's not nailing.
 
-I'm a working builder (STR8 Builders, Tauranga), I built this thing for me, and I'll spend 15 min with you 1-on-1 to figure out the blocker.${callLine}
+I'm a working builder based in Tauranga, I built this thing for me, and I'll spend 15 min with you 1-on-1 to figure out the blocker.${callLine}
 
 Or just open a quote and email back if something looks wrong: ${newQuoteUrl}
 
@@ -187,7 +187,7 @@ Or just open a quote and email back if something looks wrong: ${newQuoteUrl}
   const html = shell(`
 <p>Hi ${escapeHtml(args.firstName)},</p>
 <p>Three days in and still no quote on the system. That usually means one of three things — voice flow felt off, the editor is fiddly, or there's a job type the AI's not nailing.</p>
-<p>I'm a working builder (STR8 Builders, Tauranga), I built this thing for me, and I'll spend 15 min with you 1-on-1 to figure out the blocker.</p>
+<p>I'm a working builder based in Tauranga, I built this thing for me, and I'll spend 15 min with you 1-on-1 to figure out the blocker.</p>
 ${args.calendlyUrl ? btn(args.calendlyUrl, "Grab a 15-min slot") : '<p>Just reply to this email and we\'ll find a time.</p>'}
 <p style="color: #666; font-size: 13px;">Or just open a quote and email back if something looks wrong: <a href="${newQuoteUrl}" style="color: #FF5F15;">${newQuoteUrl}</a></p>
 <p>— Challis</p>

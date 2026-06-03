@@ -418,7 +418,7 @@ export function Hero() {
                             tradies2Quote
                           </div>
                           <div className="font-mono text-[8px] uppercase tracking-[0.18em] text-ink-500 mt-0.5">
-                            STR8 Builders
+                            Bayside Builders
                           </div>
                         </div>
                       </div>
