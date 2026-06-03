@@ -14,6 +14,7 @@
  * Server-only. Needs ANTHROPIC_API_KEY at runtime.
  */
 import "server-only";
+import { runStructuredAgent, type ParseResult } from "./runtime";
 
 export type TakeoffLineUnit =
   | "each"
@@ -72,13 +73,7 @@ export interface MaterialsTakeoffInput {
   country?: "NZ" | "AU" | "UK" | "US" | "CA";
 }
 
-const MODEL = "claude-sonnet-4-20250514";
-const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
 const MAX_TOKENS = 4096;
-
-interface AnthropicResponse {
-  content?: Array<{ type: string; text?: string }>;
-}
 
 const SYSTEM_PROMPT = `You are a senior NZ builder's takeoff assistant.
 
@@ -106,15 +101,61 @@ Trade-specific rules:
 - Always set "ai_estimated": true unless the user gave you a specific number ("12 sheets of GIB" → ai_estimated=false, quantity=12).
 - Add a review flag for: load-bearing structural calls, fire-rated assemblies, anything that requires a producer statement or engineer's input, "the customer said it's plaster behind there but I haven't checked" — anything that needs a site visit to confirm.
 
-Output STRICT JSON, no prose, no code fences:
-{
-  "understoodAs": "...",
-  "lines": [
-    {"description":"...","quantity":1.0,"unit":"sheet","note":"...","ai_estimated":true,"category":"linings"}
-  ],
-  "assumptions": ["Standard 90x45 framing assumed.", "..."],
-  "reviewFlags": [{"message":"Confirm the wall is non-load-bearing before removing."}]
-}`;
+Return the takeoff by calling the emit_takeoff tool with the structured fields described above. Do not reply with prose — only the tool call.`;
+
+const TAKEOFF_TOOL = {
+  name: "emit_takeoff",
+  description: "Return the structured NZ materials takeoff for the job description.",
+  schema: {
+    type: "object",
+    required: ["understoodAs", "lines", "assumptions", "reviewFlags"],
+    properties: {
+      understoodAs: {
+        type: "string",
+        description: "One-line echo of what the job was understood to be.",
+      },
+      lines: {
+        type: "array",
+        items: {
+          type: "object",
+          required: ["description", "ai_estimated", "category"],
+          properties: {
+            description: { type: "string" },
+            quantity: {
+              type: ["number", "null"],
+              description: "Estimated quantity, or null if it can't be guessed.",
+            },
+            unit: {
+              type: ["string", "null"],
+              enum: [
+                "each", "lm", "m2", "m3", "kg", "bag", "sheet", "roll",
+                "litre", "hr", "day", null,
+              ],
+            },
+            note: { type: ["string", "null"] },
+            ai_estimated: { type: "boolean" },
+            category: {
+              type: "string",
+              enum: [
+                "framing", "linings", "insulation", "fixings", "paint_plaster",
+                "exterior", "fittings", "consumables", "labour", "other",
+              ],
+            },
+          },
+        },
+      },
+      assumptions: { type: "array", items: { type: "string" } },
+      reviewFlags: {
+        type: "array",
+        items: {
+          type: "object",
+          required: ["message"],
+          properties: { message: { type: "string" } },
+        },
+      },
+    },
+  },
+};
 
 function pickEnum<T extends string>(value: unknown, options: readonly T[], fallback: T): T {
   return typeof value === "string" && (options as readonly string[]).includes(value)
@@ -149,13 +190,71 @@ const CATEGORY_OPTIONS: readonly TakeoffLine["category"][] = [
   "other",
 ];
 
+/**
+ * Validate + normalise the model's `emit_takeoff` tool input. Pure; the runtime
+ * retries once if this returns an error. `jobTextFallback` backfills
+ * `understoodAs` when the model omits it.
+ */
+export function parseTakeoff(
+  input: unknown,
+  jobTextFallback = "",
+): ParseResult<TakeoffResult> {
+  const obj = (input ?? {}) as Partial<TakeoffResult>;
+
+  const lines: TakeoffLine[] = Array.isArray(obj.lines)
+    ? obj.lines
+        .map((l) => {
+          const rec = (l ?? {}) as Partial<TakeoffLine>;
+          const q = typeof rec.quantity === "number" ? rec.quantity : null;
+          return {
+            description:
+              typeof rec.description === "string" ? rec.description.trim() : "",
+            quantity: q !== null && Number.isFinite(q) ? q : null,
+            unit: pickEnum(rec.unit ?? null, UNIT_OPTIONS, "each") || null,
+            note: typeof rec.note === "string" ? rec.note : null,
+            ai_estimated:
+              typeof rec.ai_estimated === "boolean" ? rec.ai_estimated : true,
+            category: pickEnum(rec.category ?? "other", CATEGORY_OPTIONS, "other"),
+          };
+        })
+        .filter((l) => l.description.length > 0)
+    : [];
+
+  if (lines.length === 0) {
+    return {
+      ok: false,
+      error: "no material lines — extract at least one likely material",
+    };
+  }
+
+  return {
+    ok: true,
+    value: {
+      understoodAs:
+        typeof obj.understoodAs === "string"
+          ? obj.understoodAs
+          : jobTextFallback.slice(0, 240),
+      lines,
+      assumptions: Array.isArray(obj.assumptions)
+        ? obj.assumptions.filter((s): s is string => typeof s === "string")
+        : [],
+      reviewFlags: Array.isArray(obj.reviewFlags)
+        ? obj.reviewFlags
+            .map((f) => {
+              const fr = (f ?? {}) as { message?: unknown };
+              return typeof fr.message === "string"
+                ? { message: fr.message }
+                : null;
+            })
+            .filter((f): f is TakeoffReviewFlag => f !== null)
+        : [],
+    },
+  };
+}
+
 export async function runMaterialsTakeoffAgent(
   input: MaterialsTakeoffInput,
 ): Promise<TakeoffResult> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
-    throw new Error("ANTHROPIC_API_KEY is not configured.");
-  }
   const jobText = (input.jobText ?? "").trim();
   if (jobText.length === 0) {
     throw new Error("Job description is empty.");
@@ -165,78 +264,18 @@ export async function runMaterialsTakeoffAgent(
   }
 
   const country = input.country ?? "NZ";
-  const userPrompt = `COUNTRY: ${country}\n\nJOB DESCRIPTION:\n"""\n${jobText}\n"""\n\nReturn the JSON described in the system prompt.`;
+  const userPrompt = `COUNTRY: ${country}\n\nJOB DESCRIPTION:\n"""\n${jobText}\n"""`;
 
-  const res = await fetch(ANTHROPIC_URL, {
-    method: "POST",
-    headers: {
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01",
-      "content-type": "application/json",
-    },
-    body: JSON.stringify({
-      model: MODEL,
-      max_tokens: MAX_TOKENS,
-      temperature: 0,
-      system: SYSTEM_PROMPT,
-      messages: [
-        { role: "user", content: userPrompt },
-        { role: "assistant", content: "{" },
-      ],
-    }),
+  const result = await runStructuredAgent<TakeoffResult>({
+    agentName: "Materials Takeoff",
+    system: SYSTEM_PROMPT,
+    user: userPrompt,
+    tool: TAKEOFF_TOOL,
+    parse: (raw) => parseTakeoff(raw, jobText),
+    maxTokens: MAX_TOKENS,
   });
 
-  if (!res.ok) {
-    const detail = await res.text().catch(() => "");
-    throw new Error(`Anthropic ${res.status}: ${detail.slice(0, 200)}`);
-  }
-
-  const payload = (await res.json()) as AnthropicResponse;
-  const raw = payload.content?.find((c) => c.type === "text")?.text ?? "";
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse("{" + raw);
-  } catch (e) {
-    throw new Error(`Anthropic returned non-JSON: ${(e as Error).message}`);
-  }
-  const obj = parsed as Partial<TakeoffResult>;
-
-  const lines: TakeoffLine[] = Array.isArray(obj.lines)
-    ? obj.lines.map((l) => {
-        const rec = (l ?? {}) as Partial<TakeoffLine>;
-        const q = typeof rec.quantity === "number" ? rec.quantity : null;
-        return {
-          description: typeof rec.description === "string" ? rec.description.trim() : "",
-          quantity: q !== null && Number.isFinite(q) ? q : null,
-          unit: pickEnum(rec.unit ?? null, UNIT_OPTIONS, "each") || null,
-          note: typeof rec.note === "string" ? rec.note : null,
-          ai_estimated:
-            typeof rec.ai_estimated === "boolean" ? rec.ai_estimated : true,
-          category: pickEnum(
-            rec.category ?? "other",
-            CATEGORY_OPTIONS,
-            "other",
-          ),
-        };
-      })
-    : [];
-
-  return {
-    understoodAs:
-      typeof obj.understoodAs === "string" ? obj.understoodAs : jobText.slice(0, 240),
-    lines: lines.filter((l) => l.description.length > 0),
-    assumptions: Array.isArray(obj.assumptions)
-      ? obj.assumptions.filter((s): s is string => typeof s === "string")
-      : [],
-    reviewFlags: Array.isArray(obj.reviewFlags)
-      ? obj.reviewFlags
-          .map((f) => {
-            const fr = (f ?? {}) as { message?: unknown };
-            return typeof fr.message === "string" ? { message: fr.message } : null;
-          })
-          .filter((f): f is TakeoffReviewFlag => f !== null)
-      : [],
-  };
+  return result.value;
 }
 
 /** Pure helper used by tests + UI — coerces an unknown unit string. */
