@@ -108,9 +108,9 @@ export function PublicQuoteSummary({ token, quote }: Props) {
         )}
         <Row label={`Markup`} value={formatCurrency(quote.markup_amount, quote.currency)} />
         <Row label="Labour subtotal" value={formatCurrency(quote.labour_subtotal, quote.currency)} />
-        <Row label="Subtotal" value={formatCurrency(quote.subtotal_before_tax, quote.currency)} divider />
+        <Row label={quote.tax_rate > 0 ? `Subtotal (excl. ${quote.tax_label})` : "Subtotal"} value={formatCurrency(quote.subtotal_before_tax, quote.currency)} divider />
         <Row label={`${quote.tax_label} (${quote.tax_rate}%)`} value={formatCurrency(quote.tax_amount, quote.currency)} />
-        <Row label="Total" value={formatCurrency(quote.total, quote.currency)} emphasis />
+        <Row label={quote.tax_rate > 0 ? `Total (incl. ${quote.tax_label})` : "Total"} value={formatCurrency(quote.total, quote.currency)} emphasis />
       </section>
 
       {quote.terms && (

@@ -138,6 +138,47 @@ export function moneyEquals(a: number, b: number, tolerance = 0.01): boolean {
   return Math.abs(round2(a) - round2(b)) <= tolerance;
 }
 
+export type GstBreakdown = {
+  /** Amount BEFORE tax (GST-exclusive). */
+  exclusive: number;
+  /** The tax portion. */
+  gst: number;
+  /** Amount INCLUDING tax (GST-inclusive). */
+  inclusive: number;
+  /** The rate used, as a percentage (e.g. 15 for NZ). */
+  rate: number;
+};
+
+/**
+ * Add GST on top of a GST-EXCLUSIVE amount.
+ * NZ example: addGst(3380, 15) → { exclusive: 3380, gst: 507, inclusive: 3887 }.
+ * This is the direction quote totals are built (tax applied last, on top of the
+ * ex-GST subtotal), so it matches `computeQuoteTotals`.
+ */
+export function addGst(exclusiveAmount: number, rate = 15): GstBreakdown {
+  const exclusive = round2(exclusiveAmount);
+  const gst = round2(exclusive * ((Number(rate) || 0) / 100));
+  return { exclusive, gst, inclusive: round2(exclusive + gst), rate };
+}
+
+/**
+ * Decompose a GST-INCLUSIVE amount back into its ex-GST and GST parts.
+ * NZ example: gstInclusiveBreakdown(3887, 15) →
+ *   { inclusive: 3887, exclusive: 3380.87, gst: 506.13 }.
+ * Note this is NOT the inverse of `addGst` at the cent level: 3380 + 15% = 3887
+ * (GST 507), but 3887 decomposed = ex 3380.87 / GST 506.13. Both are correct —
+ * they answer different questions ("add GST to 3380" vs "how much GST is inside
+ * 3887"). Use this when a supplier figure is quoted GST-inclusive.
+ */
+export function gstInclusiveBreakdown(
+  inclusiveAmount: number,
+  rate = 15,
+): GstBreakdown {
+  const inclusive = round2(inclusiveAmount);
+  const exclusive = round2(inclusive / (1 + (Number(rate) || 0) / 100));
+  return { inclusive, exclusive, gst: round2(inclusive - exclusive), rate };
+}
+
 /**
  * Split a quote's line items into the two display subtotals shown as
  * separate rows on the totals card / PDF / public quote: "Materials"

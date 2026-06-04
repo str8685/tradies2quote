@@ -365,12 +365,19 @@ export async function generateQuotePdf(args: GenerateArgs): Promise<Uint8Array> 
   }
   drawTotalRow(`Markup (${quote.markup_pct}%)`, quote.markup_amount);
   drawTotalRow("Labour subtotal", quote.labour_subtotal);
-  drawTotalRow("Subtotal", quote.subtotal_before_tax);
+  drawTotalRow(
+    quote.tax_rate > 0 ? `Subtotal (excl. ${quote.tax_label})` : "Subtotal",
+    quote.subtotal_before_tax,
+  );
   drawTotalRow(`${quote.tax_label} (${quote.tax_rate}%)`, quote.tax_amount);
   y -= 4;
   drawRule(y);
   y -= 18;
-  drawTotalRow("Total incl. tax", quote.total, true);
+  drawTotalRow(
+    quote.tax_rate > 0 ? `Total (incl. ${quote.tax_label})` : "Total",
+    quote.total,
+    true,
+  );
 
   // ===== Terms =====
   if (quote.terms) {

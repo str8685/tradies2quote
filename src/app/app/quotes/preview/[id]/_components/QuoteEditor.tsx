@@ -1114,7 +1114,7 @@ export function QuoteEditor({
           value={formatCurrency(totals.labour_subtotal, currency)}
         />
         <TotalsRow
-          label="Subtotal"
+          label={taxRate > 0 ? `Subtotal (excl. ${taxLabel})` : "Subtotal"}
           value={formatCurrency(totals.subtotal_before_tax, currency)}
           divider
         />
@@ -1123,7 +1123,7 @@ export function QuoteEditor({
           value={formatCurrency(totals.tax_amount, currency)}
         />
         <TotalsRow
-          label="Total"
+          label={taxRate > 0 ? `Total (incl. ${taxLabel})` : "Total"}
           value={formatCurrency(totals.total, currency)}
           emphasis
           testId="quote-total"
