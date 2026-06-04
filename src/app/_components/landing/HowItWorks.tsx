@@ -47,34 +47,34 @@ export function HowItWorks() {
         <div className="max-w-3xl mb-16">
           <div className="t2q-section-label mb-4">{"// the workflow"}</div>
           <h2 className="font-display text-4xl sm:text-5xl lg:text-6xl tracking-tighter uppercase leading-[0.95]">
-            Three steps. <br />
+            Four steps. <br />
             <span className="text-brand">Zero forms.</span>
           </h2>
-          <p className="mt-5 text-lg text-ink-300 max-w-xl">
-            Built for tradies, not office workers. No drag-and-drop. No drop-downs. No bloody menus.
+          <p className="mt-5 text-lg text-ink-200 max-w-xl">
+            Built for tradies, not office workers. No drag-and-drop. No drop-downs. No buried menus.
           </p>
         </div>
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-px bg-ink-600 border border-ink-600">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           {STEPS.map(({ n, slug, title, body, icon: Icon }) => (
             <div
               key={n}
               data-testid={`how-step-${slug}`}
-              className="bg-ink-900 p-8 md:p-10 group hover:bg-ink-800 transition-colors"
+              className="group rounded-lg border border-white/10 bg-ink-800/80 p-6 transition-colors hover:border-brand/45 hover:bg-ink-800 md:p-7"
             >
-              <div className="flex items-center justify-between mb-8">
-                <span className="font-display text-5xl text-ink-700 group-hover:text-brand transition-colors">
+              <div className="mb-8 flex items-center justify-between">
+                <span className="font-display text-5xl text-ink-700 transition-colors group-hover:text-brand">
                   {n}
                 </span>
-                <div className="w-12 h-12 grid place-items-center bg-ink-800 border border-ink-600 group-hover:bg-brand group-hover:border-brand transition-colors">
+                <div className="grid h-12 w-12 place-items-center rounded-lg border border-brand/35 bg-brand/10 transition-colors group-hover:border-brand group-hover:bg-brand">
                   <Icon
-                    size={20}
+                    size={22}
                     weight="bold"
-                    className="text-brand group-hover:text-ink-900 transition-colors"
+                    className="text-brand transition-colors group-hover:text-ink-900"
                   />
                 </div>
               </div>
               <h3 className="font-display text-2xl uppercase tracking-tight mb-3">{title}</h3>
-              <p className="text-ink-300 leading-relaxed">{body}</p>
+              <p className="text-ink-100 leading-relaxed">{body}</p>
             </div>
           ))}
         </div>

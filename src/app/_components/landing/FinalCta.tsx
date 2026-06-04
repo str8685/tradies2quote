@@ -14,7 +14,7 @@ export function FinalCta() {
       <div className="absolute -bottom-32 right-0 w-[420px] h-[420px] rounded-full bg-hivis/10 blur-3xl pointer-events-none animate-blob" />
 
       <div className="relative max-w-7xl mx-auto px-6 md:px-12">
-        <div className="border-2 border-brand bg-ink-900 p-10 md:p-16 t2q-shadow-brutal-yellow">
+        <div className="rounded-lg border-2 border-brand bg-ink-900/95 p-8 shadow-[0_26px_70px_-36px_rgba(255,95,21,0.65)] md:p-14">
           <div className="grid md:grid-cols-2 gap-10 items-end">
             <div>
               <div className="t2q-section-label mb-4">{"// stop quoting on sundays"}</div>
@@ -26,7 +26,7 @@ export function FinalCta() {
                 Beta access for NZ tradies. No credit card. Cancel by text. We&apos;ll
                 onboard you personally.
               </p>
-              <ul className="mt-6 grid sm:grid-cols-2 gap-2 text-sm text-ink-300">
+              <ul className="mt-6 grid sm:grid-cols-2 gap-2 text-sm text-ink-100">
                 <li className="flex items-center gap-2">
                   <ShieldCheck size={16} weight="bold" className="text-brand" />
                   Editable before sending
@@ -58,7 +58,7 @@ export function FinalCta() {
               <Link
                 href="/login"
                 data-testid="final-cta-signin"
-                className="font-mono text-xs uppercase tracking-[0.2em] text-ink-300 hover:text-white transition-colors"
+                className="font-mono text-xs uppercase tracking-[0.18em] text-ink-200 hover:text-white transition-colors"
               >
                 Already have an account? Sign in →
               </Link>

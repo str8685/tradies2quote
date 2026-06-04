@@ -67,8 +67,8 @@ export function FAQ() {
               <div
                 key={item.slug}
                 data-testid={`faq-item-${item.slug}`}
-                className={`border bg-ink-800 rounded-sm px-5 transition-colors ${
-                  isOpen ? "border-brand" : "border-ink-600"
+                className={`rounded-lg border bg-ink-800/90 px-5 shadow-[0_16px_42px_-34px_rgba(0,0,0,0.85)] transition-colors ${
+                  isOpen ? "border-brand" : "border-white/10"
                 }`}
               >
                 <button
@@ -99,7 +99,7 @@ export function FAQ() {
                     >
                       <p
                         data-testid={`faq-answer-${item.slug}`}
-                        className="text-ink-300 text-base leading-relaxed pb-5"
+                        className="text-ink-100 text-base leading-relaxed pb-5"
                       >
                         {item.a}
                       </p>

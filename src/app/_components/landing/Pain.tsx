@@ -70,18 +70,20 @@ export function Pain() {
           {POINTS.map(({ slug, icon: Icon, title, body }) => (
             <TiltCard
               key={slug}
-              className="bg-ink-800 border border-ink-600 rounded-sm h-full"
+              className="h-full rounded-lg border border-white/10 bg-ink-800/90 shadow-[0_18px_44px_-32px_rgba(0,0,0,0.85)]"
               innerClassName="p-6 md:p-7 flex flex-col h-full"
               maxTiltX={5}
               maxTiltY={7}
               liftZ={18}
               testid={`pain-point-${slug}`}
             >
-              <Icon size={28} weight="bold" className="text-brand mb-5" />
+              <div className="mb-5 grid h-12 w-12 place-items-center rounded-lg border border-brand/30 bg-brand/10">
+                <Icon size={26} weight="bold" className="text-brand" />
+              </div>
               <h3 className="font-display text-lg uppercase tracking-tight mb-2 leading-tight">
                 {title}
               </h3>
-              <p className="text-ink-200 text-sm leading-relaxed">{body}</p>
+              <p className="text-ink-100 text-sm leading-relaxed">{body}</p>
             </TiltCard>
           ))}
         </div>

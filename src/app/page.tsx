@@ -40,7 +40,7 @@ export default function HomePage() {
         <Pain />
         <QuoteWorkflow />
         <HowItWorks />
-        <TapeDivider label="ONE TOOL · DOES ONE THING · BLOODY WELL" />
+        <TapeDivider label="ONE TOOL · DOES ONE THING · DOES IT WELL" />
         <Features />
         <FounderStory />
         <Pricing />

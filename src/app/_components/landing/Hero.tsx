@@ -202,10 +202,10 @@ export function Hero() {
         <div className="lg:col-span-7">
           <motion.div
             {...eyebrowAnim}
-            className="inline-flex items-center gap-2 mb-6 border border-ink-600 px-3 py-1.5 rounded-sm bg-ink-800"
+            className="inline-flex items-center gap-2 mb-6 rounded-lg border border-white/10 bg-ink-800/90 px-3 py-1.5"
           >
             <span className="w-2 h-2 rounded-full bg-brand animate-pulse" />
-            <span className="font-mono text-[11px] tracking-[0.2em] uppercase text-ink-300">
+            <span className="font-mono text-[11px] tracking-[0.18em] uppercase text-ink-200">
               Built by a builder · New Zealand · NZ-first beta
             </span>
           </motion.div>
@@ -326,7 +326,7 @@ export function Hero() {
               mobile; original desktop sizing kept behind sm:. */}
           <motion.div
             {...trustStripAnim}
-            className="mt-10 flex flex-wrap items-center gap-x-3 gap-y-2 text-ink-300 font-mono text-[10px] uppercase tracking-[0.12em] sm:gap-x-6 sm:gap-y-3 sm:text-xs sm:tracking-[0.18em]"
+            className="mt-10 flex flex-wrap items-center gap-x-3 gap-y-2 text-ink-200 font-mono text-[10px] uppercase tracking-[0.12em] sm:gap-x-6 sm:gap-y-3 sm:text-xs sm:tracking-[0.18em]"
           >
             <span>No credit card</span>
             <span aria-hidden="true" className="w-1 h-1 rounded-full bg-ink-500" />

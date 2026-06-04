@@ -16,15 +16,15 @@ export function Footer() {
                 straight on the dark footer — no white pill. text-white
                 still styles the TRADIES2QUOTE wordmark text beside it. */}
             <Logo size={40} className="text-white" />
-            <p className="mt-4 text-ink-400 text-sm max-w-sm">
+            <p className="mt-4 text-ink-300 text-sm max-w-sm">
               Voice in. Quote out. Built in New Zealand by a qualified builder — made for the trades.
             </p>
           </div>
           <div>
-            <div className="font-mono text-xs uppercase tracking-[0.2em] text-ink-500 mb-3">
+            <div className="font-mono text-xs uppercase tracking-[0.18em] text-ink-300 mb-3">
               Product
             </div>
-            <ul className="space-y-2 text-ink-300 text-sm">
+            <ul className="space-y-2 text-ink-200 text-sm">
               <li>
                 <a
                   href="#how"
@@ -55,10 +55,10 @@ export function Footer() {
             </ul>
           </div>
           <div>
-            <div className="font-mono text-xs uppercase tracking-[0.2em] text-ink-500 mb-3">
+            <div className="font-mono text-xs uppercase tracking-[0.18em] text-ink-300 mb-3">
               Account
             </div>
-            <ul className="space-y-2 text-ink-300 text-sm">
+            <ul className="space-y-2 text-ink-200 text-sm">
               <li>
                 <Link
                   href="/login"
@@ -80,10 +80,10 @@ export function Footer() {
             </ul>
           </div>
           <div>
-            <div className="font-mono text-xs uppercase tracking-[0.2em] text-ink-500 mb-3">
+            <div className="font-mono text-xs uppercase tracking-[0.18em] text-ink-300 mb-3">
               Legal
             </div>
-            <ul className="space-y-2 text-ink-300 text-sm">
+            <ul className="space-y-2 text-ink-200 text-sm">
               <li>
                 <Link
                   href="/privacy"
@@ -133,14 +133,14 @@ export function Footer() {
           </div>
         </div>
 
-        <div className="mt-12 pt-6 border-t border-ink-800 grid gap-3 text-xs font-mono uppercase tracking-[0.18em] text-ink-400">
+        <div className="mt-12 pt-6 border-t border-ink-800 grid gap-3 text-xs font-mono uppercase tracking-[0.16em] text-ink-300">
           <div className="flex flex-col md:flex-row gap-3 justify-between">
             <span>© {new Date().getFullYear()} tradies2Quote · Built in NZ</span>
             <span>Voice in. Quote out. Under 60 sec.</span>
           </div>
           <div
             data-testid="footer-operator"
-            className="text-[10px] tracking-[0.2em] text-ink-400/90 normal-case"
+            className="text-[10px] tracking-[0.16em] text-ink-300/90 normal-case"
           >
             Operated by {LEGAL.companyName}
             {LEGAL.nzbn ? <> (NZBN {LEGAL.nzbn})</> : null}, {LEGAL.address}.

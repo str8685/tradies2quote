@@ -66,7 +66,7 @@ export function Header() {
               key={l.href}
               href={l.href}
               data-testid={`nav-link-${l.href.replace("#", "")}`}
-              className="text-sm font-medium text-ink-300 hover:text-white transition-colors"
+              className="text-sm font-medium text-ink-200 hover:text-white transition-colors"
             >
               {l.label}
             </a>
@@ -78,7 +78,7 @@ export function Header() {
           <Link
             href="/login"
             data-testid="nav-sign-in"
-            className="text-sm font-semibold text-ink-300 hover:text-white px-3"
+            className="text-sm font-semibold text-ink-200 hover:text-white px-3"
           >
             Sign in
           </Link>

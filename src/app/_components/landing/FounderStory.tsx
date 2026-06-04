@@ -66,23 +66,25 @@ export function FounderStory() {
           </div>
         </div>
 
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-px bg-ink-600 border border-ink-600">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {PILLARS.map(({ slug, icon: Icon, title, body }) => (
             <div
               key={slug}
               data-testid={`trust-pillar-${slug}`}
-              className="bg-ink-900 p-8 md:p-10"
+              className="rounded-lg border border-white/10 bg-ink-900/90 p-7 shadow-[0_16px_42px_-34px_rgba(0,0,0,0.85)] md:p-8"
             >
-              <Icon size={28} weight="bold" className="text-brand mb-6" />
+              <div className="mb-5 grid h-12 w-12 place-items-center rounded-lg border border-brand/30 bg-brand/10">
+                <Icon size={26} weight="bold" className="text-brand" />
+              </div>
               <h3 className="font-display text-lg md:text-xl uppercase tracking-tight mb-2">
                 {title}
               </h3>
-              <p className="text-ink-300 text-sm leading-relaxed">{body}</p>
+              <p className="text-ink-100 text-sm leading-relaxed">{body}</p>
             </div>
           ))}
         </div>
 
-        <div className="mt-8 inline-flex items-center gap-2 px-4 py-2 border border-ink-600 bg-ink-900 rounded-sm">
+        <div className="mt-8 inline-flex items-center gap-2 rounded-lg border border-white/10 bg-ink-900 px-4 py-2">
           <span className="w-2 h-2 rounded-full bg-hivis animate-pulse" />
           <span className="font-mono text-[11px] uppercase tracking-[0.22em] text-ink-200">
             Beta · NZ tradies only · onboarding new crews each week

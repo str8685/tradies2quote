@@ -20,7 +20,7 @@ const TIERS = [
   {
     name: "Solo",
     slug: "solo",
-    tag: "For 1-man bands",
+    tag: "Solo operators",
     price: 49,
     highlight: false,
     comingSoon: false,
@@ -54,7 +54,7 @@ const TIERS = [
   {
     name: "Builder",
     slug: "builder",
-    tag: "Small crews + GCs",
+    tag: "Growing crews",
     price: 199,
     highlight: false,
     comingSoon: true,
@@ -62,7 +62,7 @@ const TIERS = [
       "Everything in Crew",
       "Up to 20 users",
       "Custom terms templates",
-      "Dedicated success mate",
+      "Dedicated success support",
     ],
   },
 ];
@@ -99,8 +99,8 @@ export function Pricing() {
               className={`border-2 ${
                 t.highlight
                   ? "border-brand bg-ink-800 t2q-shadow-brutal"
-                  : "border-ink-600 bg-ink-800/70"
-              } rounded-sm ${t.comingSoon ? "opacity-75" : ""}`}
+                  : "border-white/10 bg-ink-800/85 shadow-[0_18px_48px_-34px_rgba(0,0,0,0.9)]"
+              } rounded-lg`}
               innerClassName="p-8 md:p-10 flex flex-col h-full relative"
               maxTiltX={8}
               maxTiltY={10}
@@ -126,15 +126,15 @@ export function Pricing() {
                   <span className="block leading-none">Soon</span>
                 </div>
               )}
-              <div className="flex items-baseline justify-between">
+              <div className="flex items-start justify-between gap-4">
                 <h3 className="font-display text-3xl uppercase tracking-tight">{t.name}</h3>
-                <span className="text-xs font-mono uppercase tracking-[0.2em] text-ink-300">
+                <span className="max-w-[8.5rem] text-right text-xs font-mono uppercase tracking-[0.16em] text-ink-200">
                   {t.tag}
                 </span>
               </div>
               <div className="mt-6 flex items-end gap-1">
                 <span className="font-display text-6xl text-white">${t.price}</span>
-                <span className="text-ink-300 mb-2">/mo</span>
+                <span className="text-ink-200 mb-2">/mo</span>
               </div>
               <ul className="mt-8 space-y-3 flex-1">
                 {t.features.map((f) => (
