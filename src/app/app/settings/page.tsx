@@ -18,6 +18,8 @@ import { AppHeader } from "../_components/AppHeader";
 import { AdminChecklistPanel } from "../_components/agents/AdminChecklistPanel";
 import { SettingsForm, type SettingsInitial } from "./_components/SettingsForm";
 import { SubscriptionPanel } from "./_components/SubscriptionPanel";
+import { reviewsEnabled, followupsEnabled } from "@/lib/engagement";
+import { EngagementSettings } from "./_components/EngagementSettings";
 
 export const metadata: Metadata = {
   title: "Settings",
@@ -147,6 +149,27 @@ export default async function SettingsPage() {
         : String(NZ_DEFAULTS.default_markup_pct),
   };
 
+  // Engagement settings (auto follow-ups + review requests). Flag-gated;
+  // when both flags are off this whole block is skipped and the section
+  // never renders, so the settings page is unchanged by default.
+  const reviewsOn = reviewsEnabled();
+  const followupsOn = followupsEnabled();
+  let engagementInitial = { googleReviewUrl: "", autoReview: false, autoFollowup: false };
+  if (reviewsOn || followupsOn) {
+    const { data: fs } = await supabase
+      .from("feature_settings")
+      .select("google_review_url, auto_review_enabled, auto_followup_enabled")
+      .eq("user_id", user.id)
+      .maybeSingle();
+    if (fs) {
+      engagementInitial = {
+        googleReviewUrl: fs.google_review_url ?? "",
+        autoReview: fs.auto_review_enabled,
+        autoFollowup: fs.auto_followup_enabled,
+      };
+    }
+  }
+
   return (
     <div className="min-h-screen text-white">
       <AppHeader context="Settings" />
@@ -200,6 +223,13 @@ export default async function SettingsPage() {
         <AdminChecklistPanel profile={adminProfile} clients={adminClients} />
 
         <SettingsForm initial={initial} />
+
+        {reviewsOn || followupsOn ? (
+          <EngagementSettings
+            initial={engagementInitial}
+            show={{ reviews: reviewsOn, followups: followupsOn }}
+          />
+        ) : null}
 
         {/* Billing + subscription. Reads server-side so the panel
             reflects the exact current state without a client round-trip. */}
