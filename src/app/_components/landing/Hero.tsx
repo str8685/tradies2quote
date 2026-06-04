@@ -279,9 +279,9 @@ export function Hero() {
             {...subheadAnim}
             className="mt-7 text-lg md:text-xl text-ink-200 max-w-xl leading-relaxed"
           >
-            Stop losing your weekends. Talk through the job once and watch a branded
-            quote — and follow-up invoice — land in your client&apos;s inbox before
-            you&apos;ve packed up the ute.
+            Stop losing your weekends. Talk through the job once and get a branded
+            first quote draft — materials, labour, GST and terms — ready to review
+            before it lands in your client&apos;s inbox.
           </motion.p>
 
           <motion.div
@@ -328,11 +328,13 @@ export function Hero() {
             {...trustStripAnim}
             className="mt-10 flex flex-wrap items-center gap-x-3 gap-y-2 text-ink-200 font-mono text-[10px] uppercase tracking-[0.12em] sm:gap-x-6 sm:gap-y-3 sm:text-xs sm:tracking-[0.18em]"
           >
-            <span>No credit card</span>
+            <span>Free during beta</span>
             <span aria-hidden="true" className="w-1 h-1 rounded-full bg-ink-500" />
-            <span>Cancel anytime</span>
+            <span>GST 15% ready</span>
             <span aria-hidden="true" className="w-1 h-1 rounded-full bg-ink-500" />
-            <span>Built for tradies</span>
+            <span>Review before sending</span>
+            <span aria-hidden="true" className="w-1 h-1 rounded-full bg-ink-500" />
+            <span>Built for NZ tradies</span>
           </motion.div>
         </div>
 
@@ -448,6 +450,9 @@ export function Hero() {
                               For Sarah K · 12 Beach Rd, Auckland
                               <br />
                               Issued 06 Feb 2026 · Valid 30 days
+                            </div>
+                            <div className="mt-2 inline-block rounded-sm bg-ink-200 px-1.5 py-0.5 font-mono text-[7px] uppercase tracking-[0.18em] text-ink-600">
+                              Demo screen · your numbers appear after setup
                             </div>
                             <div className="mt-3 flex items-end justify-between">
                               <div>
