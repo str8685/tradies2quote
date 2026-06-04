@@ -274,19 +274,18 @@ export function StickyActionBar({
       <div
         data-testid="sticky-action-bar"
         className={[
-          // Soft-serif refresh — the bottom nav is now a FLOATING rounded
-          // pill (`.t2q-bottomnav-bar`, ~62px tall, sitting a thumb's width
-          // off the screen edges). The old `bottom: 57px + safe-area`
-          // formula assumed the previous edge-anchored 57px strip, so this
-          // bar ended up sitting ON TOP of the pill. Now it floats just
-          // ABOVE the pill: `bottom` clears the pill (~62px) + a gap, and
-          // it gets the same rounded/bordered/blurred treatment so the two
-          // read as one intentional floating cluster, not overlapping bars.
-          "fixed left-3 right-3 bottom-[calc(max(env(safe-area-inset-bottom),0.75rem)_+_4.5rem)] z-50 rounded-2xl border border-white/10 bg-ink-900/95 backdrop-blur-md shadow-[0_12px_32px_-8px_rgba(0,0,0,0.6)]",
+          // The bottom nav is now a LOCKED, edge-anchored solid bar
+          // (`.t2q-bottomnav-bar`, flush to the screen bottom, ~57px +
+          // home-indicator inset tall). This action bar sits flush DIRECTLY
+          // ON TOP of it — edge-to-edge, solid, hairline top border — so the
+          // two read as one connected bottom stack instead of a floating pill
+          // hovering over a separate bar. `bottom` clears the nav's height
+          // (~56px tile area) plus the same safe-area inset the nav uses.
+          "fixed left-0 right-0 bottom-[calc(3.5rem_+_max(env(safe-area-inset-bottom),0.25rem))] z-40 border-t border-[#E3E2DA] bg-white shadow-[0_-6px_20px_-12px_rgba(10,10,10,0.18)]",
           // min height 56 per the spec — leaves room for 44-px buttons.
           "min-h-[56px]",
           // On sm+ become a normal inline strip, no fixed positioning.
-          "sm:static sm:left-auto sm:right-auto sm:rounded-none sm:border-0 sm:bg-transparent sm:shadow-none sm:backdrop-blur-none",
+          "sm:static sm:left-auto sm:right-auto sm:border-0 sm:bg-transparent sm:shadow-none",
         ].join(" ")}
       >
         <div className="mx-auto flex max-w-3xl items-center gap-2 px-3 py-2 sm:justify-between sm:px-0 sm:py-4 sm:border-t sm:border-ink-700">

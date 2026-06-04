@@ -255,45 +255,56 @@ describe("agent-monitor logger", () => {
  * -------------------------------------------------------------------- */
 
 describe("logger import boundary", () => {
-  it("is never imported from a 'use client' file", async () => {
-    const root = resolve(process.cwd(), "src");
-    const offending: string[] = [];
+  it(
+    "is never imported from a 'use client' file",
+    async () => {
+      const root = resolve(process.cwd(), "src");
 
-    const walk = async (dir: string): Promise<void> => {
-      const entries = await readdir(dir, { withFileTypes: true });
-      for (const entry of entries) {
-        // Skip our own test file — it imports the logger by design.
-        if (
-          entry.name === "__tests__" ||
-          entry.name === "node_modules" ||
-          entry.name === ".next"
-        ) {
-          if (entry.isDirectory()) continue;
-        }
-        const full = join(dir, entry.name);
-        if (entry.isDirectory()) {
-          await walk(full);
-          continue;
-        }
-        if (!/\.(t|j)sx?$/.test(entry.name)) continue;
+      // 1. Collect every source file path first (cheap dir walk), then 2. read
+      //    + check them all CONCURRENTLY. Sequential awaited readFile over the
+      //    whole tree got slow enough to flirt with the timeout as src/ grew;
+      //    parallel reads keep this fast regardless of file count. Same checks.
+      const files: string[] = [];
+      const collect = async (dir: string): Promise<void> => {
+        const entries = await readdir(dir, { withFileTypes: true });
+        await Promise.all(
+          entries.map(async (entry) => {
+            if (
+              entry.isDirectory() &&
+              (entry.name === "__tests__" ||
+                entry.name === "node_modules" ||
+                entry.name === ".next")
+            ) {
+              return;
+            }
+            const full = join(dir, entry.name);
+            if (entry.isDirectory()) {
+              await collect(full);
+              return;
+            }
+            if (/\.(t|j)sx?$/.test(entry.name)) files.push(full);
+          }),
+        );
+      };
+      await collect(root);
 
-        const content = await readFile(full, "utf8");
-        // Look for the pragma near the top, robust to BOM and a few
-        // leading comment / blank lines.
-        const head = content.split(/\r?\n/, 12).join("\n");
-        const isClient = /^[\s\S]*?["']use client["']/.test(head);
-        if (!isClient) continue;
-        if (
-          content.includes('"@/lib/agent-monitor/logger"') ||
-          content.includes("'@/lib/agent-monitor/logger'") ||
-          content.includes("agent-monitor/logger")
-        ) {
-          offending.push(full);
-        }
-      }
-    };
+      const results = await Promise.all(
+        files.map(async (full) => {
+          const content = await readFile(full, "utf8");
+          // Pragma near the top, robust to BOM and a few leading comment lines.
+          const head = content.split(/\r?\n/, 12).join("\n");
+          const isClient = /^[\s\S]*?["']use client["']/.test(head);
+          if (!isClient) return null;
+          return content.includes("agent-monitor/logger") ? full : null;
+        }),
+      );
 
-    await walk(root);
-    expect(offending, `Client components importing the server-only logger`).toEqual([]);
-  });
+      const offending = results.filter((x): x is string => x !== null);
+      expect(
+        offending,
+        `Client components importing the server-only logger`,
+      ).toEqual([]);
+    },
+    20_000,
+  );
 });
