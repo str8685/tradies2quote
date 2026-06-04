@@ -10,7 +10,6 @@ import {
   ListBullets,
   Plus,
   Receipt,
-  Stack,
 } from "@phosphor-icons/react";
 
 /**
@@ -43,6 +42,14 @@ const AccountHub = dynamic(
  * sheet now carries Profile / Business / Quote defaults / Invoice
  * defaults / Clients / Avatar upload field + owner-only shortcuts
  * (Agents, Debug, Monitor dashboard). Non-owners never see those.
+ *
+ * Wave 38 — restored the floating, fully-rounded pill bar with the
+ * centred "New quote" + FAB (the Stowe-style layout). Materials and
+ * Agents stay reachable from the dashboard quick-actions / owner card,
+ * so the bar is back to the balanced 4-tab + centre-FAB shape:
+ *   [Home, Quotes]  ( ＋ New quote )  [Invoices, Me]
+ * The /app shell is scroll-locked (Wave 37) so this fixed pill stays
+ * put — no momentum-scroll drift.
  */
 interface Props {
   isOwner: boolean;
@@ -52,18 +59,16 @@ interface Props {
   avatarUrl: string | null;
 }
 
-// 4-tabs-plus-centre-FAB layout:
-//   [Home, Quotes]  ( New quote FAB )  [Invoices, Materials]
-// The avatar/account "Me" tile moved OFF the bar to a floating top-right
-// button (see the avatar trigger in the render below); Materials took its
-// slot. Agents stays in the dashboard card for owners.
+// Stowe-style 4-tabs-plus-centre-FAB layout:
+//   [Home, Quotes]  ( New quote FAB )  [Invoices, Me]
+// Materials + Agents live in the dashboard (quick-actions grid /
+// owner card), so they stay off the bar to keep it balanced.
 const LEFT_TILES: ReadonlyArray<{ href: string; label: string; icon: Icon }> = [
   { href: "/app", label: "Home", icon: House },
   { href: "/app/quotes", label: "Quotes", icon: ListBullets },
 ];
 const RIGHT_TILES: ReadonlyArray<{ href: string; label: string; icon: Icon }> = [
   { href: "/app/invoices", label: "Invoices", icon: Receipt },
-  { href: "/app/materials", label: "Materials", icon: Stack },
 ];
 
 function isActive(href: string, pathname: string) {
@@ -108,39 +113,6 @@ export function MobileBottomNavClient({ isOwner, userEmail, avatarUrl }: Props) 
 
   return (
     <>
-      {/* Floating top-right avatar (mobile only). The account "Me" tile
-          moved off the bottom bar to here; tapping it opens the same
-          slide-up account hub sheet. Carries an "online" pulse ring +
-          status dot. Fixed below the notch safe-area; sits above page
-          content but under the open sheet (z-50). */}
-      <button
-        type="button"
-        data-testid="app-mobile-avatar"
-        data-tour="account-menu"
-        aria-label="Account menu"
-        aria-expanded={sheetOpen}
-        onClick={() => setSheetOpen(true)}
-        className="t2q-avatar-online t2q-avatar-float inline-flex h-10 w-10 items-center justify-center rounded-full border border-ink-700 bg-ink-950/80 backdrop-blur sm:hidden"
-      >
-        {avatarUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={avatarUrl}
-            alt=""
-            width={40}
-            height={40}
-            className="h-10 w-10 rounded-full object-cover"
-          />
-        ) : (
-          <span
-            aria-hidden="true"
-            className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-brand text-ink-900 font-display text-sm leading-none"
-          >
-            {initial}
-          </span>
-        )}
-      </button>
-
       <nav
         data-testid="app-bottom-nav"
         data-is-owner={isOwner ? "true" : "false"}
@@ -149,14 +121,13 @@ export function MobileBottomNavClient({ isOwner, userEmail, avatarUrl }: Props) 
       >
         {LEFT_TILES.map(renderTile)}
 
-        {/* Centre FAB — primary "New quote" action, centred inline in the bar. */}
-        <div className="flex flex-1 items-center justify-center">
+        {/* Centre FAB — primary "New quote" action, raised above the bar. */}
+        <div className="flex flex-1 items-start justify-center">
           <Link
             href="/app/quotes/new"
             prefetch={true}
             aria-label="New quote"
             data-testid="app-bottom-nav-new"
-            data-tour="new-quote"
             className="t2q-bottomnav-fab"
           >
             <Plus size={26} weight="bold" aria-hidden="true" />
@@ -164,6 +135,39 @@ export function MobileBottomNavClient({ isOwner, userEmail, avatarUrl }: Props) 
         </div>
 
         {RIGHT_TILES.map(renderTile)}
+
+        {/* Avatar tile. Tappable; opens the slide-up account hub
+            sheet. Shows the avatar image when uploaded, otherwise
+            the first letter of the user's email. */}
+        <button
+          type="button"
+          data-testid="app-bottom-nav-me"
+          aria-label="Account menu"
+          aria-expanded={sheetOpen}
+          onClick={() => setSheetOpen(true)}
+          className="t2q-bottomnav-tile cursor-pointer"
+        >
+          {avatarUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={avatarUrl}
+              alt=""
+              width={36}
+              height={36}
+              // Wave 15.3 — bumped from h-7 (28px) → h-9 (36px) for
+              // bigger thumb target + a more "this is me" feel.
+              className="inline-block h-9 w-9 shrink-0 rounded-full object-cover"
+            />
+          ) : (
+            <span
+              aria-hidden="true"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-brand text-ink-900 font-display text-sm leading-none"
+            >
+              {initial}
+            </span>
+          )}
+          <span>Me</span>
+        </button>
       </nav>
 
       {sheetOpen ? (

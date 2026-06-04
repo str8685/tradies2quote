@@ -1242,24 +1242,27 @@ h1, h2, h3, h4, h5 {
    their icon + label cluster to the bottom of the tile too. */
 .t2q-bottomnav-bar {
   position: fixed;
-  /* LOCKED edge-anchored bar. The previous floating pill (a gap on
-     every side + a backdrop-filter blur) let page content show through
-     and drift underneath on iOS momentum scroll — that is what read as
-     the bar "floating" and the app "moving around inside the screen".
-     Pinning it flush to the bottom edge with an opaque fill and no blur
-     removes both and keeps it rock-steady across scroll and refresh. */
-  bottom: 0;
-  left: 0;
-  right: 0;
+  /* Wave 38 — restored floating, fully-rounded pill bar. It sits a
+     thumb's width off the screen edges and above the iOS home
+     indicator. The original floating pill was pulled (Wave 36) because
+     it appeared to "drift" on iOS momentum scroll — but that drift was
+     the WHOLE BODY scrolling under a fixed element. Wave 37 scroll-locks
+     the /app shell (body no longer scrolls; one inner container does),
+     so the fixed pill now has nothing to drift against and stays put.
+     A near-solid fill (no backdrop-blur) keeps it rock-steady — no blur
+     repaint while the inner container scrolls behind it. */
+  bottom: max(env(safe-area-inset-bottom, 0px), 0.75rem);
+  left: 0.75rem;
+  right: 0.75rem;
   display: flex;
   align-items: stretch;
-  background: #101010;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 0;
-  box-shadow: 0 -8px 24px -14px rgba(0, 0, 0, 0.7);
-  /* Tile padding + the iOS home-indicator inset baked into the bar so
-     the touch targets clear the gesture bar without a floating gap. */
-  padding: 0.25rem 0.5rem max(env(safe-area-inset-bottom, 0px), 0.25rem);
+  background: #121212;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 1.5rem;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 12px 32px -8px rgba(0, 0, 0, 0.6);
+  padding: 0.25rem 0.5rem;
   z-index: 40;
 }
 /* The bottom nav is mobile-only. The component carries `sm:hidden` but
@@ -1274,12 +1277,14 @@ h1, h2, h3, h4, h5 {
   }
 }
 [data-theme="light"] .t2q-bottomnav-bar {
-  /* Locked, opaque, edge-anchored bar (light). Solid fill so nothing
-     bleeds through; hairline top border + soft upward shadow only. */
+  /* Wave 38 — floating rounded pill (light). Solid cream-white fill so
+     nothing bleeds through, hairline border + soft drop shadow. */
   background: #FFFFFF !important;
-  border-radius: 0 !important;
-  border-top: 1px solid #E3E2DA !important;
-  box-shadow: 0 -8px 24px -14px rgba(10, 10, 10, 0.16) !important;
+  border: 1px solid #E3E2DA !important;
+  border-radius: 1.5rem !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.8),
+    0 12px 32px -8px rgba(10, 10, 10, 0.18) !important;
 }
 
 /* ─── "Show working" disclosure — light-mode readability ──────────────────
@@ -1569,14 +1574,16 @@ h1, h2, h3, h4, h5 {
   box-shadow: 0 1px 2px rgba(10, 10, 10, 0.04) !important;
 }
 
-/* Bottom nav — flat white, edge-anchored, hairline top border, soft
-   upward drop shadow. Locked: no rounded pill, no float gap. */
+/* Wave 38 — bottom nav floating rounded pill (light app shell). This is
+   the rule that actually renders in the forced-light /app shell, so the
+   pill shape + float gap live here too. */
 [data-shell="app"][data-theme="light"] .t2q-bottomnav-bar {
   background: #FFFFFF !important;
-  border: none !important;
-  border-top: 1px solid #E8E6DD !important;
-  border-radius: 0 !important;
-  box-shadow: 0 -2px 12px rgba(10, 10, 10, 0.05) !important;
+  border: 1px solid #E8E6DD !important;
+  border-radius: 1.5rem !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.8),
+    0 12px 32px -8px rgba(10, 10, 10, 0.16) !important;
 }
 [data-shell="app"][data-theme="light"] .t2q-bottomnav-tile {
   color: #6B6B6B;
@@ -1848,6 +1855,12 @@ h1, h2, h3, h4, h5 {
   color: #FFFFFF !important;
   border: 1px solid #FF5F15;
 }
+/* Wave 38 — keep the FAB's raised cream ring in the light app shell so it
+   reads as punched through the pill (the shared rule above would flatten
+   it to a 1px orange edge). */
+[data-shell="app"][data-theme="light"] .t2q-bottomnav-fab {
+  border: 3px solid #F5F4EE !important;
+}
 
 [data-shell="app"][data-theme="light"] .t2q-btn-primary-pro {
   min-height: 2.75rem;
@@ -1887,13 +1900,18 @@ h1, h2, h3, h4, h5 {
 }
 
 [data-shell="app"][data-theme="light"] .t2q-bottomnav-bar {
-  /* Locked: opaque fill, square, edge-anchored. (Was a translucent
-     rounded pill — the source of the "floating bar" the user reported.) */
+  /* Wave 38 — floating rounded pill (light app shell). This is the LAST
+     bar rule in source order, so the pill shape lives here; the float gap
+     + fixed position come from the base .t2q-bottomnav-bar. The /app shell
+     is scroll-locked (Wave 37), so the fixed pill cannot drift — the
+     earlier "floating bar moved around" symptom was the BODY scrolling
+     under it, which no longer happens. */
   background: #FFFFFF !important;
-  border: none !important;
-  border-top: 1px solid var(--t2q-app-border) !important;
-  border-radius: 0 !important;
-  box-shadow: 0 -10px 24px -18px rgba(15, 23, 42, 0.34) !important;
+  border: 1px solid var(--t2q-app-border) !important;
+  border-radius: 1.5rem !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.8),
+    0 12px 32px -8px rgba(15, 23, 42, 0.18) !important;
 }
 
 [data-shell="app"][data-theme="light"] .t2q-bottomnav-tile {
@@ -1935,19 +1953,23 @@ h1, h2, h3, h4, h5 {
 }
 
 /* ─── Bottom-nav centre FAB ───────────────────────────────────────────────
-   Centre "New quote" action button. Sits INLINE inside the floating pill
-   bar (vertically centred with the other tiles), not raised above it — so
-   it reads as part of the bar instead of floating on top of it. */
+   Wave 38 — the primary "New quote" action: a raised brand-orange circle
+   centred in the pill bar that pokes above its top edge (margin-top pulls
+   it up; the bar has no overflow clip, so it shows). Restores the original
+   raised-FAB look. The light app-shell ring colour is set further below. */
 .t2q-bottomnav-fab {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  height: 3rem;
-  width: 3rem;
+  height: 3.5rem;
+  width: 3.5rem;
+  margin-top: -1.75rem;
   border-radius: 9999px;
   background: #FF5F15;
   color: #0A0A0A;
-  box-shadow: 0 4px 14px -4px rgba(255, 95, 21, 0.55);
+  /* Ring matches the bar fill so the FAB reads as punched through it. */
+  border: 3px solid #121212;
+  box-shadow: 0 10px 24px -6px rgba(255, 95, 21, 0.6);
   transition: transform 120ms ease, background-color 150ms ease;
 }
 .t2q-bottomnav-fab:hover {
