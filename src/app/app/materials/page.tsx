@@ -5,6 +5,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Camera, CheckCircle, Plus, Upload } from "@phosphor-icons/react/dist/ssr";
 import { createClient } from "@/lib/supabase/server";
+import { kitsEnabled } from "@/lib/kits";
 import { NZ_DEFAULTS } from "@/lib/quote-defaults";
 import type { LibraryMaterial } from "@/lib/quote-types";
 import { AppHeader } from "../_components/AppHeader";
@@ -80,6 +81,27 @@ export default async function MaterialsPage() {
         </section>
 
         <SupplierShortcuts />
+
+        {kitsEnabled() ? (
+          <Link
+            href="/app/materials/kits"
+            data-testid="materials-kits-link"
+            className="t2q-card-pro mt-6 flex items-center justify-between gap-3 p-4 sm:p-5"
+          >
+            <div>
+              <div className="font-mono text-[10px] uppercase tracking-[0.25em] text-brand">
+                {"// one-tap jobs"}
+              </div>
+              <h2 className="mt-2 font-display text-lg uppercase tracking-tight text-white sm:text-xl">
+                Kits &amp; assemblies.
+              </h2>
+              <p className="mt-2 text-sm text-ink-300">
+                Save standard jobs once, drop them into a quote in one tap.
+              </p>
+            </div>
+            <Plus size={22} weight="bold" className="shrink-0 text-brand" />
+          </Link>
+        ) : null}
 
         <Suspense fallback={<MaterialsListSkeleton />}>
           <MaterialsBody userId={user.id} />
