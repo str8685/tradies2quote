@@ -290,14 +290,16 @@ export function sanitisePlan(raw: unknown): ScannedPlan | null {
  * guess. We only do this for composite/primitive shapes — a plain rectangle's
  * existing length×width path is left byte-for-byte unchanged.
  */
-function geometryPreamble(plan: ScannedPlan | null): string {
+export function geometryPreamble(plan: ScannedPlan | null): string {
   if (!plan || !plan.shape_label) return "";
   const lines: string[] = [];
   if (plan.area_m2 && plan.area_m2 > 0) {
     lines.push(`Computed area = ${plan.area_m2} m² (${plan.shape_label})`);
   }
   if (plan.perimeter_m && plan.perimeter_m > 0) {
-    lines.push(`Computed perimeter = ${plan.perimeter_m} m`);
+    // The unit word ("perimeter") MUST follow the number for the downstream
+    // extractPerimeterM regex to match (number → m → perimeter-word).
+    lines.push(`Computed perimeter = ${plan.perimeter_m} m of perimeter`);
   }
   return lines.join("\n");
 }

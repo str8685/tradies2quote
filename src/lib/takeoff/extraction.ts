@@ -81,8 +81,13 @@ function extractSinglePattern(
 
 function extractAreaM2(text: string): number | null {
   // "30 m²", "30m²", "30 square metres", "30 square meters", "30 sqm"
+  // The trailing boundary is a negative lookahead, NOT \b: `\b` after the
+  // superscript `²` (a non-word char) never matches when followed by a space,
+  // so "30 m²" silently failed. `(?![a-z0-9])` accepts the superscript while
+  // still rejecting partials like "m20"/"sqmeter". Equivalent to \b for the
+  // m2/sqm/square forms; additionally fixes the m² form.
   const re =
-    /(\d+(?:\.\d+)?)\s*(?:m²|m\^2|m2|square\s+(?:metres?|meters?)|sqm)\b/i;
+    /(\d+(?:\.\d+)?)\s*(?:m²|m\^2|m2|square\s+(?:metres?|meters?)|sqm)(?![a-z0-9])/i;
   const m = text.match(re);
   if (m) {
     const n = Number(m[1]);
