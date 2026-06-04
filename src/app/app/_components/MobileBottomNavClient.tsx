@@ -133,7 +133,7 @@ export function MobileBottomNavClient({ isOwner, userEmail, avatarUrl }: Props) 
             className="h-full w-full object-cover"
           />
         ) : (
-          <UserCircle size={26} weight="regular" aria-hidden="true" />
+          <UserCircle size={32} weight="fill" className="text-brand" aria-hidden="true" />
         )}
       </button>
 
