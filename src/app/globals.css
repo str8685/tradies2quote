@@ -1315,12 +1315,28 @@ body:has([data-shell="app"]) {
   align-items: stretch;
   background: #1B1F2A;
   border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 1.6rem 1.6rem 0 0;
+  border-radius: 1.9rem 1.9rem 0 0;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.04),
     0 12px 30px -10px rgba(0, 0, 0, 0.5);
   padding: 0.1875rem 0.4375rem;
   z-index: 40;
+}
+/* Wave 43 — full-width dark "floor" tucked BEHIND the pill. It paints the
+   iOS home-indicator zone *and* the left/right gaps beside the bar the same
+   dark slate, so no cream ever shows below or beside the bottom of the bar.
+   `z-index:-1` keeps it behind the pill's own background but above the page;
+   `position:fixed` over the scroll-locked shell means it never drifts. */
+.t2q-bottomnav-bar::after {
+  content: "";
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: calc(env(safe-area-inset-bottom, 0px) + 0.85rem);
+  background: #121722;
+  z-index: -1;
+  pointer-events: none;
 }
 /* The bottom nav is mobile-only. The component carries `sm:hidden` but
    Tailwind's utility loses to `.t2q-bottomnav-bar` on source order
@@ -1339,7 +1355,7 @@ body:has([data-shell="app"]) {
      primary surface and pops off the cream /app background. */
   background: #1B1F2A !important;
   border: 1px solid rgba(255, 255, 255, 0.06) !important;
-  border-radius: 1.6rem 1.6rem 0 0 !important;
+  border-radius: 1.9rem 1.9rem 0 0 !important;
   box-shadow: 0 14px 34px -10px rgba(0, 0, 0, 0.55) !important;
 }
 
@@ -1974,7 +1990,7 @@ body:has([data-shell="app"]) {
     linear-gradient(108deg, rgba(255, 234, 0, 0.28) 0%, #FF5F15 56%, #FF8F52 100%) border-box !important;
   border: 2px solid transparent !important;
   border-bottom: none !important;
-  border-radius: 1.6rem 1.6rem 0 0 !important;
+  border-radius: 1.9rem 1.9rem 0 0 !important;
   box-shadow:
     0 18px 40px -12px rgba(0, 0, 0, 0.7),
     0 0 0 1px rgba(255, 95, 21, 0.18),
