@@ -258,7 +258,7 @@ function CleanedCard({
     >
       <div className="mb-2 flex items-center justify-between gap-2">
         <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-brand">
-          {"// ai cleaned it to"}
+          {"// t2q cleaned it to"}
         </p>
         <div className="flex items-center gap-3">
           {correctionsCount > 0 && (
@@ -361,7 +361,7 @@ function SummaryCard({
     >
       <div className="mb-2 flex items-center justify-between">
         <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-ink-500">
-          {"// ai understood"}
+          {"// t2q understood"}
         </p>
         <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-ink-400">
           {Math.round(confidence * 100)}% confident
