@@ -75,7 +75,7 @@ export default function AppLayout({
           home-indicator safe area is in play, and the previous 88px
           left long forms (Settings especially) clipped under the bar
           on the last field. 112px = nav max + a 16px breather. */}
-      <div className="min-w-0 pt-[env(safe-area-inset-top)] pb-[112px] sm:pt-0 sm:pb-0">
+      <div className="t2q-app-scroll min-w-0 pt-[env(safe-area-inset-top)] pb-[112px] sm:pt-0 sm:pb-0">
         {/* Trial / expired upgrade banner. Server-rendered: renders
             nothing for paid users or users still well inside their
             trial; surfaces only when there's something to act on. */}

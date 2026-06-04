@@ -689,6 +689,59 @@ h1, h2, h3, h4, h5 {
   background-repeat: no-repeat;
 }
 
+/* ─── Wave 37 — mobile /app shell scroll lock ───────────────────────────────
+   THE permanent fix for the iOS / installed-PWA "whole UI bounces & the
+   bottom nav drifts while scrolling" bug.
+
+   Root cause of the old behaviour: on phones the document/body was the
+   scrolling surface, so iOS Safari's rubber-band overscroll floated the
+   entire app, and the `position: fixed` bottom nav visually detached and
+   bounced during that overscroll / URL-bar animation.
+
+   The fix: on phones only (`max-width: 639px`), the /app shell becomes a
+   fixed, full-height, NON-scrolling flex column, and a single inner wrapper
+   (`.t2q-app-scroll`) becomes the ONE true vertical scroll surface. Because
+   the document/body no longer scrolls, neither the fixed bottom nav nor the
+   shell can drift, and `overscroll-behavior: contain` on the inner scroller
+   stops scroll-chaining from leaking back out to the page.
+
+   Scoped to `max-width: 639px` so tablet/desktop — which use the top header,
+   the `lg:grid` rails and normal page scroll — are completely unaffected.
+   Matches the bottom nav's own `< 640px` visibility. */
+:root {
+  /* Default tracks the live (dynamic) viewport. A future visualViewport
+     listener can overwrite this with a px value to follow the iOS keyboard;
+     no JS is required for the scroll-lock itself. */
+  --app-height: 100dvh;
+}
+
+@media (max-width: 639px) {
+  .t2q-app-canvas {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    /* `100vh` fallback first for browsers without dvh; the var (default
+       `100dvh`) wins everywhere modern and tracks the visible viewport. */
+    height: 100vh;
+    height: var(--app-height, 100dvh);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  /* The single, app-wide vertical scroll surface. Everything between the
+     safe-area top inset and the fixed bottom nav scrolls here and nowhere
+     else. `min-height: 0` lets the flex child actually shrink so its own
+     overflow (not the shell's) does the scrolling. */
+  .t2q-app-scroll {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain;
+  }
+}
+
 /* Tiny life-sign on the route loader caption so it doesn't read as a
    frozen page. ~1.6s opacity breathe — GPU-free, no JS animation lib. */
 @keyframes t2q-loading-breathe {
