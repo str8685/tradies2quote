@@ -11,6 +11,8 @@ import {
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+// LLM call can take 20-40s; avoid a 502 on the default function timeout.
+export const maxDuration = 60;
 
 /**
  * POST /api/agents/quote-generation

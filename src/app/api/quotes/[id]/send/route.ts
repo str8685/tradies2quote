@@ -151,15 +151,19 @@ export async function POST(
   if (!emailResult.ok) {
     // Token + PDF are already saved; status stays as-is so the tradie
     // can safely retry and reuse the same link.
+    // Both a missing key AND a missing FROM address are CONFIG problems
+    // (503), not transient send failures (502).
+    const isConfig =
+      emailResult.error === "email_not_configured" ||
+      emailResult.error === "email_from_not_configured";
     return NextResponse.json(
       {
         error: emailResult.error,
-        message:
-          emailResult.error === "email_not_configured"
-            ? "Email is not configured. Set RESEND_API_KEY."
-            : "Could not send the email. PDF was generated but not delivered.",
+        message: isConfig
+          ? "Email isn't configured. Set RESEND_API_KEY and RESEND_FROM_EMAIL."
+          : "Could not send the email. PDF was generated but not delivered.",
       },
-      { status: emailResult.error === "email_not_configured" ? 503 : 502 },
+      { status: isConfig ? 503 : 502 },
     );
   }
 

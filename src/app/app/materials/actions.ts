@@ -1,5 +1,6 @@
 "use server";
 
+import * as Sentry from "@sentry/nextjs";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
@@ -619,7 +620,16 @@ export async function createQuoteFromScan(
     })),
   );
   if (iErr) {
+    // The quote still renders fine — line items live in quote_data (JSON),
+    // which inserted above; quote_items is a secondary/denormalised table.
+    // So we DON'T fail the user or roll back a working quote. But the silent
+    // console.error meant a quote_items inconsistency was invisible — report
+    // it so we actually find out if this starts happening.
     console.error("createQuoteFromScan items insert failed", iErr);
+    Sentry.captureException(iErr, {
+      tags: { area: "createQuoteFromScan", step: "quote_items_insert" },
+      extra: { quoteId: data.id, lineCount: lineItems.length },
+    });
   }
 
   console.log("[import-quote] created quote from scan", {

@@ -36,6 +36,7 @@ export function SignupForm({ error }: Props) {
   return (
     <form
       action={signupAction}
+      onSubmit={() => (window as unknown as { uw?: (e: string) => void }).uw?.("signup")}
       className="space-y-4"
       data-testid="signup-form"
     >

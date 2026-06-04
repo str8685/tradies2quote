@@ -203,6 +203,7 @@ export default function RootLayout({
             the app is already installed or the browser can't install,
             so safe to mount globally. */}
         <FloatingInstallButton />
+        <Script src="https://uptimewatch-vert.vercel.app/track.js" strategy="afterInteractive" />
       </body>
     </html>
   );

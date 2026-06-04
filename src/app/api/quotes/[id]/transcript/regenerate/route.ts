@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { canWrite, getSubscriptionStatus } from "@/lib/subscription";
 
 /**
  * Regenerate a quote from an edited cleaned transcript.
@@ -45,6 +46,25 @@ export async function POST(
   } = await supabase.auth.getUser();
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  // Same write-gate as /api/quotes/generate. Without it an expired-trial user
+  // could repeatedly null quote_data + retrigger generation (cost + churn).
+  const sub = await getSubscriptionStatus({
+    userId: user.id,
+    signedUpAt: new Date(user.created_at ?? Date.now()),
+    email: user.email,
+  });
+  if (!canWrite(sub)) {
+    return NextResponse.json(
+      {
+        error: "trial_expired",
+        message:
+          "Your free trial has ended. Subscribe to keep regenerating quotes.",
+        upgrade_url: "/app/upgrade",
+      },
+      { status: 402 },
+    );
   }
 
   let body: { cleanedTranscript?: unknown };

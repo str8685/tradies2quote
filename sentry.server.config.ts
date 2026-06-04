@@ -19,9 +19,10 @@ Sentry.init({
   dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
   enabled: process.env.NODE_ENV === "production",
   tracesSampleRate: 0.1,
-  // Don't drop PII for now — useful for debugging signup/quote flows.
-  // Revisit before scaling beyond beta if it becomes a privacy concern.
-  sendDefaultPii: true,
+  // Don't send PII (IPs, request bodies with client emails) to Sentry — the
+  // App Store / privacy posture means we keep customer data out of 3rd-party
+  // error logs. Server errors still carry stack + tags, just not user data.
+  sendDefaultPii: false,
   // Tag the environment so production / preview events stay separable
   // in the Sentry UI.
   environment:

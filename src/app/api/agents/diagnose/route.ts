@@ -173,9 +173,21 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const data = (await claudeRes.json()) as {
-    content?: Array<{ type: string; text?: string }>;
-  };
+  let data: { content?: Array<{ type: string; text?: string }> };
+  try {
+    data = (await claudeRes.json()) as {
+      content?: Array<{ type: string; text?: string }>;
+    };
+  } catch {
+    // A non-JSON 200 (CDN/proxy error page) would otherwise throw → raw 500.
+    return NextResponse.json(
+      {
+        error: "ai_parse_error",
+        message: "Claude returned an unexpected response. Try again.",
+      },
+      { status: 502 },
+    );
+  }
   // Claude returns content as an array of blocks; only the text ones matter.
   const diagnosis =
     data.content

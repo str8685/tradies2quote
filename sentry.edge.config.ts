@@ -12,7 +12,8 @@ Sentry.init({
   dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
   enabled: process.env.NODE_ENV === "production",
   tracesSampleRate: 0.1,
-  sendDefaultPii: true,
+  // Server-side (edge/proxy) — keep customer PII out of 3rd-party error logs.
+  sendDefaultPii: false,
   environment:
     process.env.VERCEL_ENV ??
     process.env.NODE_ENV ??

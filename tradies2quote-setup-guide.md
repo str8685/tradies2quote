@@ -147,26 +147,33 @@ Browse and install `ui-ux-pro-max` if you want extra design polish. (Optional �
 Create `.env.local` in your project root:
 
 ```bash
-# Supabase
+# Supabase  (NOTE: the code reads the PUBLISHABLE key name, not ANON_KEY)
 NEXT_PUBLIC_SUPABASE_URL=your_url_here
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key_here
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your_publishable_key_here
 SUPABASE_SERVICE_ROLE_KEY=your_service_key_here
 
-# Stripe (test mode keys for now)
-NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_...
+# Stripe (optional — without it everyone stays on trial; no publishable key
+# is used, checkout is a server-side redirect)
 STRIPE_SECRET_KEY=sk_test_...
 STRIPE_WEBHOOK_SECRET=whsec_...
+STRIPE_PRICE_ID=price_...
 
 # AI
 ANTHROPIC_API_KEY=sk-ant-...
-OPENAI_API_KEY=sk-...
+OPENAI_API_KEY=sk-...           # only needed for voice transcription
 
-# Email
+# Email (both required to send quotes)
 RESEND_API_KEY=re_...
 RESEND_FROM_EMAIL=quotes@mail.tradies2quote.com
 
-# App
+# App  (set to https://tradies2quote.com in prod or accept links break)
 NEXT_PUBLIC_APP_URL=http://localhost:3000
+
+# Crons (weekly digest + trial emails) — any random secret
+CRON_SECRET=any_long_random_string
+
+# Error monitoring (optional but recommended; without it errors are silent)
+NEXT_PUBLIC_SENTRY_DSN=
 ```
 
 Add `.env.local` to `.gitignore` (it should be already, but check).

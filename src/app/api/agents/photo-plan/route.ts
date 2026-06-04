@@ -11,6 +11,9 @@ import {
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+// Vision call on an up-to-8MB image can take 20-40s; default function timeout
+// would 502 mid-flow. This route is reachable by every tradie (PhotoPlanPanel).
+export const maxDuration = 60;
 
 /**
  * POST /api/agents/photo-plan

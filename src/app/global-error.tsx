@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import * as Sentry from "@sentry/nextjs";
 
 /**
  * Global error boundary — the absolute last-resort fallback. Next.js
@@ -21,6 +22,10 @@ export default function GlobalError({
   reset: () => void;
 }) {
   useEffect(() => {
+    // Next's Sentry SDK does NOT auto-instrument global-error — the
+    // root-layout-crash case, the worst class of error, must be reported
+    // explicitly or it's silently swallowed. No-ops without a DSN.
+    Sentry.captureException(error);
     console.error("[global error]", error);
   }, [error]);
 
