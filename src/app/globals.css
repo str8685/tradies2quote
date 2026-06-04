@@ -1279,6 +1279,11 @@ h1, h2, h3, h4, h5 {
 body:has([data-shell="app"]) {
   background: #F5F4EE;
 }
+@media (max-width: 639px) {
+  body:has([data-shell="app"]) {
+    background: #121722;
+  }
+}
 
 /* ─── Mobile bottom-nav bar ─────────────────────────────────────────────
    The container itself. Pinned to viewport bottom on mobile, hidden on
@@ -1308,18 +1313,18 @@ body:has([data-shell="app"]) {
      effective rule below) lifts the tap targets clear of the iOS
      home-indicator gesture zone. Still `position: fixed` over the
      scroll-locked shell — nothing drifts. */
-  bottom: 0;
+  bottom: max(calc(env(safe-area-inset-bottom, 0px) - 1.55rem), 0.2rem);
   left: 0.5rem;
   right: 0.5rem;
   display: flex;
   align-items: stretch;
   background: #1B1F2A;
   border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 1.9rem 1.9rem 0 0;
+  border-radius: 2.05rem;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.04),
     0 12px 30px -10px rgba(0, 0, 0, 0.5);
-  padding: 0.1875rem 0.4375rem;
+  padding: 0.24rem 0.5rem;
   z-index: 40;
 }
 /* Wave 43 — full-width dark "floor" tucked BEHIND the pill. It paints the
@@ -1333,7 +1338,7 @@ body:has([data-shell="app"]) {
   left: 0;
   right: 0;
   bottom: 0;
-  height: calc(env(safe-area-inset-bottom, 0px) + 0.85rem);
+  height: calc(env(safe-area-inset-bottom, 0px) + 1.85rem);
   background: #121722;
   z-index: -1;
   pointer-events: none;
@@ -1355,7 +1360,7 @@ body:has([data-shell="app"]) {
      primary surface and pops off the cream /app background. */
   background: #1B1F2A !important;
   border: 1px solid rgba(255, 255, 255, 0.06) !important;
-  border-radius: 1.9rem 1.9rem 0 0 !important;
+  border-radius: 2.05rem !important;
   box-shadow: 0 14px 34px -10px rgba(0, 0, 0, 0.55) !important;
 }
 
@@ -1978,19 +1983,18 @@ body:has([data-shell="app"]) {
 
 [data-shell="app"][data-theme="light"] .t2q-bottomnav-bar {
   /* Screenshot-style mobile pill: dark app surface, brand-orange border,
-     raised centre action. Fixed positioning still comes from the base rule. */
-  min-height: 4.1rem;
+     raised centre action. It sits almost on the screen edge; the base
+     ::after dark floor paints the safe-area behind it so no cream stripe
+     can show through. */
+  min-height: 4.35rem;
   align-items: center;
-  /* Wave 42 — bottom padding swallows the iOS home-indicator safe area so
-     the dark fill reaches the screen edge (no cream stripe). Tap targets
-     stay above the gesture zone. */
-  padding: 0.3rem 0.7rem calc(0.3rem + env(safe-area-inset-bottom, 0px));
+  bottom: max(calc(env(safe-area-inset-bottom, 0px) - 1.55rem), 0.2rem) !important;
+  padding: 0.34rem 0.62rem;
   background:
     linear-gradient(180deg, #171C27 0%, #121722 100%) padding-box,
     linear-gradient(108deg, rgba(255, 234, 0, 0.28) 0%, #FF5F15 56%, #FF8F52 100%) border-box !important;
   border: 2px solid transparent !important;
-  border-bottom: none !important;
-  border-radius: 1.9rem 1.9rem 0 0 !important;
+  border-radius: 2.05rem !important;
   box-shadow:
     0 18px 40px -12px rgba(0, 0, 0, 0.7),
     0 0 0 1px rgba(255, 95, 21, 0.18),
@@ -1998,12 +2002,12 @@ body:has([data-shell="app"]) {
 }
 
 [data-shell="app"][data-theme="light"] .t2q-bottomnav-tile {
-  min-height: 3.25rem;
-  gap: 0.18rem;
+  min-height: 3.35rem;
+  gap: 0.14rem;
   border-radius: 1.25rem;
-  padding: 0.3rem 0.3rem;
+  padding: 0.24rem 0.24rem;
   color: #8B93A3;
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   font-weight: 600;
   letter-spacing: 0.02em;
 }
@@ -2065,11 +2069,11 @@ body:has([data-shell="app"]) {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  height: 3.5rem;
-  width: 3.5rem;
+  height: 3.72rem;
+  width: 3.72rem;
   /* Compact cream disc centred in the pill, lifted a touch so it reads as
      the primary action (Stowe-style). */
-  margin-top: -0.5rem;
+  margin-top: -0.55rem;
   border-radius: 9999px;
   background: #FF5F15;
   color: #FFFFFF;
@@ -2078,8 +2082,8 @@ body:has([data-shell="app"]) {
   transition: transform 120ms ease, background-color 150ms ease;
 }
 .t2q-bottomnav-fab svg {
-  height: 2rem;
-  width: 2rem;
+  height: 2.05rem;
+  width: 2.05rem;
 }
 .t2q-bottomnav-fab:hover {
   background: #FF7A3D;
