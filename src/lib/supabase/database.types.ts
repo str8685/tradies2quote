@@ -14,6 +14,257 @@ export type Database = {
   }
   public: {
     Tables: {
+      feature_settings: {
+        Row: {
+          auto_followup_enabled: boolean
+          auto_review_enabled: boolean
+          created_at: string
+          google_review_url: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          auto_followup_enabled?: boolean
+          auto_review_enabled?: boolean
+          created_at?: string
+          google_review_url?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          auto_followup_enabled?: boolean
+          auto_review_enabled?: boolean
+          created_at?: string
+          google_review_url?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      kits: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          notes: string | null
+          trade: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          notes?: string | null
+          trade?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          notes?: string | null
+          trade?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      kit_items: {
+        Row: {
+          created_at: string
+          description: string
+          id: string
+          kit_id: string
+          position: number
+          quantity: number
+          type: string
+          unit: string | null
+          unit_price: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description: string
+          id?: string
+          kit_id: string
+          position?: number
+          quantity?: number
+          type?: string
+          unit?: string | null
+          unit_price?: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          id?: string
+          kit_id?: string
+          position?: number
+          quantity?: number
+          type?: string
+          unit?: string | null
+          unit_price?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kit_items_kit_id_fkey"
+            columns: ["kit_id"]
+            isOneToOne: false
+            referencedRelation: "kits"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payment_accounts: {
+        Row: {
+          charges_enabled: boolean
+          created_at: string
+          deposit_pct: number
+          details_submitted: boolean
+          stripe_account_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          charges_enabled?: boolean
+          created_at?: string
+          deposit_pct?: number
+          details_submitted?: boolean
+          stripe_account_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          charges_enabled?: boolean
+          created_at?: string
+          deposit_pct?: number
+          details_submitted?: boolean
+          stripe_account_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      payments: {
+        Row: {
+          amount_cents: number
+          created_at: string
+          currency: string
+          id: string
+          paid_at: string | null
+          quote_id: string | null
+          status: string
+          stripe_checkout_session_id: string | null
+          stripe_payment_intent_id: string | null
+          user_id: string
+        }
+        Insert: {
+          amount_cents: number
+          created_at?: string
+          currency: string
+          id?: string
+          paid_at?: string | null
+          quote_id?: string | null
+          status?: string
+          stripe_checkout_session_id?: string | null
+          stripe_payment_intent_id?: string | null
+          user_id: string
+        }
+        Update: {
+          amount_cents?: number
+          created_at?: string
+          currency?: string
+          id?: string
+          paid_at?: string | null
+          quote_id?: string | null
+          status?: string
+          stripe_checkout_session_id?: string | null
+          stripe_payment_intent_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      review_requests: {
+        Row: {
+          channel: string
+          id: string
+          quote_id: string
+          sent_at: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          channel?: string
+          id?: string
+          quote_id: string
+          sent_at?: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          channel?: string
+          id?: string
+          quote_id?: string
+          sent_at?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "review_requests_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: true
+            referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quote_followups: {
+        Row: {
+          channel: string
+          id: string
+          quote_id: string
+          sent_at: string
+          step: number
+          user_id: string
+        }
+        Insert: {
+          channel?: string
+          id?: string
+          quote_id: string
+          sent_at?: string
+          step: number
+          user_id: string
+        }
+        Update: {
+          channel?: string
+          id?: string
+          quote_id?: string
+          sent_at?: string
+          step?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quote_followups_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       agent_events: {
         Row: {
           agent_name: string
