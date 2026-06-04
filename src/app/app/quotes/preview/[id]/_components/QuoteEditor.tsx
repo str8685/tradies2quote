@@ -1128,6 +1128,12 @@ export function QuoteEditor({
           emphasis
           testId="quote-total"
         />
+        {/* Launch honesty — quantities/prices are a draft estimate. Keeps the
+            promise safe without dampening confidence. */}
+        <p className="mt-3 text-[11px] leading-snug text-ink-400">
+          Draft estimate. Review quantities and check material counts against
+          your supplier quote before sending.
+        </p>
       </section>
 
       {/* Wave 19.10 — Terms: mobile-collapsible behind a clause-count

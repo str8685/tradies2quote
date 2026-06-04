@@ -8,6 +8,7 @@ import {
   Briefcase,
   Bug,
   Camera,
+  ChatCircleDots,
   GearSix,
   Lifebuoy,
   Receipt,
@@ -120,6 +121,12 @@ const PRIMARY_ITEMS: ReadonlyArray<HubLink> = [
     label: "Clients",
     caption: "Saved contacts",
     Icon: UsersThree,
+  },
+  {
+    href: "/app/beta",
+    label: "Send feedback",
+    caption: "Tell us what to fix in beta",
+    Icon: ChatCircleDots,
   },
   {
     href: "/help",

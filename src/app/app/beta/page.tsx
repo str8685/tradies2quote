@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { ArrowLeft, Check, Warning } from "@phosphor-icons/react/dist/ssr";
 import { createClient } from "@/lib/supabase/server";
 import { AppHeader } from "../_components/AppHeader";
+import { BetaFeedbackForm } from "./_components/BetaFeedbackForm";
 
 export const metadata: Metadata = { title: "Beta — before you send" };
 export const dynamic = "force-dynamic";
@@ -62,9 +63,13 @@ export default async function BetaHelpPage() {
         </section>
 
         <p className="mt-6 text-sm text-ink-300">
-          If something&apos;s off, fix it in the quote first — or flag it to
-          Challis.
+          If something&apos;s off, fix it in the quote first — or send feedback
+          below.
         </p>
+
+        <div className="mt-8">
+          <BetaFeedbackForm />
+        </div>
 
         <Link
           href="/app"

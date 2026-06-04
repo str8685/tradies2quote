@@ -370,6 +370,39 @@ export type Database = {
         }
         Relationships: []
       }
+      beta_feedback: {
+        Row: {
+          app_version: string | null
+          created_at: string
+          id: string
+          user_id: string
+          what_confusing: string | null
+          what_worked: string | null
+          would_pay: string | null
+          wrong_number: string | null
+        }
+        Insert: {
+          app_version?: string | null
+          created_at?: string
+          id?: string
+          user_id: string
+          what_confusing?: string | null
+          what_worked?: string | null
+          would_pay?: string | null
+          wrong_number?: string | null
+        }
+        Update: {
+          app_version?: string | null
+          created_at?: string
+          id?: string
+          user_id?: string
+          what_confusing?: string | null
+          what_worked?: string | null
+          would_pay?: string | null
+          wrong_number?: string | null
+        }
+        Relationships: []
+      }
       calendar_notes: {
         Row: {
           body: string
