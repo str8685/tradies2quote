@@ -6,6 +6,8 @@ import { AcceptForm } from "./_components/AcceptForm";
 import { AcceptedView } from "./_components/AcceptedView";
 import { ExpiredView } from "./_components/ExpiredView";
 import { CustomerChat } from "./_components/CustomerChat";
+import { getQuoteDepositInfo } from "@/lib/payments";
+import { PayDepositButton } from "./_components/PayDepositButton";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -19,10 +21,13 @@ type Params = { token: string };
 
 export default async function PublicQuotePage({
   params,
+  searchParams,
 }: {
   params: Promise<Params>;
+  searchParams: Promise<{ paid?: string }>;
 }) {
   const { token } = await params;
+  const { paid: paidParam } = await searchParams;
   const admin = adminClient();
 
   // Mark viewed (idempotent — RPC no-ops unless first sent → viewed
@@ -60,9 +65,21 @@ export default async function PublicQuotePage({
     quote.status === "completed";
 
   if (acceptedLike) {
+    // Deposit-on-accept (flag-gated). Returns null when payments are off or
+    // the tradie isn't payment-ready, so the accepted view is unchanged then.
+    const deposit = await getQuoteDepositInfo(token);
+    const showDeposit = deposit !== null && (deposit.show || paidParam === "1");
     return (
       <PageShell>
         <AcceptedView token={token} quote={quote} />
+        {showDeposit ? (
+          <PayDepositButton
+            token={token}
+            amountCents={deposit.amountCents}
+            currency={deposit.currency}
+            paid={paidParam === "1"}
+          />
+        ) : null}
       </PageShell>
     );
   }

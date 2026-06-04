@@ -20,6 +20,8 @@ import { SettingsForm, type SettingsInitial } from "./_components/SettingsForm";
 import { SubscriptionPanel } from "./_components/SubscriptionPanel";
 import { reviewsEnabled, followupsEnabled } from "@/lib/engagement";
 import { EngagementSettings } from "./_components/EngagementSettings";
+import { paymentsEnabled, getConnectStatus, refreshConnectStatus } from "@/lib/payments";
+import { PaymentsSettings } from "./_components/PaymentsSettings";
 
 export const metadata: Metadata = {
   title: "Settings",
@@ -42,7 +44,11 @@ export const dynamic = "force-dynamic";
  * No write happens on this page — writes go through the server action in
  * `actions.ts`.
  */
-export default async function SettingsPage() {
+export default async function SettingsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ stripe?: string }>;
+}) {
   // Wave 18.1 — perf — `getCachedAuthUser` shares one auth roundtrip
   // with the surrounding `<AppHeader>` + `<MobileBottomNav>`.
   const { user } = await getCachedAuthUser();
@@ -170,6 +176,24 @@ export default async function SettingsPage() {
     }
   }
 
+  // Deposit payments (Stripe Connect). Flag-gated. On return from Stripe
+  // onboarding (?stripe=return) we pull the live account status once;
+  // otherwise we read our cached copy. Skipped entirely when the flag is off.
+  const paymentsOn = paymentsEnabled();
+  let connectStatus: {
+    connected: boolean;
+    chargesEnabled: boolean;
+    detailsSubmitted: boolean;
+    depositPct: number;
+  } | null = null;
+  if (paymentsOn) {
+    const sp = await searchParams;
+    connectStatus =
+      sp?.stripe === "return"
+        ? await refreshConnectStatus(user.id)
+        : await getConnectStatus(user.id);
+  }
+
   return (
     <div className="min-h-screen text-white">
       <AppHeader context="Settings" />
@@ -229,6 +253,10 @@ export default async function SettingsPage() {
             initial={engagementInitial}
             show={{ reviews: reviewsOn, followups: followupsOn }}
           />
+        ) : null}
+
+        {paymentsOn && connectStatus ? (
+          <PaymentsSettings status={connectStatus} />
         ) : null}
 
         {/* Billing + subscription. Reads server-side so the panel
