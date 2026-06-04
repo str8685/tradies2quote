@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState, useTransition } from "react";
+import { useMounted } from "@/lib/use-mounted";
 import {
   ArrowSquareOut,
   CheckSquare,
@@ -50,6 +51,9 @@ type Props = {
 };
 
 export function InvoiceList({ rows }: Props) {
+  // Relative timestamps below read Date.now(); gate them so SSR + first paint
+  // render a stable absolute date, then swap to "5m ago" after mount.
+  const mounted = useMounted();
   const [selectMode, setSelectMode] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [confirming, setConfirming] = useState(false);
@@ -197,12 +201,12 @@ export function InvoiceList({ rows }: Props) {
                   </p>
                 </div>
                 <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.2em] text-ink-400">
-                  {formatRelativeOrDate(inv.created_at)} ·{" "}
+                  {formatRelativeOrDate(inv.created_at, mounted)} ·{" "}
                   {inv.status === "paid" && inv.paid_at
-                    ? `Paid ${formatRelativeOrDate(inv.paid_at)}`
+                    ? `Paid ${formatRelativeOrDate(inv.paid_at, mounted)}`
                     : inv.status === "sent" && inv.sent_at
-                      ? `Sent ${formatRelativeOrDate(inv.sent_at)}`
-                      : `Due ${formatDueLabel(inv.due_date)}`}
+                      ? `Sent ${formatRelativeOrDate(inv.sent_at, mounted)}`
+                      : `Due ${formatDueLabel(inv.due_date, mounted)}`}
                 </p>
               </div>
               <div className="flex shrink-0 flex-col items-end gap-1.5">
@@ -362,29 +366,37 @@ function statusPill(status: InvoiceStatus): string {
   }
 }
 
-function formatDueLabel(iso: string): string {
+// Stable, timezone-pinned absolute date — deterministic across server (UTC) and
+// the visitor's browser, so it's safe to render during SSR + first paint.
+function nzShortDate(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "—";
+  return d.toLocaleDateString("en-NZ", {
+    day: "numeric",
+    month: "short",
+    timeZone: "Pacific/Auckland",
+  });
+}
+
+function formatDueLabel(iso: string, mounted: boolean): string {
   const t = Date.parse(iso);
   if (Number.isNaN(t)) return "—";
+  if (!mounted) return nzShortDate(iso); // stable until mounted — no Date.now() in SSR
   const days = Math.round((t - Date.now()) / (1000 * 60 * 60 * 24));
   if (days < 0) return `${Math.abs(days)}d overdue`;
   if (days === 0) return "today";
   if (days === 1) return "tomorrow";
   if (days < 14) return `in ${days}d`;
-  return new Date(iso).toLocaleDateString("en-NZ", {
-    day: "numeric",
-    month: "short",
-  });
+  return nzShortDate(iso);
 }
 
-function formatRelativeOrDate(iso: string): string {
+function formatRelativeOrDate(iso: string, mounted: boolean): string {
+  if (!mounted) return nzShortDate(iso); // stable until mounted — no Date.now() in SSR
   const then = new Date(iso).getTime();
   const diffSec = (Date.now() - then) / 1000;
   if (diffSec < 60) return "just now";
   if (diffSec < 3600) return `${Math.round(diffSec / 60)}m ago`;
   if (diffSec < 86_400) return `${Math.round(diffSec / 3600)}h ago`;
   if (diffSec < 7 * 86_400) return `${Math.round(diffSec / 86_400)}d ago`;
-  return new Date(iso).toLocaleDateString("en-NZ", {
-    day: "numeric",
-    month: "short",
-  });
+  return nzShortDate(iso);
 }

@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { useMounted } from "@/lib/use-mounted";
 import {
   ArrowRight,
   Check,
@@ -128,6 +129,9 @@ function ExistingInvoiceBody({ invoice }: { invoice: InvoiceSummary }) {
     "idle" | "saving" | "saved" | "error"
   >("idle");
   const [actionError, setActionError] = useState<string | null>(null);
+  // Relative due-date label reads Date.now(); gate it so SSR + first paint render
+  // a stable absolute date, then swap to "in N days" after mount (avoids #418).
+  const mounted = useMounted();
 
   const isDraft = invoice.status === "draft";
   const isSent = invoice.status === "sent" || invoice.status === "overdue";
@@ -185,7 +189,7 @@ function ExistingInvoiceBody({ invoice }: { invoice: InvoiceSummary }) {
         <span className="font-display text-brand">
           {formatCurrency(invoice.total_amount, invoice.currency)}
         </span>
-        {isPaid ? " · Paid in full" : ` · Due ${formatDueDate(invoice.due_date)}`}
+        {isPaid ? " · Paid in full" : ` · Due ${formatDueDate(invoice.due_date, mounted)}`}
         {isSent && invoice.status === "sent"
           ? " · Sent to client"
           : ""}
@@ -389,9 +393,22 @@ function invoiceStatusPill(status: InvoiceStatus): string {
   }
 }
 
-function formatDueDate(iso: string): string {
+// Stable, timezone-pinned absolute date — deterministic across server (UTC) and
+// the visitor's browser, so it's safe to render during SSR + first paint.
+function nzShortDate(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "—";
+  return d.toLocaleDateString("en-NZ", {
+    day: "numeric",
+    month: "short",
+    timeZone: "Pacific/Auckland",
+  });
+}
+
+function formatDueDate(iso: string, mounted: boolean): string {
   const t = Date.parse(iso);
   if (Number.isNaN(t)) return "in 7 days";
+  if (!mounted) return nzShortDate(iso); // stable until mounted — no Date.now() in SSR
   const days = Math.round((t - Date.now()) / (1000 * 60 * 60 * 24));
   if (days < 0)
     return `${Math.abs(days)} day${Math.abs(days) === 1 ? "" : "s"} overdue`;

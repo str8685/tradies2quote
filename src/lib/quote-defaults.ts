@@ -58,11 +58,17 @@ export function quoteNumber(id: string, createdAt: string | Date): string {
   return `Q-${year}-${short}`;
 }
 
+// IMPORTANT: pin the timeZone. Without it, Intl formats in the runtime's local
+// zone — so the server (UTC on Vercel) and a NZ visitor's browser turn the same
+// timestamp into different calendar days near a day boundary. When this runs in a
+// client component (QuotesListClient) that's a hydration mismatch (React #418).
+// Pinning to Pacific/Auckland makes SSR and client identical AND shows NZ dates.
 export function formatIssueDate(d: string | Date): string {
   return new Intl.DateTimeFormat("en-NZ", {
     day: "2-digit",
     month: "short",
     year: "numeric",
+    timeZone: "Pacific/Auckland",
   }).format(new Date(d));
 }
 

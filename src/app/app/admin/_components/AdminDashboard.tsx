@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useMounted } from "@/lib/use-mounted";
 import {
   ArrowClockwise,
   ArrowSquareOut,
@@ -39,7 +40,20 @@ function money(amount: number, currency: string): string {
   }
 }
 
-function relTime(iso: string): string {
+// Stable, timezone-pinned absolute date — deterministic across server (UTC) and
+// the visitor's browser, so it's safe to render during SSR + first paint.
+function nzShortDate(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "—";
+  return d.toLocaleDateString("en-NZ", {
+    day: "numeric",
+    month: "short",
+    timeZone: "Pacific/Auckland",
+  });
+}
+
+function relTime(iso: string, mounted: boolean): string {
+  if (!mounted) return nzShortDate(iso); // stable until mounted — no Date.now() in SSR
   const then = new Date(iso).getTime();
   const secs = Math.round((Date.now() - then) / 1000);
   if (secs < 60) return "just now";
@@ -47,10 +61,7 @@ function relTime(iso: string): string {
   if (mins < 60) return `${mins}m ago`;
   const hrs = Math.round(mins / 60);
   if (hrs < 24) return `${hrs}h ago`;
-  return new Date(iso).toLocaleDateString("en-NZ", {
-    day: "numeric",
-    month: "short",
-  });
+  return nzShortDate(iso);
 }
 
 function Stat({
@@ -76,6 +87,9 @@ function Stat({
 }
 
 export function AdminDashboard({ initial }: Props) {
+  // Relative timestamps read Date.now(); gate them so SSR + first paint render a
+  // stable absolute date, then swap to "5m ago" after mount.
+  const mounted = useMounted();
   const [data, setData] = useState<AdminOverview>(initial);
   const [refreshing, setRefreshing] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
@@ -115,7 +129,7 @@ export function AdminDashboard({ initial }: Props) {
             Ops <span className="text-brand">cockpit.</span>
           </h1>
           <p className="mt-2 text-sm text-ink-400">
-            Updated {relTime(data.generatedAt)} · auto-refresh 30s
+            Updated {relTime(data.generatedAt, mounted)} · auto-refresh 30s
           </p>
         </div>
         <button
@@ -199,7 +213,7 @@ export function AdminDashboard({ initial }: Props) {
                         {money(p.amount, p.currency)}
                       </span>
                       <span className="w-16 shrink-0 text-right text-xs text-ink-400">
-                        {relTime(p.created)}
+                        {relTime(p.created, mounted)}
                       </span>
                     </li>
                   ))}
