@@ -1298,47 +1298,30 @@ body:has([data-shell="app"]) {
    their icon + label cluster to the bottom of the tile too. */
 .t2q-bottomnav-bar {
   position: fixed;
-  /* Wave 38 — restored floating, fully-rounded pill bar. It sits a
-     thumb's width off the screen edges and above the iOS home
-     indicator. The original floating pill was pulled (Wave 36) because
-     it appeared to "drift" on iOS momentum scroll — but that drift was
-     the WHOLE BODY scrolling under a fixed element. Wave 37 scroll-locks
-     the /app shell (body no longer scrolls; one inner container does),
-     so the fixed pill now has nothing to drift against and stays put.
-     A near-solid fill (no backdrop-blur) keeps it rock-steady — no blur
-     repaint while the inner container scrolls behind it. */
-  /* Wave 42 — bar anchored flush to the physical screen bottom. The dark
-     fill now reaches the very edge (no cream "stripe" below the pill),
-     while `padding-bottom: env(safe-area-inset-bottom)` (added in the
-     effective rule below) lifts the tap targets clear of the iOS
-     home-indicator gesture zone. Still `position: fixed` over the
-     scroll-locked shell — nothing drifts. */
-  bottom: max(calc(env(safe-area-inset-bottom, 0px) - 1.55rem), 0.2rem);
-  left: 0.5rem;
-  right: 0.5rem;
+  /* Edge-locked bar: no floating pill shape, no side gaps, no bottom
+     stripe. It remains fixed over the scroll-locked /app shell. */
+  bottom: 0;
+  left: 0;
+  right: 0;
   display: flex;
   align-items: stretch;
   background: #1B1F2A;
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 2.05rem;
+  border-top: 2px solid #FF5F15;
+  border-radius: 0;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.04),
-    0 12px 30px -10px rgba(0, 0, 0, 0.5);
-  padding: 0.24rem 0.5rem;
+    0 -10px 28px -18px rgba(0, 0, 0, 0.7);
+  padding: 0.32rem 0.5rem calc(0.32rem + env(safe-area-inset-bottom, 0px));
   z-index: 40;
 }
-/* Wave 43 — full-width dark "floor" tucked BEHIND the pill. It paints the
-   iOS home-indicator zone *and* the left/right gaps beside the bar the same
-   dark slate, so no cream ever shows below or beside the bottom of the bar.
-   `z-index:-1` keeps it behind the pill's own background but above the page;
-   `position:fixed` over the scroll-locked shell means it never drifts. */
+/* Dark floor behind the edge-locked bar for iOS home-indicator overscan. */
 .t2q-bottomnav-bar::after {
   content: "";
   position: fixed;
   left: 0;
   right: 0;
   bottom: 0;
-  height: calc(env(safe-area-inset-bottom, 0px) + 1.85rem);
+  height: calc(env(safe-area-inset-bottom, 0px) + 1rem);
   background: #121722;
   z-index: -1;
   pointer-events: none;
@@ -1355,13 +1338,10 @@ body:has([data-shell="app"]) {
   }
 }
 [data-theme="light"] .t2q-bottomnav-bar {
-  /* Wave 38.1 — floating rounded DARK slate pill (Stowe-style), even on
-     light surfaces. A dark bar with a cream centre button reads as the
-     primary surface and pops off the cream /app background. */
   background: #1B1F2A !important;
-  border: 1px solid rgba(255, 255, 255, 0.06) !important;
-  border-radius: 2.05rem !important;
-  box-shadow: 0 14px 34px -10px rgba(0, 0, 0, 0.55) !important;
+  border-top: 2px solid #FF5F15 !important;
+  border-radius: 0 !important;
+  box-shadow: 0 -10px 28px -18px rgba(0, 0, 0, 0.7) !important;
 }
 
 /* ─── "Show working" disclosure — light-mode readability ──────────────────
@@ -1982,22 +1962,20 @@ body:has([data-shell="app"]) {
 }
 
 [data-shell="app"][data-theme="light"] .t2q-bottomnav-bar {
-  /* Screenshot-style mobile pill: dark app surface, brand-orange border,
-     raised centre action. It sits almost on the screen edge; the base
-     ::after dark floor paints the safe-area behind it so no cream stripe
-     can show through. */
-  min-height: 4.35rem;
+  /* Edge-to-edge mobile bar: no pillow/pill shell, still fixed to the
+     locked viewport so content scroll cannot move it. */
+  min-height: 4.05rem;
   align-items: center;
-  bottom: max(calc(env(safe-area-inset-bottom, 0px) - 1.55rem), 0.2rem) !important;
-  padding: 0.34rem 0.62rem;
-  background:
-    linear-gradient(180deg, #171C27 0%, #121722 100%) padding-box,
-    linear-gradient(108deg, rgba(255, 234, 0, 0.28) 0%, #FF5F15 56%, #FF8F52 100%) border-box !important;
-  border: 2px solid transparent !important;
-  border-radius: 2.05rem !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  padding: 0.34rem 0.62rem calc(0.34rem + env(safe-area-inset-bottom, 0px));
+  background: linear-gradient(180deg, #171C27 0%, #121722 100%) !important;
+  border: 0 !important;
+  border-top: 2px solid #FF5F15 !important;
+  border-radius: 0 !important;
   box-shadow:
-    0 18px 40px -12px rgba(0, 0, 0, 0.7),
-    0 0 0 1px rgba(255, 95, 21, 0.18),
+    0 -10px 28px -18px rgba(0, 0, 0, 0.7),
     inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
 }
 

@@ -118,6 +118,7 @@ export function MobileBottomNavClient({ isOwner, userEmail, avatarUrl }: Props) 
       <button
         type="button"
         data-testid="app-account-avatar"
+        data-tour="account-menu"
         aria-label="Account menu"
         aria-expanded={sheetOpen}
         onClick={() => setSheetOpen(true)}

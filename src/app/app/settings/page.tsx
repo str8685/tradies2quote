@@ -22,6 +22,7 @@ import { reviewsEnabled, followupsEnabled } from "@/lib/engagement";
 import { EngagementSettings } from "./_components/EngagementSettings";
 import { paymentsEnabled, getConnectStatus, refreshConnectStatus } from "@/lib/payments";
 import { PaymentsSettings } from "./_components/PaymentsSettings";
+import { ReplayTourButton } from "./_components/ReplayTourButton";
 
 export const metadata: Metadata = {
   title: "Settings",
@@ -211,34 +212,37 @@ export default async function SettingsPage({
         </div>
 
         {/* Wave 36 — prominent guide link near the top of Settings so
-            users can find the manual without hunting. The OnboardingTour
-            covers first-run; this is the anytime reference. */}
-        <Link
-          href="/app/settings/guide"
-          data-testid="settings-guide-link"
-          className="t2q-card-pro t2q-card-pro-hover mb-6 flex items-center gap-4 p-4 sm:p-5"
-        >
-          <span
-            aria-hidden="true"
-            className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-sm border border-brand/40 bg-brand/10 text-brand"
+            users can find the manual without hunting. The replay button
+            restarts the live coachmark tour from the dashboard. */}
+        <div className="mb-6 grid gap-3 sm:grid-cols-2">
+          <Link
+            href="/app/settings/guide"
+            data-testid="settings-guide-link"
+            className="t2q-card-pro t2q-card-pro-hover flex items-center gap-4 p-4 sm:p-5"
           >
-            <BookOpen size={22} weight="bold" />
-          </span>
-          <div className="min-w-0 flex-1">
-            <p className="font-display text-base uppercase tracking-tight text-white sm:text-lg">
-              How to use T2Q.
-            </p>
-            <p className="mt-0.5 text-sm text-ink-300">
-              Full manual — every feature, what it does, how to use it.
-            </p>
-          </div>
-          <ArrowRight
-            size={18}
-            weight="bold"
-            className="shrink-0 text-brand"
-            aria-hidden="true"
-          />
-        </Link>
+            <span
+              aria-hidden="true"
+              className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-sm border border-brand/40 bg-brand/10 text-brand"
+            >
+              <BookOpen size={22} weight="bold" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="font-display text-base uppercase tracking-tight text-white sm:text-lg">
+                How to use T2Q.
+              </p>
+              <p className="mt-0.5 text-sm text-ink-300">
+                Full manual — every feature, what it does, how to use it.
+              </p>
+            </div>
+            <ArrowRight
+              size={18}
+              weight="bold"
+              className="shrink-0 text-brand"
+              aria-hidden="true"
+            />
+          </Link>
+          <ReplayTourButton />
+        </div>
 
         {/* Wave 14 — Admin Agent checklist moved here from /app/agents
             (which is now owner-only). Every tradie sees their setup

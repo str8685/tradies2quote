@@ -40,6 +40,11 @@ const POPOVER_CSS = `
   max-width: 340px;
   box-shadow: 0 16px 40px rgba(15, 23, 42, 0.18);
 }
+@media (max-width: 480px) {
+  .driver-popover.t2q-tour {
+    max-width: calc(100vw - 32px);
+  }
+}
 .driver-popover.t2q-tour .driver-popover-title {
   font-family: var(--font-plus-jakarta), 'Inter', system-ui, sans-serif;
   font-size: 16px;
@@ -132,20 +137,17 @@ function ensureStyleTag() {
  *  current page are filtered out at runtime before driving the tour,
  *  so the user never sees a missing-anchor flash.
  *
- *  Earlier revisions also pointed at the bottom-nav tabs (Quotes,
- *  Materials, Me), but the 320px popover couldn't fit above a 50px
- *  bottom-nav button on a 390px iPhone and Driver.js fell back to
- *  parking the tooltip in the top-left, pointing at nothing. Those
- *  steps were dropped — the bottom nav is self-evident enough that
- *  losing the coachmarks is the right trade for a tour that actually
- *  works on every viewport. */
+ *  Desktop and mobile often keep both nav surfaces in the DOM, with
+ *  one hidden. `kickOff` resolves each selector to the first visible
+ *  element before Driver.js sees it, so every surviving step points at
+ *  something the customer can actually see and tap. */
 const ALL_STEPS: ReadonlyArray<DriveStep> = [
   {
     // Welcome step — no element, popover renders centered.
     popover: {
       title: "Welcome to Tradies2Quote",
       description:
-        "This quick tour shows the main work areas: creating quotes, tracking the pipeline, reviewing jobs, and finding settings.",
+        "This quick tour shows the main work areas: creating quotes, tracking the pipeline, scheduling jobs, finding materials, and opening settings.",
       showButtons: ["next", "close"],
       nextBtnText: "Start tour",
     },
@@ -266,7 +268,7 @@ const ALL_STEPS: ReadonlyArray<DriveStep> = [
     popover: {
       title: "Account and settings",
       description:
-        "Open this menu for business details, quote defaults, invoice defaults, clients, notifications, and sign out.",
+        "Open this menu for business details, quote defaults, invoice defaults, clients, the full guide, and sign out.",
       side: "left",
       align: "start",
     },
@@ -276,7 +278,7 @@ const ALL_STEPS: ReadonlyArray<DriveStep> = [
     popover: {
       title: "You're ready",
       description:
-        "Start with New quote, then review drafts before sending. You can replay guidance from Settings if you need a refresher.",
+        "Start with New quote, then review drafts before sending. You can replay this guided tour or open the full manual from Settings.",
       showButtons: ["previous", "close"],
       doneBtnText: "Get started",
     },
@@ -292,9 +294,21 @@ function markDone() {
   }
 }
 
-export function OnboardingTour() {
+interface OnboardingTourProps {
+  onFinished?: () => void;
+}
+
+export function OnboardingTour({ onFinished }: OnboardingTourProps) {
   useEffect(() => {
     ensureStyleTag();
+
+    let finished = false;
+    const finishTour = () => {
+      if (finished) return;
+      finished = true;
+      markDone();
+      onFinished?.();
+    };
 
     // Cancellation flag — set by the cleanup function below. Replaces
     // the previous single setTimeout / clearTimeout pattern because we
@@ -406,7 +420,7 @@ export function OnboardingTour() {
         // useful to highlight — skip the tour and mark it done so we
         // don't keep retrying.
         if (steps.length <= 2) {
-          markDone();
+          finishTour();
           return;
         }
 
@@ -428,7 +442,7 @@ export function OnboardingTour() {
           smoothScroll: true,
           steps,
           onDestroyed: () => {
-            markDone();
+            finishTour();
           },
         });
         driverObj.drive();
@@ -436,7 +450,7 @@ export function OnboardingTour() {
         // If Driver.js throws (e.g. DOM removed mid-drive), don't
         // crash the app — just mark the tour done so the user isn't
         // stuck with a broken state on reload.
-        markDone();
+        finishTour();
       }
     };
 
@@ -447,7 +461,7 @@ export function OnboardingTour() {
       timers.forEach((t) => clearTimeout(t));
       timers.clear();
     };
-  }, []);
+  }, [onFinished]);
 
   // The tour renders into document.body via Driver.js. This component
   // itself produces no DOM — it just kicks off the driver.
