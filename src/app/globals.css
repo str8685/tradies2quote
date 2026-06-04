@@ -1256,12 +1256,12 @@ h1, h2, h3, h4, h5 {
   right: 0.75rem;
   display: flex;
   align-items: stretch;
-  background: #121212;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 1.5rem;
+  background: #1B1F2A;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 2rem;
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.05),
-    0 12px 32px -8px rgba(0, 0, 0, 0.6);
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 14px 34px -10px rgba(0, 0, 0, 0.55);
   padding: 0.25rem 0.5rem;
   z-index: 40;
 }
@@ -1277,14 +1277,13 @@ h1, h2, h3, h4, h5 {
   }
 }
 [data-theme="light"] .t2q-bottomnav-bar {
-  /* Wave 38 — floating rounded pill (light). Solid cream-white fill so
-     nothing bleeds through, hairline border + soft drop shadow. */
-  background: #FFFFFF !important;
-  border: 1px solid #E3E2DA !important;
-  border-radius: 1.5rem !important;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.8),
-    0 12px 32px -8px rgba(10, 10, 10, 0.18) !important;
+  /* Wave 38.1 — floating rounded DARK slate pill (Stowe-style), even on
+     light surfaces. A dark bar with a cream centre button reads as the
+     primary surface and pops off the cream /app background. */
+  background: #1B1F2A !important;
+  border: 1px solid rgba(255, 255, 255, 0.06) !important;
+  border-radius: 2rem !important;
+  box-shadow: 0 14px 34px -10px rgba(0, 0, 0, 0.55) !important;
 }
 
 /* ─── "Show working" disclosure — light-mode readability ──────────────────
@@ -1855,11 +1854,13 @@ h1, h2, h3, h4, h5 {
   color: #FFFFFF !important;
   border: 1px solid #FF5F15;
 }
-/* Wave 38 — keep the FAB's raised cream ring in the light app shell so it
-   reads as punched through the pill (the shared rule above would flatten
-   it to a 1px orange edge). */
+/* Wave 38.1 — cream centre disc with a dark icon in the light app shell
+   (overrides the shared orange .t2q-btn-primary-pro rule above). */
 [data-shell="app"][data-theme="light"] .t2q-bottomnav-fab {
-  border: 3px solid #F5F4EE !important;
+  background: #F4F2EC !important;
+  color: #0A0A0A !important;
+  border: none !important;
+  box-shadow: 0 8px 22px -6px rgba(0, 0, 0, 0.45) !important;
 }
 
 [data-shell="app"][data-theme="light"] .t2q-btn-primary-pro {
@@ -1906,21 +1907,19 @@ h1, h2, h3, h4, h5 {
      is scroll-locked (Wave 37), so the fixed pill cannot drift — the
      earlier "floating bar moved around" symptom was the BODY scrolling
      under it, which no longer happens. */
-  background: #FFFFFF !important;
-  border: 1px solid var(--t2q-app-border) !important;
-  border-radius: 1.5rem !important;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.8),
-    0 12px 32px -8px rgba(15, 23, 42, 0.18) !important;
+  background: #1B1F2A !important;
+  border: 1px solid rgba(255, 255, 255, 0.06) !important;
+  border-radius: 2rem !important;
+  box-shadow: 0 14px 34px -10px rgba(0, 0, 0, 0.55) !important;
 }
 
 [data-shell="app"][data-theme="light"] .t2q-bottomnav-tile {
-  color: #52677A;
+  color: #868D9C;
 }
 
 [data-shell="app"][data-theme="light"] .t2q-bottomnav-tile[aria-current="page"] {
-  color: #C2410C;
-  background: var(--t2q-app-orange-soft);
+  color: #FFFFFF;
+  background: transparent;
 }
 
 [data-shell="app"][data-theme="light"] .t2q-avatar-online {
@@ -1961,19 +1960,20 @@ h1, h2, h3, h4, h5 {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  height: 3.5rem;
-  width: 3.5rem;
-  margin-top: -1.75rem;
+  height: 3.75rem;
+  width: 3.75rem;
+  /* Large cream disc centred in the pill, lifted a touch so it reads as
+     the primary action (Stowe-style). */
+  margin-top: -0.5rem;
   border-radius: 9999px;
-  background: #FF5F15;
+  background: #F4F2EC;
   color: #0A0A0A;
-  /* Ring matches the bar fill so the FAB reads as punched through it. */
-  border: 3px solid #121212;
-  box-shadow: 0 10px 24px -6px rgba(255, 95, 21, 0.6);
+  border: none;
+  box-shadow: 0 8px 22px -6px rgba(0, 0, 0, 0.5);
   transition: transform 120ms ease, background-color 150ms ease;
 }
 .t2q-bottomnav-fab:hover {
-  background: #FF7233;
+  background: #FFFFFF;
 }
 .t2q-bottomnav-fab:active {
   transform: scale(0.94);

@@ -121,8 +121,9 @@ export function MobileBottomNavClient({ isOwner, userEmail, avatarUrl }: Props) 
       >
         {LEFT_TILES.map(renderTile)}
 
-        {/* Centre FAB — primary "New quote" action, raised above the bar. */}
-        <div className="flex flex-1 items-start justify-center">
+        {/* Centre FAB — primary "New quote" action, a cream disc centred
+            in the pill (Stowe-style). */}
+        <div className="flex flex-1 items-center justify-center">
           <Link
             href="/app/quotes/new"
             prefetch={true}
