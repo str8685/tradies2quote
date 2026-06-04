@@ -21,6 +21,11 @@ import {
 } from "@/lib/tradieBrain";
 import { getRelevantMemories } from "@/lib/tradieBrain/retrieve";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import {
+  verifyQuote,
+  quoteVerifyEnabledFromEnv,
+  type VerificationReport,
+} from "./verify/quoteVerify";
 
 export type LineItemCategory =
   | "materials"
@@ -53,6 +58,12 @@ export interface GeneratedQuote {
   notes: string[];
   /** Free-text NZ tradie payment-terms paragraph. */
   terms: string;
+  /**
+   * Independent verification of this quote (deterministic checks always; an
+   * LLM critic when QUOTE_VERIFY_ENABLED). Advisory — present so the UI / route
+   * can surface issues; it never blocks or edits the quote.
+   */
+  verification?: VerificationReport;
 }
 
 export interface QuoteGenerationInput {
@@ -318,5 +329,19 @@ export async function runQuoteGenerationAgent(
     userId: input.memory?.userId,
   });
 
-  return result.value;
+  const quote = result.value;
+
+  // Verification pass — deterministic checks always (free); the independent
+  // LLM critic only when QUOTE_VERIFY_ENABLED. Advisory + soft: never blocks.
+  try {
+    quote.verification = await verifyQuote({
+      quote,
+      transcript,
+      runCritic: quoteVerifyEnabledFromEnv(),
+    });
+  } catch {
+    // Verification is advisory — a failure here never fails the quote.
+  }
+
+  return quote;
 }
