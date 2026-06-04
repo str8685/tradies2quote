@@ -87,6 +87,17 @@ describe("verifyQuoteDeterministic", () => {
     );
     expect(issues.some((i) => i.code === "implausible_total")).toBe(true);
   });
+
+  it("catches a total that doesn't equal subtotal + GST", () => {
+    // subtotal + gst reconcile internally, but the printed total is wrong.
+    const issues = verifyQuoteDeterministic(quote({ total: 9999 }));
+    expect(issues.some((i) => i.code === "total_mismatch" && i.severity === "error")).toBe(true);
+  });
+
+  it("warns on a missing job name", () => {
+    const issues = verifyQuoteDeterministic(quote({ jobName: "   " }));
+    expect(issues.some((i) => i.code === "missing_job_name" && i.severity === "warning")).toBe(true);
+  });
 });
 
 describe("parseCritic", () => {
