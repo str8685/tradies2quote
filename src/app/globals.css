@@ -1302,14 +1302,20 @@ body:has([data-shell="app"]) {
      so the fixed pill now has nothing to drift against and stays put.
      A near-solid fill (no backdrop-blur) keeps it rock-steady — no blur
      repaint while the inner container scrolls behind it. */
-  bottom: max(calc(env(safe-area-inset-bottom, 0px) - 1.95rem), 0.2rem);
-  left: 0.75rem;
-  right: 0.75rem;
+  /* Wave 42 — bar anchored flush to the physical screen bottom. The dark
+     fill now reaches the very edge (no cream "stripe" below the pill),
+     while `padding-bottom: env(safe-area-inset-bottom)` (added in the
+     effective rule below) lifts the tap targets clear of the iOS
+     home-indicator gesture zone. Still `position: fixed` over the
+     scroll-locked shell — nothing drifts. */
+  bottom: 0;
+  left: 0.5rem;
+  right: 0.5rem;
   display: flex;
   align-items: stretch;
   background: #1B1F2A;
   border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 2rem;
+  border-radius: 1.6rem 1.6rem 0 0;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.04),
     0 12px 30px -10px rgba(0, 0, 0, 0.5);
@@ -1333,7 +1339,7 @@ body:has([data-shell="app"]) {
      primary surface and pops off the cream /app background. */
   background: #1B1F2A !important;
   border: 1px solid rgba(255, 255, 255, 0.06) !important;
-  border-radius: 2rem !important;
+  border-radius: 1.6rem 1.6rem 0 0 !important;
   box-shadow: 0 14px 34px -10px rgba(0, 0, 0, 0.55) !important;
 }
 
@@ -1959,12 +1965,16 @@ body:has([data-shell="app"]) {
      raised centre action. Fixed positioning still comes from the base rule. */
   min-height: 4.1rem;
   align-items: center;
-  padding: 0.3rem 0.7rem;
+  /* Wave 42 — bottom padding swallows the iOS home-indicator safe area so
+     the dark fill reaches the screen edge (no cream stripe). Tap targets
+     stay above the gesture zone. */
+  padding: 0.3rem 0.7rem calc(0.3rem + env(safe-area-inset-bottom, 0px));
   background:
     linear-gradient(180deg, #171C27 0%, #121722 100%) padding-box,
     linear-gradient(108deg, rgba(255, 234, 0, 0.28) 0%, #FF5F15 56%, #FF8F52 100%) border-box !important;
   border: 2px solid transparent !important;
-  border-radius: 2.25rem !important;
+  border-bottom: none !important;
+  border-radius: 1.6rem 1.6rem 0 0 !important;
   box-shadow:
     0 18px 40px -12px rgba(0, 0, 0, 0.7),
     0 0 0 1px rgba(255, 95, 21, 0.18),
