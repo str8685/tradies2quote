@@ -1,4 +1,5 @@
 import { SideMeasureTape } from "../_components/app/SideMeasureTape";
+import { AppViewportLock } from "./_components/AppViewportLock";
 import AppSplash from "./_components/AppSplash";
 import { MobileBottomNav } from "./_components/MobileBottomNav";
 import { OnboardingTourGate } from "./_components/OnboardingTourGate";
@@ -44,6 +45,9 @@ export default function AppLayout({
       data-theme="light"
       className="t2q-app-canvas min-h-screen overflow-x-hidden lg:grid lg:grid-cols-[24px_1fr_24px]"
     >
+      {/* Wave 39 — keyboard/visualViewport fallback. Renders null; updates the
+          --app-height CSS var only while the on-screen keyboard is open. */}
+      <AppViewportLock />
       {/*
         Wave 19.10 — status-bar safe-area backdrop. A translucent
         ink-950 strip sits behind the iOS notch / Android cutout so
