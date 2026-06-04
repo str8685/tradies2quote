@@ -10,6 +10,7 @@ import {
   Warning,
 } from "@phosphor-icons/react";
 import { CopyButton } from "./CopyButton";
+import { VerificationPanel } from "./VerificationPanel";
 import type {
   GeneratedQuote,
   GeneratedQuoteLineItem,
@@ -247,6 +248,12 @@ export function QuoteGenerationAgent() {
               </div>
             </div>
           </div>
+
+          {/* Verification pass — deterministic checks always run; the LLM critic
+              runs when QUOTE_VERIFY_ENABLED. Surfaced so issues aren't invisible. */}
+          {result.verification && (
+            <VerificationPanel report={result.verification} />
+          )}
 
           <div className="rounded-sm border border-ink-600 bg-ink-900/60">
             <table className="w-full text-left text-sm">
