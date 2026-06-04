@@ -50,11 +50,14 @@ export async function signupAction(formData: FormData) {
   // already logged in — go straight to the dashboard. With confirmation ON,
   // there is no session and we'd send them to /login with a "check your inbox"
   // message instead.
+  // `signup=1` flags a GENUINE new account so <SignupBeacon> fires the
+  // uw('signup') conversion event into uptimewatch exactly once — NOT on the
+  // already-registered or error redirects above.
   if (!data.session) {
     redirect(
-      "/login?message=Check%20your%20inbox%20to%20confirm%20your%20email%20before%20logging%20in.",
+      "/login?signup=1&message=Check%20your%20inbox%20to%20confirm%20your%20email%20before%20logging%20in.",
     );
   }
 
-  redirect("/app");
+  redirect("/app?signup=1");
 }
