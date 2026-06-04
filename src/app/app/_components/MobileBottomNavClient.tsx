@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -10,6 +10,8 @@ import {
   ListBullets,
   Plus,
   Receipt,
+  Stack,
+  UserCircle,
 } from "@phosphor-icons/react";
 
 /**
@@ -69,6 +71,7 @@ const LEFT_TILES: ReadonlyArray<{ href: string; label: string; icon: Icon }> = [
 ];
 const RIGHT_TILES: ReadonlyArray<{ href: string; label: string; icon: Icon }> = [
   { href: "/app/invoices", label: "Invoices", icon: Receipt },
+  { href: "/app/materials", label: "Materials", icon: Stack },
 ];
 
 function isActive(href: string, pathname: string) {
@@ -78,10 +81,6 @@ function isActive(href: string, pathname: string) {
 
 export function MobileBottomNavClient({ isOwner, userEmail, avatarUrl }: Props) {
   const pathname = usePathname() ?? "";
-  const initial = useMemo(
-    () => (userEmail ?? "?").trim().charAt(0).toUpperCase() || "?",
-    [userEmail],
-  );
   const [sheetOpen, setSheetOpen] = useState(false);
 
   // Wave 15.3 — explicit prefetch so the next tab's JS is warmed as soon
@@ -113,6 +112,31 @@ export function MobileBottomNavClient({ isOwner, userEmail, avatarUrl }: Props) 
 
   return (
     <>
+      {/* Wave 40 — account avatar moved to a fixed top-left corner button
+          (mobile only). Opens the same slide-up AccountHub sheet. Its old
+          bottom-bar slot is now the Materials tab. */}
+      <button
+        type="button"
+        data-testid="app-account-avatar"
+        aria-label="Account menu"
+        aria-expanded={sheetOpen}
+        onClick={() => setSheetOpen(true)}
+        className="t2q-account-avatar sm:hidden"
+      >
+        {avatarUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={avatarUrl}
+            alt=""
+            width={40}
+            height={40}
+            className="h-full w-full object-cover"
+          />
+        ) : (
+          <UserCircle size={26} weight="regular" aria-hidden="true" />
+        )}
+      </button>
+
       <nav
         data-testid="app-bottom-nav"
         data-is-owner={isOwner ? "true" : "false"}
@@ -136,39 +160,6 @@ export function MobileBottomNavClient({ isOwner, userEmail, avatarUrl }: Props) 
         </div>
 
         {RIGHT_TILES.map(renderTile)}
-
-        {/* Avatar tile. Tappable; opens the slide-up account hub
-            sheet. Shows the avatar image when uploaded, otherwise
-            the first letter of the user's email. */}
-        <button
-          type="button"
-          data-testid="app-bottom-nav-me"
-          aria-label="Account menu"
-          aria-expanded={sheetOpen}
-          onClick={() => setSheetOpen(true)}
-          className="t2q-bottomnav-tile cursor-pointer"
-        >
-          {avatarUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={avatarUrl}
-              alt=""
-              width={36}
-              height={36}
-              // Wave 15.3 — bumped from h-7 (28px) → h-9 (36px) for
-              // bigger thumb target + a more "this is me" feel.
-              className="inline-block h-9 w-9 shrink-0 rounded-full object-cover"
-            />
-          ) : (
-            <span
-              aria-hidden="true"
-              className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-brand text-ink-900 font-display text-sm leading-none"
-            >
-              {initial}
-            </span>
-          )}
-          <span>Me</span>
-        </button>
       </nav>
 
       {sheetOpen ? (
