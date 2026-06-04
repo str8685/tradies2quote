@@ -112,7 +112,7 @@ export function MaterialsList({ materials, currency }: Props) {
                     target="_blank"
                     rel="noopener noreferrer"
                     aria-label={`Open ${m.name} on supplier site`}
-                    className="grid h-9 w-9 shrink-0 place-items-center rounded-sm border border-ink-700 text-ink-400 hover:border-brand hover:text-brand"
+                    className="grid h-11 w-11 shrink-0 place-items-center rounded-sm border border-ink-700 text-ink-400 hover:border-brand hover:text-brand"
                   >
                     <ArrowSquareOut size={14} weight="bold" />
                   </a>

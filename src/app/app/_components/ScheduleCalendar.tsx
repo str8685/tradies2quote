@@ -202,7 +202,7 @@ export function ScheduleCalendar({
             type="button"
             aria-label="Previous month"
             onClick={() => step(-1)}
-            className="grid h-8 w-8 place-items-center rounded-full border border-white/10 text-ink-200 hover:border-brand/50 hover:text-brand"
+            className="grid h-11 w-11 place-items-center rounded-full border border-white/10 text-ink-200 hover:border-brand/50 hover:text-brand"
           >
             <CaretLeft size={14} weight="bold" />
           </button>
@@ -213,7 +213,7 @@ export function ScheduleCalendar({
             type="button"
             aria-label="Next month"
             onClick={() => step(1)}
-            className="grid h-8 w-8 place-items-center rounded-full border border-white/10 text-ink-200 hover:border-brand/50 hover:text-brand"
+            className="grid h-11 w-11 place-items-center rounded-full border border-white/10 text-ink-200 hover:border-brand/50 hover:text-brand"
           >
             <CaretRight size={14} weight="bold" />
           </button>

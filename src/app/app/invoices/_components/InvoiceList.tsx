@@ -120,7 +120,7 @@ export function InvoiceList({ rows }: Props) {
             type="button"
             onClick={enterSelectMode}
             data-testid="invoices-select-btn"
-            className="inline-flex h-8 items-center gap-1.5 rounded-sm border border-ink-700 bg-ink-800 px-3 font-mono text-[10px] uppercase tracking-[0.25em] text-ink-200 transition-colors hover:border-brand hover:text-brand"
+            className="inline-flex min-h-[44px] items-center gap-1.5 rounded-sm border border-ink-700 bg-ink-800 px-3 font-mono text-[10px] uppercase tracking-[0.25em] text-ink-200 transition-colors hover:border-brand hover:text-brand"
           >
             <CheckSquare size={13} weight="bold" />
             Select
@@ -133,7 +133,7 @@ export function InvoiceList({ rows }: Props) {
                 type="button"
                 onClick={selectAll}
                 data-testid="invoices-select-all"
-                className="inline-flex h-8 items-center rounded-sm border border-ink-700 bg-ink-800 px-3 font-mono text-[10px] uppercase tracking-[0.25em] text-ink-200 hover:border-brand hover:text-brand"
+                className="inline-flex min-h-[44px] items-center rounded-sm border border-ink-700 bg-ink-800 px-3 font-mono text-[10px] uppercase tracking-[0.25em] text-ink-200 hover:border-brand hover:text-brand"
               >
                 Select all
               </button>
@@ -142,7 +142,7 @@ export function InvoiceList({ rows }: Props) {
               type="button"
               onClick={exitSelectMode}
               data-testid="invoices-cancel-select"
-              className="inline-flex h-8 items-center gap-1 rounded-sm border border-ink-700 bg-ink-800 px-3 font-mono text-[10px] uppercase tracking-[0.25em] text-ink-300 hover:text-white"
+              className="inline-flex min-h-[44px] items-center gap-1 rounded-sm border border-ink-700 bg-ink-800 px-3 font-mono text-[10px] uppercase tracking-[0.25em] text-ink-300 hover:text-white"
             >
               <X size={13} weight="bold" />
               Cancel
