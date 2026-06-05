@@ -72,12 +72,10 @@ export default function AppLayout({
           cutout inset on phones. Desktop gets the inset from the
           header itself.
 
-          Wave 36 — bottom inset bumped from 88px → 112px. The bottom
-          nav bar grows to ~80–96px on tall iOS devices once the
-          home-indicator safe area is in play, and the previous 88px
-          left long forms (Settings especially) clipped under the bar
-          on the last field. 112px = nav max + a 16px breather. */}
-      <div className="t2q-app-scroll min-w-0 pt-[calc(env(safe-area-inset-top)_+_0.5rem)] pb-[calc(4.75rem+env(safe-area-inset-bottom))] sm:pt-0 sm:pb-0">
+          The bottom nav now pulls its safe-area padding below the
+          viewport, so this scroll padding only needs to cover the
+          visible compact bar plus a small breathing gap. */}
+      <div className="t2q-app-scroll min-w-0 pt-[env(safe-area-inset-top)] pb-[3.9rem] sm:pt-0 sm:pb-0">
         {/* Trial / expired upgrade banner. Server-rendered: renders
             nothing for paid users or users still well inside their
             trial; surfaces only when there's something to act on. */}
