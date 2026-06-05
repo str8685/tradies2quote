@@ -80,7 +80,7 @@ A few auth/dashboard files reference semantic tokens (`bg-background`, `text-ink
 
 ## Deploy model
 
-**There is no Git remote.** The repo is local-only; Vercel is connected via the CLI link in `/Users/str8685/Desktop/tradies2quote/.vercel/project.json`. `git push` will fail — pushing has no effect on the live site.
+**A Git remote now exists** (`origin` → `https://github.com/str8builders/tradies2quote.git`) for code hosting / backup, so `git push` works. **But pushing does NOT deploy** — Vercel is connected via the CLI link in `/Users/str8685/Desktop/tradies2quote/.vercel/project.json`, not a GitHub integration. The live site only changes when you run `vercel --prod` from the primary repo. (Was previously local-only with no remote.)
 
 To ship: run `vercel --prod` from the primary repo. Each deploy gets its own immutable per-deployment URL; the `tradies-nz` production aliases (`tradies2quote.com`, `tradies-nz.vercel.app`) auto-repoint to the latest. Per-deployment URLs from older deploys keep serving their frozen content forever — that's by design. `knockoff.app` lives in a different Vercel project and is unaffected.
 
