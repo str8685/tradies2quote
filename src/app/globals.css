@@ -1281,7 +1281,7 @@ body:has([data-shell="app"]) {
 }
 @media (max-width: 639px) {
   body:has([data-shell="app"]) {
-    background: #121722;
+    background: #F4F7FA;
   }
 }
 
@@ -1306,12 +1306,12 @@ body:has([data-shell="app"]) {
   display: flex;
   align-items: stretch;
   background: #1B1F2A;
-  border-top: 2px solid #FF5F15;
+  border: 0;
   border-radius: 0;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.04),
-    0 -10px 28px -18px rgba(0, 0, 0, 0.7);
-  padding: 0.32rem 0.5rem calc(0.32rem + env(safe-area-inset-bottom, 0px));
+    0 -8px 22px -18px rgba(0, 0, 0, 0.7);
+  padding: 0.18rem 0.45rem calc(0.16rem + env(safe-area-inset-bottom, 0px));
   z-index: 40;
 }
 /* Dark floor behind the edge-locked bar for iOS home-indicator overscan. */
@@ -1321,7 +1321,7 @@ body:has([data-shell="app"]) {
   left: 0;
   right: 0;
   bottom: 0;
-  height: calc(env(safe-area-inset-bottom, 0px) + 1rem);
+  height: calc(env(safe-area-inset-bottom, 0px) + 0.25rem);
   background: #121722;
   z-index: -1;
   pointer-events: none;
@@ -1339,9 +1339,9 @@ body:has([data-shell="app"]) {
 }
 [data-theme="light"] .t2q-bottomnav-bar {
   background: #1B1F2A !important;
-  border-top: 2px solid #FF5F15 !important;
+  border: 0 !important;
   border-radius: 0 !important;
-  box-shadow: 0 -10px 28px -18px rgba(0, 0, 0, 0.7) !important;
+  box-shadow: 0 -8px 22px -18px rgba(0, 0, 0, 0.7) !important;
 }
 
 /* ─── "Show working" disclosure — light-mode readability ──────────────────
@@ -1918,9 +1918,9 @@ body:has([data-shell="app"]) {
   /* Wave 41 — orange disc with a white plus, punched through the dark bar. */
   background: #FF5F15 !important;
   color: #FFFFFF !important;
-  border: 3px solid #141A24 !important;
+  border: 2px solid #141A24 !important;
   box-shadow:
-    0 12px 28px -8px rgba(255, 95, 21, 0.6),
+    0 8px 20px -10px rgba(255, 95, 21, 0.58),
     inset 0 1px 0 rgba(255, 255, 255, 0.25) !important;
 }
 
@@ -1964,28 +1964,27 @@ body:has([data-shell="app"]) {
 [data-shell="app"][data-theme="light"] .t2q-bottomnav-bar {
   /* Edge-to-edge mobile bar: no pillow/pill shell, still fixed to the
      locked viewport so content scroll cannot move it. */
-  min-height: 4.05rem;
+  min-height: 3.35rem;
   align-items: center;
   bottom: 0 !important;
   left: 0 !important;
   right: 0 !important;
-  padding: 0.34rem 0.62rem calc(0.34rem + env(safe-area-inset-bottom, 0px));
+  padding: 0.2rem 0.5rem calc(0.18rem + env(safe-area-inset-bottom, 0px));
   background: linear-gradient(180deg, #171C27 0%, #121722 100%) !important;
   border: 0 !important;
-  border-top: 2px solid #FF5F15 !important;
   border-radius: 0 !important;
   box-shadow:
-    0 -10px 28px -18px rgba(0, 0, 0, 0.7),
+    0 -8px 22px -18px rgba(0, 0, 0, 0.7),
     inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
 }
 
 [data-shell="app"][data-theme="light"] .t2q-bottomnav-tile {
-  min-height: 3.35rem;
-  gap: 0.14rem;
-  border-radius: 1.25rem;
-  padding: 0.24rem 0.24rem;
+  min-height: 2.62rem;
+  gap: 0.08rem;
+  border-radius: 0.9rem;
+  padding: 0.12rem 0.18rem;
   color: #8B93A3;
-  font-size: 0.68rem;
+  font-size: 0.6rem;
   font-weight: 600;
   letter-spacing: 0.02em;
 }
@@ -2004,8 +2003,8 @@ body:has([data-shell="app"]) {
 }
 
 [data-shell="app"][data-theme="light"] .t2q-bottomnav-tile svg {
-  height: 1.5rem;
-  width: 1.5rem;
+  height: 1.28rem;
+  width: 1.28rem;
   stroke-width: 2.1;
 }
 
@@ -2047,21 +2046,19 @@ body:has([data-shell="app"]) {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  height: 3.72rem;
-  width: 3.72rem;
-  /* Compact cream disc centred in the pill, lifted a touch so it reads as
-     the primary action (Stowe-style). */
-  margin-top: -0.55rem;
+  height: 3rem;
+  width: 3rem;
+  margin-top: -0.32rem;
   border-radius: 9999px;
   background: #FF5F15;
   color: #FFFFFF;
   border: none;
-  box-shadow: 0 8px 22px -6px rgba(255, 95, 21, 0.5);
+  box-shadow: 0 7px 18px -8px rgba(255, 95, 21, 0.55);
   transition: transform 120ms ease, background-color 150ms ease;
 }
 .t2q-bottomnav-fab svg {
-  height: 2.05rem;
-  width: 2.05rem;
+  height: 1.7rem;
+  width: 1.7rem;
 }
 .t2q-bottomnav-fab:hover {
   background: #FF7A3D;

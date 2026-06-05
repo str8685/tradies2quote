@@ -12,6 +12,7 @@ import "./globals.css";
 import { ThemeBoot } from "./_components/ThemeBoot";
 import { FloatingInstallButton } from "./_components/FloatingInstallButton";
 import { SignupBeacon } from "./_components/SignupBeacon";
+import { CookieConsent } from "./_components/CookieConsent";
 
 const archivoblack = Archivo_Black({
   variable: "--font-archivo-black",
@@ -204,8 +205,11 @@ export default function RootLayout({
             the app is already installed or the browser can't install,
             so safe to mount globally. */}
         <FloatingInstallButton />
-        <Script src="https://uptimewatch-vert.vercel.app/track.js" strategy="afterInteractive" />
+        {/* Analytics (track.js) is no longer loaded unconditionally here —
+            <CookieConsent /> injects it only after the visitor opts in,
+            so the non-essential tracker never runs pre-consent. */}
         <SignupBeacon />
+        <CookieConsent />
       </body>
     </html>
   );

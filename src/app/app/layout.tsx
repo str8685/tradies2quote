@@ -49,15 +49,13 @@ export default function AppLayout({
           --app-height CSS var only while the on-screen keyboard is open. */}
       <AppViewportLock />
       {/*
-        Wave 19.10 — status-bar safe-area backdrop. A translucent
-        ink-950 strip sits behind the iOS notch / Android cutout so
-        long-scroll pages (e.g. quote preview's terms textarea) don't
-        bleed text through the status bar. Mounted at the /app shell
-        level only — marketing root is unaffected.
+        Status-bar safe-area guard. Kept transparent so the installed
+        app feels full-screen, while the fixed shell still owns the
+        whole viewport.
       */}
       <div
         aria-hidden="true"
-        className="pointer-events-none fixed inset-x-0 top-0 z-50 h-[env(safe-area-inset-top)] bg-ink-950/75 backdrop-blur-sm"
+        className="pointer-events-none fixed inset-x-0 top-0 z-50 h-[env(safe-area-inset-top)] bg-transparent"
       />
       {/* Soft-serif app splash. Renders once per session — the
           sessionStorage check inside the component decides whether to
@@ -79,7 +77,7 @@ export default function AppLayout({
           home-indicator safe area is in play, and the previous 88px
           left long forms (Settings especially) clipped under the bar
           on the last field. 112px = nav max + a 16px breather. */}
-      <div className="t2q-app-scroll min-w-0 pt-[calc(env(safe-area-inset-top)_+_1.5rem)] pb-[120px] sm:pt-0 sm:pb-0">
+      <div className="t2q-app-scroll min-w-0 pt-[calc(env(safe-area-inset-top)_+_0.5rem)] pb-[calc(4.75rem+env(safe-area-inset-bottom))] sm:pt-0 sm:pb-0">
         {/* Trial / expired upgrade banner. Server-rendered: renders
             nothing for paid users or users still well inside their
             trial; surfaces only when there's something to act on. */}
