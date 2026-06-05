@@ -1271,17 +1271,15 @@ h1, h2, h3, h4, h5 {
 }
 .t2q-account-avatar:active { transform: scale(0.94); }
 
-/* Wave 41 — kill the dark "stripe" at the very bottom of the installed PWA.
-   The fixed app canvas paints cream over the viewport, but any sliver below it
-   (the iOS home-indicator safe-area) used to reveal the dark <body>. When the
-   /app shell is mounted, paint the document background cream so that sliver is
-   cream too. Landing pages have no [data-shell="app"], so they stay dark. */
+/* The signed-in app owns the iOS home-indicator strip with the bottom nav.
+   Paint the document fallback dark on phones so any compositor sliver under
+   the fixed shell matches the nav instead of flashing page-white. */
 body:has([data-shell="app"]) {
   background: #F5F4EE;
 }
 @media (max-width: 639px) {
   body:has([data-shell="app"]) {
-    background: #F4F7FA;
+    background: #121722;
   }
 }
 
@@ -1299,9 +1297,9 @@ body:has([data-shell="app"]) {
 .t2q-bottomnav-bar {
   position: fixed;
   /* Edge-locked bar: no floating pill shape, no side gaps, no bottom
-     stripe. The safe-area padding is pulled below the viewport so the
-     visible bar sits hard against the physical bottom edge. */
-  bottom: calc(0px - env(safe-area-inset-bottom, 0px));
+     stripe. The bar itself owns the safe-area/home-indicator zone so
+     there is no separate white page band below it. */
+  bottom: 0;
   left: 0;
   right: 0;
   display: flex;
@@ -1954,7 +1952,7 @@ body:has([data-shell="app"]) {
      locked viewport so content scroll cannot move it. */
   min-height: 3.05rem;
   align-items: center;
-  bottom: calc(0px - env(safe-area-inset-bottom, 0px)) !important;
+  bottom: 0 !important;
   left: 0 !important;
   right: 0 !important;
   padding: 0.14rem 0.5rem calc(0.14rem + env(safe-area-inset-bottom, 0px));

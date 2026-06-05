@@ -72,10 +72,9 @@ export default function AppLayout({
           cutout inset on phones. Desktop gets the inset from the
           header itself.
 
-          The bottom nav now pulls its safe-area padding below the
-          viewport, so this scroll padding only needs to cover the
-          visible compact bar plus a small breathing gap. */}
-      <div className="t2q-app-scroll min-w-0 pt-[env(safe-area-inset-top)] pb-[3.9rem] sm:pt-0 sm:pb-0">
+          The bottom nav owns the home-indicator safe area, so this
+          scroll padding covers the compact bar plus the same inset. */}
+      <div className="t2q-app-scroll min-w-0 pt-[env(safe-area-inset-top)] pb-[calc(3.9rem+env(safe-area-inset-bottom))] sm:pt-0 sm:pb-0">
         {/* Trial / expired upgrade banner. Server-rendered: renders
             nothing for paid users or users still well inside their
             trial; surfaces only when there's something to act on. */}
