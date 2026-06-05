@@ -73,22 +73,35 @@ const JOB_TYPE_GUIDANCE: Record<string, string> = {
 // cladding patterns automatically). That means scan-drawing piggybacks
 // on all the existing material-matching, pricing, library, compliance
 // and review tooling — no separate quote pipeline to maintain.
-export function buildSystemPrompt(jobType: string, timberLength: number): string {
-  const guidance =
-    JOB_TYPE_GUIDANCE[jobType] ?? JOB_TYPE_GUIDANCE.Other;
+export function buildSystemPrompt(
+  jobTypeHint: string | null,
+  timberLength: number,
+): string {
+  const hintLine = jobTypeHint
+    ? `The user has suggested this MAY be a "${jobTypeHint}" job. Treat that ONLY as a loose hint — it is NOT authoritative. Identify the ACTUAL structure from the drawing itself. If the drawing clearly shows something else (a house floor plan, a fence, a roof, a slab), trust the DRAWING and ignore the hint.`
+    : `The user did not specify a job type. Identify the structure type entirely from the drawing.`;
+
+  // Reference focus lists for EVERY type, so whichever structure the AI
+  // reads off the image, it knows what elements to take off. The AI picks
+  // the type first, then uses the matching list — we no longer pre-commit
+  // it to one type.
+  const focusReference = Object.entries(JOB_TYPE_GUIDANCE)
+    .map(([type, guidance]) => `  - ${type}: ${guidance}`)
+    .join("\n");
+
   return `You are an NZ-builder takeoff reader. The user uploaded a photo or scan of a hand-drawn construction plan/sketch.
 
-TRADE CONTEXT (from the user, treat as authoritative):
-- Job type: ${jobType}
-- ${guidance}
+CONTEXT (the DRAWING is the source of truth — the hint below is NOT authoritative):
+- ${hintLine}
 - The tradie buys timber in ${timberLength}m lengths. When you note board / stud / plate / decking lengths, work in whole ${timberLength}m lengths and assume a 10% waste factor.
 
-Your job: read every annotation on the drawing and produce a structured takeoff that a quoting AI can turn into materials and labour.
+Your job: FIRST work out what the drawing actually shows, THEN read every annotation and produce a structured takeoff that a quoting AI can turn into materials and labour.
 
 Read out, in order:
-1. WHAT IS BEING BUILT — one short phrase. Use the trade context above.
+1. WHAT IS BEING BUILT — classify the structure from the DRAWING ITSELF, not from the hint. Set "detectedType" to exactly one of: Deck, Fence, Framing, Concrete, Roofing, Other. A house/room floor-plan layout is "Framing" if it shows wall framing, otherwise "Other" — it is NOT a Deck unless the drawing actually shows a deck. Also give a short "buildType" phrase (e.g. "Timber deck", "Single-storey house floor plan", "1.8m boundary fence").
 2. PRIMARY DIMENSIONS — every length/width/height/depth on the drawing, in millimetres or metres exactly as written. If a dimension is in mm, restate it in metres too (e.g. "8820mm = 8.82m"). If there are step heights, riser/going, post heights, pile depths, fastener spacings — call them out. ONE DIMENSION PER LINE. Keep this section purely numeric so the tradie can review it quickly.
-3. STRUCTURAL ELEMENTS — for each one, list the size, treatment, spacing and count, using the trade-context guidance above and the tradie's ${timberLength}m timber preference.
+3. STRUCTURAL ELEMENTS — for each one, list the size, treatment, spacing and count, working in the tradie's ${timberLength}m timber lengths. Use the focus list for the type YOU identified in step 1:
+${focusReference}
 4. FIXINGS / FASTENERS / HARDWARE — joist hangers, post anchors, stainless decking screws, framing nails, coach screws, brackets.
 5. CONCRETE / BAGS — count holes / pads / piles and note hole size if shown. Compute bag count where possible (20kg bag covers ~0.01m³).
 6. ACCESSORIES — handrails, steps, balustrades, gates, infill, flashings.
@@ -97,6 +110,7 @@ Read out, in order:
 9. MISSING INFO the tradie should add (waste %, finish, ground conditions).
 
 CRITICAL rules:
+- The DRAWING decides the structure type, not the hint. Never describe a deck (or any structure) that the image does not show.
 - DO NOT invent dimensions. If a number is not on the drawing, do not write one. Say "not shown".
 - Use NZ trade vocabulary: GIB, H1.2 / H3.2 / H4 / H5 treated pine, 90x45, 140x45, 140x19 decking, Pink Batts, joist hangers, post anchors, stainless decking screws.
 - Keep units explicit. mm or m, not "8.8" by itself.
@@ -106,6 +120,7 @@ CRITICAL rules:
 Output shape:
 {
   "document_type": "drawing" | "supplier_quote" | "other",
+  "detectedType": "Deck" | "Fence" | "Framing" | "Concrete" | "Roofing" | "Other",
   "buildType": string,
   "summary": string,
   "dimensions": string,
@@ -132,6 +147,7 @@ Output shape:
 
 Where:
 - "document_type" classifies what the image actually is. "drawing" = a hand-drawn or CAD plan/sketch with measurements to take off. "supplier_quote" = a printed/typed merchant quote, estimate, invoice or order (product line items with prices/SKUs and a Subtotal / GST / Total). "other" = neither. If it's clearly a supplier quote, set "supplier_quote" — the app will redirect the tradie to the quote importer instead of doing a takeoff.
+- "detectedType" is the structure type YOU read off the drawing — Deck, Fence, Framing, Concrete, Roofing or Other. This is YOUR classification of the image, NOT the user's hint. If the hint says "Deck" but the drawing is a house floor plan, return "Framing" or "Other" — whatever the drawing actually shows.
 - "buildType" is a short noun phrase ("Timber deck", "1.8m boundary fence", "Garage GIB lining", …).
 - "summary" is one sentence (under 200 chars) for log lines.
 - "dimensions" is the PRIMARY DIMENSIONS section ONLY — one dimension per line, no headers, no extra commentary. This is what the tradie will review first to catch misreads. 4–20 lines typically.
@@ -178,6 +194,7 @@ export interface ScannedPlan {
 
 interface ScanPayload {
   document_type?: string;
+  detectedType?: string;
   buildType?: string;
   summary?: string;
   dimensions?: string;
@@ -384,11 +401,14 @@ export async function POST(request: NextRequest) {
       ? hintRaw.trim().slice(0, 500)
       : null;
 
+  // Optional hint only — the drawing is the source of truth for the
+  // structure type. A missing/invalid value is fine; the AI classifies
+  // the structure from the image and returns `detectedType`.
   const jobTypeRaw = form.get("jobType");
-  const jobType =
+  const jobTypeHint =
     typeof jobTypeRaw === "string" && JOB_TYPES.has(jobTypeRaw)
       ? jobTypeRaw
-      : "Other";
+      : null;
 
   const timberLengthRaw = form.get("timberLength");
   let timberLength = 6;
@@ -405,7 +425,9 @@ export async function POST(request: NextRequest) {
 
   const userTextParts: string[] = [];
   userTextParts.push(
-    `Job type: ${jobType}. Tradie buys timber in ${timberLength}m lengths and wants a 10% waste factor.`,
+    jobTypeHint
+      ? `The user suggested this may be a "${jobTypeHint}" job — treat that as a hint only and identify the real structure from the drawing. Tradie buys timber in ${timberLength}m lengths and wants a 10% waste factor.`
+      : `No job type was given — identify the structure entirely from the drawing. Tradie buys timber in ${timberLength}m lengths and wants a 10% waste factor.`,
   );
   if (hint) {
     userTextParts.push(`Tradie note about this drawing: ${hint}`);
@@ -414,7 +436,7 @@ export async function POST(request: NextRequest) {
     "Read every annotation on this hand-drawn plan and return the JSON described in the system prompt.",
   );
 
-  const systemPrompt = buildSystemPrompt(jobType, timberLength);
+  const systemPrompt = buildSystemPrompt(jobTypeHint, timberLength);
 
   let claudeRes: Response;
   try {
@@ -562,11 +584,20 @@ export async function POST(request: NextRequest) {
     ? `${preamble}\n${baseDimensions}`.trim()
     : baseDimensions;
 
+  // The structure type the AI read off the DRAWING drives everything
+  // downstream (the calculator marker, the "Job type:" line). The user's
+  // hint is only a fallback if the AI didn't return a valid classification.
+  const detectedType =
+    typeof parsed.detectedType === "string" && JOB_TYPES.has(parsed.detectedType)
+      ? parsed.detectedType
+      : (jobTypeHint ?? "Other");
+
   return NextResponse.json({
     document_type: resolveDocumentType(
       parsed.document_type,
       [dimensions, structural, notes, legacyTranscript].join("\n"),
     ),
+    detectedType,
     buildType:
       typeof parsed.buildType === "string" ? parsed.buildType.trim() : "",
     summary:
@@ -575,7 +606,7 @@ export async function POST(request: NextRequest) {
     structural,
     notes,
     plan,
-    jobType,
+    jobTypeHint,
     timberLength,
   });
 }

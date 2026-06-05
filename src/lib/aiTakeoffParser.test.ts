@@ -156,6 +156,31 @@ describe("detectTakeoffType + per-type parsers", () => {
     expect(canRunCalculator(r)).toBe(true);
   });
 
+  // Scan-drawing bug (house layout → wrong deck quote). The scan flow
+  // emits a `[T2Q_PLAN] type=…` marker carrying the structure type the AI
+  // read off the DRAWING. That marker must win over loose keyword matching
+  // in the prose, so a stray "deck"/"Job type: Deck" mention can't force the
+  // deck calculator when the drawing is actually something else.
+  it("[T2Q_PLAN] marker type wins over a 'deck' mention in the prose", async () => {
+    const { detectTakeoffType } = await import("./aiTakeoffParser");
+    const transcript = [
+      "[T2Q_PLAN] type=wall length_m=6 width_m=3 height_m=2.4",
+      "Job type: Framing.",
+      "What is being built: Single-storey house floor plan.",
+      "NOTES: client also wants a deck quoted later.",
+    ].join("\n\n");
+    expect(detectTakeoffType(transcript)).toBe("wall");
+  });
+
+  it("marker with a non-calculator-only signal still routes by marker, not prose", async () => {
+    const { detectTakeoffType } = await import("./aiTakeoffParser");
+    // No deck dims, no deck marker — a house plan classified as Framing
+    // (→ wall) must not fall through to the 'deck' loose match in the notes.
+    const transcript =
+      "[T2Q_PLAN] type=wall length_m=8 width_m=4\nFloor plan. Possible deck out back, not drawn.";
+    expect(detectTakeoffType(transcript)).toBe("wall");
+  });
+
   it("'build a 4m × 2m deck' → deck, 4×2", () => {
     const r = parseTakeoffDescription("build a 4m × 2m deck");
     expect(r.type).toBe("deck");

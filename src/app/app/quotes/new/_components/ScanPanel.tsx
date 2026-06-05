@@ -42,6 +42,10 @@ interface ScanResult {
   notes: string;
   plan: ScannedPlan | null;
   documentType: "drawing" | "supplier_quote" | "other";
+  // Structure type the AI read off the DRAWING — the source of truth for
+  // the calculator marker and the "Job type:" line. The user's selection
+  // is only a hint passed to the scan; this is what actually shows.
+  detectedType: JobType;
 }
 
 /**
@@ -208,11 +212,6 @@ export function ScanPanel({
 
   async function handleFile(inputFile: File) {
     setError("");
-    if (!jobType) {
-      setError("Pick a job type first.");
-      setState("error");
-      return;
-    }
 
     // Prep the photo client-side before upload: convert iPhone HEIC → JPEG
     // (Claude can't read HEIC) and downscale big photos so they clear
@@ -258,7 +257,8 @@ export function ScanPanel({
     const timberLength = parsedTimberLength();
     const form = new FormData();
     form.append("image", file, file.name || "drawing.jpg");
-    form.append("jobType", jobType);
+    // Job type is an optional hint — only send it if the tradie picked one.
+    if (jobType) form.append("jobType", jobType);
     form.append("timberLength", String(timberLength));
     if (hint.trim().length > 0) {
       form.append("hint", hint.trim());
@@ -277,12 +277,20 @@ export function ScanPanel({
       }
       const data = (await res.json()) as Partial<ScanResult> & {
         document_type?: string;
+        detectedType?: string;
       };
       const documentType: ScanResult["documentType"] =
         data.document_type === "supplier_quote" ||
         data.document_type === "other"
           ? data.document_type
           : "drawing";
+      // The AI's image-derived structure type wins. Fall back to whatever
+      // the tradie selected (if anything), then "Other" — never assume Deck.
+      const detectedType: JobType = (JOB_TYPES as readonly string[]).includes(
+        data.detectedType ?? "",
+      )
+        ? (data.detectedType as JobType)
+        : jobType || "Other";
       const result: ScanResult = {
         buildType: (data.buildType ?? "").trim(),
         summary: (data.summary ?? "").trim(),
@@ -291,6 +299,7 @@ export function ScanPanel({
         notes: (data.notes ?? "").trim(),
         plan: data.plan ?? null,
         documentType,
+        detectedType,
       };
       setScanResult(result);
       setEditedDimensions(result.dimensions);
@@ -313,9 +322,11 @@ export function ScanPanel({
   }
 
   function generateMaterials() {
-    if (!scanResult || !jobType) return;
+    if (!scanResult) return;
+    // Build the transcript off the AI's detected type, NOT the tradie's
+    // hint — the drawing decides what gets quoted.
     const final = buildFinalTranscript(
-      jobType,
+      scanResult.detectedType,
       parsedTimberLength(),
       scanResult,
       editedDimensions,
@@ -336,8 +347,9 @@ export function ScanPanel({
     if (cameraInputRef.current) cameraInputRef.current.value = "";
   }
 
-  const canScan =
-    Boolean(jobType) && state !== "uploading" && state !== "converting";
+  // Job type is an optional hint now — the camera is always enabled. The AI
+  // reads the structure type off the drawing regardless.
+  const canScan = state !== "uploading" && state !== "converting";
 
   return (
     <section
@@ -384,7 +396,7 @@ export function ScanPanel({
         <DimensionReview
           buildType={scanResult.buildType}
           plan={scanResult.plan}
-          jobType={jobType || "Other"}
+          jobType={scanResult.detectedType}
           previewUrl={previewUrl}
           dimensions={editedDimensions}
           onDimensionsChange={setEditedDimensions}
@@ -474,8 +486,9 @@ function ScanSetup({
         Scan a hand-drawn plan
       </h3>
       <p className="mt-2 max-w-sm text-sm text-ink-300">
-        Pick the job type, then snap your sketch — we&rsquo;ll read the
-        dimensions and work out the materials.
+        Snap your sketch — we&rsquo;ll read the drawing, work out what it
+        shows and tally the materials. Pick a job type below only if you want
+        to nudge what we look for.
       </p>
 
       <div className="mt-6 w-full max-w-md text-left">
@@ -483,7 +496,7 @@ function ScanSetup({
           id="scan-jobtype-label"
           className="font-mono text-xs uppercase tracking-[0.2em] text-ink-400"
         >
-          Job type
+          Job type <span className="text-ink-500">(optional)</span>
         </label>
         <div
           role="radiogroup"
@@ -516,7 +529,7 @@ function ScanSetup({
         </div>
         {!jobType && (
           <p className="mt-2 font-mono text-[10px] uppercase tracking-[0.2em] text-ink-500">
-            {"// pick one so we know what to look for"}
+            {"// optional — we read the structure from the drawing"}
           </p>
         )}
       </div>
@@ -597,9 +610,7 @@ function ScanSetup({
         aria-live="polite"
         className="mt-4 min-h-5 text-sm text-ink-300"
       >
-        {state === "idle" && (jobType
-          ? "Up to 8 MB. JPEG, PNG or iPhone (HEIC) photos."
-          : "Pick a job type to enable the camera.")}
+        {state === "idle" && "Up to 8 MB. JPEG, PNG or iPhone (HEIC) photos."}
         {state === "converting" && "Preparing photo…"}
         {state === "uploading" && "Reading your drawing…"}
         {state === "error" && (

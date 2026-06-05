@@ -329,7 +329,26 @@ export type ParseOptions = {
  * the AI quote generator instead of a calculator.
  */
 export function detectTakeoffType(description: string): TakeoffType {
-  const text = (description ?? "").toLowerCase();
+  const raw = description ?? "";
+  const text = raw.toLowerCase();
+  // Prefer the structured `[T2Q_PLAN] type=…` marker the scan flow emits —
+  // it carries the structure type the AI read off the DRAWING, which is the
+  // source of truth. Loose keyword matching on the prose (below) is only a
+  // fallback for legacy voice/typed entry that has no marker. Without this,
+  // a "Job type: Deck" line or a stray "deck" mention in the prose could
+  // force the deck calculator even when the drawing is a house layout the AI
+  // never classified as a deck.
+  const marker = extractStructuredPlanMarker(raw);
+  if (marker?.type) {
+    if (marker.type === "subfloor") return "subfloor";
+    if (marker.type === "cladding") return "cladding";
+    if (marker.type === "deck") return "deck";
+    if (marker.type === "wall") return "wall";
+    // A marker whose type isn't a calculator type (e.g. the AI classified a
+    // house plan, fence or slab) means we have no calculator for it — fall
+    // back to the AI generator rather than loose-matching the prose.
+    return "unknown";
+  }
   if (/\bsub[-\s]?floor\b|\bfloor\s+framing\b|\bfloor\s+joists?\b/.test(text)) {
     return "subfloor";
   }
