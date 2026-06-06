@@ -5,6 +5,7 @@ import { consumeDailyQuota, tooManyRequestsResponse } from "@/lib/rate-limit";
 import { validateIngestMeta } from "@/lib/planreader/schema";
 import { createPlanRecords } from "@/lib/planreader/ingest";
 import { MAX_PLAN_PAGES, MAX_PLAN_UPLOAD_BYTES } from "@/lib/planreader/storage";
+import { planReaderAllowed } from "@/lib/planreader/flag";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -32,6 +33,12 @@ export async function POST(request: NextRequest) {
   } = await supabase.auth.getUser();
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  // Internal-only until GA: hide the route's existence from non-owners while
+  // PLAN_READER_ENABLED is off.
+  if (!planReaderAllowed(user.email)) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
   const quota = consumeDailyQuota(`plans-ingest:${user.id}`, 120);

@@ -5,6 +5,13 @@ import { consumeDailyQuota, tooManyRequestsResponse } from "@/lib/rate-limit";
 import { extractSheet } from "@/lib/planreader/extract";
 import { isSheetType, isSupportedSheetType } from "@/lib/planreader/schema";
 import { PLAN_BUCKET } from "@/lib/planreader/storage";
+import { planReaderAllowed } from "@/lib/planreader/flag";
+import {
+  gateSummary,
+  logPlanSheet,
+  summarizePlanRun,
+  type PlanSheetLog,
+} from "@/lib/planreader/observability";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -33,6 +40,10 @@ export async function POST(request: NextRequest) {
   } = await supabase.auth.getUser();
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  if (!planReaderAllowed(user.email)) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
   const quota = consumeDailyQuota(`plans-extract:${user.id}`, 120);
@@ -101,30 +112,55 @@ export async function POST(request: NextRequest) {
     reasons?: string[];
     skip_reason?: string;
   }> = [];
+  const logs: PlanSheetLog[] = [];
 
   for (const sheet of sheets) {
     const sheetType = isSheetType(sheet.sheet_type) ? sheet.sheet_type : "unknown";
 
     // HARD RULE: skip anything not supported or not classification-passed.
     if (!isSupportedSheetType(sheetType)) {
+      const skip_reason =
+        sheetType === "unknown"
+          ? "unknown sheet type — never extracted"
+          : `unsupported sheet type "${sheetType}" — no extractor`;
       out.push({
         sheet_id: sheet.id,
         sheet_number: sheet.sheet_number,
         action: "skipped",
-        skip_reason:
-          sheetType === "unknown"
-            ? "unknown sheet type — never extracted"
-            : `unsupported sheet type "${sheetType}" — no extractor`,
+        skip_reason,
       });
+      const log: PlanSheetLog = {
+        phase: "extract",
+        file_id: fileId,
+        sheet_id: sheet.id,
+        sheet_number: sheet.sheet_number,
+        sheet_type: sheetType,
+        final_status: "skipped",
+        errors: [skip_reason],
+      };
+      logPlanSheet(log);
+      logs.push(log);
       continue;
     }
     if (sheet.review_required) {
+      const skip_reason = "failed classification gate — resolve review before extracting";
       out.push({
         sheet_id: sheet.id,
         sheet_number: sheet.sheet_number,
         action: "skipped",
-        skip_reason: "failed classification gate — resolve review before extracting",
+        skip_reason,
       });
+      const log: PlanSheetLog = {
+        phase: "extract",
+        file_id: fileId,
+        sheet_id: sheet.id,
+        sheet_number: sheet.sheet_number,
+        sheet_type: sheetType,
+        final_status: "skipped",
+        errors: [skip_reason],
+      };
+      logPlanSheet(log);
+      logs.push(log);
       continue;
     }
 
@@ -140,6 +176,18 @@ export async function POST(request: NextRequest) {
         action: "skipped",
         skip_reason: "page image unavailable",
       });
+      const log: PlanSheetLog = {
+        phase: "extract",
+        file_id: fileId,
+        sheet_id: sheet.id,
+        sheet_number: sheet.sheet_number,
+        sheet_type: sheetType,
+        final_status: "needs_review",
+        review_required: true,
+        errors: ["page image unavailable"],
+      };
+      logPlanSheet(log);
+      logs.push(log);
       continue;
     }
 
@@ -182,8 +230,23 @@ export async function POST(request: NextRequest) {
       review_required: enforcement.review_required,
       reasons: enforcement.reasons,
     });
+
+    const log: PlanSheetLog = {
+      phase: "extract",
+      file_id: fileId,
+      sheet_id: sheet.id,
+      sheet_number: sheet.sheet_number,
+      sheet_type: sheetType,
+      gates: gateSummary(enforcement.results),
+      final_status: status,
+      review_required: enforcement.review_required,
+      errors: extracted.warnings,
+    };
+    logPlanSheet(log);
+    logs.push(log);
   }
 
+  summarizePlanRun(fileId, "extract", logs);
   await supabase.from("plan_files").update({ status: "extracted" }).eq("id", fileId);
 
   return NextResponse.json({ file_id: fileId, sheets: out }, { status: 200 });

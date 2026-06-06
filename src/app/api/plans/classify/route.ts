@@ -10,6 +10,13 @@ import {
 import { classificationGate } from "@/lib/planreader/gates";
 import { isSheetType, type SheetClassification } from "@/lib/planreader/schema";
 import { PLAN_BUCKET } from "@/lib/planreader/storage";
+import { planReaderAllowed } from "@/lib/planreader/flag";
+import {
+  gateSummary,
+  logPlanSheet,
+  summarizePlanRun,
+  type PlanSheetLog,
+} from "@/lib/planreader/observability";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -39,6 +46,10 @@ export async function POST(request: NextRequest) {
   } = await supabase.auth.getUser();
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  if (!planReaderAllowed(user.email)) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
   const quota = consumeDailyQuota(`plans-classify:${user.id}`, 120);
@@ -114,6 +125,7 @@ export async function POST(request: NextRequest) {
     review_reasons: string[];
     status: string;
   }> = [];
+  const logs: PlanSheetLog[] = [];
 
   for (const sheet of sheets) {
     // Title-block OCR text is a Phase-2 signal; Phase 1 classifies from the
@@ -174,8 +186,24 @@ export async function POST(request: NextRequest) {
       review_reasons,
       status,
     });
+
+    const log: PlanSheetLog = {
+      phase: "classify",
+      file_id: fileId,
+      sheet_id: sheet.id,
+      sheet_number: sheet.sheet_number,
+      sheet_type,
+      classification_confidence: verdict.confidence,
+      gates: gateSummary([gate]),
+      final_status: status,
+      review_required,
+      errors: imageMissing ? ["page image unavailable"] : [],
+    };
+    logPlanSheet(log);
+    logs.push(log);
   }
 
+  summarizePlanRun(fileId, "classify", logs);
   await supabase.from("plan_files").update({ status: "classified" }).eq("id", fileId);
 
   return NextResponse.json({ file_id: fileId, sheets: out }, { status: 200 });
