@@ -3,6 +3,7 @@ import { adminClient } from "@/lib/supabase/admin";
 import { uploadSignature } from "@/lib/quote-storage";
 import { sendPushToUser } from "@/lib/push";
 import { quoteNumber } from "@/lib/quote-defaults";
+import { consumeDailyQuota, tooManyRequestsResponse } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -34,6 +35,15 @@ export async function POST(
   ctx: { params: Promise<Params> },
 ) {
   const { token } = await ctx.params;
+
+  // Per-IP fixed-window guard (UTC day). Generous cap so corporate-NAT /
+  // one-office-many-customers traffic isn't throttled; it only trips on a
+  // scripted replay loop hammering this endpoint.
+  const ipForLimit = clientIp(request) ?? "unknown";
+  const acceptQuota = consumeDailyQuota(`quote-accept:${ipForLimit}`, 60);
+  if (!acceptQuota.ok) {
+    return tooManyRequestsResponse(acceptQuota.resetAt);
+  }
 
   let body: AcceptBody;
   try {
@@ -120,6 +130,9 @@ export async function POST(
   if (quote.status === "accepted") {
     return NextResponse.json({ error: "already_accepted" }, { status: 409 });
   }
+  if (quote.status === "declined") {
+    return NextResponse.json({ error: "declined" }, { status: 409 });
+  }
 
   let signaturePath: string;
   try {
@@ -159,6 +172,15 @@ export async function POST(
   }
   const result = rpcResult as { ok?: boolean; error?: string };
   if (result?.error) {
+    // The signature was uploaded before the RPC ran, so a reject here
+    // (expired / already_accepted, e.g. a replay) leaves an orphan in
+    // storage. Best-effort delete it; a storage hiccup must not turn a
+    // correct 409/410 into a 500, so swallow any delete error.
+    try {
+      await admin.storage.from("signatures").remove([signaturePath]);
+    } catch (cleanupErr) {
+      console.error("orphaned signature cleanup failed", cleanupErr);
+    }
     const status =
       result.error === "expired"
         ? 410

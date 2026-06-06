@@ -86,6 +86,15 @@ export default function AppLayout({
       </div>
       <div aria-hidden="true" className="hidden lg:block" />
       <MobileBottomNav />
+      {/* Dark home-indicator backstop. Fills the iOS safe-area strip BELOW
+          the fixed bottom nav with the nav/body colour (#121722) so no page
+          colour can ever bleed through at the very bottom edge — the
+          white-strip-under-nav defence. z-30 sits strictly under the nav
+          (z-40); mobile-only so desktop is unaffected. Purely additive. */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none fixed inset-x-0 bottom-0 z-30 h-[env(safe-area-inset-bottom)] bg-[#121722] sm:hidden"
+      />
       {/* Top-of-screen progress bar for /app/* tab navigations. Fires
           on pathname change, animates for ~700ms, then fades. Skips
           the first render so it doesn't compete with the brand splash

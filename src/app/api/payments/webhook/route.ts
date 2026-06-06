@@ -49,14 +49,19 @@ export async function POST(request: NextRequest) {
             stripe_payment_intent_id:
               typeof session.payment_intent === "string" ? session.payment_intent : null,
           })
-          .eq("id", paymentId);
+          .eq("id", paymentId)
+          // Idempotency: a Stripe redelivery of an already-paid row must
+          // not overwrite paid_at with a fresh timestamp. Only the first
+          // delivery (status still pending) performs the write.
+          .neq("status", "paid");
       }
     }
   } catch (e) {
     console.error("[payments/webhook] handler failed", e);
-    // Return 200 so Stripe doesn't hammer retries for a non-signature error;
-    // the row stays pending and can be reconciled.
-    return NextResponse.json({ received: true, note: "handler_error" });
+    // Return 500 so Stripe RETRIES. The only write above is the id-keyed,
+    // status-guarded payments UPDATE, which is idempotent — a retry safely
+    // lands the same state instead of the deposit being silently lost.
+    return NextResponse.json({ error: "handler_failed" }, { status: 500 });
   }
 
   return NextResponse.json({ received: true });

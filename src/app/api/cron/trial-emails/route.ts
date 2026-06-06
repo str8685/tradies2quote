@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { adminClient } from "@/lib/supabase/admin";
+import { isAuthorizedCron } from "@/lib/cron-auth";
 import {
   EMAIL_KINDS,
   firstNameFromEmail,
@@ -62,8 +63,8 @@ async function handle(request: NextRequest): Promise<NextResponse> {
       { status: 503 },
     );
   }
-  const authHeader = request.headers.get("authorization") ?? "";
-  if (authHeader !== `Bearer ${secret}`) {
+  const authHeader = request.headers.get("authorization");
+  if (!isAuthorizedCron(authHeader)) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 

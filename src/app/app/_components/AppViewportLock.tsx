@@ -33,7 +33,17 @@ export function AppViewportLock() {
 
     const apply = () => {
       const gap = window.innerHeight - vv.height;
-      if (gap > KEYBOARD_MIN_PX) {
+      // A keyboard can only be open when an editable element is focused.
+      // Without this guard, a large URL-bar/orientation delta (> the 160px
+      // threshold) could shrink the fixed shell with no keyboard present —
+      // a "jump" the user sees as the app drifting inside the screen.
+      const el = document.activeElement as HTMLElement | null;
+      const editing =
+        !!el &&
+        (el.tagName === "INPUT" ||
+          el.tagName === "TEXTAREA" ||
+          el.isContentEditable);
+      if (editing && gap > KEYBOARD_MIN_PX) {
         // Keyboard open — shrink the shell to the visible area.
         root.style.setProperty("--app-height", `${Math.round(vv.height)}px`);
       } else {

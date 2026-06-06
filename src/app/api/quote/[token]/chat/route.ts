@@ -5,6 +5,16 @@ import {
   type ChatMessage,
 } from "@/lib/agents/customer-chat";
 import type { PublicQuotePayload, QuoteData } from "@/lib/quote-types";
+import { consumeDailyQuota, tooManyRequestsResponse } from "@/lib/rate-limit";
+
+// Same derivation the accept route uses (accept/route.ts:24-30).
+function clientIp(request: NextRequest): string | null {
+  const fwd = request.headers.get("x-forwarded-for");
+  if (fwd) return fwd.split(",")[0].trim();
+  const real = request.headers.get("x-real-ip");
+  if (real) return real.trim();
+  return null;
+}
 
 /**
  * POST /api/quote/[token]/chat — Wave 36.
@@ -64,6 +74,16 @@ export async function POST(
   const { token } = await ctx.params;
   if (!token || typeof token !== "string") {
     return NextResponse.json({ error: "invalid_token" }, { status: 400 });
+  }
+
+  // Per-IP fixed-window guard (UTC day), in addition to the per-token/day
+  // 10-message cap enforced below. Generous cap so corporate-NAT /
+  // one-office-many-customers traffic isn't throttled; it only trips on a
+  // scripted loop hammering this endpoint.
+  const ipForLimit = clientIp(request) ?? "unknown";
+  const chatQuota = consumeDailyQuota(`quote-chat:${ipForLimit}`, 100);
+  if (!chatQuota.ok) {
+    return tooManyRequestsResponse(chatQuota.resetAt);
   }
 
   let body: ChatBody;

@@ -74,7 +74,7 @@ export async function POST(
 
   const quoteData = quote.quote_data as QuoteData;
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://tradies2quote.com";
   const token = quote.public_token ?? generatePublicToken();
   const acceptUrl = `${appUrl}/quote/${token}`;
 

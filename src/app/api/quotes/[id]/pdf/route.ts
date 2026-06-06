@@ -54,7 +54,7 @@ export async function GET(
     .eq("id", user.id)
     .maybeSingle();
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://tradies2quote.com";
   const acceptUrl = quote.public_token
     ? `${appUrl}/quote/${quote.public_token}`
     : null;

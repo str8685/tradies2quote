@@ -719,15 +719,20 @@ export async function markInvoicePaid(
     .eq("id", invoiceId)
     .eq("user_id", user.id)
     .is("deleted_at", null)
+    // Only a live, unpaid invoice can be marked paid. Guards against
+    // resurrecting a cancelled invoice or re-stamping paid_at on one
+    // that's already paid (a 0-row update → handled as "not payable").
+    .neq("status", "cancelled")
+    .neq("status", "paid")
     .select("id, quote_id")
-    .single();
+    .maybeSingle();
 
   if (error) {
     console.error("markInvoicePaid failed", error);
     return { error: error.message ?? "Could not mark the invoice paid." };
   }
   if (!data) {
-    return { error: "Invoice not found." };
+    return { error: "Invoice not found, or it's already paid or cancelled." };
   }
 
   // Refresh every surface the invoice can appear on so the "paid"
