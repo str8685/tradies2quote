@@ -1278,24 +1278,59 @@ h1, h2, h3, h4, h5 {
 }
 .t2q-account-avatar:active { transform: scale(0.94); }
 
-/* The signed-in app paints the fixed-shell fallback layer. iOS can expose
-   either html or body underneath fixed children during viewport changes. */
+/* The /app shell surface colour. Both html and body are painted the same
+   light canvas so nothing contrasting can ever show at the screen edges. */
 html:has([data-shell="app"]),
 body:has([data-shell="app"]) {
   background: #F5F4EE;
 }
-@media (max-width: 639px) {
-  /* DELIBERATELY no dark `#121722` override here anymore. The app's page
-     background is the light canvas (#F5F4EE), set on the base rule above and
-     now inherited on mobile too. The old override repainted the html/body
-     fallback layer dark to "match the nav" in the home-indicator zone — but
-     when iOS exposed that layer beneath the fixed shell it read as a BLACK
-     BAR (worst on the light splash), and the `:has(app-splash)` cream
-     override that tried to compensate is unreliable across iOS versions.
-     Keeping the fallback the SAME light colour as the page means whatever
-     iOS exposes at the very bottom matches the page — no contrasting dark
-     strip, and the page background genuinely reaches the bottom edge. */
 
+/* ── Mobile app-shell lock (phones ≤639px) ────────────────────────────────
+   Single-shell, single-scroll-region pattern. On phones html + body fill the
+   visual viewport (100dvh) and DO NOT scroll; the app canvas is a fixed-height
+   flex column; ONLY `.t2q-app-scroll` scrolls; the bottom nav stays pinned to
+   the true bottom edge with its own background carrying the safe-area inset.
+
+   Why this kills the bottom strip for real: the strip was the html/body layer
+   showing beneath the fixed bottom nav during iOS rubber-band overscroll of
+   the *document*. Removing document scroll entirely (overflow:hidden on
+   html/body + one inner scroll container) means there is no overscroll, the
+   fixed nav can't detach/lag, and the viewport can't expose anything below the
+   nav — so there is no gap to recolour, mask, or pad around.
+
+   ≥640px is left on the existing natural-flow / desktop-grid shell. */
+@media (max-width: 639px) {
+  html:has([data-shell="app"]),
+  body:has([data-shell="app"]) {
+    height: 100dvh;
+    overflow: hidden;          /* no document scroll on the phone app */
+    overscroll-behavior: none; /* no rubber-band / scroll chaining */
+  }
+  body:has([data-shell="app"]) .t2q-app-canvas {
+    height: 100dvh;
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;          /* in-flow content is clipped to the shell */
+  }
+  body:has([data-shell="app"]) .t2q-app-scroll {
+    flex: 1 1 auto;
+    min-height: 0;             /* let the flex child actually shrink + scroll */
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain; /* inner scroll never chains to the shell */
+    /* Clear the fixed bottom nav. Mirrors .t2q-bottomnav-bar min-height
+       (4.05rem) which already includes the safe-area inset. No separate
+       spacer element — the clearance is real padding on the scroll region. */
+    padding-bottom: calc(4.05rem + env(safe-area-inset-bottom, 0px));
+  }
+  /* A page that declares `min-h-screen` inside the single scroll region should
+     fill the scroll viewport, not 100dvh — otherwise short pages get a dead
+     sliver of scroll under the locked shell. */
+  body:has([data-shell="app"]) .t2q-app-scroll .min-h-screen {
+    min-height: 100% !important;
+  }
+  /* During the entry splash, the nav + avatar stay hidden. */
   [data-shell="app"]:has([data-testid="app-splash"]) .t2q-bottomnav-bar,
   [data-shell="app"]:has([data-testid="app-splash"]) .t2q-account-avatar {
     display: none;

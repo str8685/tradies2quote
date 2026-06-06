@@ -19,6 +19,39 @@ export function DashboardSkeleton() {
       aria-hidden="true"
       className="animate-pulse"
     >
+      {/* Work board + quick actions. Mirrors the dashboard's new
+          organised top section so streamed data lands without a jump. */}
+      <section className="mb-6 grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
+        <div className="t2q-card-pro p-5 sm:p-6">
+          <div className="h-3 w-16 rounded-sm bg-ink-700" />
+          <div className="mt-3 h-7 w-36 rounded-sm bg-ink-700" />
+          <div className="mt-3 h-3 w-3/4 rounded-sm bg-ink-700" />
+          <div className="mt-5 grid gap-3 sm:grid-cols-3">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div
+                key={i}
+                className="rounded-xl border border-white/10 bg-white/[0.04] p-4"
+              >
+                <div className="h-3 w-20 rounded-sm bg-ink-700" />
+                <div className="mt-3 h-5 w-24 rounded-sm bg-ink-700" />
+                <div className="mt-2 h-3 w-full rounded-sm bg-ink-700" />
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="t2q-card-pro flex gap-3 p-4">
+              <div className="h-11 w-11 rounded-xl bg-ink-700" />
+              <div className="flex-1">
+                <div className="h-4 w-28 rounded-sm bg-ink-700" />
+                <div className="mt-2 h-3 w-full rounded-sm bg-ink-700" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
       {/* Pipeline stats card. Mirrors the real card's padding +
           border so we don't get a 4px shift when data lands. */}
       <section className="t2q-card-pro mb-6 p-4 sm:p-5">

@@ -1,13 +1,17 @@
-import { Suspense } from "react";
+import { Suspense, type ReactNode } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import {
   ArrowRight,
   Bug,
+  ClipboardText,
+  CloudSun,
   Gauge,
+  Package,
   Plus,
   Robot,
+  TrendUp,
   Warning,
 } from "@phosphor-icons/react/dist/ssr";
 import { createClient } from "@/lib/supabase/server";
@@ -16,6 +20,7 @@ import { formatCurrency, quoteNumber } from "@/lib/quote-defaults";
 import type { QuoteData, QuoteStatus } from "@/lib/quote-types";
 import { isOwnerEmail } from "@/lib/owner";
 import { STAGE_LABELS } from "@/lib/lifecycle/stages";
+import { isWeatherImpactEnabled } from "@/lib/weather-impact";
 import { AppHeader } from "./_components/AppHeader";
 import { DashboardSkeleton } from "./_components/DashboardSkeleton";
 import {
@@ -262,6 +267,9 @@ async function DashboardData({
     date: (n.note_date as string).slice(0, 10),
     body: n.body as string,
   }));
+  const nextScheduledJob =
+    scheduledJobs.find((job) => job.date >= todayISO) ?? scheduledJobs[0] ?? null;
+  const weatherEnabled = isWeatherImpactEnabled(isOwner);
 
   return (
     <>
@@ -394,6 +402,93 @@ async function DashboardData({
           />
         </section>
       )}
+
+      <section
+        data-testid="dashboard-work-board"
+        aria-label="Dashboard work board"
+        className="mb-7 grid gap-4 lg:grid-cols-[1.15fr_0.85fr]"
+      >
+        <div className="t2q-card-pro p-5 sm:p-6">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="t2q-section-label-pro">{"// today"}</p>
+              <h2 className="mt-2 text-2xl font-semibold text-white sm:text-3xl">
+                Work board
+              </h2>
+              <p className="mt-2 text-sm leading-relaxed text-ink-300">
+                A cleaner view of what needs attention before the next quote,
+                job, or follow-up.
+              </p>
+            </div>
+            <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-brand/40 bg-brand/10 text-brand">
+              <TrendUp size={22} weight="bold" aria-hidden="true" />
+            </span>
+          </div>
+
+          <div className="mt-5 grid gap-3 sm:grid-cols-3">
+            <WorkBoardMetric
+              label="Next job"
+              value={
+                nextScheduledJob ? formatShortDate(nextScheduledJob.date) : "Not scheduled"
+              }
+              detail={nextScheduledJob?.clientName ?? "Add a job date from a quote"}
+            />
+            <WorkBoardMetric
+              label="Follow-ups"
+              value={String(stats.byStage.sent + stats.byStage.viewed)}
+              detail={
+                stats.byStage.viewed > 0
+                  ? `${stats.byStage.viewed} viewed by client`
+                  : "Sent and viewed quotes"
+              }
+            />
+            <WorkBoardMetric
+              label="Material library"
+              value={libraryEmpty ? "Needs setup" : `${materialsCount ?? 0} items`}
+              detail={
+                libraryEmpty
+                  ? "Add common materials"
+                  : "Real prices ready for quotes"
+              }
+            />
+          </div>
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
+          <DashboardActionCard
+            href="/app/quotes/new"
+            icon={<Plus size={21} weight="bold" />}
+            title="New quote"
+            body="Record or type the job and turn it into a draft quote."
+            tone="brand"
+          />
+          <DashboardActionCard
+            href="/app/quotes"
+            icon={<ClipboardText size={21} weight="bold" />}
+            title="Quote hub"
+            body="Search, filter, archive, and follow up your quotes."
+          />
+          {weatherEnabled ? (
+            <DashboardActionCard
+              href="/app/weather"
+              icon={<CloudSun size={21} weight="bold" />}
+              title="Weather Impact"
+              body="Check rain, wind, heat, and height-risk before site work."
+              tone="brand-soft"
+            />
+          ) : null}
+          <DashboardActionCard
+            href={libraryEmpty ? "/app/materials/quick-start" : "/app/materials"}
+            icon={<Package size={21} weight="bold" />}
+            title="Materials"
+            body={
+              libraryEmpty
+                ? "Quick start your real prices."
+                : "Keep supplier prices and favourites tidy."
+            }
+          />
+        </div>
+      </section>
 
       {/* Wave 13 — lifecycle stage tiles. Each tile is a real DB
           count for this user, keyed by the same quote_status enum
@@ -771,6 +866,74 @@ function SecondaryStat({
   );
 }
 
+function WorkBoardMetric({
+  label,
+  value,
+  detail,
+}: {
+  label: string;
+  value: string;
+  detail: string;
+}) {
+  return (
+    <div className="rounded-xl border border-white/10 bg-white/[0.04] p-4">
+      <p className="text-xs font-semibold uppercase tracking-wide text-ink-500">
+        {label}
+      </p>
+      <p className="mt-2 text-lg font-semibold leading-tight text-white">
+        {value}
+      </p>
+      <p className="mt-1 text-xs leading-relaxed text-ink-400">{detail}</p>
+    </div>
+  );
+}
+
+function DashboardActionCard({
+  href,
+  icon,
+  title,
+  body,
+  tone = "neutral",
+}: {
+  href: string;
+  icon: ReactNode;
+  title: string;
+  body: string;
+  tone?: "brand" | "brand-soft" | "neutral";
+}) {
+  const toneClass =
+    tone === "brand"
+      ? "border-brand/40 bg-brand/10 text-brand"
+      : tone === "brand-soft"
+        ? "border-brand/40 bg-brand/10 text-brand"
+        : "border-white/10 bg-white/[0.04] text-ink-300";
+  return (
+    <Link
+      href={href}
+      className="t2q-card-pro t2q-card-pro-hover flex items-start gap-3 p-4"
+    >
+      <span
+        aria-hidden="true"
+        className={`inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border ${toneClass}`}
+      >
+        {icon}
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-sm font-semibold text-white">{title}</span>
+        <span className="mt-1 block text-xs leading-relaxed text-ink-400">
+          {body}
+        </span>
+      </span>
+      <ArrowRight
+        size={16}
+        weight="bold"
+        className={tone === "neutral" ? "mt-1 text-ink-400" : "mt-1 text-brand"}
+        aria-hidden="true"
+      />
+    </Link>
+  );
+}
+
 /** Xero-style headline KPI card. Used in the four-up strip above the
  *  pipeline section. `tone` colours the big number for quick scanning:
  *  brand = this-month spotlight; positive = locked-in money; warning =
@@ -816,4 +979,14 @@ function KpiCard({
  *  to satisfy the react-hooks/purity rule for the async server component. */
 function serverTodayISO(): string {
   return new Date().toISOString().slice(0, 10);
+}
+
+function formatShortDate(dateISO: string): string {
+  const value = new Date(`${dateISO}T00:00:00`);
+  if (Number.isNaN(value.getTime())) return dateISO;
+  return value.toLocaleDateString("en-NZ", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+  });
 }
