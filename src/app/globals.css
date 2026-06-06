@@ -1368,15 +1368,16 @@ body:has([data-shell="app"]) {
   background: #F5F4EE;
 }
 @media (max-width: 639px) {
-  html:has([data-shell="app"]),
-  body:has([data-shell="app"]) {
-    background: #121722 !important;
-  }
-
-  html:has([data-testid="app-splash"]),
-  body:has([data-testid="app-splash"]) {
-    background: #F2F0EA !important;
-  }
+  /* DELIBERATELY no dark `#121722` override here anymore. The app's page
+     background is the light canvas (#F5F4EE), set on the base rule above and
+     now inherited on mobile too. The old override repainted the html/body
+     fallback layer dark to "match the nav" in the home-indicator zone — but
+     when iOS exposed that layer beneath the fixed shell it read as a BLACK
+     BAR (worst on the light splash), and the `:has(app-splash)` cream
+     override that tried to compensate is unreliable across iOS versions.
+     Keeping the fallback the SAME light colour as the page means whatever
+     iOS exposes at the very bottom matches the page — no contrasting dark
+     strip, and the page background genuinely reaches the bottom edge. */
 
   [data-shell="app"]:has([data-testid="app-splash"]) .t2q-mobile-menu-trigger,
   [data-shell="app"]:has([data-testid="app-splash"]) .t2q-mobile-menu-panel,
