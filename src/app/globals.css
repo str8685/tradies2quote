@@ -1272,14 +1272,15 @@ h1, h2, h3, h4, h5 {
 .t2q-account-avatar:active { transform: scale(0.94); }
 
 /* The signed-in app owns the iOS home-indicator strip with the bottom nav.
-   Paint the document fallback dark on phones so any compositor sliver under
-   the fixed shell matches the nav instead of flashing page-white. */
+   Paint html and body because iOS can expose either layer under fixed shells. */
+html:has([data-shell="app"]),
 body:has([data-shell="app"]) {
   background: #F5F4EE;
 }
 @media (max-width: 639px) {
+  html:has([data-shell="app"]),
   body:has([data-shell="app"]) {
-    background: #121722;
+    background: #121722 !important;
   }
 }
 
@@ -1304,7 +1305,7 @@ body:has([data-shell="app"]) {
   right: 0;
   display: flex;
   align-items: stretch;
-  background: #1B1F2A;
+  background: #121722;
   border: 0;
   border-radius: 0;
   box-shadow:
@@ -1956,7 +1957,8 @@ body:has([data-shell="app"]) {
   left: 0 !important;
   right: 0 !important;
   padding: 0.14rem 0.5rem calc(0.14rem + env(safe-area-inset-bottom, 0px));
-  background: linear-gradient(180deg, #171C27 0%, #121722 100%) !important;
+  background-color: #121722 !important;
+  background-image: linear-gradient(180deg, #171C27 0%, #121722 100%) !important;
   border: 0 !important;
   border-radius: 0 !important;
   box-shadow:

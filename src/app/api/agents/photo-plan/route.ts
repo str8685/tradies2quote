@@ -5,6 +5,11 @@ import {
   runPhotoPlanAgent,
 } from "@/lib/agents/photo-plan";
 import {
+  detectImageMime,
+  isPreparedScanMime,
+  sniffPreparedImageMime,
+} from "@/lib/imageUpload";
+import {
   logAgentRunStart,
   logAgentRunFinish,
 } from "@/lib/agent-monitor/logger";
@@ -48,7 +53,10 @@ export async function POST(req: NextRequest) {
   try {
     form = await req.formData();
   } catch {
-    return NextResponse.json({ error: "Could not read form data." }, { status: 400 });
+    return NextResponse.json(
+      { error: "Could not read form data." },
+      { status: 400 },
+    );
   }
 
   const file = form.get("image");
@@ -69,9 +77,12 @@ export async function POST(req: NextRequest) {
       { status: 413 },
     );
   }
-  if (!file.type.startsWith("image/")) {
+  const mediaType = detectImageMime(file);
+  if (mediaType && !isPreparedScanMime(mediaType)) {
     return NextResponse.json(
-      { error: `Unsupported file type: ${file.type}` },
+      {
+        error: `Unsupported image type: ${file.type || file.name || "unknown"}.`,
+      },
       { status: 415 },
     );
   }
@@ -83,6 +94,13 @@ export async function POST(req: NextRequest) {
   // than the regular btoa() path for binary data and is available in
   // the Node runtime.
   const arrayBuf = await file.arrayBuffer();
+  const sniffedMediaType = sniffPreparedImageMime(new Uint8Array(arrayBuf));
+  if (!sniffedMediaType) {
+    return NextResponse.json(
+      { error: "Unsupported or unreadable image file." },
+      { status: 415 },
+    );
+  }
   const imageBase64 = Buffer.from(arrayBuf).toString("base64");
 
   const runId = `photo_${Math.random().toString(16).slice(2, 10)}`;
@@ -99,7 +117,7 @@ export async function POST(req: NextRequest) {
   try {
     const result = await runPhotoPlanAgent({
       imageBase64,
-      mimeType: file.type,
+      mimeType: sniffedMediaType,
       hint,
     });
     logAgentRunFinish({

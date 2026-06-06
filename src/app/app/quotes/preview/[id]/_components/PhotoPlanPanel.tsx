@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Camera,
   CaretDown,
@@ -8,6 +8,15 @@ import {
   Spinner,
   Warning,
 } from "@phosphor-icons/react/dist/ssr";
+import { prepareScanImage } from "@/lib/scanImage";
+import {
+  MAX_SCAN_UPLOAD_BYTES,
+  SCAN_IMAGE_ACCEPT,
+  detectImageMime,
+  isPreparedScanMime,
+  isSupportedScanInput,
+  scanUploadSizeError,
+} from "@/lib/imageUpload";
 import type { PhotoPlanItem, PhotoPlanResult } from "@/lib/agents/photo-plan";
 
 /**
@@ -30,15 +39,6 @@ import type { PhotoPlanItem, PhotoPlanResult } from "@/lib/agents/photo-plan";
  * and the tradie still clicks Save. When the quote is accepted the
  * apply buttons are disabled (edits are locked).
  */
-const MAX_BYTES = 8 * 1024 * 1024;
-const ACCEPTED = [
-  "image/jpeg",
-  "image/jpg",
-  "image/png",
-  "image/webp",
-  "image/gif",
-];
-
 type Props = {
   onAddItems: (items: PhotoPlanItem[]) => void;
   onAddNotes: (lines: string[]) => void;
@@ -47,6 +47,7 @@ type Props = {
 
 export function PhotoPlanPanel({ onAddItems, onAddNotes, isAccepted }: Props) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const previewUrlRef = useRef<string | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [hint, setHint] = useState("");
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -56,6 +57,18 @@ export function PhotoPlanPanel({ onAddItems, onAddNotes, isAccepted }: Props) {
   const [itemsApplied, setItemsApplied] = useState(false);
   const [notesApplied, setNotesApplied] = useState(false);
 
+  useEffect(() => {
+    return () => {
+      if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
+    };
+  }, []);
+
+  function setPreview(url: string | null) {
+    if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
+    previewUrlRef.current = url;
+    setPreviewUrl(url);
+  }
+
   function onPickFile(f: File | null) {
     setError(null);
     setResult(null);
@@ -63,25 +76,26 @@ export function PhotoPlanPanel({ onAddItems, onAddNotes, isAccepted }: Props) {
     setNotesApplied(false);
     if (!f) {
       setFile(null);
-      setPreviewUrl(null);
+      setPreview(null);
       return;
     }
-    if (!ACCEPTED.includes(f.type.toLowerCase())) {
-      setError(`Unsupported image type: ${f.type || "(unknown)"}.`);
+    const sourceSizeError = scanUploadSizeError(f);
+    if (sourceSizeError) {
+      setError(sourceSizeError);
       setFile(null);
-      setPreviewUrl(null);
+      setPreview(null);
       return;
     }
-    if (f.size > MAX_BYTES) {
+    if (!isSupportedScanInput(f)) {
       setError(
-        `Image is too big (${(f.size / 1024 / 1024).toFixed(1)} MB). Max 8 MB.`,
+        "Unsupported image type. Use JPEG, PNG, WebP, GIF or iPhone HEIC.",
       );
       setFile(null);
-      setPreviewUrl(null);
+      setPreview(null);
       return;
     }
     setFile(f);
-    setPreviewUrl(URL.createObjectURL(f));
+    setPreview(URL.createObjectURL(f));
   }
 
   async function onSubmit(e: React.FormEvent) {
@@ -93,8 +107,33 @@ export function PhotoPlanPanel({ onAddItems, onAddNotes, isAccepted }: Props) {
     setItemsApplied(false);
     setNotesApplied(false);
     try {
+      let upload = file;
+      try {
+        upload = await prepareScanImage(file);
+      } catch {
+        setError(
+          'Couldn’t read that photo. Upload a JPEG, or switch your iPhone Camera to "Most Compatible".',
+        );
+        return;
+      }
+      if (upload.size > MAX_SCAN_UPLOAD_BYTES) {
+        setError(
+          `Image is ${(upload.size / 1024 / 1024).toFixed(1)} MB after compression. Try cropping or taking a closer photo.`,
+        );
+        return;
+      }
+      if (!isPreparedScanMime(detectImageMime(upload))) {
+        setError(
+          "Unsupported image type after preparation. Use JPEG, PNG, WebP or GIF.",
+        );
+        return;
+      }
+      if (upload !== file) {
+        setFile(upload);
+        setPreview(URL.createObjectURL(upload));
+      }
       const form = new FormData();
-      form.set("image", file);
+      form.set("image", upload);
       if (hint.trim().length > 0) form.set("hint", hint.trim());
       const res = await fetch("/api/agents/photo-plan", {
         method: "POST",
@@ -179,7 +218,7 @@ export function PhotoPlanPanel({ onAddItems, onAddNotes, isAccepted }: Props) {
               <input
                 ref={fileInputRef}
                 type="file"
-                accept={ACCEPTED.join(",")}
+                accept={SCAN_IMAGE_ACCEPT}
                 data-testid="photo-plan-panel-input"
                 onChange={(e) => onPickFile(e.target.files?.[0] ?? null)}
                 className="mt-1.5 block w-full text-sm text-ink-300 file:mr-3 file:rounded-sm file:border-0 file:bg-ink-700 file:px-3 file:py-2 file:text-xs file:font-display file:uppercase file:tracking-tight file:text-ink-100 hover:file:bg-ink-600"
@@ -225,7 +264,7 @@ export function PhotoPlanPanel({ onAddItems, onAddNotes, isAccepted }: Props) {
 
             <div className="flex items-center justify-between gap-3">
               <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-ink-500">
-                jpeg · png · webp · gif · max 8 MB
+                jpeg · png · webp · gif · heic · compressed before upload
               </span>
               <button
                 type="submit"

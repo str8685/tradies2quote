@@ -359,8 +359,14 @@ export function QuoteEditor({
         unit_price,
         line_total: round2(unit_price),
         library_id: match?.id ?? null,
-        is_ai_estimated: false,
+        is_ai_estimated: true,
         is_missing_price: !match,
+        quantity_source: "ai",
+        quantity_confirmed: false,
+        takeoff_status: "assumed",
+        takeoff_flags: [
+          "Photo/Plan agent spotted this item visually. Confirm the quantity before sending.",
+        ],
       };
     });
     setItems((prev) => [...prev, ...newItems]);

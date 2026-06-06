@@ -13,6 +13,14 @@ import {
 import { FloorPlanSvg } from "@/lib/floorPlanSvg";
 import { TapeMeasureProgress } from "@/app/app/_components/TapeMeasureProgress";
 import { needsPrep, prepareScanImage } from "@/lib/scanImage";
+import {
+  MAX_SCAN_UPLOAD_BYTES,
+  SCAN_IMAGE_ACCEPT,
+  detectImageMime,
+  isPreparedScanMime,
+  isSupportedScanInput,
+  scanUploadSizeError,
+} from "@/lib/imageUpload";
 import type { ScannedPlan } from "@/app/api/quotes/scan-drawing/route";
 
 type ScanState =
@@ -23,9 +31,6 @@ type ScanState =
   | "transcript"
   | "wrong-doc"
   | "error";
-
-const MAX_BYTES = 8 * 1024 * 1024;
-const ACCEPTED_MIME = ["image/jpeg", "image/png", "image/webp", "image/gif"];
 
 const JOB_TYPES = ["Deck", "Fence", "Framing", "Concrete", "Roofing", "Other"] as const;
 type JobType = (typeof JOB_TYPES)[number];
@@ -213,6 +218,20 @@ export function ScanPanel({
   async function handleFile(inputFile: File) {
     setError("");
 
+    const sourceSizeError = scanUploadSizeError(inputFile);
+    if (sourceSizeError) {
+      setError(sourceSizeError);
+      setState("error");
+      return;
+    }
+    if (!isSupportedScanInput(inputFile)) {
+      setError(
+        `Unsupported file type: ${inputFile.type || "unknown"}. Use JPEG, PNG, WebP, GIF or HEIC.`,
+      );
+      setState("error");
+      return;
+    }
+
     // Prep the photo client-side before upload: convert iPhone HEIC → JPEG
     // (Claude can't read HEIC) and downscale big photos so they clear
     // Vercel's ~4.5 MB request-body limit (otherwise the upload 413s).
@@ -230,21 +249,17 @@ export function ScanPanel({
       }
     }
 
-    if (file.size === 0) {
-      setError("That file is empty.");
-      setState("error");
-      return;
-    }
-    if (file.size > MAX_BYTES) {
+    if (file.size > MAX_SCAN_UPLOAD_BYTES) {
       setError(
         `Image is ${(file.size / 1024 / 1024).toFixed(1)} MB. Max 8 MB — try compressing or taking a smaller photo.`,
       );
       setState("error");
       return;
     }
-    const type = (file.type || "").toLowerCase();
-    if (!ACCEPTED_MIME.includes(type) && !ACCEPTED_MIME.includes(type.replace("jpg", "jpeg"))) {
-      setError(`Unsupported file type: ${file.type || "unknown"}. Use JPEG or PNG.`);
+    if (!isPreparedScanMime(detectImageMime(file))) {
+      setError(
+        `Unsupported file type: ${file.type || "unknown"}. Use JPEG, PNG, WebP or GIF.`,
+      );
       setState("error");
       return;
     }
@@ -362,7 +377,7 @@ export function ScanPanel({
       <input
         ref={fileInputRef}
         type="file"
-        accept="image/jpeg,image/png,image/webp,image/gif,image/heic,image/heif,.heic,.heif"
+        accept={SCAN_IMAGE_ACCEPT}
         className="hidden"
         data-testid="scan-upload-input"
         onChange={onFileChange}
@@ -370,7 +385,7 @@ export function ScanPanel({
       <input
         ref={cameraInputRef}
         type="file"
-        accept="image/*"
+        accept={SCAN_IMAGE_ACCEPT}
         capture="environment"
         className="hidden"
         data-testid="scan-camera-input"
@@ -610,7 +625,8 @@ function ScanSetup({
         aria-live="polite"
         className="mt-4 min-h-5 text-sm text-ink-300"
       >
-        {state === "idle" && "Up to 8 MB. JPEG, PNG or iPhone (HEIC) photos."}
+        {state === "idle" &&
+          "JPEG, PNG, WebP, GIF or iPhone HEIC photos. Large phone photos are compressed before upload."}
         {state === "converting" && "Preparing photo…"}
         {state === "uploading" && "Reading your drawing…"}
         {state === "error" && (
@@ -885,8 +901,11 @@ function WrongDocNotice({
           className="t2q-btn-primary-pro inline-flex min-h-[44px] items-center justify-center gap-2 px-5"
         >
           <Receipt weight="bold" className="h-5 w-5" />
-          Import this supplier quote
+          Open quote importer
         </Link>
+        <p className="text-xs text-ink-400 sm:max-w-[14rem]">
+          You&rsquo;ll need to take or import the photo again there.
+        </p>
         <button
           type="button"
           onClick={onContinueAnyway}

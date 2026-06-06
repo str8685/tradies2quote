@@ -63,4 +63,11 @@ describe("scan geometry → takeoff text chain", () => {
     const plan = sanitisePlan({ shape: "rect", width_m: 6, length_m: 8 });
     expect(geometryPreamble(plan)).toBe("");
   });
+
+  it("keeps line/fence plans when width is omitted", () => {
+    const plan = sanitisePlan({ shape: "line", length_m: 24 });
+    expect(plan?.shape).toBe("line");
+    expect(plan?.width_m).toBe(0);
+    expect(plan?.length_m).toBe(24);
+  });
 });

@@ -11,6 +11,8 @@
 //
 // All of this runs in the browser; the server still just receives a JPEG.
 
+import { detectImageMime, isHeicMime } from "@/lib/imageUpload";
+
 /** Re-encode/downscale anything larger than this; smaller files pass through. */
 const PREP_OVER_BYTES = 3_500_000;
 const MAX_DIM = 2000;
@@ -18,10 +20,7 @@ const JPEG_QUALITY = 0.8;
 
 /** True if the file looks like an Apple HEIC/HEIF image. */
 export function isHeic(file: File): boolean {
-  const type = (file.type || "").toLowerCase();
-  if (type === "image/heic" || type === "image/heif") return true;
-  // iOS/Safari often reports an empty MIME type — fall back to the name.
-  return /\.(heic|heif)$/i.test(file.name || "");
+  return isHeicMime(detectImageMime(file));
 }
 
 /** Whether the file needs converting and/or shrinking before upload. */
@@ -78,5 +77,9 @@ async function downscale(file: File): Promise<File> {
  */
 export async function prepareScanImage(file: File): Promise<File> {
   const jpeg = isHeic(file) ? await heicToJpeg(file) : file;
-  return downscale(jpeg);
+  const prepared = await downscale(jpeg);
+  if (jpeg.size > PREP_OVER_BYTES && prepared.size > PREP_OVER_BYTES) {
+    throw new Error("image_prepare_failed");
+  }
+  return prepared;
 }

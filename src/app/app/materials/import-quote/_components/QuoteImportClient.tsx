@@ -21,6 +21,13 @@ import { formatCurrency, round2 } from "@/lib/quote-defaults";
 import { TapeMeasureProgress } from "@/app/app/_components/TapeMeasureProgress";
 import { prepareScanImage } from "@/lib/scanImage";
 import {
+  MAX_SCAN_UPLOAD_BYTES,
+  detectImageMime,
+  isPreparedScanMime,
+  isSupportedScanInput,
+  scanUploadSizeError,
+} from "@/lib/imageUpload";
+import {
   createQuoteFromScan,
   importSupplierQuoteItems,
   type ScanQuoteLine,
@@ -78,8 +85,6 @@ type ExtractResponse = {
   /** Ops layer — how many AI passes ran (1 = no retry). */
   attempts?: number;
 };
-
-const MAX_BYTES = 8 * 1024 * 1024;
 
 export function QuoteImportClient({ currency }: { currency: string }) {
   const router = useRouter();
@@ -147,8 +152,18 @@ export function QuoteImportClient({ currency }: { currency: string }) {
     const f = e.target.files?.[0];
     if (!f) return;
     setError("");
-    if (f.size > MAX_BYTES) {
-      setError("That photo is over 8 MB. Try a smaller image.");
+    const sourceSizeError = scanUploadSizeError(f);
+    if (sourceSizeError) {
+      setError(sourceSizeError);
+      setFileName("");
+      setPreview("");
+      chosenFileRef.current = null;
+      return;
+    }
+    if (!isSupportedScanInput(f)) {
+      setError(
+        "Unsupported image type. Use JPEG, PNG, WebP, GIF or iPhone HEIC.",
+      );
       setFileName("");
       setPreview("");
       chosenFileRef.current = null;
@@ -181,6 +196,25 @@ export function QuoteImportClient({ currency }: { currency: string }) {
         );
         setPhase("error");
         return;
+      }
+      if (f.size > MAX_SCAN_UPLOAD_BYTES) {
+        setError(
+          `Image is ${(f.size / 1024 / 1024).toFixed(1)} MB after compression. Try cropping or taking a closer photo.`,
+        );
+        setPhase("error");
+        return;
+      }
+      if (!isPreparedScanMime(detectImageMime(f))) {
+        setError(
+          "Unsupported image type after preparation. Use JPEG, PNG, WebP or GIF.",
+        );
+        setPhase("error");
+        return;
+      }
+      if (f !== raw) {
+        chosenFileRef.current = f;
+        setFileName(f.name);
+        setPreview(URL.createObjectURL(f));
       }
       const fd = new FormData();
       fd.append("image", f);

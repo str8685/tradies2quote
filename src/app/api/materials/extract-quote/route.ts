@@ -9,6 +9,13 @@ import {
   type RowFailure,
   type SupplierQuoteExtraction,
 } from "@/lib/materials/quoteExtraction";
+import {
+  MAX_SCAN_UPLOAD_BYTES,
+  detectImageMime,
+  isPreparedScanMime,
+  sniffPreparedImageMime,
+} from "@/lib/imageUpload";
+import { parseModelJsonObject } from "@/lib/modelJson";
 
 /**
  * POST /api/materials/extract-quote
@@ -37,14 +44,6 @@ const MODEL = "claude-sonnet-4-20250514";
 // A quote can list 30-40 lines; each JSON row is ~40 tokens. 8192 keeps
 // headroom so a long quote doesn't truncate mid-array.
 const MAX_TOKENS = 8192;
-
-const MAX_BYTES = 8 * 1024 * 1024;
-const ACCEPTED_MIME = new Set([
-  "image/jpeg",
-  "image/jpg",
-  "image/png",
-  "image/webp",
-]);
 
 // Daily AI cap per user — same in-memory pattern as /api/suppliers/extract.
 // Cheap (no DB write), per-instance, owner-bypassed for dogfooding.
@@ -198,23 +197,29 @@ export async function POST(request: NextRequest) {
   if (image.size === 0) {
     return NextResponse.json({ error: "Image file is empty." }, { status: 400 });
   }
-  if (image.size > MAX_BYTES) {
+  if (image.size > MAX_SCAN_UPLOAD_BYTES) {
     return NextResponse.json(
-      { error: `Image exceeds ${Math.floor(MAX_BYTES / 1024 / 1024)} MB limit.` },
+      { error: `Image exceeds ${Math.floor(MAX_SCAN_UPLOAD_BYTES / 1024 / 1024)} MB limit.` },
       { status: 413 },
     );
   }
-  const mime = (image.type || "").toLowerCase();
-  if (!ACCEPTED_MIME.has(mime)) {
+  const mime = detectImageMime(image);
+  if (mime && !isPreparedScanMime(mime)) {
     return NextResponse.json(
-      { error: `Unsupported image type: ${image.type || "unknown"}.` },
+      { error: `Unsupported image type: ${image.type || image.name || "unknown"}.` },
       { status: 415 },
     );
   }
 
   const arrayBuf = await image.arrayBuffer();
+  const mediaType = sniffPreparedImageMime(new Uint8Array(arrayBuf));
+  if (!mediaType) {
+    return NextResponse.json(
+      { error: "Unsupported or unreadable image file." },
+      { status: 415 },
+    );
+  }
   const base64 = Buffer.from(arrayBuf).toString("base64");
-  const mediaType = mime === "image/jpg" ? "image/jpeg" : mime;
 
   type RouteAttempt = {
     value: SupplierQuoteExtraction;
@@ -299,20 +304,15 @@ export async function POST(request: NextRequest) {
       };
     }
     const text = payload.content?.find((c) => c.type === "text")?.text ?? "";
-    const fullJson = text
-      .trim()
-      .replace(/^```(?:json)?\s*/i, "")
-      .replace(/```\s*$/i, "")
-      .trim();
     let raw: unknown;
     try {
-      raw = JSON.parse(fullJson);
+      raw = parseModelJsonObject<unknown>(text);
     } catch (e) {
       console.error(
         "extract-quote failed to parse JSON",
         e,
         "raw (first 400):",
-        fullJson.slice(0, 400),
+        text.slice(0, 400),
       );
       return {
         kind: "error",

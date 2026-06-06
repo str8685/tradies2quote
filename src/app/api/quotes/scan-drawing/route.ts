@@ -4,6 +4,13 @@ import { canWrite, getSubscriptionStatus } from "@/lib/subscription";
 import { resolveDocumentType } from "@/lib/scanClassify";
 import { consumeDailyQuota, tooManyRequestsResponse } from "@/lib/rate-limit";
 import { computePlanGeometry, type Region } from "@/lib/takeoff/geometry";
+import {
+  MAX_SCAN_UPLOAD_BYTES,
+  detectImageMime,
+  isPreparedScanMime,
+  sniffPreparedImageMime,
+} from "@/lib/imageUpload";
+import { parseModelJsonObject } from "@/lib/modelJson";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -32,15 +39,6 @@ export const MODEL = "claude-opus-4-7";
 // up to 8192 output tokens; 4096 keeps headroom without paying for
 // tokens we don't need.
 const MAX_TOKENS = 4096;
-
-const MAX_BYTES = 8 * 1024 * 1024;
-const ACCEPTED_MIME = new Set([
-  "image/jpeg",
-  "image/jpg",
-  "image/png",
-  "image/webp",
-  "image/gif",
-]);
 
 const JOB_TYPES = new Set([
   "Deck",
@@ -240,7 +238,7 @@ export function sanitisePlan(raw: unknown): ScannedPlan | null {
   const shape = (
     typeof r.shape === "string" && VALID_SHAPES.has(r.shape) ? r.shape : "other"
   ) as ScannedPlan["shape"];
-  const w = Number(r.width_m);
+  const w = r.width_m == null && shape === "line" ? 0 : Number(r.width_m);
   const l = Number(r.length_m);
   // Reject the plan outright if we don't have at least a width AND length —
   // the renderer can't draw anything sensible without them. Fences with
@@ -379,18 +377,18 @@ export async function POST(request: NextRequest) {
   if (image.size === 0) {
     return NextResponse.json({ error: "Image file is empty." }, { status: 400 });
   }
-  if (image.size > MAX_BYTES) {
+  if (image.size > MAX_SCAN_UPLOAD_BYTES) {
     return NextResponse.json(
       {
-        error: `Image exceeds ${Math.floor(MAX_BYTES / 1024 / 1024)} MB limit.`,
+        error: `Image exceeds ${Math.floor(MAX_SCAN_UPLOAD_BYTES / 1024 / 1024)} MB limit.`,
       },
       { status: 413 },
     );
   }
-  const mime = (image.type || "").toLowerCase();
-  if (!ACCEPTED_MIME.has(mime)) {
+  const mime = detectImageMime(image);
+  if (mime && !isPreparedScanMime(mime)) {
     return NextResponse.json(
-      { error: `Unsupported image type: ${image.type || "unknown"}.` },
+      { error: `Unsupported image type: ${image.type || image.name || "unknown"}.` },
       { status: 415 },
     );
   }
@@ -420,8 +418,14 @@ export async function POST(request: NextRequest) {
   }
 
   const arrayBuf = await image.arrayBuffer();
+  const mediaType = sniffPreparedImageMime(new Uint8Array(arrayBuf));
+  if (!mediaType) {
+    return NextResponse.json(
+      { error: "Unsupported or unreadable image file." },
+      { status: 415 },
+    );
+  }
   const base64 = Buffer.from(arrayBuf).toString("base64");
-  const mediaType = mime === "image/jpg" ? "image/jpeg" : mime;
 
   const userTextParts: string[] = [];
   userTextParts.push(
@@ -461,11 +465,11 @@ export async function POST(request: NextRequest) {
             content: [
               {
                 type: "image",
-                source: {
-                  type: "base64",
-                  media_type: mediaType,
-                  data: base64,
-                },
+                  source: {
+                    type: "base64",
+                    media_type: mediaType,
+                    data: base64,
+                  },
               },
               { type: "text", text: userTextParts.join("\n\n") },
             ],
@@ -538,24 +542,16 @@ export async function POST(request: NextRequest) {
   }
 
   const text = payload.content?.find((c) => c.type === "text")?.text ?? "";
-  // Without the assistant-turn prefill, the model returns the full
-  // JSON itself. Trim defensively — Opus occasionally pads with a
-  // leading newline or a ```json fence even when told not to.
-  const fullJson = text
-    .trim()
-    .replace(/^```(?:json)?\s*/i, "")
-    .replace(/```\s*$/i, "")
-    .trim();
 
   let parsed: ScanPayload;
   try {
-    parsed = JSON.parse(fullJson) as ScanPayload;
+    parsed = parseModelJsonObject<ScanPayload>(text);
   } catch (e) {
     console.error(
       "scan-drawing failed to parse JSON",
       e,
       "raw (first 400):",
-      fullJson.slice(0, 400),
+      text.slice(0, 400),
     );
     return NextResponse.json(
       { error: "Drawing scan response was malformed. Please try again." },
