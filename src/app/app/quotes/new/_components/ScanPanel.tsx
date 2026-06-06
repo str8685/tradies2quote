@@ -110,6 +110,23 @@ function buildPlanMarker(
   if (plan.post_spacing_m && plan.post_spacing_m > 0) {
     parts.push(`post_spacing_m=${plan.post_spacing_m}`);
   }
+  // Wave 44 — whole-drawing wall totals. For a wall/framing job the
+  // calculator must run off the TOTAL wall run (every exterior + interior
+  // wall summed), not the bounding-box edge in length_m. These fields are
+  // only present on multi-room floor plans; older plans omit them and the
+  // downstream parser keeps using length_m as before.
+  if (plan.wall_run_m && plan.wall_run_m > 0) {
+    parts.push(`wall_run_m=${plan.wall_run_m}`);
+  }
+  if (plan.stud_spacing_mm && plan.stud_spacing_mm > 0) {
+    parts.push(`stud_spacing_mm=${plan.stud_spacing_mm}`);
+  }
+  if (plan.door_count && plan.door_count > 0) {
+    parts.push(`door_count=${plan.door_count}`);
+  }
+  if (plan.window_count && plan.window_count > 0) {
+    parts.push(`window_count=${plan.window_count}`);
+  }
   return "[T2Q_PLAN] " + parts.join(" ");
 }
 

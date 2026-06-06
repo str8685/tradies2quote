@@ -112,6 +112,11 @@ export interface StructuredPlanMarker {
   joistSpacingMm?: number;
   postCount?: number;
   postSpacingM?: number;
+  // Wave 44 — whole-drawing wall totals for multi-room floor plans.
+  wallRunM?: number;
+  studSpacingMm?: number;
+  doorCount?: number;
+  windowCount?: number;
 }
 
 /**
@@ -157,6 +162,19 @@ export function extractStructuredPlanMarker(
     lengthM = Math.max(rawLength!, rawWidth!);
     widthM = Math.min(rawLength!, rawWidth!);
   }
+  // Total wall run — a SUM of every wall segment, so it legitimately exceeds
+  // the single-edge plan envelope. Clamp to a whole-house sane band instead.
+  const rawWallRun = optNum("wall_run_m");
+  const wallRunM =
+    rawWallRun !== undefined && rawWallRun >= 2 && rawWallRun <= 1000
+      ? rawWallRun
+      : undefined;
+  const optCount = (key: string): number | undefined => {
+    const raw = pairs[key];
+    if (raw === undefined) return undefined;
+    const n = Number(raw);
+    return Number.isFinite(n) && n >= 0 && n <= 200 ? Math.round(n) : undefined;
+  };
   return {
     type: pairs["type"]?.toLowerCase(),
     lengthM,
@@ -165,6 +183,10 @@ export function extractStructuredPlanMarker(
     joistSpacingMm: optNum("joist_spacing_mm"),
     postCount: optNum("post_count"),
     postSpacingM: optNum("post_spacing_m"),
+    wallRunM,
+    studSpacingMm: optNum("stud_spacing_mm"),
+    doorCount: optCount("door_count"),
+    windowCount: optCount("window_count"),
   };
 }
 
@@ -906,8 +928,24 @@ function parseWallDescription(
 
   const marker = extractStructuredPlanMarker(text);
 
-  const wallLengthM = extractWallLength(text) ?? marker?.lengthM;
+  // Wall framing scales every quantity (studs/plates/nogs/GIB/insulation)
+  // off the wall RUN. For a multi-room floor plan that's the TOTAL of every
+  // wall segment (marker.wallRunM), NOT a single bounding-box edge. Prefer
+  // it; fall back to a single explicit "wall length" or the marker's edge
+  // length for a one-wall job, keeping old transcripts byte-identical.
+  let wallLengthM = marker?.wallRunM;
+  let usedWallRun = false;
+  if (wallLengthM !== undefined) {
+    usedWallRun = true;
+  } else {
+    wallLengthM = extractWallLength(text) ?? marker?.lengthM;
+  }
   if (wallLengthM !== undefined) input.wallLengthM = wallLengthM;
+  if (usedWallRun) {
+    assumptions.push(
+      `Framed off the total wall run (${wallLengthM}m) — every exterior and interior wall summed from the floor plan.`,
+    );
+  }
 
   const wallHeightM = extractWallHeight(text) ?? marker?.heightM;
   if (wallHeightM !== undefined) {
@@ -922,7 +960,14 @@ function parseWallDescription(
     input.timberStockLengthM = timberStock;
   }
 
-  const studSpacingMm = extractStudSpacing(text);
+  // The legacy wall calculator only models 400/600 stud centres. Take the
+  // marker spacing only when it's one of those; otherwise fall through to
+  // the default so we don't emit a "studSpacingMm must be 400 or 600" warning.
+  const markerStud =
+    marker?.studSpacingMm === 400 || marker?.studSpacingMm === 600
+      ? marker.studSpacingMm
+      : undefined;
+  const studSpacingMm = extractStudSpacing(text) ?? markerStud;
   if (studSpacingMm !== undefined) {
     input.studSpacingMm = studSpacingMm;
   } else if (applyDefaults) {
@@ -930,10 +975,10 @@ function parseWallDescription(
     assumptions.push("Used default stud spacing of 600mm centres.");
   }
 
-  const numberOfDoors = extractCount(text, "door");
+  const numberOfDoors = extractCount(text, "door") ?? marker?.doorCount;
   input.numberOfDoors = numberOfDoors ?? 0;
 
-  const numberOfWindows = extractCount(text, "window");
+  const numberOfWindows = extractCount(text, "window") ?? marker?.windowCount;
   input.numberOfWindows = numberOfWindows ?? 0;
 
   const gibSides = extractGibSides(text);

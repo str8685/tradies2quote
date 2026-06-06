@@ -232,7 +232,16 @@ function extractOpenings(text: string): ExtractedOpening[] {
  */
 function extractMarker(
   text: string,
-): { length_m?: number; width_m?: number; height_m?: number; spacing_mm?: number } | null {
+): {
+  length_m?: number;
+  width_m?: number;
+  height_m?: number;
+  spacing_mm?: number;
+  /** Total wall run (Wave 44) — sum of every wall segment on the plan. */
+  wall_run_m?: number;
+  door_count?: number;
+  window_count?: number;
+} | null {
   const re = /\[T2Q_PLAN\]\s+([^\n\r]+)/i;
   const match = text.match(re);
   if (!match) return null;
@@ -241,6 +250,9 @@ function extractMarker(
     width_m?: number;
     height_m?: number;
     spacing_mm?: number;
+    wall_run_m?: number;
+    door_count?: number;
+    window_count?: number;
   } = {};
   for (const part of (match[1] ?? "").split(/\s+/)) {
     const eq = part.indexOf("=");
@@ -248,11 +260,19 @@ function extractMarker(
     const key = part.slice(0, eq).toLowerCase();
     const raw = part.slice(eq + 1);
     const n = Number(raw);
-    if (!Number.isFinite(n) || n <= 0) continue;
+    if (!Number.isFinite(n) || n < 0) continue;
+    if (n <= 0 && key !== "door_count" && key !== "window_count") continue;
     if (key === "length_m" && n >= MIN_PLAN_M && n <= MAX_PLAN_M) out.length_m = n;
     if (key === "width_m" && n >= MIN_PLAN_M && n <= MAX_PLAN_M) out.width_m = n;
     if (key === "height_m" && n >= 0.5 && n <= 20) out.height_m = n;
-    if (key === "joist_spacing_mm" && n >= 100 && n <= 1200) out.spacing_mm = n;
+    if ((key === "joist_spacing_mm" || key === "stud_spacing_mm") && n >= 100 && n <= 1200) {
+      out.spacing_mm = n;
+    }
+    // Wall run is a SUM of segments, so it can exceed the single-edge
+    // envelope — clamp to a whole-house band (2m–1000m) instead.
+    if (key === "wall_run_m" && n >= 2 && n <= 1000) out.wall_run_m = n;
+    if (key === "door_count" && n >= 0 && n <= 200) out.door_count = Math.round(n);
+    if (key === "window_count" && n >= 0 && n <= 200) out.window_count = Math.round(n);
   }
   return Object.keys(out).length > 0 ? out : null;
 }
@@ -274,8 +294,18 @@ export function extractFromText(
   const marker = extractMarker(text);
   const rect = extractRectangle(text);
 
+  // For framing/lining the load-bearing dimension is the TOTAL wall run
+  // (every wall summed), not a bounding-box edge. When the marker carries
+  // it, use it as length_m so the framing/lining calculators size off the
+  // whole plan. Other scopes (deck/roofing/…) keep using the edge length.
+  const wallScopes: ScopeType[] = ["framing", "lining"];
+  const lengthForScope =
+    wallScopes.includes(scope) && marker?.wall_run_m !== undefined
+      ? marker.wall_run_m
+      : (marker?.length_m ?? rect?.length_m ?? null);
+
   const dimensions: ExtractedDimensions = {
-    length_m: marker?.length_m ?? rect?.length_m ?? null,
+    length_m: lengthForScope,
     width_m: marker?.width_m ?? rect?.width_m ?? null,
     height_m: marker?.height_m ?? null,
     area_m2: extractAreaM2(text),
@@ -295,7 +325,26 @@ export function extractFromText(
     if (h !== null && h > 0 && h < 20) dimensions.height_m = h;
   }
 
+  // Openings — the marker's whole-plan door/window counts (read off the
+  // entire drawing) are more reliable than the prose regex, which only
+  // catches the first "<n> doors" mention. Prefer the marker per-kind.
   const openings = extractOpenings(text);
+  const applyMarkerCount = (kind: "door" | "window", count: number | undefined) => {
+    if (count === undefined || count <= 0) return;
+    const existing = openings.find((o) => o.kind === kind);
+    if (existing) {
+      existing.count = count;
+    } else {
+      openings.push({
+        kind,
+        count,
+        width_m: kind === "door" ? 0.82 : 1.2,
+        height_m: kind === "door" ? 2.04 : 1.2,
+      });
+    }
+  };
+  applyMarkerCount("door", marker?.door_count);
+  applyMarkerCount("window", marker?.window_count);
   const spacing_mm = extractSpacing(text) ?? marker?.spacing_mm ?? null;
   const waste_percent = extractWastePercent(text);
   const stock_length_m = extractStockLengthM(text);
