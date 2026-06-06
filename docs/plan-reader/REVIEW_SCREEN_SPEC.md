@@ -16,6 +16,22 @@ Design principles (tradie-first, on-site, one-handed):
 - **Required fields first.** Optional fields clearly marked / collapsed.
 - Big tap targets (≥44 px), high contrast, minimal reading.
 
+## Frozen v1 product decisions (locked — do not re-open without an explicit ask)
+
+The previously-open UX questions are resolved for v1:
+1. **Strictly blocking-only.** The screen renders ONLY the fields derived from
+   blocking clarifications. No proactively-surfaced advanced/optional section.
+2. **No irregular-slab toggle.** v1 uses the `slab_size` length × width pair only;
+   area+perimeter entry is deferred.
+3. **Plausibility warnings stay advisory.** Soft, non-blocking; never auto-correct.
+4. **Prefill only the user's OWN previous confirmed answers** on re-entry — never
+   extracted/AI-guessed values.
+5. Optional fields appear only when the contract surfaces them (e.g. an
+   `internal_footing_run_m` raised as `invalid_value`); they are never injected.
+
+These decisions narrow the screen; they do not change the data contract, the
+field model, or any runtime code.
+
 ---
 
 ## 1. Screen title + section structure
