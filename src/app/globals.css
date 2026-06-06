@@ -728,13 +728,9 @@ h1, h2, h3, h4, h5 {
   .t2q-app-canvas {
     position: fixed;
     /* Anchor to all four edges instead of capping height. With
-       `viewport-fit=cover` (set app-wide) `inset: 0` covers the FULL
-       physical screen — including the home-indicator safe-area strip —
-       whereas `height: 100dvh` stops short of it on iOS. A `position:
-       fixed` child (the bottom nav) is clipped to this ancestor's box,
-       so the box must reach the true bottom for the nav's
-       `bottom: 0` + safe-area padding to fill the home indicator with
-       the dark nav colour. No light page band shows beneath the nav. */
+       `viewport-fit=cover` (set app-wide) `inset: 0` covers the full
+       physical screen, while the compact fixed nav can sit flush at
+       `bottom: 0` without creating a separate safe-area slab. */
     top: 0;
     left: 0;
     right: 0;
@@ -742,16 +738,10 @@ h1, h2, h3, h4, h5 {
     display: flex;
     flex-direction: column;
     /* Deliberately NO `overflow: hidden` here. On iOS a `position: fixed`
-       child (the bottom nav) of an `overflow: hidden` ancestor is CLIPPED to
-       that ancestor — which left the nav a hair short of the home-indicator
-       edge and exposed a page-coloured strip beneath it. With overflow
-       visible the nav is clipped by nothing: its own `bottom: 0` + safe-area
-       padding reach the true physical bottom and fill the home indicator with
-       the dark nav colour itself, so NO separate backstop element is needed
-       (the old ::after strip — and the black band it flashed on the splash —
-       are removed). Horizontal overflow is clipped on the inner scroller
-       instead; the shell still can't scroll or bounce because the canvas is
-       `position: fixed` and the body sits behind it. */
+       child (the bottom nav) of an `overflow: hidden` ancestor can be clipped
+       short of the screen edge. Horizontal overflow is clipped on the inner
+       scroller instead; the shell still can't scroll or bounce because the
+       canvas is `position: fixed` and the body sits behind it. */
   }
   /* The single, app-wide vertical scroll surface. Everything between the
      safe-area top inset and the fixed bottom nav scrolls here and nowhere
@@ -760,7 +750,7 @@ h1, h2, h3, h4, h5 {
   .t2q-app-scroll {
     flex: 1 1 auto;
     min-height: 0;
-    padding-bottom: calc(3rem + max(calc(env(safe-area-inset-bottom, 0px) - 20px), 0px)) !important;
+    padding-bottom: 3rem !important;
     /* Horizontal clip moved here from the canvas: the canvas must stay
        overflow-visible so it can't clip the fixed nav, so the inner scroller
        owns horizontal clipping of page content instead. */
@@ -1303,8 +1293,8 @@ h1, h2, h3, h4, h5 {
 }
 .t2q-account-avatar:active { transform: scale(0.94); }
 
-/* The signed-in app owns the iOS home-indicator strip with the bottom nav.
-   Paint html and body because iOS can expose either layer under fixed shells. */
+/* The signed-in app paints the fixed-shell fallback layer. iOS can expose
+   either html or body underneath fixed children during viewport changes. */
 html:has([data-shell="app"]),
 body:has([data-shell="app"]) {
   background: #F5F4EE;
@@ -1314,24 +1304,24 @@ body:has([data-shell="app"]) {
   body:has([data-shell="app"]) {
     background: #121722 !important;
   }
+
+  html:has([data-testid="app-splash"]),
+  body:has([data-testid="app-splash"]) {
+    background: #F2F0EA !important;
+  }
+
+  [data-shell="app"]:has([data-testid="app-splash"]) .t2q-bottomnav-bar {
+    display: none;
+  }
 }
 
 /* ─── Mobile bottom-nav bar ─────────────────────────────────────────────
    The container itself. Pinned to viewport bottom on mobile, hidden on
-   desktop. `pb` value swallows iOS home-indicator safe area. */
-/* Wave 14.6 — icons hugging the bottom edge. Previously the bar
-   consumed the full iOS safe-area-inset-bottom (~34px on iPhone X+),
-   which floated the icons noticeably away from the screen edge.
-   Trimming the inset by 24px brings the icons close to the bottom
-   while preserving ~10px of clearance over the home-indicator
-   gesture area (so a downward swipe still hits the system gesture,
-   not a nav tile). Tiles use `justify-content: flex-end` to push
-   their icon + label cluster to the bottom of the tile too. */
+   desktop. The bar stays compact and flush to the screen bottom. */
 .t2q-bottomnav-bar {
   position: fixed;
-  /* Edge-locked bar: no floating pill shape, no side gaps, no bottom
-     stripe. The bar itself owns the safe-area/home-indicator zone so
-     there is no separate white page band below it. */
+  /* Edge-locked bar: no floating pill shape, no side gaps, no extra
+     safe-area slab below the labels. */
   bottom: 0;
   left: 0;
   right: 0;
@@ -1343,7 +1333,7 @@ body:has([data-shell="app"]) {
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.04),
     0 -8px 22px -18px rgba(0, 0, 0, 0.7);
-  padding: 0.14rem 0.45rem calc(0.14rem + env(safe-area-inset-bottom, 0px));
+  padding: 0.08rem 0.42rem;
   z-index: 40;
 }
 /* The bottom nav is mobile-only. The component carries `sm:hidden` but
@@ -1988,7 +1978,7 @@ body:has([data-shell="app"]) {
   bottom: 0 !important;
   left: 0 !important;
   right: 0 !important;
-  padding: 0.08rem 0.42rem calc(0.08rem + max(calc(env(safe-area-inset-bottom, 0px) - 20px), 0px));
+  padding: 0.08rem 0.42rem;
   background-color: #121722 !important;
   background-image: linear-gradient(180deg, #171C27 0%, #121722 100%) !important;
   border: 0 !important;
