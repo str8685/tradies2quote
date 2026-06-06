@@ -43,7 +43,7 @@ export default function AppLayout({
     <div
       data-shell="app"
       data-theme="light"
-      className="t2q-app-canvas min-h-screen overflow-x-hidden lg:grid lg:grid-cols-[24px_1fr_24px]"
+      className="t2q-app-canvas min-h-screen lg:overflow-x-hidden lg:grid lg:grid-cols-[24px_1fr_24px]"
     >
       {/* Wave 39 — keyboard/visualViewport fallback. Renders null; updates the
           --app-height CSS var only while the on-screen keyboard is open. */}

@@ -741,42 +741,17 @@ h1, h2, h3, h4, h5 {
     bottom: 0;
     display: flex;
     flex-direction: column;
-    overflow: hidden;
-  }
-  /* Home-indicator safe-area backstop (real-iPhone PWA only bug).
-     iOS sometimes clips the fixed bottom nav a hair short of the physical
-     bottom edge, exposing a light strip in the home-indicator zone beneath
-     the dark nav. This pseudo paints that strip the nav's dark colour.
-
-     Why a canvas ::after and not a body-level sibling:
-       - It lives INSIDE the canvas, so the splash (AppSplash renders
-         `fixed inset-0 z-[100]`, also inside the canvas) paints OVER it —
-         no black band flashes on the light loading/splash screen.
-       - The canvas is `position: fixed` with `inset: 0`, so it is the
-         containing block for this absolutely-positioned pseudo; `bottom: 0`
-         resolves to the true physical bottom under viewport-fit=cover.
-       - It only covers `env(safe-area-inset-bottom)` — the home-indicator
-         strip — where the scroller's own bottom padding guarantees there is
-         never page content, so it can't hide anything.
-       - z-index: 0 keeps it below the nav (z-40) and the splash (z-[100]);
-         the nav still paints above it, so the strip is always the nav colour
-         whether or not iOS clips the nav short. */
-  .t2q-app-canvas::after {
-    content: "";
-    position: absolute;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    height: env(safe-area-inset-bottom, 0px);
-    background: #121722;
-    z-index: 0;
-    pointer-events: none;
-  }
-  .t2q-app-canvas:has([data-testid="app-splash"])::after {
-    background: #F2F0EA;
-  }
-  .t2q-app-canvas:has([data-testid="app-splash"]) .t2q-bottomnav-bar {
-    display: none;
+    /* Deliberately NO `overflow: hidden` here. On iOS a `position: fixed`
+       child (the bottom nav) of an `overflow: hidden` ancestor is CLIPPED to
+       that ancestor — which left the nav a hair short of the home-indicator
+       edge and exposed a page-coloured strip beneath it. With overflow
+       visible the nav is clipped by nothing: its own `bottom: 0` + safe-area
+       padding reach the true physical bottom and fill the home indicator with
+       the dark nav colour itself, so NO separate backstop element is needed
+       (the old ::after strip — and the black band it flashed on the splash —
+       are removed). Horizontal overflow is clipped on the inner scroller
+       instead; the shell still can't scroll or bounce because the canvas is
+       `position: fixed` and the body sits behind it. */
   }
   /* The single, app-wide vertical scroll surface. Everything between the
      safe-area top inset and the fixed bottom nav scrolls here and nowhere
@@ -786,6 +761,10 @@ h1, h2, h3, h4, h5 {
     flex: 1 1 auto;
     min-height: 0;
     padding-bottom: calc(3rem + max(calc(env(safe-area-inset-bottom, 0px) - 20px), 0px)) !important;
+    /* Horizontal clip moved here from the canvas: the canvas must stay
+       overflow-visible so it can't clip the fixed nav, so the inner scroller
+       owns horizontal clipping of page content instead. */
+    overflow-x: hidden;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
     /* `none` (was `contain`): also kills the inner rubber-band bounce at the
