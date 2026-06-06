@@ -99,7 +99,7 @@ export default async function AgentMonitorPage() {
       <main className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-10">
         {/* Back-to-settings link — anchored top-left so the operator
             can bounce out of the owner-only telemetry view without
-            scrolling back through the mobile bottom nav. */}
+            scrolling back through the mobile app menu. */}
         <Link
           href="/app/settings"
           data-testid="monitor-back-to-settings"

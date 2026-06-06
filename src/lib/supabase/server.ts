@@ -7,7 +7,7 @@ import { createServerClient } from "@supabase/ssr";
  * `await createClient()` calls within a single server render share one
  * client instance. Without this, `<AppHeader>` (which calls getUser +
  * a profile read), the page component (which calls getUser + data
- * queries), and `<MobileBottomNav>` (getUser + profile read) each
+ * queries), and `<MobileAppMenu>` (getUser + profile read) each
  * created a fresh Supabase client and made a fresh network roundtrip
  * to verify the JWT — three sequential ~100ms auth calls per /app/*
  * page render. With `cache()` the work is deduped per render; the

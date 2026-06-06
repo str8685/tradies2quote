@@ -14,10 +14,8 @@ import { useEffect, useRef, useState } from "react";
  *
  * This component listens for pathname changes via `usePathname()` and
  * animates a 2px brand-orange line across the top of the viewport for
- * roughly 700ms after each route change. Pairs with the `:active`
- * state on `.t2q-bottomnav-tile` (instant tile flash on touch) so the
- * full chain — tap flash → bar slides → new page lands — leaves no
- * visible dead frame.
+ * roughly 700ms after each route change so menu taps never feel like
+ * dead air before the next page lands.
  *
  * Implementation notes:
  *   - Anchored to `top: env(safe-area-inset-top)` so the bar sits just

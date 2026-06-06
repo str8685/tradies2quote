@@ -700,23 +700,23 @@ h1, h2, h3, h4, h5 {
 
 /* ─── Wave 37 — mobile /app shell scroll lock ───────────────────────────────
    THE permanent fix for the iOS / installed-PWA "whole UI bounces & the
-   bottom nav drifts while scrolling" bug.
+   fixed mobile controls drift while scrolling" bug.
 
    Root cause of the old behaviour: on phones the document/body was the
    scrolling surface, so iOS Safari's rubber-band overscroll floated the
-   entire app, and the `position: fixed` bottom nav visually detached and
+   entire app, and `position: fixed` mobile controls visually detached and
    bounced during that overscroll / URL-bar animation.
 
    The fix: on phones only (`max-width: 639px`), the /app shell becomes a
    fixed, full-height, NON-scrolling flex column, and a single inner wrapper
    (`.t2q-app-scroll`) becomes the ONE true vertical scroll surface. Because
-   the document/body no longer scrolls, neither the fixed bottom nav nor the
+   the document/body no longer scrolls, neither fixed controls nor the
    shell can drift, and `overscroll-behavior: contain` on the inner scroller
    stops scroll-chaining from leaking back out to the page.
 
    Scoped to `max-width: 639px` so tablet/desktop — which use the top header,
    the `lg:grid` rails and normal page scroll — are completely unaffected.
-   Matches the bottom nav's own `< 640px` visibility. */
+   Matches the mobile menu's own `< 640px` visibility. */
 :root {
   /* Default tracks the live (dynamic) viewport. A future visualViewport
      listener can overwrite this with a px value to follow the iOS keyboard;
@@ -729,31 +729,31 @@ h1, h2, h3, h4, h5 {
     position: fixed;
     /* Anchor to all four edges instead of capping height. With
        `viewport-fit=cover` (set app-wide) `inset: 0` covers the full
-       physical screen, while the compact fixed nav can sit flush at
-       `bottom: 0` without creating a separate safe-area slab. */
+       physical screen while the floating mobile controls sit inside
+       the safe area. */
     top: 0;
     left: 0;
     right: 0;
     bottom: 0;
     display: flex;
     flex-direction: column;
-    /* Deliberately NO `overflow: hidden` here. On iOS a `position: fixed`
-       child (the bottom nav) of an `overflow: hidden` ancestor can be clipped
-       short of the screen edge. Horizontal overflow is clipped on the inner
-       scroller instead; the shell still can't scroll or bounce because the
-       canvas is `position: fixed` and the body sits behind it. */
+    /* Deliberately NO `overflow: hidden` here. Fixed mobile controls can be
+       clipped by overflow-hidden ancestors on iOS. Horizontal overflow is
+       clipped on the inner scroller instead; the shell still can't scroll or
+       bounce because the canvas is `position: fixed` and the body sits behind
+       it. */
   }
   /* The single, app-wide vertical scroll surface. Everything between the
-     safe-area top inset and the fixed bottom nav scrolls here and nowhere
+     safe-area top inset and bottom inset scrolls here and nowhere
      else. `min-height: 0` lets the flex child actually shrink so its own
      overflow (not the shell's) does the scrolling. */
   .t2q-app-scroll {
     flex: 1 1 auto;
     min-height: 0;
-    padding-bottom: 3rem !important;
+    padding-bottom: max(env(safe-area-inset-bottom, 0px), 0.75rem) !important;
     /* Horizontal clip moved here from the canvas: the canvas must stay
-       overflow-visible so it can't clip the fixed nav, so the inner scroller
-       owns horizontal clipping of page content instead. */
+       overflow-visible so it can't clip the fixed mobile controls, so the
+       inner scroller owns horizontal clipping of page content instead. */
     overflow-x: hidden;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
@@ -1159,7 +1159,7 @@ h1, h2, h3, h4, h5 {
 }
 
 /* ─── Nav tabs ───────────────────────────────────────────────────────────
-   Used by AppHeader (desktop) and MobileBottomNav (mobile). The active
+   Used by AppHeader (desktop) and MobileAppMenu (mobile). The active
    indicator pivots on `aria-current="page"` which Next's <Link> sets when
    we mirror the matched route. */
 /* Wave 10.5 — nav-tab text bumped from ink-300 to ink-100 (#A8A8A8 →
@@ -1212,60 +1212,128 @@ h1, h2, h3, h4, h5 {
   border-color: rgba(255, 95, 21, 0.40);
 }
 
-/* ─── Mobile bottom-nav tile ─────────────────────────────────────────────
-   Used only inside <MobileBottomNav>. Stacked icon over label. Active state
-   matches the desktop tab — same brand-orange affordance, vertical bar
-   indicator on top so it reads cleanly when pinned to the screen bottom. */
-/* Wave 10.5 — bottom-nav tile label bumped from ink-300 to ink-200
-   (#A8A8A8 → #D4D4D4) for daytime mobile readability. */
-.t2q-bottomnav-tile {
-  position: relative;
+/* ─── Mobile menu trigger ────────────────────────────────────────────────
+   Wave 43 — visible top-left round menu for phones. */
+.t2q-mobile-menu-trigger {
+  position: fixed;
+  top: calc(env(safe-area-inset-top, 0px) + 0.5rem);
+  left: 0.75rem;
+  z-index: 42;
   display: inline-flex;
-  flex: 1 1 0;
-  flex-direction: column;
   align-items: center;
-  /* Centred in the floating pill bar. */
   justify-content: center;
-  gap: 0.125rem;
-  min-height: 44px;
-  border-radius: 0.875rem;
-  padding: 0.375rem 0.5rem;
-  font-family: var(--font-sans), "Plus Jakarta Sans", "Inter", system-ui, sans-serif;
-  font-size: 0.625rem;
-  letter-spacing: 0.06em;
-  text-transform: none;
-  color: #D4D4D4;
-  transition: color 150ms ease;
+  height: 2.875rem;
+  width: 2.875rem;
+  border-radius: 9999px;
+  border: 2px solid rgba(255, 95, 21, 0.72);
+  background:
+    radial-gradient(circle at 35% 20%, rgba(255, 255, 255, 0.14), transparent 42%),
+    #121722;
+  color: #FFFFFF;
+  box-shadow:
+    0 10px 24px -14px rgba(0, 0, 0, 0.75),
+    0 0 0 3px rgba(255, 95, 21, 0.12);
+  cursor: pointer;
 }
-.t2q-bottomnav-tile:hover { color: #FFFFFF; }
-/* Instant tap feedback — fires the moment the finger touches the tile,
-   not after the page navigation finishes. Removes the dead-air feel on
-   mobile where the screen used to sit unchanged for ~200–600ms after a
-   tap. Pairs with the top progress bar in <TopProgressBar /> so the
-   user sees continuous motion: tile flash → bar slides → new page. */
-.t2q-bottomnav-tile:active {
-  color: #FF5F15;
-  background: rgba(255, 95, 21, 0.08);
-  transform: scale(0.97);
-  transition: color 60ms ease, background 60ms ease, transform 60ms ease;
+.t2q-mobile-menu-trigger:active {
+  transform: scale(0.94);
 }
-.t2q-bottomnav-tile[aria-current="page"] {
-  color: #FF5F15;
-  background: rgba(255, 95, 21, 0.12);
-}
-.t2q-bottomnav-tile[aria-current="page"]::before {
-  content: none;
-}
-[data-theme="light"] .t2q-bottomnav-tile { color: #5C5C5C; }
-[data-theme="light"] .t2q-bottomnav-tile:hover { color: #0A0A0A; }
-[data-theme="light"] .t2q-bottomnav-tile[aria-current="page"] { color: #C04A0A; }
 
-/* ─── Wave 40 — floating top-left account avatar (mobile only) ───────────────
-   The account / AccountHub trigger moved out of the bottom bar into a fixed
-   circular button in the top-left corner; the bar's old "Me" slot is now the
-   Materials tab. Sits just below the status-bar safe area. The /app scroll
-   region gets a little extra top padding (see app/layout.tsx) so page titles
-   clear it. Fixed → stays put while the content scrolls beneath it. */
+.t2q-mobile-menu-panel {
+  position: fixed;
+  top: calc(env(safe-area-inset-top, 0px) + 3.85rem);
+  left: 0.75rem;
+  z-index: 41;
+  width: min(18.5rem, calc(100vw - 1.5rem));
+  border: 1px solid rgba(255, 95, 21, 0.28);
+  border-radius: 1.125rem;
+  background:
+    linear-gradient(180deg, rgba(23, 28, 39, 0.98), rgba(18, 23, 34, 0.98));
+  color: #F8FAFC;
+  box-shadow:
+    0 24px 54px -28px rgba(0, 0, 0, 0.84),
+    0 0 0 1px rgba(255, 255, 255, 0.04) inset;
+  padding: 0.55rem;
+  backdrop-filter: blur(18px) saturate(145%);
+  -webkit-backdrop-filter: blur(18px) saturate(145%);
+}
+
+.t2q-mobile-menu-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.45rem 0.5rem 0.55rem;
+  font-family: var(--font-plus-jakarta), "Inter", system-ui, sans-serif;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #C9D2DF;
+}
+.t2q-mobile-menu-heading span:last-child {
+  color: #FF7A3D;
+}
+
+.t2q-mobile-menu-list {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.t2q-mobile-menu-item,
+.t2q-mobile-menu-account {
+  display: grid;
+  grid-template-columns: 2rem 1fr auto;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 2.75rem;
+  width: 100%;
+  border: 0;
+  border-radius: 0.8rem;
+  background: transparent;
+  color: #D5DBE6;
+  padding: 0.35rem 0.55rem;
+  font-family: var(--font-plus-jakarta), "Inter", system-ui, sans-serif;
+  font-size: 0.92rem;
+  font-weight: 650;
+  text-align: left;
+}
+.t2q-mobile-menu-item:hover,
+.t2q-mobile-menu-account:hover,
+.t2q-mobile-menu-item[aria-current="page"] {
+  background: rgba(255, 255, 255, 0.07);
+  color: #FFFFFF;
+}
+.t2q-mobile-menu-item[data-primary="true"] {
+  background: #FF5F15;
+  color: #FFFFFF;
+  box-shadow: 0 10px 22px -14px rgba(255, 95, 21, 0.85);
+}
+.t2q-mobile-menu-item-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 2rem;
+  width: 2rem;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.08);
+}
+.t2q-mobile-menu-item[aria-current="page"] .t2q-mobile-menu-item-icon,
+.t2q-mobile-menu-account .t2q-mobile-menu-item-icon {
+  color: #FF7A3D;
+}
+.t2q-mobile-menu-item[data-primary="true"] .t2q-mobile-menu-item-icon {
+  background: rgba(10, 10, 10, 0.16);
+  color: #FFFFFF;
+}
+.t2q-mobile-menu-account {
+  margin-top: 0.45rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 0.85rem;
+  color: #F8FAFC;
+}
+
+/* ─── Floating account avatar (mobile only) ───────────────────────────────
+   Sits opposite the new mobile menu trigger and opens the AccountHub sheet. */
 .t2q-account-avatar {
   position: fixed;
   top: calc(env(safe-area-inset-top, 0px) + 0.5rem);
@@ -1310,40 +1378,11 @@ body:has([data-shell="app"]) {
     background: #F2F0EA !important;
   }
 
-  [data-shell="app"]:has([data-testid="app-splash"]) .t2q-bottomnav-bar {
+  [data-shell="app"]:has([data-testid="app-splash"]) .t2q-mobile-menu-trigger,
+  [data-shell="app"]:has([data-testid="app-splash"]) .t2q-mobile-menu-panel,
+  [data-shell="app"]:has([data-testid="app-splash"]) .t2q-account-avatar {
     display: none;
   }
-}
-
-/* ─── Mobile bottom-nav bar ─────────────────────────────────────────────
-   The container itself. Pinned to viewport bottom on mobile, hidden on
-   desktop. The bar stays compact and flush to the screen bottom. */
-.t2q-bottomnav-bar {
-  position: fixed;
-  /* Edge-locked bar: no floating pill shape, no side gaps, no extra
-     safe-area slab below the labels. */
-  bottom: 0;
-  left: 0;
-  right: 0;
-  display: flex;
-  align-items: stretch;
-  background: #121722;
-  padding: 0.08rem 0.42rem;
-  z-index: 40;
-}
-/* The bottom nav is mobile-only. The component carries `sm:hidden` but
-   Tailwind's utility loses to `.t2q-bottomnav-bar` on source order
-   inside this file, which previously left the bar visible on desktop
-   alongside the top header — the "duplicate top/bottom nav on web"
-   defect. Forcing `display: none` at the sm: breakpoint here makes the
-   class itself responsive and immune to that ordering. */
-@media (min-width: 640px) {
-  .t2q-bottomnav-bar {
-    display: none;
-  }
-}
-[data-theme="light"] .t2q-bottomnav-bar {
-  background: #1B1F2A !important;
 }
 
 /* ─── "Show working" disclosure — light-mode readability ──────────────────
@@ -1464,7 +1503,6 @@ body:has([data-shell="app"]) {
   font-weight: 500;
 }
 
-.t2q-bottomnav-tile,
 .t2q-nav-tab,
 .t2q-section-label {
   font-weight: 600;
@@ -1482,8 +1520,7 @@ body:has([data-shell="app"]) {
    `.font-mono { font-weight: 500 }` rule above already covers them;
    this just hands the active-state ones the heavier 600 so an active
    tab / pressed pill reads more decisively. */
-.t2q-nav-tab[aria-current="page"],
-.t2q-bottomnav-tile[aria-current="page"] {
+.t2q-nav-tab[aria-current="page"] {
   font-weight: 700;
 }
 
@@ -1631,22 +1668,6 @@ body:has([data-shell="app"]) {
   border: 1px solid #E8E6DD !important;
   border-radius: 1rem;
   box-shadow: 0 1px 2px rgba(10, 10, 10, 0.04) !important;
-}
-
-/* Legacy light-theme baseline. The signed-in app's final edge-locked
-   mobile nav rule appears later in this file and overrides these values. */
-[data-shell="app"][data-theme="light"] .t2q-bottomnav-bar {
-  background: #FFFFFF !important;
-}
-[data-shell="app"][data-theme="light"] .t2q-bottomnav-tile {
-  color: #6B6B6B;
-}
-[data-shell="app"][data-theme="light"] .t2q-bottomnav-tile:hover {
-  color: #0A0A0A;
-}
-[data-shell="app"][data-theme="light"] .t2q-bottomnav-tile[aria-current="page"] {
-  color: #FF5F15;
-  background: rgba(255, 95, 21, 0.08);
 }
 
 /* Headings — undo the in-app serif remap; Xero is clean sans
@@ -1902,22 +1923,10 @@ body:has([data-shell="app"]) {
   text-transform: uppercase;
 }
 
-[data-shell="app"][data-theme="light"] .t2q-btn-primary-pro,
-[data-shell="app"][data-theme="light"] .t2q-bottomnav-fab {
+[data-shell="app"][data-theme="light"] .t2q-btn-primary-pro {
   background: #FF5F15 !important;
   color: #FFFFFF !important;
   border: 1px solid #FF5F15;
-}
-/* Wave 38.1 — cream centre disc with a dark icon in the light app shell
-   (overrides the shared orange .t2q-btn-primary-pro rule above). */
-[data-shell="app"][data-theme="light"] .t2q-bottomnav-fab {
-  /* Wave 41 — orange disc with a white plus, punched through the dark bar. */
-  background: #FF5F15 !important;
-  color: #FFFFFF !important;
-  border: 2px solid #141A24 !important;
-  box-shadow:
-    0 8px 20px -10px rgba(255, 95, 21, 0.58),
-    inset 0 1px 0 rgba(255, 255, 255, 0.25) !important;
 }
 
 [data-shell="app"][data-theme="light"] .t2q-btn-primary-pro {
@@ -1957,63 +1966,6 @@ body:has([data-shell="app"]) {
   box-shadow: 0 0 0 3px rgba(255, 95, 21, 0.18) !important;
 }
 
-[data-shell="app"][data-theme="light"] .t2q-bottomnav-bar {
-  /* Edge-to-edge mobile bar: no pillow/pill shell, still fixed to the
-     locked viewport so content scroll cannot move it. */
-  box-sizing: border-box;
-  height: 2.72rem;
-  min-height: 2.72rem;
-  align-items: center;
-  bottom: 0 !important;
-  left: 0 !important;
-  right: 0 !important;
-  padding: 0.08rem 0.42rem;
-  background-color: #121722 !important;
-  background-image: linear-gradient(180deg, #171C27 0%, #121722 100%) !important;
-  overflow: visible;
-}
-
-[data-shell="app"][data-theme="light"] .t2q-bottomnav-tile {
-  height: 2.36rem;
-  min-height: 2.36rem;
-  gap: 0;
-  border-radius: 0.75rem;
-  padding: 0.02rem 0.1rem;
-  color: #8B93A3;
-  font-size: 0.52rem;
-  font-weight: 600;
-  line-height: 1;
-  letter-spacing: 0.02em;
-  overflow: visible;
-}
-
-[data-shell="app"][data-theme="light"] .t2q-bottomnav-tile span {
-  line-height: 1;
-  margin-top: -0.01rem;
-  white-space: nowrap;
-}
-
-[data-shell="app"][data-theme="light"] .t2q-bottomnav-tile[aria-current="page"] {
-  /* Wave 41 — the selected tab glows orange (icon + label). */
-  color: #FF7A3D;
-  background: transparent;
-  filter: drop-shadow(0 0 7px rgba(255, 95, 21, 0.6));
-}
-
-[data-shell="app"][data-theme="light"] .t2q-bottomnav-tile:hover,
-[data-shell="app"][data-theme="light"] .t2q-bottomnav-tile:active {
-  color: #FFFFFF;
-  background: rgba(255, 255, 255, 0.04);
-}
-
-[data-shell="app"][data-theme="light"] .t2q-bottomnav-icon,
-[data-shell="app"][data-theme="light"] .t2q-bottomnav-tile svg {
-  height: 1.56rem;
-  width: 1.56rem;
-  flex: 0 0 auto;
-  stroke-width: 2.2;
-}
-
 [data-shell="app"][data-theme="light"] .t2q-avatar-online {
   animation: none;
   border-color: var(--t2q-app-border) !important;
@@ -2041,39 +1993,6 @@ body:has([data-shell="app"]) {
 
 [data-shell="app"][data-theme="light"] [data-testid="top-progress-bar"] > div {
   background: #FF5F15 !important;
-}
-
-/* ─── Bottom-nav centre FAB ───────────────────────────────────────────────
-   Wave 38 — the primary "New quote" action: a raised brand-orange circle
-   centred in the pill bar that pokes above its top edge (margin-top pulls
-   it up; the bar has no overflow clip, so it shows). Restores the original
-   raised-FAB look. The light app-shell ring colour is set further below. */
-.t2q-bottomnav-fab {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  height: 2.5rem;
-  width: 2.5rem;
-  margin-top: -0.08rem;
-  border-radius: 9999px;
-  background: #FF5F15;
-  color: #FFFFFF;
-  border: none;
-  box-shadow: 0 7px 18px -8px rgba(255, 95, 21, 0.55);
-  transition: transform 120ms ease, background-color 150ms ease;
-  overflow: visible;
-}
-.t2q-bottomnav-fab-icon,
-.t2q-bottomnav-fab svg {
-  height: 1.78rem;
-  width: 1.78rem;
-  flex: 0 0 auto;
-}
-.t2q-bottomnav-fab:hover {
-  background: #FF7A3D;
-}
-.t2q-bottomnav-fab:active {
-  transform: scale(0.94);
 }
 
 /* ─── Avatar "online" presence ─────────────────────────────────────────────

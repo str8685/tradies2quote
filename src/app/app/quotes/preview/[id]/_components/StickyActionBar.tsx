@@ -14,8 +14,8 @@ import type { QuoteStatus } from "@/lib/quote-types";
  * Wave 19.10 — sticky bottom action bar.
  *
  * Replaces the end-of-page "Save changes" row + the inline Send
- * button. Always visible on mobile (fixed at the bottom, above the
- * `<MobileBottomNav>`). On md+ it lays out as a normal inline strip
+ * button. Always visible on mobile (fixed at the bottom safe area).
+ * On md+ it lays out as a normal inline strip
  * so it doesn't squat across the desktop viewport.
  *
  * Layout (left → right):
@@ -31,11 +31,7 @@ import type { QuoteStatus } from "@/lib/quote-types";
  * sent/viewed/accepted states.
  *
  * Mobile geometry:
- *   - Sits flush on top of `<MobileBottomNav>`. That nav is 57px
- *     (a 56px tile + 1px border-top) plus its own safe-area
- *     padding-bottom, so this bar's `bottom` mirrors the exact same
- *     `max(env(safe-area-inset-bottom) - 24px, 4px)` formula — the
- *     two then read as one connected bottom unit on every device.
+ *   - Sits flush to the bottom and owns `env(safe-area-inset-bottom)`.
  *   - `min-h-[56px]` per the spec.
  *   - z-50 + blur backdrop + ink-950/85 bg so scrolled content
  *     remains legible behind the bar.
@@ -274,14 +270,9 @@ export function StickyActionBar({
       <div
         data-testid="sticky-action-bar"
         className={[
-          // The bottom nav is now a LOCKED, edge-anchored solid bar
-          // (`.t2q-bottomnav-bar`, flush to the screen bottom, ~57px +
-          // home-indicator inset tall). This action bar sits flush DIRECTLY
-          // ON TOP of it — edge-to-edge, solid, hairline top border — so the
-          // two read as one connected bottom stack instead of a floating pill
-          // hovering over a separate bar. `bottom` clears the nav's height
-          // (~56px tile area) plus the same safe-area inset the nav uses.
-          "fixed left-0 right-0 bottom-[calc(3.5rem_+_max(env(safe-area-inset-bottom),0.25rem))] z-40 border-t border-[#E3E2DA] bg-white shadow-[0_-6px_20px_-12px_rgba(10,10,10,0.18)]",
+          // There is no bottom bar anymore, so this bar owns the
+          // home-indicator inset directly.
+          "fixed left-0 right-0 bottom-0 z-40 border-t border-[#E3E2DA] bg-white pb-[env(safe-area-inset-bottom)] shadow-[0_-6px_20px_-12px_rgba(10,10,10,0.18)]",
           // min height 56 per the spec — leaves room for 44-px buttons.
           "min-h-[56px]",
           // On sm+ become a normal inline strip, no fixed positioning.

@@ -5,7 +5,7 @@ import { createClient } from "./server";
 /**
  * Request-scoped profile reads used by the app shell.
  *
- * The desktop header and mobile bottom nav both need the same avatar URL.
+ * The desktop header and mobile app menu both need the same avatar URL.
  * Caching keeps that to one profile query per server render, while still
  * tolerating installs where the optional `avatar_url` column has not landed.
  */

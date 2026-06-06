@@ -1,7 +1,7 @@
 import { SideMeasureTape } from "../_components/app/SideMeasureTape";
 import { AppViewportLock } from "./_components/AppViewportLock";
 import AppSplash from "./_components/AppSplash";
-import { MobileBottomNav } from "./_components/MobileBottomNav";
+import { MobileAppMenu } from "./_components/MobileAppMenu";
 import { OnboardingTourGate } from "./_components/OnboardingTourGate";
 import { TopProgressBar } from "./_components/TopProgressBar";
 import { TrialBanner } from "./_components/TrialBanner";
@@ -20,8 +20,8 @@ import { BetaNoticeBanner } from "./_components/BetaNoticeBanner";
  *     state to `true` so the splash is in the server-rendered HTML —
  *     no protected UI is ever painted before it.
  *   - The mobile header (logo + avatar + black strip) is hidden again
- *     via `hidden sm:block` in <AppHeaderClient>. Mobile uses only the
- *     bottom nav (which includes the avatar tile for the AccountHub).
+ *     via `hidden sm:block` in <AppHeaderClient>. Mobile uses compact
+ *     fixed controls for navigation and account access.
  *   - Because the mobile header is gone again, the wrapper restores
  *     its own `pt-[env(safe-area-inset-top)] sm:pt-0` so phone
  *     content still sits below the notch.
@@ -72,9 +72,9 @@ export default function AppLayout({
           cutout inset on phones. Desktop gets the inset from the
           header itself.
 
-          The bottom nav owns the home-indicator safe area, so this
-          scroll padding covers the compact bar plus the same inset. */}
-      <div className="t2q-app-scroll min-w-0 pt-[env(safe-area-inset-top)] pb-[calc(3.9rem+env(safe-area-inset-bottom))] sm:pt-0 sm:pb-0">
+          The mobile menu no longer reserves a bottom bar; the scroller
+          only needs the device safe-area inset at the bottom. */}
+      <div className="t2q-app-scroll min-w-0 pt-[env(safe-area-inset-top)] pb-[max(env(safe-area-inset-bottom),0.75rem)] sm:pt-0 sm:pb-0">
         {/* Trial / expired upgrade banner. Server-rendered: renders
             nothing for paid users or users still well inside their
             trial; surfaces only when there's something to act on. */}
@@ -85,7 +85,7 @@ export default function AppLayout({
         {children}
       </div>
       <div aria-hidden="true" className="hidden lg:block" />
-      <MobileBottomNav />
+      <MobileAppMenu />
       {/* Top-of-screen progress bar for /app/* tab navigations. Fires
           on pathname change, animates for ~700ms, then fades. Skips
           the first render so it doesn't compete with the brand splash

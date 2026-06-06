@@ -6,7 +6,7 @@ import { createClient } from "./server";
  * Wave 18.1 — perf — request-scoped cache around `supabase.auth.getUser()`.
  *
  * Every /app/* render today calls `getUser()` from at least three
- * places: the `<AppHeader>` server wrapper, the `<MobileBottomNav>`
+ * places: the `<AppHeader>` server wrapper, the `<MobileAppMenu>`
  * server wrapper, and the page component itself (defense-in-depth).
  * Each call is a fresh network roundtrip to Supabase's auth API to
  * verify the JWT — three sequential ~100 ms calls per render on a

@@ -263,7 +263,7 @@ export function InvoiceList({ rows }: Props) {
       {selectMode && selected.size > 0 && (
         <div
           data-testid="invoices-bulk-action-bar"
-          className="fixed inset-x-3 bottom-[calc(112px+env(safe-area-inset-bottom))] z-40 mx-auto max-w-md sm:bottom-6"
+          className="fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+1rem)] z-40 mx-auto max-w-md sm:bottom-6"
         >
           <div className="flex items-center justify-between gap-3 rounded-sm border border-brand/50 bg-ink-900/95 px-4 py-3 backdrop-blur shadow-lg">
             <p className="font-mono text-xs uppercase tracking-[0.25em] text-ink-200">
@@ -342,7 +342,7 @@ export function InvoiceList({ rows }: Props) {
         <div
           role="status"
           data-testid="invoices-toast"
-          className="fixed inset-x-3 bottom-[calc(112px+env(safe-area-inset-bottom))] z-40 mx-auto max-w-md rounded-sm border border-brand/50 bg-brand/15 px-4 py-3 text-sm text-white shadow-lg sm:bottom-6"
+          className="fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+1rem)] z-40 mx-auto max-w-md rounded-sm border border-brand/50 bg-brand/15 px-4 py-3 text-sm text-white shadow-lg sm:bottom-6"
         >
           {toast}
         </div>

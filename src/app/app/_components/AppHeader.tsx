@@ -29,7 +29,7 @@ interface Props {
 export async function AppHeader({ context }: Props) {
   // Wave 18.1/42 — perf — auth and avatar reads are cached per render,
   // so this header shares the same user/profile work with
-  // `<MobileBottomNav>` and the page instead of issuing duplicate
+  // `<MobileAppMenu>` and the page instead of issuing duplicate
   // Supabase round trips.
   const { user } = await getCachedAuthUser();
   const isOwner = isOwnerEmail(user?.email);

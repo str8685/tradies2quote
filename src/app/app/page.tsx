@@ -58,7 +58,7 @@ export default async function DashboardPage() {
   // queries before sending ANY HTML, which read as a blank screen on
   // first /app entry over 4G.
   // Wave 18.1 — perf — cached. The same `getUser()` call is reused by
-  // `<AppHeader>` and `<MobileBottomNav>` within this render.
+  // `<AppHeader>` and `<MobileAppMenu>` within this render.
   const { user } = await getCachedAuthUser();
   if (!user) redirect("/login");
 
@@ -595,7 +595,7 @@ async function DashboardData({
 
       {/* Wave 14.5 — mobile tail-nav (Clients/Settings/Debug links)
           removed. The avatar tile + account sheet in
-          <MobileBottomNav /> is the single home for these on mobile.
+          <MobileAppMenu /> is the single home for these on mobile.
           Desktop still has Settings (cog icon) in the AppHeader, so
           Debug stays here as a small owner-only desktop footer. */}
       {isOwner ? (

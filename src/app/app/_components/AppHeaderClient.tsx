@@ -7,7 +7,7 @@ import { usePathname } from "next/navigation";
 import { ThemeToggle } from "@/app/_components/landing/ThemeToggle";
 
 /**
- * Wave 17 — perf — see MobileBottomNavClient.tsx for the rationale.
+ * Wave 17 — perf — see MobileAppMenuClient.tsx for the rationale.
  * Same `AccountHub` is used here (desktop dropdown variant via the
  * `mode="panel"` prop). Splitting it into its own chunk that's only
  * fetched when the avatar trigger is clicked.
@@ -32,11 +32,7 @@ const AccountHub = dynamic(
  * defaults / Invoice defaults / Clients / Sign out + owner shortcuts).
  *
  * The avatar trigger opens a dropdown panel anchored top-right (`mode:
- * "panel"`) on sm+, and re-uses the mobile slide-up sheet variant on
- * narrower screens — but on narrower screens the mobile bottom nav
- * already provides a tappable avatar, so on mobile this header's
- * trigger just navigates to /app/settings as a safety net. (Both
- * present the same hub items.)
+ * "panel"`) on sm+. Mobile uses its own fixed account shortcut.
  */
 interface Props {
   context?: string;
@@ -110,12 +106,9 @@ export function AppHeaderClient({
     <header
       data-testid="app-header"
       data-is-owner={isOwner ? "true" : "false"}
-      // Wave 15.2 — hidden on mobile again. On phones, the AppHeader's
-      // logo + avatar + dark strip felt like wasted screen height to
-      // the operator; nav lives in <MobileBottomNav /> and the avatar
-      // sits in that nav's Me tile, so removing the top bar on phones
-      // gives the dashboard the entire viewport. Desktop keeps the
-      // header (tabs + avatar dropdown stay).
+      // Wave 15.2/43 — hidden on mobile. Phones use fixed round controls
+      // for navigation and account access, keeping the dashboard viewport
+      // open. Desktop keeps the header tabs + avatar dropdown.
       className="hidden sm:block sticky top-0 z-30 border-b border-ink-700/60 bg-ink-950/85 pt-[env(safe-area-inset-top)] backdrop-blur"
     >
       <div className="mx-auto flex h-12 max-w-3xl items-center justify-between gap-3 px-3 sm:h-16 sm:max-w-5xl sm:gap-4 sm:px-6">

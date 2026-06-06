@@ -13,11 +13,11 @@ import "driver.js/dist/driver.css";
  * popover carries the title + description + Next/Back/Skip buttons.
  *
  * Anchors map to data-testid attributes already in the app (see
- * src/app/app/page.tsx, AppHeaderClient, MobileBottomNavClient). For
+ * src/app/app/page.tsx, AppHeaderClient, MobileAppMenuClient). For
  * features that live on other routes (Materials, account settings),
- * we anchor to the always-visible nav tabs — bottom nav on mobile,
- * header tabs on desktop — so the tour can run from any /app/* page
- * even though it's intended to fire on the dashboard.
+ * we anchor to the always-visible navigation controls — mobile menu
+ * trigger on phones, header tabs on desktop — so the tour can run from
+ * any /app/* page even though it's intended to fire on the dashboard.
  *
  * Gating is unchanged: `OnboardingTourGate.tsx` reads
  * `localStorage["t2q-tour-done"]` and only dynamic-imports this chunk
@@ -243,22 +243,22 @@ const ALL_STEPS: ReadonlyArray<DriveStep> = [
     },
   },
   {
-    element: '[data-testid="app-header-tabs"], [data-testid="app-bottom-nav"]',
+    element: '[data-testid="app-header-tabs"], [data-testid="app-mobile-menu-trigger"]',
     popover: {
       title: "Main navigation",
       description:
-        "Use the navigation to move between Home, Quotes, Invoices, and Materials. Active sections use your orange brand accent.",
+        "Use the menu to move between Home, New quote, Quotes, Invoices, Materials, Clients, and Settings. Active sections use your orange brand accent.",
       side: "bottom",
       align: "center",
     },
   },
   {
     element:
-      '[data-testid="app-header-tab-materials"], [data-testid="app-bottom-nav-materials"]',
+      '[data-testid="app-header-tab-materials"], [data-testid="app-mobile-menu-trigger"]',
     popover: {
       title: "Materials library",
       description:
-        "Materials is where your commonly used items and prices live. Keeping it updated makes future quotes more accurate.",
+        "Materials is where your commonly used items and prices live. Open the menu, then choose Materials to keep your prices updated.",
       side: "top",
       align: "center",
     },
@@ -401,8 +401,7 @@ export function OnboardingTour({ onFinished }: OnboardingTourProps) {
           const el = firstVisible(step.element);
           if (!el) continue; // no visible anchor right now — skip it
           // Auto-correct the popover side for elements pinned to a screen
-          // edge so the bubble never lands off-screen: a fixed bottom nav
-          // gets the bubble ABOVE it; a sticky top header gets it BELOW.
+          // edge so the bubble never lands off-screen.
           const rect = el.getBoundingClientRect();
           let side = step.popover?.side;
           if (vh > 0 && rect.top > vh * 0.6) side = "top";

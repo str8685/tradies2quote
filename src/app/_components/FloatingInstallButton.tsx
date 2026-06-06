@@ -15,7 +15,7 @@ import {
  * Replaces the top-bar Install button that used to sit inside
  * AppHeader + landing Header. The tradie-feedback was: the old button
  * was buried in the top strip; on mobile it competed with the logo
- * and bottom nav. Moving it to a fixed bottom-right floating action
+ * and mobile navigation. Moving it to a fixed bottom-right floating action
  * pill keeps it visible-but-out-of-the-way at all times.
  *
  * Behaviour matrix (same as the old InstallAppButton):
@@ -29,9 +29,8 @@ import {
  *                                                          tooltip
  *   - Anything else (Firefox desktop, older Safari)       → renders nothing
  *
- * Pinned bottom-right. On mobile the position is `bottom: 80px` so the
- * pill sits ABOVE the MobileBottomNav (which is 60-ish px tall + safe
- * area). On desktop the pill sits at `bottom: 24px`.
+ * Pinned bottom-right. On mobile it clears the home-indicator safe area.
+ * On desktop the pill sits at `bottom: 24px`.
  *
  * Highlighted state: brand-orange fill with hi-vis yellow ring + a
  * slow pulsing shadow so it reads as "tap me" without being noisy.
@@ -147,7 +146,7 @@ export function FloatingInstallButton() {
         data-testid="floating-install-button"
         data-state={state.mode}
         data-dismissed={dismissed}
-        className="fixed right-4 z-40 flex items-center gap-2 sm:right-6 bottom-[88px] sm:bottom-6"
+        className="fixed right-4 z-40 flex items-center gap-2 bottom-[calc(env(safe-area-inset-bottom)+1rem)] sm:right-6 sm:bottom-6"
       >
         <button
           type="button"

@@ -263,7 +263,7 @@ export function LifecycleCard({
           restriction — the suggestion just scrolls to an on-page
           panel the tradie can already see on their own quote. The
           /app/agents directory itself stays owner-only via separate
-          gates in AppHeader / MobileBottomNav.) */}
+          gates in AppHeader / MobileAppMenu.) */}
       {out.agentToTrigger ? (
         <div className="mt-5 flex items-center justify-between gap-3 rounded-sm border border-ink-700 bg-ink-900/60 p-3">
           <div className="min-w-0">

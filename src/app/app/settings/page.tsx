@@ -51,7 +51,7 @@ export default async function SettingsPage({
   searchParams: Promise<{ stripe?: string }>;
 }) {
   // Wave 18.1 — perf — `getCachedAuthUser` shares one auth roundtrip
-  // with the surrounding `<AppHeader>` + `<MobileBottomNav>`.
+  // with the surrounding `<AppHeader>` + `<MobileAppMenu>`.
   const { user } = await getCachedAuthUser();
   if (!user) redirect("/login");
   const supabase = await createClient();

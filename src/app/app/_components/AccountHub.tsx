@@ -31,7 +31,7 @@ import { PushToggle } from "./PushToggle";
  * Shared body of the account hub.
  *
  * One source of truth, two presentations:
- *   - On mobile, `<MobileBottomNavClient>` mounts this inside a
+ *   - On mobile, `<MobileAppMenuClient>` mounts this inside a
  *     slide-up sheet (rendered with `mode="sheet"`).
  *   - On desktop, `<AppHeaderClient>` mounts this inside a dropdown
  *     panel anchored to the avatar trigger (`mode="panel"`).

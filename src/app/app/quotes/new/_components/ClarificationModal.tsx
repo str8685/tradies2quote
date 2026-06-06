@@ -213,8 +213,8 @@ export function ClarificationModal({
 
   // Portal to <body> so the modal escapes the /app scroll container's
   // stacking context. Inside `.t2q-app-scroll` its z-index is trapped below
-  // the fixed bottom nav, which then covers the footer (Back / Skip /
-  // Continue). At the body level the nav can no longer overlap it.
+  // fixed mobile controls, which can cover the footer (Back / Skip /
+  // Continue). At the body level they can no longer overlap it.
   if (typeof document === "undefined") return null;
 
   return createPortal(

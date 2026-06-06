@@ -502,9 +502,9 @@ export function QuoteEditor({
   const clientNameInputValue = clientPlaceholder ? "" : client.name;
 
   return (
-    // pb on mobile reserves space for the fixed StickyActionBar (sits above
-    // the 57px bottom nav) and the floating Install-App pill (bottom-[88px])
-    // so neither covers the last cards. Both go static/out-of-the-way at sm+.
+    // pb on mobile reserves space for the fixed StickyActionBar and the
+    // floating Install-App pill so neither covers the last cards. Both go
+    // static/out-of-the-way at sm+.
     <div className="space-y-6 pb-40 sm:pb-0">
       <section className="t2q-card-pro p-5 sm:p-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
