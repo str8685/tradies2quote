@@ -37,18 +37,27 @@ import {
 /** Local scope tag until "foundation" is promoted into ScopeType. */
 export type FoundationScope = "foundation";
 
-/** How the review UI should render the answer control. */
-export type ClarificationInputKind =
-  | "number"
-  | "dimensions_pair"
-  | "select"
-  | "text";
+/**
+ * How the review UI should render the answer control. CLOSED SET — adding a
+ * value is a contract change that must update the characterization tests +
+ * integration doc in the same change.
+ */
+export const CLARIFICATION_INPUT_KINDS = [
+  "number",
+  "dimensions_pair",
+  "select",
+] as const;
+export type ClarificationInputKind = (typeof CLARIFICATION_INPUT_KINDS)[number];
 
-/** Why this clarification was raised. */
-export type ClarificationSource =
-  | "missing_required_input"
-  | "invalid_value"
-  | "conflict";
+/**
+ * Why this clarification was raised. CLOSED SET — same discipline as above.
+ */
+export const CLARIFICATION_SOURCES = [
+  "missing_required_input",
+  "invalid_value",
+  "conflict",
+] as const;
+export type ClarificationSource = (typeof CLARIFICATION_SOURCES)[number];
 
 /**
  * Machine-usable clarification shape. Extends the shared ClarificationQuestion
@@ -160,8 +169,8 @@ const FIELD_META: Record<string, QuestionSpec> = {
 
 const FALLBACK_META = (field: string): QuestionSpec => ({
   field,
-  question: `Please check: ${field}.`,
-  input_kind: "text",
+  question: `Please check this value: ${field}.`,
+  input_kind: "number",
   required: false,
   display_order: 99,
 });
@@ -204,6 +213,50 @@ function clarificationFor(missing: string): FoundationClarification {
     source: sourceFor(missing),
     display_order: spec.display_order,
   };
+}
+
+// ── Contract invariant (fail loudly on drift) ─────────────────────────────
+
+/**
+ * Runtime guard that a clarification matches the agreed machine-usable
+ * contract. Types already constrain this at compile time; this catches drift
+ * that types can't (empty strings, NaN order, an enum widened without updating
+ * the contract, a malformed suggestion list). Tests run EVERY produced
+ * clarification through this so any contract change fails loudly.
+ *
+ * CONTRACT DISCIPLINE: do not add/rename clarification fields or widen the
+ * input_kind / source enums without updating this guard, the characterization
+ * tests, and docs/plan-reader/PHASE4_WIRING.md in the SAME change.
+ */
+export function assertValidFoundationClarification(
+  c: FoundationClarification,
+): void {
+  const fail = (msg: string): never => {
+    throw new Error(`Foundation clarification contract violation: ${msg} — ${JSON.stringify(c)}`);
+  };
+
+  if (typeof c.id !== "string" || c.id.length === 0) fail("id must be a non-empty string");
+  if (c.scope !== "foundation") fail('scope must be "foundation"');
+  if (typeof c.field !== "string" || c.field.length === 0) fail("field must be a non-empty string");
+  if (typeof c.question !== "string" || c.question.length === 0) fail("question must be a non-empty string");
+  if (c.blocking !== true) fail("blocking must be true on a blocked clarification");
+  if (typeof c.required !== "boolean") fail("required must be a boolean");
+  if (!(CLARIFICATION_INPUT_KINDS as readonly string[]).includes(c.input_kind)) {
+    fail(`input_kind "${c.input_kind}" is not an allowed value`);
+  }
+  if (!(CLARIFICATION_SOURCES as readonly string[]).includes(c.source)) {
+    fail(`source "${c.source}" is not an allowed value`);
+  }
+  if (typeof c.display_order !== "number" || !Number.isFinite(c.display_order) || c.display_order < 1) {
+    fail("display_order must be a finite number >= 1");
+  }
+  if (c.hint !== undefined && typeof c.hint !== "string") fail("hint must be a string when present");
+  if (c.unit !== undefined && typeof c.unit !== "string") fail("unit must be a string when present");
+  if (c.suggestions !== undefined) {
+    if (!Array.isArray(c.suggestions) || c.suggestions.some((s) => typeof s !== "string")) {
+      fail("suggestions must be a string[] when present");
+    }
+  }
 }
 
 // ── Extraction → calculator input ─────────────────────────────────────────

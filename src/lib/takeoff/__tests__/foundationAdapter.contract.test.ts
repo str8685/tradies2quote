@@ -8,7 +8,13 @@
 // ─────────────────────────────────────────────────────────────────────────
 
 import { describe, expect, it } from "vitest";
-import { runFoundationCalculator } from "../foundationAdapter";
+import {
+  CLARIFICATION_INPUT_KINDS,
+  CLARIFICATION_SOURCES,
+  assertValidFoundationClarification,
+  buildFoundationInput,
+  runFoundationCalculator,
+} from "../foundationAdapter";
 import type { ExtractedExtraction } from "../schemas";
 
 function makeExt(
@@ -187,5 +193,104 @@ describe("CONTRACT — per-line basis is preserved exactly", () => {
       ["foundation:total_concrete", "Concrete", "m³", "assumed"],
       ["foundation:mesh", "Reinforcing", "sheet", "assumed"],
     ]);
+  });
+});
+
+describe("CONTRACT — closed enums + invariant validator", () => {
+  // Scenarios that exercise every clarification path.
+  const SCENARIOS = [
+    runFoundationCalculator(makeExt()), // nothing → slab_size + sections
+    runFoundationCalculator(makeExt({ length_m: 10, width_m: 8 })), // sections only
+    runFoundationCalculator(makeExt({ area_m2: 80 }), SECTIONS), // perimeter
+    runFoundationCalculator(makeExt({ length_m: 10, width_m: 8 }), {
+      ...SECTIONS,
+      internal_footing_run_m: -5,
+    }), // invalid optional
+    runFoundationCalculator(makeExt({ length_m: 10, width_m: 8 }), {
+      ...SECTIONS,
+      config: { mesh_lap_m: 99 },
+    }), // config conflict → fallback
+  ];
+  const allClarifications = SCENARIOS.flatMap((r) => r.clarifications);
+
+  it("input_kind enum is exactly the agreed closed set", () => {
+    expect([...CLARIFICATION_INPUT_KINDS]).toEqual(["number", "dimensions_pair", "select"]);
+  });
+
+  it("source enum is exactly the agreed closed set", () => {
+    expect([...CLARIFICATION_SOURCES]).toEqual([
+      "missing_required_input",
+      "invalid_value",
+      "conflict",
+    ]);
+  });
+
+  it("every produced clarification passes the contract invariant", () => {
+    expect(allClarifications.length).toBeGreaterThan(0);
+    for (const c of allClarifications) {
+      expect(() => assertValidFoundationClarification(c)).not.toThrow();
+    }
+  });
+
+  it("every input_kind / source is within the closed set", () => {
+    for (const c of allClarifications) {
+      expect(CLARIFICATION_INPUT_KINDS).toContain(c.input_kind);
+      expect(CLARIFICATION_SOURCES).toContain(c.source);
+    }
+  });
+
+  it("the invariant validator fails loudly on drift", () => {
+    const good = runFoundationCalculator(makeExt()).clarifications[0];
+    // Widening input_kind to a value outside the closed set must throw.
+    expect(() =>
+      assertValidFoundationClarification({
+        ...good,
+        // @ts-expect-error — deliberately out-of-contract value
+        input_kind: "text",
+      }),
+    ).toThrow(/input_kind/);
+    expect(() =>
+      assertValidFoundationClarification({ ...good, display_order: 0 }),
+    ).toThrow(/display_order/);
+  });
+
+  it("required vs optional is explicit (never inferred)", () => {
+    const noFootprint = runFoundationCalculator(makeExt());
+    const slabSize = noFootprint.clarifications.find((c) => c.field === "slab_size")!;
+    expect(slabSize.required).toBe(true);
+
+    const invalidOptional = runFoundationCalculator(
+      makeExt({ length_m: 10, width_m: 8 }),
+      { ...SECTIONS, internal_footing_run_m: -5 },
+    ).clarifications.find((c) => c.field === "internal_footing_run_m")!;
+    expect(invalidOptional.required).toBe(false);
+    expect(invalidOptional.source).toBe("invalid_value");
+  });
+});
+
+describe("CONTRACT — confirmed inputs vs extracted", () => {
+  it("confirmed values override extracted values", () => {
+    const input = buildFoundationInput(
+      makeExt({ length_m: 10, width_m: 8 }),
+      { slab_length_m: 12, slab_thickness_mm: 125 },
+    );
+    expect(input.slab_length_m).toBe(12);
+    expect(input.slab_thickness_mm).toBe(125);
+  });
+
+  it("null / undefined confirmed values do NOT clobber valid extracted values", () => {
+    const input = buildFoundationInput(
+      makeExt({ length_m: 10, width_m: 8 }),
+      { slab_length_m: null, slab_width_m: undefined },
+    );
+    expect(input.slab_length_m).toBe(10);
+    expect(input.slab_width_m).toBe(8);
+  });
+
+  it("section measurements are never invented from extraction", () => {
+    const input = buildFoundationInput(makeExt({ length_m: 10, width_m: 8, height_m: 0.15 }));
+    expect(input.slab_thickness_mm).toBeUndefined();
+    expect(input.footing_width_mm).toBeUndefined();
+    expect(input.footing_depth_mm).toBeUndefined();
   });
 });

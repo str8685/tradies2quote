@@ -40,7 +40,7 @@ item is machine-usable — **never string-sniff the question text**:
 | `hint` | one-line helper text |
 | `unit` | `"mm"` / `"m"` — show as a suffix/adornment |
 | `suggestions` | quick-pick chips (e.g. `["100","125","150"]`) |
-| `input_kind` | which control: `number` · `dimensions_pair` · `select` · `text` |
+| `input_kind` | which control — CLOSED SET: `number` · `dimensions_pair` · `select` |
 | `required` | `true` ⇒ must be answered; `false` ⇒ optional |
 | `source` | `missing_required_input` · `invalid_value` · `conflict` (drives copy/icon) |
 | `display_order` | render ascending — already pre-sorted in the payload |
@@ -50,10 +50,16 @@ Rendering rules:
 - `input_kind: "dimensions_pair"` → two number inputs (length + width) sharing
   one `unit`.
 - `input_kind: "number"` → single number input; show `suggestions` as chips.
+- `input_kind: "select"` → reserved for future enumerated choices (none today).
 - `source: "invalid_value"` → phrase as "that value looks off — please re-enter".
 - Disable the "Calculate" button until every `required: true` item is answered;
   `required: false` items may be left blank (the calculator applies its
   documented default and records it as an assumption).
+
+`input_kind` and `source` are **closed enums** exported from `foundationAdapter.ts`
+(`CLARIFICATION_INPUT_KINDS`, `CLARIFICATION_SOURCES`) and enforced at runtime by
+`assertValidFoundationClarification()`. The characterization tests run every
+produced clarification through that guard, so contract drift fails loudly.
 
 ## 3. What the review UI must return in `confirmed`
 
@@ -111,3 +117,11 @@ with `basis.assumed` naming the config key — nothing is hidden.
   deferred `text_vs_geometry` gate). Wire that when geometry lands.
 - **Pricing/material match.** Lines carry `priceMatchKey` (the line key); Phase 4
   must map those to the material library for $ figures.
+
+## 6. Contract discipline
+
+**Do not invent new clarification fields later — or widen the `input_kind` /
+`source` enums — without updating the characterization tests
+(`foundationAdapter.contract.test.ts`), the `assertValidFoundationClarification`
+guard, and this doc in the SAME change.** The adapter output is a contract; it
+must not drift silently before it touches the live takeoff flow.
