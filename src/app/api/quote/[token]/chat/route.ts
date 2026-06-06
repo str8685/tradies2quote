@@ -200,20 +200,15 @@ export async function POST(
     console.error("customer-chat agent failed", e);
     // Persist the customer's message anyway so the tradie can see
     // the question even if the AI couldn't answer it.
-    const fallbackHistory: ChatHistoryEntry[] = [
-      ...existingHistory,
-      { role: "customer", content: message, timestamp: now },
-    ];
-    // Cast back to unknown so the Supabase JSON column accepts the
-    // payload without TS choking on the strict-union role field.
-    const updatedQuoteData = {
-      ...quoteData,
-      chat_history: fallbackHistory as unknown,
-    } as QuoteData;
-    await admin
-      .from("quotes")
-      .update({ quote_data: updatedQuoteData as never })
-      .eq("id", quote.id);
+    // Atomic append of just the customer's message via RPC — no
+    // read-modify-write of the whole quote_data, so a concurrent chat or
+    // tradie edit can't clobber it (lost-update fix).
+    await admin.rpc("append_quote_chat_messages", {
+      p_quote_id: quote.id,
+      p_messages: [
+        { role: "customer", content: message, timestamp: now },
+      ] as unknown,
+    } as never);
     return NextResponse.json({
       ok: true,
       reply:
@@ -224,8 +219,10 @@ export async function POST(
 
   // Append the customer message + assistant reply (+ optional note)
   // and write back to quote_data. Single round-trip update.
-  const updatedHistory: ChatHistoryEntry[] = [
-    ...existingHistory,
+  // Atomic append of the two new turns (customer + assistant) via RPC.
+  // Only chat_history is touched, so concurrent chats / tradie edits to
+  // quote_data no longer clobber each other (lost-update fix).
+  const newMessages: ChatHistoryEntry[] = [
     { role: "customer", content: message, timestamp: now },
     {
       role: "assistant",
@@ -237,18 +234,14 @@ export async function POST(
         : {}),
     },
   ];
-  const finalQuoteData = {
-    ...quoteData,
-    chat_history: updatedHistory as unknown,
-  } as QuoteData;
-  const { error: updateErr } = await admin
-    .from("quotes")
-    .update({ quote_data: finalQuoteData as never })
-    .eq("id", quote.id);
+  const { error: updateErr } = await admin.rpc("append_quote_chat_messages", {
+    p_quote_id: quote.id,
+    p_messages: newMessages as unknown,
+  } as never);
   if (updateErr) {
-    // Logging failed but we still have a reply to give the customer.
+    // Append failed but we still have a reply to give the customer.
     // Don't 500 — the conversation should continue.
-    console.error("chat_history update failed", updateErr);
+    console.error("chat_history append failed", updateErr);
   }
 
   return NextResponse.json({

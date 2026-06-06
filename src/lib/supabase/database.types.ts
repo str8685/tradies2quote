@@ -958,6 +958,24 @@ export type Database = {
           },
         ]
       }
+      stripe_webhook_events: {
+        Row: {
+          event_id: string
+          received_at: string
+          type: string | null
+        }
+        Insert: {
+          event_id: string
+          received_at?: string
+          type?: string | null
+        }
+        Update: {
+          event_id?: string
+          received_at?: string
+          type?: string | null
+        }
+        Relationships: []
+      }
       subscriptions: {
         Row: {
           created_at: string
@@ -1011,6 +1029,10 @@ export type Database = {
           p_version: number
         }
         Returns: Json
+      }
+      append_quote_chat_messages: {
+        Args: { p_messages: Json; p_quote_id: string }
+        Returns: undefined
       }
       create_invoice_from_quote: {
         Args: { p_quote_id: string }

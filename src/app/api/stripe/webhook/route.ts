@@ -80,6 +80,22 @@ export async function POST(request: NextRequest) {
 
   const admin = adminClient();
 
+  // Idempotency ledger: skip if this event id was already processed.
+  // A duplicate delivery hits the primary key and we ack without re-running.
+  {
+    const { error: dupErr } = await admin
+      .from("stripe_webhook_events")
+      .insert({ event_id: event.id, type: event.type });
+    if (dupErr) {
+      if (dupErr.code === "23505") {
+        return NextResponse.json({ received: true, duplicate: true });
+      }
+      // Non-conflict ledger error: log and continue — handlers are
+      // user_id-keyed upserts, so re-processing is safe.
+      console.error("[stripe/webhook] ledger insert failed", dupErr);
+    }
+  }
+
   try {
     switch (event.type) {
       case "checkout.session.completed": {

@@ -35,12 +35,27 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "bad_signature" }, { status: 400 });
   }
 
+  const admin = adminClient();
+
+  // Idempotency ledger: record this event id first. A duplicate Stripe
+  // delivery hits the primary key and we ack without re-processing.
+  const { error: dupErr } = await admin
+    .from("stripe_webhook_events")
+    .insert({ event_id: event.id, type: event.type });
+  if (dupErr) {
+    if (dupErr.code === "23505") {
+      return NextResponse.json({ received: true, duplicate: true });
+    }
+    // Non-conflict ledger error: log and continue — the payments UPDATE
+    // below is id-keyed + status-guarded, so processing stays safe.
+    console.error("[payments/webhook] ledger insert failed", dupErr);
+  }
+
   try {
     if (event.type === "checkout.session.completed") {
       const session = event.data.object as Stripe.Checkout.Session;
       const paymentId = session.metadata?.payment_id;
       if (paymentId && session.payment_status === "paid") {
-        const admin = adminClient();
         await admin
           .from("payments")
           .update({
