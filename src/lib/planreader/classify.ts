@@ -188,8 +188,10 @@ Rules:
 
 export type VisionClassifyDeps = {
   apiKey: string;
-  /** base64-encoded PNG of the page image. */
+  /** base64-encoded page image. */
   imageBase64: string;
+  /** Image media type (e.g. "image/png", "image/jpeg"). Defaults to PNG. */
+  mediaType?: string;
   /** Optional override for tests/injection. */
   fetchImpl?: typeof fetch;
 };
@@ -223,7 +225,7 @@ export async function classifyFromVision(
                 type: "image",
                 source: {
                   type: "base64",
-                  media_type: "image/png",
+                  media_type: deps.mediaType ?? "image/png",
                   data: deps.imageBase64,
                 },
               },

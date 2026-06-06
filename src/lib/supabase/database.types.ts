@@ -674,6 +674,115 @@ export type Database = {
         }
         Relationships: []
       }
+      plan_files: {
+        Row: {
+          byte_size: number
+          id: string
+          mime: string
+          original_filename: string
+          page_count: number
+          project_id: string | null
+          quote_id: string | null
+          status: string
+          storage_path: string
+          uploaded_at: string
+          user_id: string
+        }
+        Insert: {
+          byte_size: number
+          id?: string
+          mime: string
+          original_filename: string
+          page_count?: number
+          project_id?: string | null
+          quote_id?: string | null
+          status?: string
+          storage_path: string
+          uploaded_at?: string
+          user_id: string
+        }
+        Update: {
+          byte_size?: number
+          id?: string
+          mime?: string
+          original_filename?: string
+          page_count?: number
+          project_id?: string | null
+          quote_id?: string | null
+          status?: string
+          storage_path?: string
+          uploaded_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plan_files_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      plan_sheets: {
+        Row: {
+          classification_basis: Json
+          classification_confidence: number
+          created_at: string
+          extraction: Json | null
+          file_id: string
+          id: string
+          image_path: string
+          review_reasons: Json
+          review_required: boolean
+          sheet_label: string | null
+          sheet_number: number
+          sheet_type: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          classification_basis?: Json
+          classification_confidence?: number
+          created_at?: string
+          extraction?: Json | null
+          file_id: string
+          id?: string
+          image_path: string
+          review_reasons?: Json
+          review_required?: boolean
+          sheet_label?: string | null
+          sheet_number: number
+          sheet_type?: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          classification_basis?: Json
+          classification_confidence?: number
+          created_at?: string
+          extraction?: Json | null
+          file_id?: string
+          id?: string
+          image_path?: string
+          review_reasons?: Json
+          review_required?: boolean
+          sheet_label?: string | null
+          sheet_number?: number
+          sheet_type?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plan_sheets_file_id_fkey"
+            columns: ["file_id"]
+            isOneToOne: false
+            referencedRelation: "plan_files"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           address: string | null
