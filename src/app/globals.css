@@ -743,6 +743,35 @@ h1, h2, h3, h4, h5 {
     flex-direction: column;
     overflow: hidden;
   }
+  /* Home-indicator safe-area backstop (real-iPhone PWA only bug).
+     iOS sometimes clips the fixed bottom nav a hair short of the physical
+     bottom edge, exposing a light strip in the home-indicator zone beneath
+     the dark nav. This pseudo paints that strip the nav's dark colour.
+
+     Why a canvas ::after and not a body-level sibling:
+       - It lives INSIDE the canvas, so the splash (AppSplash renders
+         `fixed inset-0 z-[100]`, also inside the canvas) paints OVER it —
+         no black band flashes on the light loading/splash screen.
+       - The canvas is `position: fixed` with `inset: 0`, so it is the
+         containing block for this absolutely-positioned pseudo; `bottom: 0`
+         resolves to the true physical bottom under viewport-fit=cover.
+       - It only covers `env(safe-area-inset-bottom)` — the home-indicator
+         strip — where the scroller's own bottom padding guarantees there is
+         never page content, so it can't hide anything.
+       - z-index: 0 keeps it below the nav (z-40) and the splash (z-[100]);
+         the nav still paints above it, so the strip is always the nav colour
+         whether or not iOS clips the nav short. */
+  .t2q-app-canvas::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: env(safe-area-inset-bottom, 0px);
+    background: #121722;
+    z-index: 0;
+    pointer-events: none;
+  }
   /* The single, app-wide vertical scroll surface. Everything between the
      safe-area top inset and the fixed bottom nav scrolls here and nowhere
      else. `min-height: 0` lets the flex child actually shrink so its own
