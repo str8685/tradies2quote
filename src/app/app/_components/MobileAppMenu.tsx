@@ -7,9 +7,8 @@ import { MobileAppMenuClient } from "./MobileAppMenuClient";
  * Server wrapper for the mobile app menu.
  *
  * Wave 13 — fetches the current user server-side and passes `isOwner`
- * to the client menu component. Hiding the Agents item from the server-
- * rendered HTML keeps the route's existence out of non-owner client
- * bundles entirely.
+ * to the client menu component so AccountHub can keep owner-only
+ * shortcuts gated.
  *
  * Wave 14.4 — also passes the user's email so the avatar/account sheet
  * can render without a client-side Supabase round-trip.

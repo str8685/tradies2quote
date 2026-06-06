@@ -15,8 +15,8 @@ import "driver.js/dist/driver.css";
  * Anchors map to data-testid attributes already in the app (see
  * src/app/app/page.tsx, AppHeaderClient, MobileAppMenuClient). For
  * features that live on other routes (Materials, account settings),
- * we anchor to the always-visible navigation controls — mobile menu
- * trigger on phones, header tabs on desktop — so the tour can run from
+ * we anchor to the always-visible navigation controls — bottom nav
+ * on phones, header tabs on desktop — so the tour can run from
  * any /app/* page even though it's intended to fire on the dashboard.
  *
  * Gating is unchanged: `OnboardingTourGate.tsx` reads
@@ -243,22 +243,22 @@ const ALL_STEPS: ReadonlyArray<DriveStep> = [
     },
   },
   {
-    element: '[data-testid="app-header-tabs"], [data-testid="app-mobile-menu-trigger"]',
+    element: '[data-testid="app-header-tabs"], [data-testid="app-bottom-nav"]',
     popover: {
       title: "Main navigation",
       description:
-        "Use the menu to move between Home, New quote, Quotes, Invoices, Materials, Clients, and Settings. Active sections use your orange brand accent.",
+        "Use the bottom navigation to move between Home, Quotes, New, Invoices, and Materials. Active sections use your orange brand accent.",
       side: "bottom",
       align: "center",
     },
   },
   {
     element:
-      '[data-testid="app-header-tab-materials"], [data-testid="app-mobile-menu-trigger"]',
+      '[data-testid="app-header-tab-materials"], [data-testid="app-bottom-nav-materials"]',
     popover: {
       title: "Materials library",
       description:
-        "Materials is where your commonly used items and prices live. Open the menu, then choose Materials to keep your prices updated.",
+        "Materials is where your commonly used items and prices live. Keeping it updated makes future quotes more accurate.",
       side: "top",
       align: "center",
     },

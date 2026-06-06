@@ -29,8 +29,8 @@ import {
  *                                                          tooltip
  *   - Anything else (Firefox desktop, older Safari)       → renders nothing
  *
- * Pinned bottom-right. On mobile it clears the home-indicator safe area.
- * On desktop the pill sits at `bottom: 24px`.
+ * Pinned bottom-right. On mobile it sits above the bottom nav. On desktop
+ * the pill sits at `bottom: 24px`.
  *
  * Highlighted state: brand-orange fill with hi-vis yellow ring + a
  * slow pulsing shadow so it reads as "tap me" without being noisy.
@@ -146,7 +146,7 @@ export function FloatingInstallButton() {
         data-testid="floating-install-button"
         data-state={state.mode}
         data-dismissed={dismissed}
-        className="fixed right-4 z-40 flex items-center gap-2 bottom-[calc(env(safe-area-inset-bottom)+1rem)] sm:right-6 sm:bottom-6"
+        className="fixed right-4 z-40 flex items-center gap-2 bottom-[calc(5rem_+_env(safe-area-inset-bottom))] sm:right-6 sm:bottom-6"
       >
         <button
           type="button"

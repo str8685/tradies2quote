@@ -31,7 +31,8 @@ import type { QuoteStatus } from "@/lib/quote-types";
  * sent/viewed/accepted states.
  *
  * Mobile geometry:
- *   - Sits flush to the bottom and owns `env(safe-area-inset-bottom)`.
+ *   - Sits above the mobile bottom nav, which owns
+ *     `env(safe-area-inset-bottom)`.
  *   - `min-h-[56px]` per the spec.
  *   - z-50 + blur backdrop + ink-950/85 bg so scrolled content
  *     remains legible behind the bar.
@@ -270,9 +271,9 @@ export function StickyActionBar({
       <div
         data-testid="sticky-action-bar"
         className={[
-          // There is no bottom bar anymore, so this bar owns the
-          // home-indicator inset directly.
-          "fixed left-0 right-0 bottom-0 z-40 border-t border-[#E3E2DA] bg-white pb-[env(safe-area-inset-bottom)] shadow-[0_-6px_20px_-12px_rgba(10,10,10,0.18)]",
+          // Mobile bottom nav owns the home-indicator inset, so this bar
+          // sits directly above it.
+          "fixed left-0 right-0 bottom-[calc(4.05rem_+_env(safe-area-inset-bottom))] z-40 border-t border-[#E3E2DA] bg-white shadow-[0_-6px_20px_-12px_rgba(10,10,10,0.18)]",
           // min height 56 per the spec — leaves room for 44-px buttons.
           "min-h-[56px]",
           // On sm+ become a normal inline strip, no fixed positioning.

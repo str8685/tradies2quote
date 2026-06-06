@@ -1168,128 +1168,89 @@ h1, h2, h3, h4, h5 {
   border-color: rgba(255, 95, 21, 0.40);
 }
 
-/* ─── Mobile menu trigger ────────────────────────────────────────────────
-   Wave 43 — visible top-left round menu for phones. */
-.t2q-mobile-menu-trigger {
+/* ─── Mobile bottom navigation ───────────────────────────────────────────
+   Wave 44 — light, app-native tab bar: surface + border tokens, orange
+   active emphasis, readable muted inactive labels. */
+.t2q-bottomnav-bar {
   position: fixed;
-  top: calc(env(safe-area-inset-top, 0px) + 0.5rem);
-  left: 0.75rem;
-  z-index: 42;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 40;
+  display: flex;
+  align-items: stretch;
+  justify-content: space-between;
+  min-height: calc(4.05rem + env(safe-area-inset-bottom, 0px));
+  padding: 0.45rem 0.45rem calc(0.45rem + env(safe-area-inset-bottom, 0px));
+  background: var(--t2q-app-surface, #FFFFFF);
+  border-top: 1px solid var(--t2q-app-border, #DDE5EC);
+  box-shadow: 0 -10px 24px -22px rgba(15, 23, 42, 0.32);
+}
+
+.t2q-bottomnav-tab {
   display: inline-flex;
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 3.05rem;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  height: 2.875rem;
-  width: 2.875rem;
-  border-radius: 9999px;
-  border: 2px solid rgba(255, 95, 21, 0.72);
-  background:
-    radial-gradient(circle at 35% 20%, rgba(255, 255, 255, 0.14), transparent 42%),
-    #121722;
-  color: #FFFFFF;
-  box-shadow:
-    0 10px 24px -14px rgba(0, 0, 0, 0.75),
-    0 0 0 3px rgba(255, 95, 21, 0.12);
-  cursor: pointer;
-}
-.t2q-mobile-menu-trigger:active {
-  transform: scale(0.94);
-}
-
-.t2q-mobile-menu-panel {
-  position: fixed;
-  top: calc(env(safe-area-inset-top, 0px) + 3.85rem);
-  left: 0.75rem;
-  z-index: 41;
-  width: min(18.5rem, calc(100vw - 1.5rem));
-  border: 1px solid rgba(255, 95, 21, 0.28);
-  border-radius: 1.125rem;
-  background:
-    linear-gradient(180deg, rgba(23, 28, 39, 0.98), rgba(18, 23, 34, 0.98));
-  color: #F8FAFC;
-  box-shadow:
-    0 24px 54px -28px rgba(0, 0, 0, 0.84),
-    0 0 0 1px rgba(255, 255, 255, 0.04) inset;
-  padding: 0.55rem;
-  backdrop-filter: blur(18px) saturate(145%);
-  -webkit-backdrop-filter: blur(18px) saturate(145%);
-}
-
-.t2q-mobile-menu-heading {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0.45rem 0.5rem 0.55rem;
+  gap: 0.12rem;
+  border: 1px solid transparent;
+  border-radius: 0.85rem;
+  color: var(--t2q-app-muted, #607383);
   font-family: var(--font-plus-jakarta), "Inter", system-ui, sans-serif;
   font-size: 0.68rem;
-  font-weight: 700;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: #C9D2DF;
-}
-.t2q-mobile-menu-heading span:last-child {
-  color: #FF7A3D;
-}
-
-.t2q-mobile-menu-list {
-  display: grid;
-  gap: 0.25rem;
-}
-
-.t2q-mobile-menu-item,
-.t2q-mobile-menu-account {
-  display: grid;
-  grid-template-columns: 2rem 1fr auto;
-  align-items: center;
-  gap: 0.5rem;
-  min-height: 2.75rem;
-  width: 100%;
-  border: 0;
-  border-radius: 0.8rem;
-  background: transparent;
-  color: #D5DBE6;
-  padding: 0.35rem 0.55rem;
-  font-family: var(--font-plus-jakarta), "Inter", system-ui, sans-serif;
-  font-size: 0.92rem;
   font-weight: 650;
-  text-align: left;
+  line-height: 1;
+  letter-spacing: 0;
+  transition:
+    background-color 140ms ease,
+    border-color 140ms ease,
+    color 140ms ease,
+    transform 90ms ease;
 }
-.t2q-mobile-menu-item:hover,
-.t2q-mobile-menu-account:hover,
-.t2q-mobile-menu-item[aria-current="page"] {
-  background: rgba(255, 255, 255, 0.07);
-  color: #FFFFFF;
+
+.t2q-bottomnav-tab span {
+  overflow: hidden;
+  max-width: 100%;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
-.t2q-mobile-menu-item[data-primary="true"] {
-  background: #FF5F15;
-  color: #FFFFFF;
-  box-shadow: 0 10px 22px -14px rgba(255, 95, 21, 0.85);
+
+.t2q-bottomnav-icon {
+  flex: 0 0 auto;
+  stroke-width: 2.05;
 }
-.t2q-mobile-menu-item-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  height: 2rem;
-  width: 2rem;
-  border-radius: 9999px;
-  background: rgba(255, 255, 255, 0.08);
+
+.t2q-bottomnav-tab:hover {
+  color: var(--t2q-app-text, #17212B);
+  background: var(--t2q-app-surface-muted, #F8FAFC);
 }
-.t2q-mobile-menu-item[aria-current="page"] .t2q-mobile-menu-item-icon,
-.t2q-mobile-menu-account .t2q-mobile-menu-item-icon {
-  color: #FF7A3D;
+
+.t2q-bottomnav-tab:active {
+  transform: scale(0.97);
 }
-.t2q-mobile-menu-item[data-primary="true"] .t2q-mobile-menu-item-icon {
-  background: rgba(10, 10, 10, 0.16);
-  color: #FFFFFF;
+
+.t2q-bottomnav-tab[aria-current="page"] {
+  color: #C2410C;
+  background: var(--t2q-app-orange-soft, #FFF1EA);
+  border-color: #FFD4B8;
+  font-weight: 800;
+  box-shadow: inset 0 -2px 0 #FF5F15;
 }
-.t2q-mobile-menu-account {
-  margin-top: 0.45rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 0.85rem;
-  color: #F8FAFC;
+
+.t2q-bottomnav-tab[aria-current="page"] .t2q-bottomnav-icon {
+  color: #FF5F15;
+  stroke-width: 2.25;
+}
+
+.t2q-bottomnav-tab-primary {
+  color: #C2410C;
 }
 
 /* ─── Floating account avatar (mobile only) ───────────────────────────────
-   Sits opposite the new mobile menu trigger and opens the AccountHub sheet. */
+   Opens the AccountHub sheet while the bottom nav handles primary routes. */
 .t2q-account-avatar {
   position: fixed;
   top: calc(env(safe-area-inset-top, 0px) + 0.5rem);
@@ -1335,8 +1296,7 @@ body:has([data-shell="app"]) {
      iOS exposes at the very bottom matches the page — no contrasting dark
      strip, and the page background genuinely reaches the bottom edge. */
 
-  [data-shell="app"]:has([data-testid="app-splash"]) .t2q-mobile-menu-trigger,
-  [data-shell="app"]:has([data-testid="app-splash"]) .t2q-mobile-menu-panel,
+  [data-shell="app"]:has([data-testid="app-splash"]) .t2q-bottomnav-bar,
   [data-shell="app"]:has([data-testid="app-splash"]) .t2q-account-avatar {
     display: none;
   }

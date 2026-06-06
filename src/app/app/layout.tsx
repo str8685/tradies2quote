@@ -68,11 +68,9 @@ export default function AppLayout({
           cutout inset on phones. Desktop gets the inset from the
           header itself.
 
-          The mobile nav was replaced by a top-corner menu, so there is NO
-          fixed bottom bar — and therefore no bottom safe-area spacer on the
-          shell. The page background + content run cleanly to the true bottom
-          edge. Only the top inset (notch) is kept. */}
-      <div className="t2q-app-scroll min-w-0 pt-[env(safe-area-inset-top)] sm:pt-0">
+          The bottom nav owns the home-indicator safe area, so the scroll
+          region reserves the compact bar height plus the same inset. */}
+      <div className="t2q-app-scroll min-w-0 pt-[env(safe-area-inset-top)] pb-[calc(4.75rem+env(safe-area-inset-bottom))] sm:pt-0 sm:pb-0">
         {/* Trial / expired upgrade banner. Server-rendered: renders
             nothing for paid users or users still well inside their
             trial; surfaces only when there's something to act on. */}

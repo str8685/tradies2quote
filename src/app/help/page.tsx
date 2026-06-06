@@ -54,7 +54,7 @@ const FAQS: ReadonlyArray<{ q: string; a: React.ReactNode }> = [
     q: "How do I record my first quote?",
     a: (
       <>
-        Tap the round menu button, then choose <strong>New quote</strong>. You
+        Tap <strong>New</strong> in the bottom navigation bar. You
         get three tabs: <strong>Voice</strong> (record up to 3 minutes
         describing the job), <strong>Type</strong> (free-form text), and{" "}
         <strong>Scan</strong> (photograph a hand-drawn plan). Hit record →
@@ -191,7 +191,7 @@ const FAQS: ReadonlyArray<{ q: string; a: React.ReactNode }> = [
     q: "Where do I see my paid invoices and accepted quotes?",
     a: (
       <>
-        Open the menu, then choose <strong>Quotes</strong>. Filter to{" "}
+        Open <strong>Quotes</strong> from the bottom navigation bar. Filter to{" "}
         <em>Accepted</em> to see signed quotes; filter to <em>Completed</em>{" "}
         to see jobs you&apos;ve finished. Invoicing (turning an accepted quote
         into a chase-able invoice) is on the roadmap for the second post-launch

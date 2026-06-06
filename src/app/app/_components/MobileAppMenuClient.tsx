@@ -1,23 +1,17 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { Icon } from "@phosphor-icons/react";
 import {
-  AddressBook,
-  CaretRight,
-  GearSix,
   House,
-  List,
   ListBullets,
   Plus,
   Receipt,
-  Robot,
   Stack,
   UserCircle,
-  X,
 } from "@phosphor-icons/react";
 
 /**
@@ -41,9 +35,9 @@ const AccountHub = dynamic(
  * Client part of the mobile navigation.
  *
  * Wave 13 — `isOwner` is plumbed in from the server wrapper so the
- * Agents tile is hidden from non-owner tradies.
+ * AccountHub can keep owner-only shortcuts gated.
  *
- * Wave 14.4 — added an Avatar tile (rightmost) that opens a slide-up
+ * Wave 14.4 — added a mobile avatar shortcut that opens a slide-up
  * sheet with Settings + Clients + Sign out.
  *
  * Wave 15 — sheet body extracted to `<AccountHub mode="sheet">`. The
@@ -51,10 +45,8 @@ const AccountHub = dynamic(
  * defaults / Clients / Avatar upload field + owner-only shortcuts
  * (Agents, Debug, Monitor dashboard). Non-owners never see those.
  *
- * Wave 43 — mobile navigation moved out of the bottom bar and into a
- * top-left round menu button. The /app shell remains scroll-locked
- * (Wave 37), but there is no fixed bottom bar competing with the
- * home-indicator area anymore.
+ * Wave 44 — mobile navigation is a light bottom tab bar that follows
+ * the app surface/orange/muted-neutral colour system.
  */
 interface Props {
   isOwner: boolean;
@@ -64,34 +56,16 @@ interface Props {
   avatarUrl: string | null;
 }
 
-const MENU_ITEMS: ReadonlyArray<{
+const TABS: ReadonlyArray<{
   href: string;
   label: string;
   icon: Icon;
-  ownerOnly?: boolean;
-  primary?: boolean;
   testId: string;
 }> = [
   { href: "/app", label: "Home", icon: House, testId: "home" },
-  {
-    href: "/app/quotes/new",
-    label: "New quote",
-    icon: Plus,
-    primary: true,
-    testId: "new-quote",
-  },
   { href: "/app/quotes", label: "Quotes", icon: ListBullets, testId: "quotes" },
   { href: "/app/invoices", label: "Invoices", icon: Receipt, testId: "invoices" },
   { href: "/app/materials", label: "Materials", icon: Stack, testId: "materials" },
-  { href: "/app/clients", label: "Clients", icon: AddressBook, testId: "clients" },
-  { href: "/app/settings", label: "Settings", icon: GearSix, testId: "settings" },
-  {
-    href: "/app/agents",
-    label: "Agents",
-    icon: Robot,
-    ownerOnly: true,
-    testId: "agents",
-  },
 ];
 
 function isActive(href: string, pathname: string) {
@@ -102,43 +76,33 @@ function isActive(href: string, pathname: string) {
 export function MobileAppMenuClient({ isOwner, userEmail, avatarUrl }: Props) {
   const pathname = usePathname() ?? "";
   const [sheetOpen, setSheetOpen] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement | null>(null);
-  const menuButtonRef = useRef<HTMLButtonElement | null>(null);
+  const newQuoteActive = pathname === "/app/quotes/new";
 
-  const visibleItems = MENU_ITEMS.filter((item) => isOwner || !item.ownerOnly);
-
-  useEffect(() => {
-    const t = setTimeout(() => setMenuOpen(false), 0);
-    return () => clearTimeout(t);
-  }, [pathname]);
-
-  useEffect(() => {
-    if (!menuOpen) return;
-    const onDocPointerDown = (event: PointerEvent) => {
-      const target = event.target as Node;
-      if (
-        menuRef.current?.contains(target) ||
-        menuButtonRef.current?.contains(target)
-      ) {
-        return;
-      }
-      setMenuOpen(false);
-    };
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setMenuOpen(false);
-    };
-    document.addEventListener("pointerdown", onDocPointerDown);
-    document.addEventListener("keydown", onKeyDown);
-    return () => {
-      document.removeEventListener("pointerdown", onDocPointerDown);
-      document.removeEventListener("keydown", onKeyDown);
-    };
-  }, [menuOpen]);
+  const renderTab = ({ href, label, icon: IconCmp, testId }: (typeof TABS)[number]) => {
+    const active = isActive(href, pathname) && !newQuoteActive;
+    return (
+      <Link
+        key={href}
+        href={href}
+        prefetch={true}
+        aria-current={active ? "page" : undefined}
+        data-testid={`app-bottom-nav-${testId}`}
+        className="t2q-bottomnav-tab"
+      >
+        <IconCmp
+          className="t2q-bottomnav-icon"
+          size={23}
+          weight={active ? "fill" : "regular"}
+          aria-hidden="true"
+        />
+        <span>{label}</span>
+      </Link>
+    );
+  };
 
   return (
     <>
-      {/* Mobile account shortcut. Navigation lives in the top-left menu;
+      {/* Mobile account shortcut. Navigation lives in the bottom tab bar;
           this stays top-right for profile, settings, clients, and sign out. */}
       <button
         type="button"
@@ -163,75 +127,30 @@ export function MobileAppMenuClient({ isOwner, userEmail, avatarUrl }: Props) {
         )}
       </button>
 
-      <button
-        ref={menuButtonRef}
-        type="button"
-        data-testid="app-mobile-menu-trigger"
+      <nav
+        data-testid="app-bottom-nav"
         data-tour="mobile-navigation"
-        aria-label={menuOpen ? "Close navigation menu" : "Open navigation menu"}
-        aria-haspopup="menu"
-        aria-expanded={menuOpen}
-        onClick={() => setMenuOpen((open) => !open)}
-        className="t2q-mobile-menu-trigger sm:hidden"
+        aria-label="App navigation"
+        className="t2q-bottomnav-bar sm:hidden"
       >
-        {menuOpen ? (
-          <X size={24} weight="bold" aria-hidden="true" />
-        ) : (
-          <List size={26} weight="bold" aria-hidden="true" />
-        )}
-      </button>
-
-      {menuOpen ? (
-        <div
-          ref={menuRef}
-          data-testid="app-mobile-menu-panel"
-          data-is-owner={isOwner ? "true" : "false"}
-          role="menu"
-          className="t2q-mobile-menu-panel sm:hidden"
+        {TABS.slice(0, 2).map(renderTab)}
+        <Link
+          href="/app/quotes/new"
+          prefetch={true}
+          aria-current={newQuoteActive ? "page" : undefined}
+          data-testid="app-bottom-nav-new-quote"
+          className="t2q-bottomnav-tab t2q-bottomnav-tab-primary"
         >
-          <div className="t2q-mobile-menu-heading">
-            <span>Menu</span>
-            <span aria-hidden="true">T2Q</span>
-          </div>
-          <nav aria-label="App navigation" className="t2q-mobile-menu-list">
-            {visibleItems.map(({ href, label, icon: IconCmp, primary, testId }) => {
-              const active = isActive(href, pathname);
-              return (
-                <Link
-                  key={href}
-                  href={href}
-                  prefetch={true}
-                  aria-current={active ? "page" : undefined}
-                  data-primary={primary ? "true" : "false"}
-                  data-testid={`app-mobile-menu-${testId}`}
-                  role="menuitem"
-                  className="t2q-mobile-menu-item"
-                  onClick={() => setMenuOpen(false)}
-                >
-                  <span className="t2q-mobile-menu-item-icon" aria-hidden="true">
-                    <IconCmp size={22} weight={active || primary ? "fill" : "regular"} />
-                  </span>
-                  <span className="t2q-mobile-menu-item-label">{label}</span>
-                  <CaretRight size={16} weight="bold" aria-hidden="true" />
-                </Link>
-              );
-            })}
-          </nav>
-          <button
-            type="button"
-            role="menuitem"
-            className="t2q-mobile-menu-account"
-            onClick={() => {
-              setMenuOpen(false);
-              setSheetOpen(true);
-            }}
-          >
-            <UserCircle size={22} weight="fill" aria-hidden="true" />
-            <span>Account hub</span>
-            <CaretRight size={16} weight="bold" aria-hidden="true" />
-          </button>
-        </div>
-      ) : null}
+          <Plus
+            className="t2q-bottomnav-icon"
+            size={25}
+            weight={newQuoteActive ? "fill" : "bold"}
+            aria-hidden="true"
+          />
+          <span>New</span>
+        </Link>
+        {TABS.slice(2).map(renderTab)}
+      </nav>
 
       {sheetOpen ? (
         <div

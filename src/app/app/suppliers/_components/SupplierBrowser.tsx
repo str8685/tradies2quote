@@ -369,10 +369,10 @@ export function SupplierBrowser({ initialUrl }: { initialUrl: string }) {
         )}
       </div>
 
-      {/* There is no bottom bar anymore, so this bar owns the
-          home-indicator safe area directly. */}
+      {/* Sits above the mobile bottom nav, which owns the home-indicator
+          safe area. */}
       <div
-        className="fixed inset-x-0 bottom-0 z-50 px-4 pt-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] sm:px-6 sm:pb-[calc(env(safe-area-inset-bottom)+1rem)]"
+        className="fixed inset-x-0 bottom-[calc(4.05rem_+_env(safe-area-inset-bottom))] z-50 px-4 pt-3 pb-3 sm:bottom-0 sm:px-6 sm:pb-[calc(env(safe-area-inset-bottom)+1rem)]"
         style={{
           background:
             "linear-gradient(to top, rgba(10,10,10,0.95) 50%, rgba(10,10,10,0))",
