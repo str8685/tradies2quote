@@ -750,7 +750,11 @@ h1, h2, h3, h4, h5 {
   .t2q-app-scroll {
     flex: 1 1 auto;
     min-height: 0;
-    padding-bottom: max(env(safe-area-inset-bottom, 0px), 0.75rem) !important;
+    /* No bottom safe-area padding on the scroll shell. There is no fixed
+       bottom bar (the mobile nav was replaced by a top-corner menu), so the
+       content + canvas background extend cleanly to the true bottom edge with
+       no spacer / dead zone. Safe-area padding belongs only on a genuine
+       fixed bottom element — there are none here. */
     /* Horizontal clip moved here from the canvas: the canvas must stay
        overflow-visible so it can't clip the fixed mobile controls, so the
        inner scroller owns horizontal clipping of page content instead. */

@@ -43,7 +43,7 @@ export default function AppLayout({
     <div
       data-shell="app"
       data-theme="light"
-      className="t2q-app-canvas min-h-screen lg:overflow-x-hidden lg:grid lg:grid-cols-[24px_1fr_24px]"
+      className="t2q-app-canvas min-h-dvh lg:overflow-x-hidden lg:grid lg:grid-cols-[24px_1fr_24px]"
     >
       {/* Wave 39 — keyboard/visualViewport fallback. Renders null; updates the
           --app-height CSS var only while the on-screen keyboard is open. */}
@@ -72,9 +72,11 @@ export default function AppLayout({
           cutout inset on phones. Desktop gets the inset from the
           header itself.
 
-          The mobile menu no longer reserves a bottom bar; the scroller
-          only needs the device safe-area inset at the bottom. */}
-      <div className="t2q-app-scroll min-w-0 pt-[env(safe-area-inset-top)] pb-[max(env(safe-area-inset-bottom),0.75rem)] sm:pt-0 sm:pb-0">
+          The mobile nav was replaced by a top-corner menu, so there is NO
+          fixed bottom bar — and therefore no bottom safe-area spacer on the
+          shell. The page background + content run cleanly to the true bottom
+          edge. Only the top inset (notch) is kept. */}
+      <div className="t2q-app-scroll min-w-0 pt-[env(safe-area-inset-top)] sm:pt-0">
         {/* Trial / expired upgrade banner. Server-rendered: renders
             nothing for paid users or users still well inside their
             trial; surfaces only when there's something to act on. */}
