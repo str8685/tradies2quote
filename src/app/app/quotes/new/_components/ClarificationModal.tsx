@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { CaretLeft, CaretRight, X } from "@phosphor-icons/react/dist/ssr";
 import type { Clarification } from "@/lib/clarifications";
 
@@ -210,7 +211,13 @@ export function ClarificationModal({
     }));
   }
 
-  return (
+  // Portal to <body> so the modal escapes the /app scroll container's
+  // stacking context. Inside `.t2q-app-scroll` its z-index is trapped below
+  // the fixed bottom nav, which then covers the footer (Back / Skip /
+  // Continue). At the body level the nav can no longer overlap it.
+  if (typeof document === "undefined") return null;
+
+  return createPortal(
     <div
       data-testid="clarification-modal"
       role="dialog"
@@ -395,7 +402,8 @@ export function ClarificationModal({
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
