@@ -131,7 +131,8 @@ export type BBox = {
 
 export type OcrBlock = {
   text: string;
-  bbox: BBox;
+  /** Null in Phase 2 (text-only OCR); populated once geometry coords exist. */
+  bbox: BBox | null;
   confidence: number;
 };
 
