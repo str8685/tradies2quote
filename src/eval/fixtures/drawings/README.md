@@ -48,3 +48,52 @@ part that depends on the model.
   `scan-cases.ts` can grow ahead of the photos.
 - Real photos are intentionally **not committed** (see `.gitignore` in this
   folder) — they can be large and may contain job/site details.
+
+---
+
+# Plan-reader eval fixtures (multi-discipline)
+
+A second harness lives here for the **plan-reader** flow (classification +
+OCR/scale/dimension extraction across deck / floor-plan / foundation sheets).
+It shares this folder but uses its own case list and runner.
+
+## How to add a plan sheet
+
+1. **Export ONE sheet per image.** The plan-reader classifies and extracts
+   per-sheet, so split a multi-page PDF into page images first (PNG or JPG).
+   Save here as `src/eval/fixtures/drawings/<id>.png`.
+2. **Read the truth yourself:** the sheet type (`deck` / `floor_plan` /
+   `foundation` / `elevation` / `section_detail` / `schedule`), the printed
+   **scale** (e.g. `1:100`), the **units**, and a few key dimensions in
+   **metres**.
+3. **Add a case** to [`../../plan-reader-cases.ts`](../../plan-reader-cases.ts)
+   pointing `image` at your file. Leave any field you haven't measured OUT —
+   never invent an expected value.
+4. **Run it:**
+
+   ```bash
+   npm run eval:plans
+   ```
+
+## What you get
+
+A measured baseline (not a guess) — per sheet plus overall:
+
+```
+── PLAN-READER EVAL ──────────────────────────────
+  ✅ deck-rect-6x4    pred=deck(0.93) scale=y ocr=0.88 dims=2/2 → extracted
+  gate detail:
+    deck-rect-6x4     classification:pass scale:pass ocr:pass required_dims_present:pass ...
+──────────────────────────────────────────────────
+  classification accuracy:   5/6 (83%)
+  scale-extraction success:  4/5 (80%)
+  required-dims gate match:   5/5 (100%)
+  expected dims found:        7/9 (78%)
+  avg OCR confidence:         0.85
+──────────────────────────────────────────────────
+```
+
+This harness is **informational** — it asserts only that the pipeline ran, and
+prints the metrics. It does NOT hard-fail on accuracy until a baseline is agreed
+(no fake pass/fail). Cases whose image is missing are skipped, so the coverage
+checklist in `plan-reader-cases.ts` can grow ahead of the fixtures.
