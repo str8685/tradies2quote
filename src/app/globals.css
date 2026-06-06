@@ -727,13 +727,18 @@ h1, h2, h3, h4, h5 {
 @media (max-width: 639px) {
   .t2q-app-canvas {
     position: fixed;
+    /* Anchor to all four edges instead of capping height. With
+       `viewport-fit=cover` (set app-wide) `inset: 0` covers the FULL
+       physical screen — including the home-indicator safe-area strip —
+       whereas `height: 100dvh` stops short of it on iOS. A `position:
+       fixed` child (the bottom nav) is clipped to this ancestor's box,
+       so the box must reach the true bottom for the nav's
+       `bottom: 0` + safe-area padding to fill the home indicator with
+       the dark nav colour. No light page band shows beneath the nav. */
     top: 0;
     left: 0;
     right: 0;
-    /* `100vh` fallback first for browsers without dvh; the var (default
-       `100dvh`) wins everywhere modern and tracks the visible viewport. */
-    height: 100vh;
-    height: var(--app-height, 100dvh);
+    bottom: 0;
     display: flex;
     flex-direction: column;
     overflow: hidden;

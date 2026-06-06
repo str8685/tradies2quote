@@ -40,7 +40,6 @@ export default function AppLayout({
   children: React.ReactNode;
 }) {
   return (
-    <>
     <div
       data-shell="app"
       data-theme="light"
@@ -99,15 +98,5 @@ export default function AppLayout({
           tour's JS chunk. */}
       <OnboardingTourGate />
     </div>
-      {/* Body-level dark floor — rendered OUTSIDE the fixed/clipping app
-          canvas, so iOS can't clip it the way it clipped the in-canvas
-          version. Fills the home-indicator safe-area strip with the nav
-          colour (#121722) so no light page band shows under the bottom nav.
-          Mobile-only; pointer-events-none so it never eats taps. */}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none fixed inset-x-0 bottom-0 z-[45] h-[env(safe-area-inset-bottom)] bg-[#121722] sm:hidden"
-      />
-    </>
   );
 }
