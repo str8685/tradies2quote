@@ -1328,11 +1328,6 @@ body:has([data-shell="app"]) {
   display: flex;
   align-items: stretch;
   background: #121722;
-  border: 0;
-  border-radius: 0;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.04),
-    0 -8px 22px -18px rgba(0, 0, 0, 0.7);
   padding: 0.08rem 0.42rem;
   z-index: 40;
 }
@@ -1349,9 +1344,6 @@ body:has([data-shell="app"]) {
 }
 [data-theme="light"] .t2q-bottomnav-bar {
   background: #1B1F2A !important;
-  border: 0 !important;
-  border-radius: 0 !important;
-  box-shadow: 0 -8px 22px -18px rgba(0, 0, 0, 0.7) !important;
 }
 
 /* ─── "Show working" disclosure — light-mode readability ──────────────────
@@ -1645,11 +1637,6 @@ body:has([data-shell="app"]) {
    mobile nav rule appears later in this file and overrides these values. */
 [data-shell="app"][data-theme="light"] .t2q-bottomnav-bar {
   background: #FFFFFF !important;
-  border: 1px solid #E8E6DD !important;
-  border-radius: 1.5rem !important;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.8),
-    0 12px 32px -8px rgba(10, 10, 10, 0.16) !important;
 }
 [data-shell="app"][data-theme="light"] .t2q-bottomnav-tile {
   color: #6B6B6B;
@@ -1983,11 +1970,6 @@ body:has([data-shell="app"]) {
   padding: 0.08rem 0.42rem;
   background-color: #121722 !important;
   background-image: linear-gradient(180deg, #171C27 0%, #121722 100%) !important;
-  border: 0 !important;
-  border-radius: 0 !important;
-  box-shadow:
-    0 -8px 22px -18px rgba(0, 0, 0, 0.7),
-    inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
   overflow: visible;
 }
 
