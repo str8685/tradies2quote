@@ -698,79 +698,31 @@ h1, h2, h3, h4, h5 {
   background-repeat: no-repeat;
 }
 
-/* ─── Wave 37 — mobile /app shell scroll lock ───────────────────────────────
-   THE permanent fix for the iOS / installed-PWA "whole UI bounces & the
-   fixed mobile controls drift while scrolling" bug.
-
-   Root cause of the old behaviour: on phones the document/body was the
-   scrolling surface, so iOS Safari's rubber-band overscroll floated the
-   entire app, and `position: fixed` mobile controls visually detached and
-   bounced during that overscroll / URL-bar animation.
-
-   The fix: on phones only (`max-width: 639px`), the /app shell becomes a
-   fixed, full-height, NON-scrolling flex column, and a single inner wrapper
-   (`.t2q-app-scroll`) becomes the ONE true vertical scroll surface. Because
-   the document/body no longer scrolls, neither fixed controls nor the
-   shell can drift, and `overscroll-behavior: contain` on the inner scroller
-   stops scroll-chaining from leaking back out to the page.
-
-   Scoped to `max-width: 639px` so tablet/desktop — which use the top header,
-   the `lg:grid` rails and normal page scroll — are completely unaffected.
-   Matches the mobile menu's own `< 640px` visibility. */
-:root {
-  /* Default tracks the live (dynamic) viewport. A future visualViewport
-     listener can overwrite this with a px value to follow the iOS keyboard;
-     no JS is required for the scroll-lock itself. */
-  --app-height: 100dvh;
-}
+/* ─── Mobile /app shell — natural full-height flow ──────────────────────────
+   Phones (`max-width: 639px`) use plain document flow: the `.t2q-app-canvas`
+   fills the viewport via `flex-1 min-h-dvh` and the document/body is the
+   scroll surface. Rubber-band/bounce is killed by `overscroll-behavior: none`
+   on html/body (below). The earlier `position: fixed; inset: 0` scroll-lock
+   was removed because its box could not reach the iOS home-indicator edge
+   (it left a cream strip), and the `--app-height` keyboard var it relied on
+   had no remaining reader — so AppViewportLock and the var are both gone. */
 
 @media (max-width: 639px) {
-  .t2q-app-canvas {
-    position: fixed;
-    /* Anchor to all four edges instead of capping height. With
-       `viewport-fit=cover` (set app-wide) `inset: 0` covers the full
-       physical screen while the floating mobile controls sit inside
-       the safe area. */
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    display: flex;
-    flex-direction: column;
-    /* Deliberately NO `overflow: hidden` here. Fixed mobile controls can be
-       clipped by overflow-hidden ancestors on iOS. Horizontal overflow is
-       clipped on the inner scroller instead; the shell still can't scroll or
-       bounce because the canvas is `position: fixed` and the body sits behind
-       it. */
-  }
-  /* The single, app-wide vertical scroll surface. Everything between the
-     safe-area top inset and bottom inset scrolls here and nowhere
-     else. `min-height: 0` lets the flex child actually shrink so its own
-     overflow (not the shell's) does the scrolling. */
+  /* Natural document flow on phones — NO fixed shell. The /app canvas is a
+     normal flex child (flex-1 + min-h-dvh on the element) that fills the
+     viewport, and the document/body is the scroll surface. The old
+     `position: fixed; inset: 0` shell did not reliably reach the iOS
+     home-indicator edge (it left the cream strip); in natural flow the
+     canvas + body background run to the true bottom under viewport-fit=cover,
+     with nothing pinned short of the edge. Bounce is prevented solely by
+     `overscroll-behavior: none` below — so the old `--app-height` keyboard
+     hack and the AppViewportLock component are deleted. */
   .t2q-app-scroll {
-    flex: 1 1 auto;
-    min-height: 0;
-    /* No bottom safe-area padding on the scroll shell. There is no fixed
-       bottom bar (the mobile nav was replaced by a top-corner menu), so the
-       content + canvas background extend cleanly to the true bottom edge with
-       no spacer / dead zone. Safe-area padding belongs only on a genuine
-       fixed bottom element — there are none here. */
-    /* Horizontal clip moved here from the canvas: the canvas must stay
-       overflow-visible so it can't clip the fixed mobile controls, so the
-       inner scroller owns horizontal clipping of page content instead. */
+    /* Clip horizontal overflow of page content. */
     overflow-x: hidden;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-    /* `none` (was `contain`): also kills the inner rubber-band bounce at the
-       top/bottom of the scroll content, not just scroll-chaining — so nothing
-       in the /app shell visibly "moves inside the screen" on iOS. Content
-       still scrolls normally; it just no longer bounces past the ends. */
-    overscroll-behavior-y: none;
   }
-  /* Backstop: the document itself must never rubber-band on phones. The
-     fixed shell already prevents body scroll, but pinning overscroll to
-     `none` here stops any pull-to-refresh / bounce leaking through the
-     installed PWA / iOS Safari. */
+  /* The document must never rubber-band on phones — the sole bounce guard now
+     that the fixed scroll-lock is gone. */
   html,
   body {
     overscroll-behavior: none;

@@ -1,5 +1,4 @@
 import { SideMeasureTape } from "../_components/app/SideMeasureTape";
-import { AppViewportLock } from "./_components/AppViewportLock";
 import AppSplash from "./_components/AppSplash";
 import { MobileAppMenu } from "./_components/MobileAppMenu";
 import { OnboardingTourGate } from "./_components/OnboardingTourGate";
@@ -43,11 +42,8 @@ export default function AppLayout({
     <div
       data-shell="app"
       data-theme="light"
-      className="t2q-app-canvas min-h-dvh lg:overflow-x-hidden lg:grid lg:grid-cols-[24px_1fr_24px]"
+      className="t2q-app-canvas flex-1 min-h-dvh lg:overflow-x-hidden lg:grid lg:grid-cols-[24px_1fr_24px]"
     >
-      {/* Wave 39 — keyboard/visualViewport fallback. Renders null; updates the
-          --app-height CSS var only while the on-screen keyboard is open. */}
-      <AppViewportLock />
       {/*
         Status-bar safe-area guard. Kept transparent so the installed
         app feels full-screen, while the fixed shell still owns the
