@@ -104,7 +104,12 @@ export function MobileBottomNavClient({ isOwner, userEmail, avatarUrl }: Props) 
         aria-current={active ? "page" : undefined}
         data-testid={`app-bottom-nav-${label.toLowerCase()}`}
       >
-        <IconCmp size={22} weight={active ? "fill" : "regular"} aria-hidden="true" />
+        <IconCmp
+          className="t2q-bottomnav-icon"
+          size={26}
+          weight={active ? "fill" : "regular"}
+          aria-hidden="true"
+        />
         <span>{label}</span>
       </Link>
     );
@@ -156,7 +161,12 @@ export function MobileBottomNavClient({ isOwner, userEmail, avatarUrl }: Props) 
             data-testid="app-bottom-nav-new"
             className="t2q-bottomnav-fab"
           >
-            <Plus size={26} weight="bold" aria-hidden="true" />
+            <Plus
+              className="t2q-bottomnav-fab-icon"
+              size={32}
+              weight="bold"
+              aria-hidden="true"
+            />
           </Link>
         </div>
 
