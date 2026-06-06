@@ -46,6 +46,7 @@ const TABS = [
   { href: "/app/quotes", label: "Quotes", ownerOnly: false },
   { href: "/app/invoices", label: "Invoices", ownerOnly: false },
   { href: "/app/materials", label: "Materials", ownerOnly: false },
+  { href: "/app/weather", label: "Weather", ownerOnly: false },
   // Wave 13: Agents tab is owner-only.
   { href: "/app/agents", label: "Agents", ownerOnly: true },
   { href: "/app/clients", label: "Clients", ownerOnly: false },
