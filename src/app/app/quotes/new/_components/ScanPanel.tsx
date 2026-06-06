@@ -408,16 +408,49 @@ export function ScanPanel({
           onRedo={fullReset}
         />
       ) : state === "review-dims" && scanResult ? (
-        <DimensionReview
-          buildType={scanResult.buildType}
-          plan={scanResult.plan}
-          jobType={scanResult.detectedType}
-          previewUrl={previewUrl}
-          dimensions={editedDimensions}
-          onDimensionsChange={setEditedDimensions}
-          onGenerate={generateMaterials}
-          onBack={backToSetup}
-        />
+        <>
+          {/* Detected-vs-picked notice. The drawing is the source of truth
+              (8a6d40b), so when the tradie's optional job-type pick differs
+              from what the AI read off the image, tell them we went with the
+              drawing — and how to override (re-scan with a different pick). */}
+          {jobType && jobType !== scanResult.detectedType ? (
+            <div
+              data-testid="scan-type-mismatch-notice"
+              className="mb-4 flex items-start gap-3 rounded-lg border border-hivis/40 bg-hivis/10 p-3 sm:p-4"
+            >
+              <Warning
+                size={18}
+                weight="bold"
+                className="mt-0.5 shrink-0 text-hivis"
+                aria-hidden="true"
+              />
+              <p className="text-xs leading-relaxed text-ink-200 sm:text-sm">
+                You picked{" "}
+                <span className="font-semibold text-white">{jobType}</span>, but
+                this drawing looks like{" "}
+                <span className="font-semibold text-white">
+                  {scanResult.buildType || scanResult.detectedType}
+                </span>
+                . We&apos;ve read it as{" "}
+                <span className="font-semibold text-white">
+                  {scanResult.detectedType}
+                </span>{" "}
+                from the drawing. If that&apos;s wrong, go back, change the job
+                type and re-scan.
+              </p>
+            </div>
+          ) : null}
+          <DimensionReview
+            buildType={scanResult.buildType}
+            plan={scanResult.plan}
+            jobType={scanResult.detectedType}
+            previewUrl={previewUrl}
+            dimensions={editedDimensions}
+            onDimensionsChange={setEditedDimensions}
+            onGenerate={generateMaterials}
+            onBack={backToSetup}
+          />
+        </>
       ) : (
         <ScanSetup
           state={state}

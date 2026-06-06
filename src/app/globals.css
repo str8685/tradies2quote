@@ -747,7 +747,19 @@ h1, h2, h3, h4, h5 {
     min-height: 0;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
-    overscroll-behavior-y: contain;
+    /* `none` (was `contain`): also kills the inner rubber-band bounce at the
+       top/bottom of the scroll content, not just scroll-chaining — so nothing
+       in the /app shell visibly "moves inside the screen" on iOS. Content
+       still scrolls normally; it just no longer bounces past the ends. */
+    overscroll-behavior-y: none;
+  }
+  /* Backstop: the document itself must never rubber-band on phones. The
+     fixed shell already prevents body scroll, but pinning overscroll to
+     `none` here stops any pull-to-refresh / bounce leaking through the
+     installed PWA / iOS Safari. */
+  html,
+  body {
+    overscroll-behavior: none;
   }
 }
 
