@@ -37,8 +37,35 @@ import {
 /** Local scope tag until "foundation" is promoted into ScopeType. */
 export type FoundationScope = "foundation";
 
+/** How the review UI should render the answer control. */
+export type ClarificationInputKind =
+  | "number"
+  | "dimensions_pair"
+  | "select"
+  | "text";
+
+/** Why this clarification was raised. */
+export type ClarificationSource =
+  | "missing_required_input"
+  | "invalid_value"
+  | "conflict";
+
+/**
+ * Machine-usable clarification shape. Extends the shared ClarificationQuestion
+ * with explicit rendering + semantics metadata so a future review UI can drive
+ * itself programmatically (no string-sniffing):
+ *
+ *   input_kind     — which control to render (number / dimensions_pair / …)
+ *   required       — is this a REQUIRED input (vs an optional one)?
+ *   source         — missing_required_input | invalid_value | conflict
+ *   display_order  — stable sort key for consistent UI ordering
+ */
 export type FoundationClarification = Omit<ClarificationQuestion, "scope"> & {
   scope: FoundationScope;
+  input_kind: ClarificationInputKind;
+  required: boolean;
+  source: ClarificationSource;
+  display_order: number;
 };
 
 export type FoundationScopeResult = Omit<ScopeResult, "scope" | "clarifications"> & {
@@ -61,73 +88,110 @@ type QuestionSpec = {
   hint?: string;
   unit?: string;
   suggestions?: string[];
+  input_kind: ClarificationInputKind;
+  /** Is the underlying input a REQUIRED measurement (vs optional)? */
+  required: boolean;
+  /** Stable UI sort key. */
+  display_order: number;
 };
 
-/** Match a calculator `missing` string to a clarification spec. */
+// Static, deterministic metadata per known field. display_order gives the UI
+// a stable top-to-bottom ordering regardless of how the calculator happens to
+// list the missing fields.
+const FIELD_META: Record<string, QuestionSpec> = {
+  slab_size: {
+    field: "slab_size",
+    question: "What are the slab length and width in metres?",
+    hint: "Or give the total slab area in m² if it's not a simple rectangle.",
+    unit: "m",
+    input_kind: "dimensions_pair",
+    required: true,
+    display_order: 1,
+  },
+  slab_perimeter_m: {
+    field: "slab_perimeter_m",
+    question: "What is the slab perimeter in metres?",
+    hint: "Add up all the outside edges of the slab.",
+    unit: "m",
+    input_kind: "number",
+    required: true,
+    display_order: 2,
+  },
+  slab_thickness_mm: {
+    field: "slab_thickness_mm",
+    question: "What is the slab thickness in mm?",
+    hint: "Most residential slabs are 100–150 mm.",
+    unit: "mm",
+    suggestions: ["100", "125", "150"],
+    input_kind: "number",
+    required: true,
+    display_order: 3,
+  },
+  footing_width_mm: {
+    field: "footing_width_mm",
+    question: "How wide are the footings in mm?",
+    hint: "Measured across the bottom of the footing trench.",
+    unit: "mm",
+    suggestions: ["300", "400", "450"],
+    input_kind: "number",
+    required: true,
+    display_order: 4,
+  },
+  footing_depth_mm: {
+    field: "footing_depth_mm",
+    question: "How deep are the footings in mm?",
+    hint: "From the underside of the slab to the bottom of the footing.",
+    unit: "mm",
+    suggestions: ["400", "450", "600"],
+    input_kind: "number",
+    required: true,
+    display_order: 5,
+  },
+  internal_footing_run_m: {
+    field: "internal_footing_run_m",
+    question: "How many metres of internal (load-bearing) footings are there?",
+    hint: "Enter 0 if the footings are only around the perimeter.",
+    unit: "m",
+    input_kind: "number",
+    required: false, // optional — defaults to 0 (no internal footings)
+    display_order: 6,
+  },
+};
+
+const FALLBACK_META = (field: string): QuestionSpec => ({
+  field,
+  question: `Please check: ${field}.`,
+  input_kind: "text",
+  required: false,
+  display_order: 99,
+});
+
+/** Match a calculator `missing` string to its field metadata. */
 function specForMissing(missing: string): QuestionSpec {
   if (missing.includes("slab_length_m") || missing.includes("slab_area_m2")) {
-    return {
-      field: "slab_size",
-      question: "What are the slab length and width in metres?",
-      hint: "Or give the total slab area in m² if it's not a simple rectangle.",
-      unit: "m",
-    };
+    return FIELD_META.slab_size;
   }
-  if (missing.includes("slab_perimeter_m")) {
-    return {
-      field: "slab_perimeter_m",
-      question: "What is the slab perimeter in metres?",
-      hint: "Add up all the outside edges of the slab.",
-      unit: "m",
-    };
-  }
-  if (missing.includes("slab_thickness_mm")) {
-    return {
-      field: "slab_thickness_mm",
-      question: "What is the slab thickness in mm?",
-      hint: "Most residential slabs are 100–150 mm.",
-      unit: "mm",
-      suggestions: ["100", "125", "150"],
-    };
-  }
-  if (missing.includes("footing_width_mm")) {
-    return {
-      field: "footing_width_mm",
-      question: "How wide are the footings in mm?",
-      hint: "Measured across the bottom of the footing trench.",
-      unit: "mm",
-      suggestions: ["300", "400", "450"],
-    };
-  }
-  if (missing.includes("footing_depth_mm")) {
-    return {
-      field: "footing_depth_mm",
-      question: "How deep are the footings in mm?",
-      hint: "From the underside of the slab to the bottom of the footing.",
-      unit: "mm",
-      suggestions: ["400", "450", "600"],
-    };
-  }
-  if (missing.includes("internal_footing_run_m")) {
-    return {
-      field: "internal_footing_run_m",
-      question: "How many metres of internal (load-bearing) footings are there?",
-      hint: "Enter 0 if the footings are only around the perimeter.",
-      unit: "m",
-    };
-  }
-  // Config-consistency problems (e.g. mesh lap >= sheet) are not a tradie
-  // measurement — surface them plainly so they're not silently swallowed.
-  return {
-    field: missing,
-    question: `Please check: ${missing}.`,
-  };
+  if (missing.includes("slab_perimeter_m")) return FIELD_META.slab_perimeter_m;
+  if (missing.includes("slab_thickness_mm")) return FIELD_META.slab_thickness_mm;
+  if (missing.includes("footing_width_mm")) return FIELD_META.footing_width_mm;
+  if (missing.includes("footing_depth_mm")) return FIELD_META.footing_depth_mm;
+  if (missing.includes("internal_footing_run_m")) return FIELD_META.internal_footing_run_m;
+  // Config-consistency problems (e.g. mesh lap >= sheet) — surfaced plainly,
+  // never silently swallowed.
+  return FALLBACK_META(missing);
 }
 
-function clarificationFor(missing: string, index: number): FoundationClarification {
+/** Classify why the field was raised, from the calculator's message text. */
+function sourceFor(missing: string): ClarificationSource {
+  // Invalid-value messages from the calculator contain "must be" / "smaller than".
+  if (/must be|smaller than|>=/i.test(missing)) return "invalid_value";
+  return "missing_required_input";
+}
+
+function clarificationFor(missing: string): FoundationClarification {
   const spec = specForMissing(missing);
   return {
-    id: `foundation_clar_${index + 1}`,
+    id: `foundation_clar_${spec.field}`,
     scope: "foundation",
     field: spec.field,
     question: spec.question,
@@ -135,6 +199,10 @@ function clarificationFor(missing: string, index: number): FoundationClarificati
     blocking: true,
     suggestions: spec.suggestions,
     unit: spec.unit,
+    input_kind: spec.input_kind,
+    required: spec.required,
+    source: sourceFor(missing),
+    display_order: spec.display_order,
   };
 }
 
@@ -255,7 +323,9 @@ export function runFoundationCalculator(
     takeoff = calculateFoundationTakeoff(input);
   } catch (err) {
     if (err instanceof FoundationInputError) {
-      const clarifications = err.missing.map((m, i) => clarificationFor(m, i));
+      const clarifications = err.missing
+        .map((m) => clarificationFor(m))
+        .sort((a, b) => a.display_order - b.display_order);
       return {
         scope: "foundation",
         status: "blocked",
