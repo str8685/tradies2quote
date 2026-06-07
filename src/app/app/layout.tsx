@@ -1,4 +1,3 @@
-import type { Viewport } from "next";
 import { SideMeasureTape } from "../_components/app/SideMeasureTape";
 import AppSplash from "./_components/AppSplash";
 import { MobileAppMenu } from "./_components/MobileAppMenu";
@@ -6,22 +5,6 @@ import { OnboardingTourGate } from "./_components/OnboardingTourGate";
 import { TopProgressBar } from "./_components/TopProgressBar";
 import { TrialBanner } from "./_components/TrialBanner";
 import { BetaNoticeBanner } from "./_components/BetaNoticeBanner";
-
-/**
- * /app-scoped viewport. The root layout sets `theme-color: #0A0A0A` (dark) for
- * the marketing landing, but the authenticated /app shell is LIGHT. On iOS
- * standalone, `theme-color` is what the OS tints chrome with and uses to render
- * around the safe areas — a DARK theme-color on a WHITE app lets the system
- * paint a contrasting transition at the bottom safe-area / home-indicator edge.
- * This overrides theme-color to the nav surface (#FFFFFF) for /app routes so
- * the OS-rendered bottom area matches the nav exactly. `viewportFit: cover` is
- * re-stated so the per-segment merge can't drop the edge-to-edge behaviour the
- * safe-area insets depend on.
- */
-export const viewport: Viewport = {
-  viewportFit: "cover",
-  themeColor: "#FFFFFF",
-};
 
 /**
  * Visual layout for /app/* routes.
@@ -59,12 +42,11 @@ export default function AppLayout({
     <div
       data-shell="app"
       data-theme="light"
-      className="t2q-app-canvas flex-1 min-h-dvh lg:overflow-x-hidden lg:grid lg:grid-cols-[24px_1fr_24px]"
+      className="t2q-app-canvas min-h-dvh overflow-x-hidden lg:grid lg:grid-cols-[24px_1fr_24px]"
     >
       {/*
         Status-bar safe-area guard. Kept transparent so the installed
-        app feels full-screen, while the fixed shell still owns the
-        whole viewport.
+        app feels full-screen edge-to-edge under the notch.
       */}
       <div
         aria-hidden="true"
@@ -80,17 +62,12 @@ export default function AppLayout({
         holdMs={2600}
       />
       <SideMeasureTape />
-      {/* The ONE scroll region of the mobile app shell.
-
-          On phones (≤639px) globals.css makes `.t2q-app-canvas` a ROOT FIXED
-          shell (`position:fixed; inset:0`) — anchored to the physical viewport
-          edges, NOT height:100dvh (which resolved short in iOS standalone and
-          left a cream strip in the home-indicator zone). THIS element is the
-          only scroll container (`flex:1; overflow-y:auto`), and the bottom nav
-          (`.t2q-bottomnav-bar`, rendered by <MobileAppMenu/> below) is the
-          shell's LAST FLEX CHILD — so it physically IS the bottom edge and its
-          own background fills the safe-area inset. No strip, no spacer, no
-          overlay.
+      {/* App content scroll region. Canonical mobile shell (see globals.css
+          `@media (max-width: 639px)`): the page is normal document flow; the
+          bottom nav (`.t2q-bottomnav-bar`, rendered by <MobileAppMenu/> below)
+          is `position:fixed; bottom:0` and its OWN background + safe-area
+          padding paint the home-indicator zone — so the nav alone owns the
+          bottom edge. globals.css pads this region's bottom to clear the nav.
 
           Safe-area handling: the top notch inset lives here
           (`pt-[env(safe-area-inset-top)]`, dropped at `sm` where the header

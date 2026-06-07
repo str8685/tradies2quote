@@ -1262,76 +1262,28 @@ body:has([data-shell="app"]) {
   background: #F5F4EE;
 }
 
-/* ── Mobile app-shell: ROOT FIXED SHELL (phones ≤639px) ────────────────────
-   The previous revision locked the shell with `height:100dvh`. On a real
-   iPhone in standalone/PWA mode `100dvh` (and a fixed `bottom:0`) resolve to
-   the SAFE-AREA bottom, NOT the physical bottom — so the shell stopped above
-   the home-indicator zone and the propagated root background (cream) showed in
-   that zone beneath the nav. That is the strip.
+/* ── Mobile app-shell (phones ≤639px) — canonical fixed-nav pattern ─────────
+   Normal document flow. The bottom nav (`.t2q-bottomnav-bar`, base rule above)
+   is `position:fixed; bottom:0` with its OWN background and
+   `padding-bottom: env(safe-area-inset-bottom)` — so the NAV itself paints the
+   home-indicator zone and is the single element that owns the bottom edge. The
+   scroll content is padded to clear it. html/body are the cream paper colour
+   (set just above), the same colour the splash and the page use — so the root
+   layer behind everything can never contrast at the screen edge.
 
-   Fix: stop depending on dvh. Anchor the canvas to all four PHYSICAL viewport
-   edges with `position:fixed; inset:0` (with viewport-fit=cover this reaches
-   the true edges, no dvh math), and make the bottom nav the LAST FLEX CHILD of
-   that shell instead of an independently-fixed element. The nav is then
-   physically the shell's bottom edge; its own background (which already extends
-   through `env(safe-area-inset-bottom)`) fills the home-indicator zone, and
-   there is structurally nothing below it that could show. No recolour, no
-   overlay, no spacer.
-
-   ≥640px is left on the existing natural-flow / desktop-grid shell. */
+   This REPLACES the previous fixed-canvas + `position:static` flex-nav shell
+   and the `--t2q-app-page:#FFFFFF` / forced-white-body masking, which is what
+   produced the visible strip (white body showing through in the home-indicator
+   zone, on both the cream splash and under the nav). No fixed canvas, no forced
+   white, no spacer, no overlay. ≥640px keeps the desktop-grid shell. */
 @media (max-width: 639px) {
-  /* Kill document scroll / rubber-band; the canvas (fixed) covers the screen. */
-  html:has([data-shell="app"]),
-  body:has([data-shell="app"]) {
-    height: 100%;
-    overflow: hidden;
-    overscroll-behavior: none;
-    /* BOTTOM-BAND KILL (1/2): the layer BEHIND the fixed canvas was cream
-       (#F5F4EE). If any of it shows in the home-indicator zone it reads as a
-       band under the white nav. Match it to the nav surface so it is never a
-       distinct colour. */
-    background: var(--t2q-app-surface, #FFFFFF);
-  }
-  /* Edge-to-edge fixed shell — anchored to the physical viewport, not dvh.
-     This rule owns the phone shell SIZING/POSITIONING. The canvas PAINT is the
-     single existing `…​.t2q-app-canvas { background: var(--t2q-app-page)
-     !important }` rule — we don't fight it; we feed it the nav surface colour
-     on phones (below) so the canvas can't paint a grey (#F4F7FA) band under or
-     around the nav either. One paint owner, one sizing owner. */
-  body:has([data-shell="app"]) .t2q-app-canvas {
-    position: fixed;
-    inset: 0;            /* top/right/bottom/left = physical viewport edges */
-    min-height: 0;       /* no 100vh/100dvh sizing here */
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    /* BOTTOM-BAND KILL (2/2): override the variable the canvas paint reads, so
-       the existing !important rule resolves to the nav surface (#FFFFFF) on
-       phones — no contrasting grey anywhere the nav doesn't cover. */
-    --t2q-app-page: var(--t2q-app-surface, #FFFFFF);
-  }
-  /* The ONE scroll region. No nav-clearance padding (the nav is a flex sibling
-     below it, not an overlay). overflow-x folded in from the deleted block. */
+  /* Content clears the fixed bottom nav, including the home-indicator inset. */
   body:has([data-shell="app"]) .t2q-app-scroll {
-    flex: 1 1 auto;
-    min-height: 0;
     overflow-x: hidden;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-    overscroll-behavior: contain;
+    padding-bottom: calc(4.05rem + env(safe-area-inset-bottom, 0px));
   }
-  body:has([data-shell="app"]) .t2q-app-scroll .min-h-screen {
-    min-height: 100% !important;
-  }
-  /* Bottom nav = the shell's bottom flex child (was position:fixed). It now
-     physically owns the bottom edge; its background already carries the
-     safe-area inset, so the home-indicator zone is the nav's colour, not a
-     gap. */
-  body:has([data-shell="app"]) .t2q-bottomnav-bar {
-    position: static;
-    flex: 0 0 auto;
-  }
-  /* During the entry splash, the nav + avatar stay hidden. */
+  /* During the entry splash the nav + avatar are hidden; the cream splash and
+     the cream body own the screen — nothing white anywhere. */
   [data-shell="app"]:has([data-testid="app-splash"]) .t2q-bottomnav-bar,
   [data-shell="app"]:has([data-testid="app-splash"]) .t2q-account-avatar {
     display: none;
