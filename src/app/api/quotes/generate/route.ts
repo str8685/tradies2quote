@@ -533,11 +533,14 @@ export async function POST(request: NextRequest) {
     }
     let sawInsulationReview = false;
     for (const m of calc?.materials ?? []) {
+      // PLAN-DRIVEN TAKEOFF = MATERIAL COUNT, not a priced quote. We never
+      // auto-fill a price onto a takeoff line (no library, AI, or placeholder
+      // pricing). The tradie enters prices manually in Review Quote until
+      // supplier-price APIs are wired. We still record the library_id link so a
+      // future manual "use my price" action can apply it. (The global PRICES_OFF
+      // pass below also blanks prices; doing it here keeps the takeoff
+      // count-first by construction, independent of that flag.)
       const match = matchToLibrary(m.name, library);
-      const matchedPrice =
-        match && match.default_unit_price !== null
-          ? Number(match.default_unit_price)
-          : 0;
       if (match) usedLibraryIds.add(match.id);
       const baseStatus = orchestratedStatusByFormula.get(m.formula) ?? {
         status: "ok" as const,
@@ -560,11 +563,11 @@ export async function POST(request: NextRequest) {
         description: m.name,
         quantity: m.quantity,
         unit: m.unit,
-        unit_price: matchedPrice,
-        line_total: round2(m.quantity * matchedPrice),
+        unit_price: 0,
+        line_total: 0,
         library_id: match?.id ?? null,
         is_ai_estimated: false,
-        is_missing_price: !match,
+        is_missing_price: true,
         is_calculated_takeoff: true,
         quantity_source: "calculator",
         formula: m.formula,
@@ -639,22 +642,21 @@ export async function POST(request: NextRequest) {
       continue;
     }
     for (const l of scope.lines) {
+      // Plan-driven takeoff = material count, never auto-priced (see the legacy
+      // calculator block above). Price stays blank for manual entry; keep the
+      // library_id link for a future manual "use my price" action.
       const match = matchToLibrary(l.name, library);
-      const matchedPrice =
-        match && match.default_unit_price !== null
-          ? Number(match.default_unit_price)
-          : 0;
       if (match) usedLibraryIds.add(match.id);
       calculatorItems.push({
         type: "material",
         description: l.name,
         quantity: l.quantity,
         unit: l.unit,
-        unit_price: matchedPrice,
-        line_total: round2(l.quantity * matchedPrice),
+        unit_price: 0,
+        line_total: 0,
         library_id: match?.id ?? null,
         is_ai_estimated: false,
-        is_missing_price: !match,
+        is_missing_price: true,
         is_calculated_takeoff: true,
         quantity_source: "calculator",
         formula: l.basis.formula,
