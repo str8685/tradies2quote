@@ -1,3 +1,4 @@
+import type { Viewport } from "next";
 import { SideMeasureTape } from "../_components/app/SideMeasureTape";
 import AppSplash from "./_components/AppSplash";
 import { MobileAppMenu } from "./_components/MobileAppMenu";
@@ -5,6 +6,22 @@ import { OnboardingTourGate } from "./_components/OnboardingTourGate";
 import { TopProgressBar } from "./_components/TopProgressBar";
 import { TrialBanner } from "./_components/TrialBanner";
 import { BetaNoticeBanner } from "./_components/BetaNoticeBanner";
+
+/**
+ * /app-scoped viewport. The root layout sets `theme-color: #0A0A0A` (dark) for
+ * the marketing landing, but the authenticated /app shell is LIGHT. On iOS
+ * standalone, `theme-color` is what the OS tints chrome with and uses to render
+ * around the safe areas — a DARK theme-color on a WHITE app lets the system
+ * paint a contrasting transition at the bottom safe-area / home-indicator edge.
+ * This overrides theme-color to the nav surface (#FFFFFF) for /app routes so
+ * the OS-rendered bottom area matches the nav exactly. `viewportFit: cover` is
+ * re-stated so the per-segment merge can't drop the edge-to-edge behaviour the
+ * safe-area insets depend on.
+ */
+export const viewport: Viewport = {
+  viewportFit: "cover",
+  themeColor: "#FFFFFF",
+};
 
 /**
  * Visual layout for /app/* routes.
