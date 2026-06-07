@@ -1286,13 +1286,18 @@ body:has([data-shell="app"]) {
     height: 100%;
     overflow: hidden;
     overscroll-behavior: none;
+    /* BOTTOM-BAND KILL (1/2): the layer BEHIND the fixed canvas was cream
+       (#F5F4EE). If any of it shows in the home-indicator zone it reads as a
+       band under the white nav. Match it to the nav surface so it is never a
+       distinct colour. */
+    background: var(--t2q-app-surface, #FFFFFF);
   }
   /* Edge-to-edge fixed shell — anchored to the physical viewport, not dvh.
-     This rule owns the phone shell SIZING/POSITIONING only. The canvas PAINT
-     is owned by a single existing rule — `[data-shell="app"][data-theme="light"]
-     .t2q-app-canvas { background: var(--t2q-app-page) !important }` (a flat
-     colour, no gradient) — so there is one paint owner and one sizing owner,
-     not competing declarations. The visual bottom edge is owned by the nav. */
+     This rule owns the phone shell SIZING/POSITIONING. The canvas PAINT is the
+     single existing `…​.t2q-app-canvas { background: var(--t2q-app-page)
+     !important }` rule — we don't fight it; we feed it the nav surface colour
+     on phones (below) so the canvas can't paint a grey (#F4F7FA) band under or
+     around the nav either. One paint owner, one sizing owner. */
   body:has([data-shell="app"]) .t2q-app-canvas {
     position: fixed;
     inset: 0;            /* top/right/bottom/left = physical viewport edges */
@@ -1300,6 +1305,10 @@ body:has([data-shell="app"]) {
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    /* BOTTOM-BAND KILL (2/2): override the variable the canvas paint reads, so
+       the existing !important rule resolves to the nav surface (#FFFFFF) on
+       phones — no contrasting grey anywhere the nav doesn't cover. */
+    --t2q-app-page: var(--t2q-app-surface, #FFFFFF);
   }
   /* The ONE scroll region. No nav-clearance padding (the nav is a flex sibling
      below it, not an overlay). overflow-x folded in from the deleted block. */
