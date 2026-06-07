@@ -55,3 +55,31 @@ describe("detectTakeoffType — ambiguous prose is surfaced, never guessed into 
     expect(detectTakeoffType("[T2Q_PLAN] type=deck length_m=6 width_m=4\ndeck next to the wall")).toBe("deck");
   });
 });
+
+describe("detectTakeoffType — scan 'Job type:' is authoritative over keywords (no marker)", () => {
+  // Reproduces the real bug: a Framing scan with NO [T2Q_PLAN] marker whose
+  // boilerplate says "decking counts" must NOT route to deck.
+  const framingScan = [
+    "[T2Q_TIMBER] stock_length_m=6",
+    "Job type: Framing.",
+    "Tradie buys timber in 6m lengths. Calculate board / stud / plate / decking counts in whole 6m lengths with a 10% waste factor.",
+    "What is being built: Residential floor plan - interior alterations / partition framing.",
+    "GIB screws 32mm for lining.",
+  ].join("\n\n");
+
+  it("Job type: Framing → wall, even with 'decking' in the boilerplate and no marker", () => {
+    expect(detectTakeoffType(framingScan)).toBe("wall");
+  });
+
+  it("Job type: Deck → deck", () => {
+    expect(detectTakeoffType("[T2Q_TIMBER] stock_length_m=6\nJob type: Deck.\nbuild a deck")).toBe("deck");
+  });
+
+  it("Job type: Concrete → unknown (never deck by keyword)", () => {
+    expect(detectTakeoffType("Job type: Concrete.\npour a slab with decking nearby")).toBe("unknown");
+  });
+
+  it("Job type: Framing with subfloor build context → subfloor", () => {
+    expect(detectTakeoffType("Job type: Framing.\nWhat is being built: subfloor / floor framing.")).toBe("subfloor");
+  });
+});

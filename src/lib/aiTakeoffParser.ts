@@ -383,6 +383,39 @@ export function detectTakeoffType(description: string): TakeoffType {
     // back to the AI generator rather than loose-matching the prose.
     return "unknown";
   }
+  // SCOPE AUTHORITY: the scan flow stamps a `Job type: X` line carrying the AI's
+  // DRAWING classification. When no structured marker is present (legacy scans,
+  // or any path that didn't emit one), honour that classification as the scope
+  // decider BEFORE any loose keyword matching — so a wall / framing / interior-
+  // partition scan can NEVER be routed to deck materials by an incidental word
+  // like "decking" in a boilerplate instruction. Deck materials require an
+  // actual deck classification, never a keyword guess.
+  const jobType = /(?:^|\n)\s*job type:\s*([a-z][a-z /-]*)/i
+    .exec(raw)?.[1]
+    ?.trim()
+    .toLowerCase();
+  if (jobType) {
+    if (jobType.startsWith("deck")) return "deck";
+    if (jobType.startsWith("subfloor") || jobType.startsWith("floor framing")) {
+      return "subfloor";
+    }
+    if (jobType.startsWith("cladding")) return "cladding";
+    if (
+      jobType.startsWith("framing") ||
+      jobType.startsWith("wall") ||
+      jobType.startsWith("lining") ||
+      jobType.startsWith("partition")
+    ) {
+      // Framing may be a subfloor/cladding job by build context; otherwise wall.
+      if (/\bsub[-\s]?floor\b|\bfloor\s+framing\b/.test(text)) return "subfloor";
+      if (/\bclad(ding)?\b|\bweatherboards?\b/.test(text)) return "cladding";
+      return "wall";
+    }
+    // Concrete / fence / roofing / paint / other have no legacy calculator — the
+    // orchestrator / AI generator handles them. CRUCIALLY: return "unknown"
+    // rather than falling through to the deck keyword branch below.
+    if (/^(concrete|fence|roof|paint|other)/.test(jobType)) return "unknown";
+  }
   if (/\bsub[-\s]?floor\b|\bfloor\s+framing\b|\bfloor\s+joists?\b/.test(text)) {
     return "subfloor";
   }

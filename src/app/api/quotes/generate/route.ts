@@ -20,6 +20,7 @@ import {
 } from "@/lib/compliance";
 import { runTakeoff as runOrchestratedTakeoff } from "@/lib/takeoff";
 import { legacyScopeCoverage } from "@/lib/takeoff/legacyCoverage";
+import { scopeFamilyForType, guardLinesForScope } from "@/lib/takeoff/scopeFamily";
 import { cleanTranscript } from "@/lib/transcriptCleanup";
 import { loadUserVocab } from "@/lib/transcript/vocab";
 import type {
@@ -761,6 +762,36 @@ export async function POST(request: NextRequest) {
   }
 
   parsed.line_items = [...calculatorItems, ...aiItems];
+
+  // SCOPE-FAMILY GUARD (defense-in-depth) — deck-only materials (deck
+  // joists/bearers/decking boards/concrete piles + their fixings) must NEVER
+  // appear in a wall / framing / interior-partition / building quote, no matter
+  // how a line was produced. Strip any that slipped through; if that removed
+  // material lines, surface an explicit blocked review line + note so the
+  // tradie sees an actionable recovery state instead of a silently-wrong or
+  // empty list. Deck and subfloor jobs legitimately use these and are exempt.
+  {
+    const family = scopeFamilyForType(parsedTakeoff.type);
+    const guarded = guardLinesForScope(parsed.line_items, family);
+    if (guarded.dropped.length > 0) {
+      parsed.line_items = guarded.kept;
+      parsed.notes = [
+        `Removed ${guarded.dropped.length} deck-only material line(s) that don't belong to a ${parsedTakeoff.type} job. Enter wall dimensions in Takeoff assumptions and recalculate.`,
+        ...(parsed.notes ?? []),
+      ];
+      const hasMaterial = parsed.line_items.some((it) => it.type === "material");
+      if (!hasMaterial) {
+        parsed.line_items.unshift(
+          blockedTakeoffLine(
+            parsedTakeoff.type === "unknown" ? "wall" : parsedTakeoff.type,
+            [
+              "Wall materials couldn't be determined from the scan. Enter total wall length and height in Takeoff assumptions, then Recalculate.",
+            ],
+          ),
+        );
+      }
+    }
+  }
 
   // A quote with no line items is unusable — the editor would open
   // empty at $0.00 with no warning. Fail loudly so the tradie can
