@@ -47,6 +47,18 @@ export type TakeoffSafetyAssessment = {
   requires_acknowledgement: boolean;
 };
 
+/**
+ * "Genuinely empty" guard for the send gate. Returns true when at least one
+ * line carries a real (non-zero) quantity. A quote with real quantities but
+ * $0 prices (the manual-pricing default under PRICES_OFF) is NOT empty — it is
+ * surfaced via the unpriced warn+acknowledge path, not a hard total-zero block.
+ * This keeps the "quote total must be greater than zero" rule meaningful
+ * (blocks a truly empty quote) without hard-blocking a count-first draft.
+ */
+function hasSendableQuantity(items: QuoteLineItem[]): boolean {
+  return items.some((it) => (Number(it.quantity) || 0) > 0);
+}
+
 function lineLabels(items: QuoteLineItem[], max = 3): string {
   const names = items
     .map((it) => it.description?.trim())
@@ -216,7 +228,7 @@ export function validateQuoteForSending(args: {
   /** Set true once the operator has acknowledged caution-level warnings. */
   acknowledged?: boolean;
 }): SendValidationResult {
-  const { status, total_amount, quote_data, acknowledged } = args;
+  const { status, quote_data, acknowledged } = args;
   if (status === "accepted") {
     return { ok: false, error: "already_accepted" };
   }
@@ -247,13 +259,18 @@ export function validateQuoteForSending(args: {
   if (items.length === 0) {
     return { ok: false, error: "no_line_items" };
   }
-  const total = Number(total_amount ?? 0);
-  if (!Number.isFinite(total) || total <= 0) {
-    return { ok: false, error: "total_zero" };
-  }
+  // Blocked "needs dimensions" lines report the actionable missing-info error
+  // FIRST (before the genuinely-empty check), so a quote that is all blocked
+  // lines tells the tradie exactly what's missing rather than just "empty".
   const safety = assessQuoteTakeoffSafety(quote_data);
   if (!safety.can_send) {
     return { ok: false, error: "takeoff_blocked", reasons: safety.block_reasons };
+  }
+  // Smarter than a raw total>0: block only when the quote is genuinely empty
+  // (no line carries a real quantity). Real quantities at $0 price are allowed
+  // as a draft and surface as the unpriced warn+acknowledge path below.
+  if (!hasSendableQuantity(items)) {
+    return { ok: false, error: "total_zero" };
   }
   if (safety.requires_acknowledgement && !acknowledged) {
     return {
@@ -272,7 +289,7 @@ export function validateQuoteForSmsSending(args: {
   /** Set true once the operator has acknowledged caution-level warnings. */
   acknowledged?: boolean;
 }): SmsSendValidationResult {
-  const { status, total_amount, quote_data, acknowledged } = args;
+  const { status, quote_data, acknowledged } = args;
   if (status === "accepted") {
     return { ok: false, error: "already_accepted" };
   }
@@ -296,13 +313,18 @@ export function validateQuoteForSmsSending(args: {
   if (items.length === 0) {
     return { ok: false, error: "no_line_items" };
   }
-  const total = Number(total_amount ?? 0);
-  if (!Number.isFinite(total) || total <= 0) {
-    return { ok: false, error: "total_zero" };
-  }
+  // Blocked "needs dimensions" lines report the actionable missing-info error
+  // FIRST (before the genuinely-empty check), so a quote that is all blocked
+  // lines tells the tradie exactly what's missing rather than just "empty".
   const safety = assessQuoteTakeoffSafety(quote_data);
   if (!safety.can_send) {
     return { ok: false, error: "takeoff_blocked", reasons: safety.block_reasons };
+  }
+  // Smarter than a raw total>0: block only when the quote is genuinely empty
+  // (no line carries a real quantity). Real quantities at $0 price are allowed
+  // as a draft and surface as the unpriced warn+acknowledge path below.
+  if (!hasSendableQuantity(items)) {
+    return { ok: false, error: "total_zero" };
   }
   if (safety.requires_acknowledgement && !acknowledged) {
     return {
@@ -344,7 +366,7 @@ export const SEND_ERROR_MESSAGES: Record<SendValidationError, string> = {
   client_phone_missing: "Add the client's phone number before sending an SMS.",
   client_phone_invalid: "The client phone number doesn't look valid. Use a full international number (+64...).",
   no_line_items: "Add at least one line item before sending.",
-  total_zero: "Quote total must be greater than zero.",
+  total_zero: "Add at least one line with a quantity before sending.",
   already_accepted: "This quote has already been accepted.",
   takeoff_blocked:
     "Some quantities couldn't be calculated or look wrong. Fix the flagged lines before sending.",

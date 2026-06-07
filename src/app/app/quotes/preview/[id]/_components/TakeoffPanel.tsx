@@ -139,7 +139,8 @@ export function TakeoffPanel({ onRecalculate, initialInputs, isAccepted }: Props
 
         <div className="border-t border-ink-700 px-5 pb-5 pt-4 sm:px-6 sm:pb-6">
           <p className="text-xs text-ink-400">
-            Inputs only. Prices come from your library; missing items show a flag.
+            Enter dimensions to calculate quantities. Prices stay blank — you
+            enter them manually on each line.
           </p>
 
           <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">

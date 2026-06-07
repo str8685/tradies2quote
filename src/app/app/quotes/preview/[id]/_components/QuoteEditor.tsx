@@ -47,6 +47,7 @@ import { confirmDimensions, saveQuoteChanges } from "../actions";
 import { canSuggestPrice } from "@/lib/agents/suggestPrice/apply";
 import { SuggestPricePanel } from "./SuggestPricePanel";
 import { TakeoffPanel } from "./TakeoffPanel";
+import { blockedLineGuide } from "@/lib/takeoff/blockedLineGuide";
 import { PhotoPlanPanel } from "./PhotoPlanPanel";
 import { SendQuoteButton } from "./SendQuoteButton";
 import { MobileCollapsibleCard } from "./MobileCollapsibleCard";
@@ -201,6 +202,21 @@ export function QuoteEditor({
           next.quantity_source = "user";
           next.quantity_confirmed = true;
         }
+        // Recovery — typing a real (non-zero) quantity on a BLOCKED
+        // "needs dimensions" line converts it into a manual line the tradie
+        // owns: clears the blocked state (so it no longer hard-blocks the send
+        // gate) and marks it user-supplied. No guessing — it's their number.
+        if (
+          patch.quantity !== undefined &&
+          next.takeoff_status === "blocked" &&
+          (Number(next.quantity) || 0) > 0
+        ) {
+          next.takeoff_status = undefined;
+          next.takeoff_flags = [];
+          next.is_calculated_takeoff = false;
+          next.quantity_source = "user";
+          next.quantity_confirmed = true;
+        }
         return next;
       }),
     );
@@ -313,25 +329,30 @@ export function QuoteEditor({
   }
 
   function handleTakeoffResult(result: MaterialTakeoffResult) {
+    // Count-first: a deterministic recalculation produces QUANTITIES only —
+    // never an auto price (matches the server takeoff + PRICES_OFF policy).
+    // The library link is kept so a future manual "use my price" can apply it;
+    // price stays blank for manual entry. Replacing the material lines clears
+    // any blocked "needs dimensions" lines (the new lines are calculated).
     const newMaterials: QuoteLineItem[] = result.materials.map((m) => {
       const match = matchToLibrary(m.name, library);
-      const unit_price =
-        match && match.default_unit_price !== null
-          ? Number(match.default_unit_price)
-          : 0;
       return {
         type: "material",
         description: m.name,
         quantity: m.quantity,
         unit: m.unit,
-        unit_price,
-        line_total: round2(m.quantity * unit_price),
+        unit_price: 0,
+        line_total: 0,
         library_id: match?.id ?? null,
         is_ai_estimated: false,
-        is_missing_price: !match,
+        is_missing_price: true,
         is_calculated_takeoff: true,
+        quantity_source: "calculator",
         formula: m.formula,
         price_match_key: m.priceMatchKey,
+        // Carry the exterior-only insulation review flag through.
+        takeoff_status: m.requiresReview ? "needs_review" : undefined,
+        takeoff_flags: m.requiresReview && m.notes ? [m.notes] : [],
       };
     });
     setItems((prev) => [
@@ -1325,6 +1346,14 @@ function ItemsSection({
                   supplierUrl={libMaterial?.supplier_url ?? null}
                   supplierName={libMaterial?.supplier ?? null}
                 />
+              )}
+              {it.takeoff_status === "blocked" && (
+                <p
+                  data-testid={`blocked-guide-${i}`}
+                  className="mb-1.5 rounded-sm border border-red-500/30 bg-red-500/5 px-2 py-1.5 text-[11px] leading-relaxed text-red-200"
+                >
+                  {blockedLineGuide(it.description)}
+                </p>
               )}
               <div className="flex items-start gap-2">
                 <input
