@@ -146,6 +146,15 @@ export const metadata: Metadata = {
   },
 };
 
+// MOBILE SHELL CONTRACT — viewport owner. See docs/mobile-shell-contract.md.
+// This is the ONLY place viewport settings live (App Router viewport API, not
+// hand-written <meta> tags). Two rules are load-bearing for the iOS PWA shell:
+//   • `viewportFit: "cover"` MUST stay on — without it `env(safe-area-inset-*)`
+//     resolves to 0 and the bottom nav can no longer own the home-indicator zone.
+//   • `themeColor` is declared ONCE here. Do NOT add a route-level `themeColor`
+//     override (e.g. white on /app) as a safe-area fix — that masks, it doesn't
+//     fix, and it caused a regression. The bottom nav, not the OS chrome, owns
+//     the safe area.
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,

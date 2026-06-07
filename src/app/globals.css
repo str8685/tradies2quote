@@ -1147,7 +1147,17 @@ h1, h2, h3, h4, h5 {
 
 /* ─── Mobile bottom navigation ───────────────────────────────────────────
    Wave 44 — light, app-native tab bar: surface + border tokens, orange
-   active emphasis, readable muted inactive labels. */
+   active emphasis, readable muted inactive labels.
+
+   MOBILE SHELL CONTRACT — owner: BOTTOM SAFE-AREA PAINT.
+   See docs/mobile-shell-contract.md. This is the single element that owns the
+   home-indicator zone: `position: fixed; bottom: 0` + an explicit `background`
+   + `padding-bottom: …env(safe-area-inset-bottom)` means the nav's OWN
+   background paints the safe area — no spacer, overlay, or filler band below it.
+   Keep the `4.05rem` in `min-height` in sync with the `.t2q-app-scroll`
+   bottom-padding so content always clears the nav. Do NOT override this to
+   `position: static` / make it a flex child of a fixed canvas — that was the
+   regression. */
 .t2q-bottomnav-bar {
   position: fixed;
   left: 0;
@@ -1255,14 +1265,20 @@ h1, h2, h3, h4, h5 {
 }
 .t2q-account-avatar:active { transform: scale(0.94); }
 
-/* The /app shell surface colour. Both html and body are painted the same
-   light canvas so nothing contrasting can ever show at the screen edges. */
+/* MOBILE SHELL CONTRACT — owner: ROOT FALLBACK PAINT.
+   See docs/mobile-shell-contract.md. This is the single layer that shows in any
+   over-scroll or un-covered screen edge. It is the cream paper colour the splash
+   uses (NOT white) so an uncovered edge can never contrast. Do not force this to
+   white to "match the nav" — that masks the strip instead of removing it. */
 html:has([data-shell="app"]),
 body:has([data-shell="app"]) {
   background: #F5F4EE;
 }
 
 /* ── Mobile app-shell (phones ≤639px) — canonical fixed-nav pattern ─────────
+   MOBILE SHELL CONTRACT (full rules + checklist): docs/mobile-shell-contract.md.
+   There must be exactly ONE `@media (max-width: 639px)` shell block — this one.
+
    Normal document flow. The bottom nav (`.t2q-bottomnav-bar`, base rule above)
    is `position:fixed; bottom:0` with its OWN background and
    `padding-bottom: env(safe-area-inset-bottom)` — so the NAV itself paints the
@@ -1277,7 +1293,13 @@ body:has([data-shell="app"]) {
    zone, on both the cream splash and under the nav). No fixed canvas, no forced
    white, no spacer, no overlay. ≥640px keeps the desktop-grid shell. */
 @media (max-width: 639px) {
-  /* Content clears the fixed bottom nav, including the home-indicator inset. */
+  /* MOBILE SHELL CONTRACT — owner: SCROLL CLEARANCE (not a scroll owner).
+     The document is the single scroll owner; `.t2q-app-scroll` is just the
+     content wrapper. Its only shell job is this bottom padding = nav content
+     height (4.05rem, kept in sync with `.t2q-bottomnav-bar` min-height) +
+     `env(safe-area-inset-bottom)`, so content always clears the fixed nav. Do
+     NOT make this an `overflow-y: auto` nested scroller — that adds a second
+     scroll owner. */
   body:has([data-shell="app"]) .t2q-app-scroll {
     overflow-x: hidden;
     padding-bottom: calc(4.05rem + env(safe-area-inset-bottom, 0px));
@@ -1747,6 +1769,11 @@ body:has([data-shell="app"]) {
   --t2q-app-orange-soft: #FFF1EA;
 }
 
+/* MOBILE SHELL CONTRACT — owner: APP PAGE PAINT.
+   See docs/mobile-shell-contract.md. `.t2q-app-canvas` is the page surface
+   behind the cards (grey `--t2q-app-page: #F4F7FA`). It is normal document flow
+   (`min-h-dvh`) — it must NOT be `position: fixed; inset: 0`, and `--t2q-app-page`
+   must NOT be forced to white. Both were part of the band regression. */
 [data-shell="app"][data-theme="light"].t2q-app-canvas {
   background: var(--t2q-app-page) !important;
 }

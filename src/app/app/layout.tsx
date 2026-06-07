@@ -9,6 +9,18 @@ import { BetaNoticeBanner } from "./_components/BetaNoticeBanner";
 /**
  * Visual layout for /app/* routes.
  *
+ * MOBILE SHELL CONTRACT — see docs/mobile-shell-contract.md before changing the
+ * shell. The iOS-PWA safe-area shell has exactly four single owners:
+ *   • root fallback paint  → html/body (globals.css)
+ *   • app page paint       → `.t2q-app-canvas` (this div, `min-h-dvh`; normal flow)
+ *   • scrolling            → the document (no nested scroll container)
+ *   • bottom safe-area     → `.t2q-bottomnav-bar` (fixed; bottom:0; padding-bottom env)
+ * `.t2q-app-scroll` below is NOT a scroll owner — it only pads content to clear
+ * the nav. Do NOT reintroduce a `position: fixed; inset: 0` canvas, an
+ * `overflow: hidden; height: 100%` scroll-lock, forced-white backgrounds, or a
+ * route-level themeColor override — that combination caused the bottom-strip
+ * regression.
+ *
  * Wave 15.2 — restoration of the tape-measure entry splash:
  *   - `<LoadingScreen>` is mounted back at the top of the tree. It's
  *     gated by sessionStorage (6h skip window) so it only plays on the
