@@ -14,257 +14,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      feature_settings: {
-        Row: {
-          auto_followup_enabled: boolean
-          auto_review_enabled: boolean
-          created_at: string
-          google_review_url: string | null
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          auto_followup_enabled?: boolean
-          auto_review_enabled?: boolean
-          created_at?: string
-          google_review_url?: string | null
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          auto_followup_enabled?: boolean
-          auto_review_enabled?: boolean
-          created_at?: string
-          google_review_url?: string | null
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
-      kits: {
-        Row: {
-          created_at: string
-          id: string
-          name: string
-          notes: string | null
-          trade: string | null
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          name: string
-          notes?: string | null
-          trade?: string | null
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          name?: string
-          notes?: string | null
-          trade?: string | null
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
-      kit_items: {
-        Row: {
-          created_at: string
-          description: string
-          id: string
-          kit_id: string
-          position: number
-          quantity: number
-          type: string
-          unit: string | null
-          unit_price: number
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          description: string
-          id?: string
-          kit_id: string
-          position?: number
-          quantity?: number
-          type?: string
-          unit?: string | null
-          unit_price?: number
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          description?: string
-          id?: string
-          kit_id?: string
-          position?: number
-          quantity?: number
-          type?: string
-          unit?: string | null
-          unit_price?: number
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "kit_items_kit_id_fkey"
-            columns: ["kit_id"]
-            isOneToOne: false
-            referencedRelation: "kits"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      payment_accounts: {
-        Row: {
-          charges_enabled: boolean
-          created_at: string
-          deposit_pct: number
-          details_submitted: boolean
-          stripe_account_id: string
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          charges_enabled?: boolean
-          created_at?: string
-          deposit_pct?: number
-          details_submitted?: boolean
-          stripe_account_id: string
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          charges_enabled?: boolean
-          created_at?: string
-          deposit_pct?: number
-          details_submitted?: boolean
-          stripe_account_id?: string
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
-      payments: {
-        Row: {
-          amount_cents: number
-          created_at: string
-          currency: string
-          id: string
-          paid_at: string | null
-          quote_id: string | null
-          status: string
-          stripe_checkout_session_id: string | null
-          stripe_payment_intent_id: string | null
-          user_id: string
-        }
-        Insert: {
-          amount_cents: number
-          created_at?: string
-          currency: string
-          id?: string
-          paid_at?: string | null
-          quote_id?: string | null
-          status?: string
-          stripe_checkout_session_id?: string | null
-          stripe_payment_intent_id?: string | null
-          user_id: string
-        }
-        Update: {
-          amount_cents?: number
-          created_at?: string
-          currency?: string
-          id?: string
-          paid_at?: string | null
-          quote_id?: string | null
-          status?: string
-          stripe_checkout_session_id?: string | null
-          stripe_payment_intent_id?: string | null
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "payments_quote_id_fkey"
-            columns: ["quote_id"]
-            isOneToOne: false
-            referencedRelation: "quotes"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      review_requests: {
-        Row: {
-          channel: string
-          id: string
-          quote_id: string
-          sent_at: string
-          status: string
-          user_id: string
-        }
-        Insert: {
-          channel?: string
-          id?: string
-          quote_id: string
-          sent_at?: string
-          status?: string
-          user_id: string
-        }
-        Update: {
-          channel?: string
-          id?: string
-          quote_id?: string
-          sent_at?: string
-          status?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "review_requests_quote_id_fkey"
-            columns: ["quote_id"]
-            isOneToOne: true
-            referencedRelation: "quotes"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      quote_followups: {
-        Row: {
-          channel: string
-          id: string
-          quote_id: string
-          sent_at: string
-          step: number
-          user_id: string
-        }
-        Insert: {
-          channel?: string
-          id?: string
-          quote_id: string
-          sent_at?: string
-          step: number
-          user_id: string
-        }
-        Update: {
-          channel?: string
-          id?: string
-          quote_id?: string
-          sent_at?: string
-          step?: number
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "quote_followups_quote_id_fkey"
-            columns: ["quote_id"]
-            isOneToOne: false
-            referencedRelation: "quotes"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       agent_events: {
         Row: {
           agent_name: string
@@ -370,6 +119,54 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_recommendations: {
+        Row: {
+          agent: string
+          assessment_id: string | null
+          created_at: string
+          id: string
+          model: string | null
+          output: Json
+          quote_id: string
+          user_id: string
+        }
+        Insert: {
+          agent?: string
+          assessment_id?: string | null
+          created_at?: string
+          id?: string
+          model?: string | null
+          output: Json
+          quote_id: string
+          user_id: string
+        }
+        Update: {
+          agent?: string
+          assessment_id?: string | null
+          created_at?: string
+          id?: string
+          model?: string | null
+          output?: Json
+          quote_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_recommendations_assessment_id_fkey"
+            columns: ["assessment_id"]
+            isOneToOne: false
+            referencedRelation: "job_weather_assessments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_recommendations_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       beta_feedback: {
         Row: {
           app_version: string | null
@@ -460,6 +257,96 @@ export type Database = {
         }
         Relationships: []
       }
+      customer_message_drafts: {
+        Row: {
+          assessment_id: string | null
+          channel: string
+          confidence: string | null
+          created_at: string
+          id: string
+          internal_note: string | null
+          message: string | null
+          model: string | null
+          quote_id: string
+          reason: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          assessment_id?: string | null
+          channel?: string
+          confidence?: string | null
+          created_at?: string
+          id?: string
+          internal_note?: string | null
+          message?: string | null
+          model?: string | null
+          quote_id: string
+          reason?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          assessment_id?: string | null
+          channel?: string
+          confidence?: string | null
+          created_at?: string
+          id?: string
+          internal_note?: string | null
+          message?: string | null
+          model?: string | null
+          quote_id?: string
+          reason?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_message_drafts_assessment_id_fkey"
+            columns: ["assessment_id"]
+            isOneToOne: false
+            referencedRelation: "job_weather_assessments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_message_drafts_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      feature_settings: {
+        Row: {
+          auto_followup_enabled: boolean
+          auto_review_enabled: boolean
+          created_at: string
+          google_review_url: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          auto_followup_enabled?: boolean
+          auto_review_enabled?: boolean
+          created_at?: string
+          google_review_url?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          auto_followup_enabled?: boolean
+          auto_review_enabled?: boolean
+          created_at?: string
+          google_review_url?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       invoices: {
         Row: {
           created_at: string
@@ -521,6 +408,190 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      job_type_rules: {
+        Row: {
+          created_at: string
+          default_actions: Json
+          display_name: string
+          is_system: boolean
+          job_type: string
+          outdoor: boolean
+          risk_thresholds: Json
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          default_actions?: Json
+          display_name: string
+          is_system?: boolean
+          job_type: string
+          outdoor?: boolean
+          risk_thresholds: Json
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          default_actions?: Json
+          display_name?: string
+          is_system?: boolean
+          job_type?: string
+          outdoor?: boolean
+          risk_thresholds?: Json
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      job_weather_assessments: {
+        Row: {
+          created_at: string
+          customer_comms_needed: boolean
+          forecast_snapshot: Json | null
+          generated_at: string
+          id: string
+          job_type: string | null
+          pat_should_run: boolean
+          provider: string
+          quote_id: string
+          recommended_action: string | null
+          risk_level: string
+          risk_types: Json
+          summary: string | null
+          trigger_source: string
+          triggers_fired: Json
+          user_id: string
+          willa_should_run: boolean
+          window_end: string | null
+          window_start: string | null
+        }
+        Insert: {
+          created_at?: string
+          customer_comms_needed?: boolean
+          forecast_snapshot?: Json | null
+          generated_at?: string
+          id?: string
+          job_type?: string | null
+          pat_should_run?: boolean
+          provider?: string
+          quote_id: string
+          recommended_action?: string | null
+          risk_level?: string
+          risk_types?: Json
+          summary?: string | null
+          trigger_source?: string
+          triggers_fired?: Json
+          user_id: string
+          willa_should_run?: boolean
+          window_end?: string | null
+          window_start?: string | null
+        }
+        Update: {
+          created_at?: string
+          customer_comms_needed?: boolean
+          forecast_snapshot?: Json | null
+          generated_at?: string
+          id?: string
+          job_type?: string | null
+          pat_should_run?: boolean
+          provider?: string
+          quote_id?: string
+          recommended_action?: string | null
+          risk_level?: string
+          risk_types?: Json
+          summary?: string | null
+          trigger_source?: string
+          triggers_fired?: Json
+          user_id?: string
+          willa_should_run?: boolean
+          window_end?: string | null
+          window_start?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_weather_assessments_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kit_items: {
+        Row: {
+          created_at: string
+          description: string
+          id: string
+          kit_id: string
+          position: number
+          quantity: number
+          type: string
+          unit: string | null
+          unit_price: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description: string
+          id?: string
+          kit_id: string
+          position?: number
+          quantity?: number
+          type?: string
+          unit?: string | null
+          unit_price?: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          id?: string
+          kit_id?: string
+          position?: number
+          quantity?: number
+          type?: string
+          unit?: string | null
+          unit_price?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kit_items_kit_id_fkey"
+            columns: ["kit_id"]
+            isOneToOne: false
+            referencedRelation: "kits"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kits: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          notes: string | null
+          trade: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          notes?: string | null
+          trade?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          notes?: string | null
+          trade?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       lifecycle_emails: {
         Row: {
@@ -673,6 +744,83 @@ export type Database = {
           user_id?: string | null
         }
         Relationships: []
+      }
+      payment_accounts: {
+        Row: {
+          charges_enabled: boolean
+          created_at: string
+          deposit_pct: number
+          details_submitted: boolean
+          stripe_account_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          charges_enabled?: boolean
+          created_at?: string
+          deposit_pct?: number
+          details_submitted?: boolean
+          stripe_account_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          charges_enabled?: boolean
+          created_at?: string
+          deposit_pct?: number
+          details_submitted?: boolean
+          stripe_account_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      payments: {
+        Row: {
+          amount_cents: number
+          created_at: string
+          currency: string
+          id: string
+          paid_at: string | null
+          quote_id: string | null
+          status: string
+          stripe_checkout_session_id: string | null
+          stripe_payment_intent_id: string | null
+          user_id: string
+        }
+        Insert: {
+          amount_cents: number
+          created_at?: string
+          currency: string
+          id?: string
+          paid_at?: string | null
+          quote_id?: string | null
+          status?: string
+          stripe_checkout_session_id?: string | null
+          stripe_payment_intent_id?: string | null
+          user_id: string
+        }
+        Update: {
+          amount_cents?: number
+          created_at?: string
+          currency?: string
+          id?: string
+          paid_at?: string | null
+          quote_id?: string | null
+          status?: string
+          stripe_checkout_session_id?: string | null
+          stripe_payment_intent_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       plan_files: {
         Row: {
@@ -846,6 +994,36 @@ export type Database = {
         }
         Relationships: []
       }
+      push_subscriptions: {
+        Row: {
+          auth: string
+          created_at: string
+          endpoint: string
+          id: string
+          p256dh: string
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          auth: string
+          created_at?: string
+          endpoint: string
+          id?: string
+          p256dh: string
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          auth?: string
+          created_at?: string
+          endpoint?: string
+          id?: string
+          p256dh?: string
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       quote_edit_events: {
         Row: {
           created_at: string
@@ -913,6 +1091,41 @@ export type Database = {
           },
         ]
       }
+      quote_followups: {
+        Row: {
+          channel: string
+          id: string
+          quote_id: string
+          sent_at: string
+          step: number
+          user_id: string
+        }
+        Insert: {
+          channel?: string
+          id?: string
+          quote_id: string
+          sent_at?: string
+          step: number
+          user_id: string
+        }
+        Update: {
+          channel?: string
+          id?: string
+          quote_id?: string
+          sent_at?: string
+          step?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quote_followups_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       quote_items: {
         Row: {
           description: string
@@ -949,6 +1162,53 @@ export type Database = {
             foreignKeyName: "quote_items_quote_id_fkey"
             columns: ["quote_id"]
             isOneToOne: false
+            referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quote_site_context: {
+        Row: {
+          created_at: string
+          geocoded_address: string | null
+          indoor_outdoor: string
+          job_type: string | null
+          latitude: number | null
+          longitude: number | null
+          quote_id: string
+          timezone: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          geocoded_address?: string | null
+          indoor_outdoor?: string
+          job_type?: string | null
+          latitude?: number | null
+          longitude?: number | null
+          quote_id: string
+          timezone?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          geocoded_address?: string | null
+          indoor_outdoor?: string
+          job_type?: string | null
+          latitude?: number | null
+          longitude?: number | null
+          quote_id?: string
+          timezone?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quote_site_context_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: true
             referencedRelation: "quotes"
             referencedColumns: ["id"]
           },
@@ -1067,6 +1327,41 @@ export type Database = {
           },
         ]
       }
+      review_requests: {
+        Row: {
+          channel: string
+          id: string
+          quote_id: string
+          sent_at: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          channel?: string
+          id?: string
+          quote_id: string
+          sent_at?: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          channel?: string
+          id?: string
+          quote_id?: string
+          sent_at?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "review_requests_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: true
+            referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       stripe_webhook_events: {
         Row: {
           event_id: string
@@ -1118,6 +1413,132 @@ export type Database = {
           stripe_subscription_id?: string | null
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      tradie_memories: {
+        Row: {
+          created_at: string
+          first_seen_at: string
+          id: string
+          last_seen_at: string
+          last_used_at: string | null
+          memory_key: string
+          memory_type: string
+          provenance: Json
+          source: string
+          status: string
+          strength: number
+          updated_at: string
+          user_id: string
+          value: Json
+        }
+        Insert: {
+          created_at?: string
+          first_seen_at?: string
+          id?: string
+          last_seen_at?: string
+          last_used_at?: string | null
+          memory_key: string
+          memory_type: string
+          provenance?: Json
+          source: string
+          status?: string
+          strength?: number
+          updated_at?: string
+          user_id: string
+          value?: Json
+        }
+        Update: {
+          created_at?: string
+          first_seen_at?: string
+          id?: string
+          last_seen_at?: string
+          last_used_at?: string | null
+          memory_key?: string
+          memory_type?: string
+          provenance?: Json
+          source?: string
+          status?: string
+          strength?: number
+          updated_at?: string
+          user_id?: string
+          value?: Json
+        }
+        Relationships: []
+      }
+      weather_alerts_cache: {
+        Row: {
+          alerts: Json
+          expires_at: string
+          generated_at: string
+          id: string
+          latitude: number
+          location_key: string
+          longitude: number
+          provider: string
+        }
+        Insert: {
+          alerts?: Json
+          expires_at: string
+          generated_at?: string
+          id?: string
+          latitude: number
+          location_key: string
+          longitude: number
+          provider?: string
+        }
+        Update: {
+          alerts?: Json
+          expires_at?: string
+          generated_at?: string
+          id?: string
+          latitude?: number
+          location_key?: string
+          longitude?: number
+          provider?: string
+        }
+        Relationships: []
+      }
+      weather_forecasts_cache: {
+        Row: {
+          alerts: Json
+          expires_at: string
+          generated_at: string
+          hourly: Json
+          id: string
+          latitude: number
+          location_key: string
+          longitude: number
+          provider: string
+          window_end: string
+          window_start: string
+        }
+        Insert: {
+          alerts?: Json
+          expires_at: string
+          generated_at?: string
+          hourly?: Json
+          id?: string
+          latitude: number
+          location_key: string
+          longitude: number
+          provider?: string
+          window_end: string
+          window_start: string
+        }
+        Update: {
+          alerts?: Json
+          expires_at?: string
+          generated_at?: string
+          hourly?: Json
+          id?: string
+          latitude?: number
+          location_key?: string
+          longitude?: number
+          provider?: string
+          window_end?: string
+          window_start?: string
         }
         Relationships: []
       }
