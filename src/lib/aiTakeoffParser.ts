@@ -114,6 +114,10 @@ export interface StructuredPlanMarker {
   postSpacingM?: number;
   // Wave 44 — whole-drawing wall totals for multi-room floor plans.
   wallRunM?: number;
+  // Exterior (perimeter) wall run, when the drawing distinguishes it. Used to
+  // size insulation off exterior walls ONLY. Absent → insulation stays
+  // review-required (no exterior/interior guess).
+  exteriorWallRunM?: number;
   studSpacingMm?: number;
   doorCount?: number;
   windowCount?: number;
@@ -169,6 +173,13 @@ export function extractStructuredPlanMarker(
     rawWallRun !== undefined && rawWallRun >= 2 && rawWallRun <= 1000
       ? rawWallRun
       : undefined;
+  // Exterior (perimeter) wall run — same sane band as the total. Used to size
+  // insulation exterior-only. Out-of-band / absent → undefined (no guess).
+  const rawExteriorRun = optNum("exterior_wall_run_m");
+  const exteriorWallRunM =
+    rawExteriorRun !== undefined && rawExteriorRun >= 2 && rawExteriorRun <= 1000
+      ? rawExteriorRun
+      : undefined;
   const optCount = (key: string): number | undefined => {
     const raw = pairs[key];
     if (raw === undefined) return undefined;
@@ -184,6 +195,7 @@ export function extractStructuredPlanMarker(
     postCount: optNum("post_count"),
     postSpacingM: optNum("post_spacing_m"),
     wallRunM,
+    exteriorWallRunM,
     studSpacingMm: optNum("stud_spacing_mm"),
     doorCount: optCount("door_count"),
     windowCount: optCount("window_count"),
@@ -966,6 +978,21 @@ function parseWallDescription(
   if (usedWallRun) {
     assumptions.push(
       `Framed off the total wall run (${wallLengthM}m) — every exterior and interior wall summed from the floor plan.`,
+    );
+  }
+
+  // Exterior (perimeter) wall run, when the drawing distinguished it. Insulation
+  // is then sized off EXTERIOR walls only (exact). Absent → exteriorWallLengthM
+  // stays undefined and the calculator keeps insulation review-required (no
+  // exterior/interior split is guessed). Clamp to the total so an inconsistent
+  // marker can't make the exterior run exceed the whole wall run.
+  if (marker?.exteriorWallRunM !== undefined) {
+    input.exteriorWallLengthM =
+      wallLengthM !== undefined
+        ? Math.min(marker.exteriorWallRunM, wallLengthM)
+        : marker.exteriorWallRunM;
+    assumptions.push(
+      `Insulation sized off the exterior wall run (${input.exteriorWallLengthM}m) from the floor plan.`,
     );
   }
 

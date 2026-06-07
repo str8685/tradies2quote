@@ -118,6 +118,12 @@ function buildPlanMarker(
   if (plan.wall_run_m && plan.wall_run_m > 0) {
     parts.push(`wall_run_m=${plan.wall_run_m}`);
   }
+  // Exterior (perimeter) wall run, when the AI could split it off the drawing.
+  // Lets the wall calculator size insulation off exterior walls only. Absent →
+  // insulation stays review-required (no exterior/interior guess).
+  if (plan.exterior_wall_run_m && plan.exterior_wall_run_m > 0) {
+    parts.push(`exterior_wall_run_m=${plan.exterior_wall_run_m}`);
+  }
   if (plan.stud_spacing_mm && plan.stud_spacing_mm > 0) {
     parts.push(`stud_spacing_mm=${plan.stud_spacing_mm}`);
   }
