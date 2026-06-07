@@ -1,14 +1,11 @@
-import { Suspense, type ReactNode } from "react";
+import { Suspense } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import {
   ArrowRight,
   Bug,
-  ClipboardText,
-  CloudSun,
   Gauge,
-  Package,
   Plus,
   Robot,
   TrendUp,
@@ -20,7 +17,6 @@ import { formatCurrency, quoteNumber } from "@/lib/quote-defaults";
 import type { QuoteData, QuoteStatus } from "@/lib/quote-types";
 import { isOwnerEmail } from "@/lib/owner";
 import { STAGE_LABELS } from "@/lib/lifecycle/stages";
-import { isWeatherImpactEnabled } from "@/lib/weather-impact";
 import { AppHeader } from "./_components/AppHeader";
 import { DashboardSkeleton } from "./_components/DashboardSkeleton";
 import {
@@ -28,6 +24,7 @@ import {
   type QuoteListRow,
 } from "./_components/QuotesListClient";
 import { ScheduleCalendar } from "./_components/ScheduleCalendar";
+import { SiteConditions } from "./_components/SiteConditions";
 
 export const metadata: Metadata = {
   title: "Dashboard",
@@ -269,7 +266,6 @@ async function DashboardData({
   }));
   const nextScheduledJob =
     scheduledJobs.find((job) => job.date >= todayISO) ?? scheduledJobs[0] ?? null;
-  const weatherEnabled = isWeatherImpactEnabled(isOwner);
 
   return (
     <>
@@ -360,6 +356,64 @@ async function DashboardData({
           revenue, drafts. Each is a real aggregate from `computeLifecycleStats`.
           Hidden on empty accounts so the dashboard doesn't fake activity
           for fresh signups. */}
+
+      {/* ── Today — the operator's home focus ──────────────────────────────
+          Weather-aware "Site conditions" lives INSIDE this block (dashboard
+          ownership: weather is NOT a separate feature card). Pat plans the
+          field; Willa drafts customer comms. KPIs, the lifecycle pipeline and
+          the month calendar are demoted into the collapsible panel below so the
+          home leads with what needs attention now. */}
+      <section data-testid="dashboard-today" aria-label="Today" className="mb-7">
+        <div className="t2q-card-pro p-5 sm:p-6">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="t2q-section-label-pro">{"// today"}</p>
+              <h2 className="mt-2 text-2xl font-semibold text-white sm:text-3xl">
+                Today
+              </h2>
+              <p className="mt-2 text-sm leading-relaxed text-ink-300">
+                Pat plans the field and Willa drafts customer messages. Site
+                conditions and what needs attention now.
+              </p>
+            </div>
+            <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-brand/40 bg-brand/10 text-brand">
+              <TrendUp size={22} weight="bold" aria-hidden="true" />
+            </span>
+          </div>
+
+          {/* Weather-aware planning block — flag-gated, renders nothing when off. */}
+          <SiteConditions userId={userId} />
+
+          <div className="mt-5 grid gap-3 sm:grid-cols-3">
+            <WorkBoardMetric
+              label="Next job"
+              value={nextScheduledJob ? formatShortDate(nextScheduledJob.date) : "Not scheduled"}
+              detail={nextScheduledJob?.clientName ?? "Add a job date from a quote"}
+            />
+            <WorkBoardMetric
+              label="Follow-ups"
+              value={String(stats.byStage.sent + stats.byStage.viewed)}
+              detail={
+                stats.byStage.viewed > 0
+                  ? `${stats.byStage.viewed} viewed by client`
+                  : "Sent and viewed quotes"
+              }
+            />
+            <WorkBoardMetric
+              label="Material library"
+              value={libraryEmpty ? "Needs setup" : `${materialsCount ?? 0} items`}
+              detail={libraryEmpty ? "Add common materials" : "Real prices ready for quotes"}
+            />
+          </div>
+        </div>
+      </section>
+
+      {/* ── Demoted: pipeline, headline metrics & calendar (collapsed) ─────── */}
+      <details data-testid="dashboard-more" className="mb-7">
+        <summary className="t2q-section-label-pro cursor-pointer select-none list-none">
+          {"// pipeline, metrics & calendar"}
+        </summary>
+        <div className="mt-4 space-y-7">
       {stats.totalQuotes > 0 && (
         <section
           data-testid="dashboard-kpi-strip"
@@ -402,93 +456,6 @@ async function DashboardData({
           />
         </section>
       )}
-
-      <section
-        data-testid="dashboard-work-board"
-        aria-label="Dashboard work board"
-        className="mb-7 grid gap-4 lg:grid-cols-[1.15fr_0.85fr]"
-      >
-        <div className="t2q-card-pro p-5 sm:p-6">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <p className="t2q-section-label-pro">{"// today"}</p>
-              <h2 className="mt-2 text-2xl font-semibold text-white sm:text-3xl">
-                Work board
-              </h2>
-              <p className="mt-2 text-sm leading-relaxed text-ink-300">
-                A cleaner view of what needs attention before the next quote,
-                job, or follow-up.
-              </p>
-            </div>
-            <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-brand/40 bg-brand/10 text-brand">
-              <TrendUp size={22} weight="bold" aria-hidden="true" />
-            </span>
-          </div>
-
-          <div className="mt-5 grid gap-3 sm:grid-cols-3">
-            <WorkBoardMetric
-              label="Next job"
-              value={
-                nextScheduledJob ? formatShortDate(nextScheduledJob.date) : "Not scheduled"
-              }
-              detail={nextScheduledJob?.clientName ?? "Add a job date from a quote"}
-            />
-            <WorkBoardMetric
-              label="Follow-ups"
-              value={String(stats.byStage.sent + stats.byStage.viewed)}
-              detail={
-                stats.byStage.viewed > 0
-                  ? `${stats.byStage.viewed} viewed by client`
-                  : "Sent and viewed quotes"
-              }
-            />
-            <WorkBoardMetric
-              label="Material library"
-              value={libraryEmpty ? "Needs setup" : `${materialsCount ?? 0} items`}
-              detail={
-                libraryEmpty
-                  ? "Add common materials"
-                  : "Real prices ready for quotes"
-              }
-            />
-          </div>
-        </div>
-
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
-          <DashboardActionCard
-            href="/app/quotes/new"
-            icon={<Plus size={21} weight="bold" />}
-            title="New quote"
-            body="Record or type the job and turn it into a draft quote."
-            tone="brand"
-          />
-          <DashboardActionCard
-            href="/app/quotes"
-            icon={<ClipboardText size={21} weight="bold" />}
-            title="Quote hub"
-            body="Search, filter, archive, and follow up your quotes."
-          />
-          {weatherEnabled ? (
-            <DashboardActionCard
-              href="/app/weather"
-              icon={<CloudSun size={21} weight="bold" />}
-              title="Weather Impact"
-              body="Check rain, wind, heat, and height-risk before site work."
-              tone="brand-soft"
-            />
-          ) : null}
-          <DashboardActionCard
-            href={libraryEmpty ? "/app/materials/quick-start" : "/app/materials"}
-            icon={<Package size={21} weight="bold" />}
-            title="Materials"
-            body={
-              libraryEmpty
-                ? "Quick start your real prices."
-                : "Keep supplier prices and favourites tidy."
-            }
-          />
-        </div>
-      </section>
 
       {/* Wave 13 — lifecycle stage tiles. Each tile is a real DB
           count for this user, keyed by the same quote_status enum
@@ -554,11 +521,13 @@ async function DashboardData({
         )}
       </section>
 
-      <ScheduleCalendar
-        jobs={scheduledJobs}
-        notes={calendarNotes}
-        todayISO={todayISO}
-      />
+          <ScheduleCalendar
+            jobs={scheduledJobs}
+            notes={calendarNotes}
+            todayISO={todayISO}
+          />
+        </div>
+      </details>
 
       <div className="flex items-center justify-between gap-3">
         <p
@@ -885,52 +854,6 @@ function WorkBoardMetric({
       </p>
       <p className="mt-1 text-xs leading-relaxed text-ink-400">{detail}</p>
     </div>
-  );
-}
-
-function DashboardActionCard({
-  href,
-  icon,
-  title,
-  body,
-  tone = "neutral",
-}: {
-  href: string;
-  icon: ReactNode;
-  title: string;
-  body: string;
-  tone?: "brand" | "brand-soft" | "neutral";
-}) {
-  const toneClass =
-    tone === "brand"
-      ? "border-brand/40 bg-brand/10 text-brand"
-      : tone === "brand-soft"
-        ? "border-brand/40 bg-brand/10 text-brand"
-        : "border-white/10 bg-white/[0.04] text-ink-300";
-  return (
-    <Link
-      href={href}
-      className="t2q-card-pro t2q-card-pro-hover flex items-start gap-3 p-4"
-    >
-      <span
-        aria-hidden="true"
-        className={`inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border ${toneClass}`}
-      >
-        {icon}
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="block text-sm font-semibold text-white">{title}</span>
-        <span className="mt-1 block text-xs leading-relaxed text-ink-400">
-          {body}
-        </span>
-      </span>
-      <ArrowRight
-        size={16}
-        weight="bold"
-        className={tone === "neutral" ? "mt-1 text-ink-400" : "mt-1 text-brand"}
-        aria-hidden="true"
-      />
-    </Link>
   );
 }
 

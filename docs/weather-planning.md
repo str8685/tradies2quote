@@ -52,6 +52,23 @@ Crons are gated by `CRON_SECRET` + the feature flag, run the same `assessJob`,
 cap the batch, and keep a wall-clock budget under Vercel's 60s limit (leftover
 jobs are picked up next run).
 
+## Dashboard ownership (focused operator-home)
+
+Weather is **not** a standalone dashboard feature card. It lives inside the
+**Today** block on the home screen (`src/app/app/page.tsx`):
+
+- `SiteConditions.tsx` (server, flag-gated) renders per scheduled job: title, risk
+  level, short reason, Pat's recommendation, and a "Review Willa draft" button when
+  a draft exists. It only reads stored data — it never computes risk or sends.
+- `WillaDraftReview.tsx` (client) is a **read-only** review panel (Copy / Dismiss).
+  v1 has no send wiring — the tradie sends from their own SMS/email.
+- The home was simplified to lead with what needs attention now: the standalone
+  **Weather Impact** card and the duplicate **Materials** / **Quote hub** action
+  cards were removed (those destinations are in the bottom-nav tabs), and the KPI
+  strip, lifecycle pipeline and month calendar were demoted into a collapsed
+  "pipeline, metrics & calendar" panel.
+- The mobile **shell contract** (`docs/mobile-shell-contract.md`) was not touched.
+
 ## v1 limitations (deliberate, documented)
 
 - **Job model** — "jobs" are scheduled quotes; there is no separate jobs table.
