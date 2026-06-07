@@ -1,6 +1,14 @@
 export type MaterialTakeoffInput = {
   wallLengthM: number;
   wallHeightM?: number;
+  /**
+   * Length of EXTERIOR walls only (perimeter walls), in metres. Insulation is
+   * sized off this — never off interior walls. When omitted (the common scan
+   * case, which only carries a single total wall run), insulation falls back to
+   * the total wall area and the line is flagged for review rather than silently
+   * insulating interior walls. See materials hardening pass.
+   */
+  exteriorWallLengthM?: number;
   studSpacingMm?: number;
   numberOfDoors?: number;
   numberOfWindows?: number;
@@ -222,7 +230,35 @@ export function calculateMaterialTakeoff(
   ];
 
   if (includeInsulation) {
-    const insulationAreaWithWaste = netWallAreaM2 * wasteMultiplier;
+    // RULE: insulation applies to EXTERIOR walls only, never interior walls.
+    // When we know the exterior wall length, size insulation off the exterior
+    // net area exactly. When we don't (only a total wall run is available — the
+    // usual scan case), we cannot split exterior from interior, so we fall back
+    // to the total area and FLAG the line for review rather than silently
+    // billing interior walls as insulated. This exposes the uncertainty instead
+    // of guessing a split.
+    const rawExterior = input.exteriorWallLengthM;
+    const exteriorKnown =
+      typeof rawExterior === "number" && Number.isFinite(rawExterior) && rawExterior >= 0;
+    const exteriorWallLengthM = exteriorKnown ? Math.max(rawExterior, 0) : null;
+
+    let insulationNetAreaM2: number;
+    if (exteriorWallLengthM !== null) {
+      // Exterior gross area, less the share of openings on exterior walls
+      // (proportional to exterior wall run when total openings are known).
+      const exteriorGrossArea = round2(exteriorWallLengthM * safeWallHeight);
+      const exteriorOpeningArea =
+        safeWallLength > 0
+          ? round2(openingAreaM2 * Math.min(exteriorWallLengthM / safeWallLength, 1))
+          : 0;
+      insulationNetAreaM2 = round2(Math.max(exteriorGrossArea - exteriorOpeningArea, 0));
+    } else {
+      // Only a total wall run is known — flag the line for review (below) rather
+      // than emitting a global warning on every wall quote.
+      insulationNetAreaM2 = netWallAreaM2;
+    }
+
+    const insulationAreaWithWaste = insulationNetAreaM2 * wasteMultiplier;
     const insulationPacks =
       insulationPackCoverageM2 > 0
         ? Math.ceil(insulationAreaWithWaste / insulationPackCoverageM2)
@@ -234,7 +270,13 @@ export function calculateMaterialTakeoff(
       quantity: insulationPacks,
       unit: "packs",
       formula:
-        "ceil((netWallAreaM2 * wasteMultiplier) / insulationPackCoverageM2)",
+        exteriorWallLengthM !== null
+          ? "ceil((exteriorWallLengthM * wallHeightM − exterior openings) * wasteMultiplier / insulationPackCoverageM2)"
+          : "ceil((netWallAreaM2 * wasteMultiplier) / insulationPackCoverageM2) — exterior-only: confirm exterior wall length",
+      notes:
+        exteriorWallLengthM !== null
+          ? "Exterior walls only."
+          : "Exterior walls only — sized off the total wall run because no exterior wall length was given. Review and exclude interior walls.",
       priceMatchKey: "pink-batts",
     });
   }

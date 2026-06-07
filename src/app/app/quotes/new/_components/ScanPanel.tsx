@@ -145,14 +145,26 @@ function buildFinalTranscript(
   // without a calculator (Fence/Concrete/Roofing/Other) is fine —
   // the AI quote path handles those without a calculator anyway.
   const planType = planTypeForJob(jobType, result.buildType);
-  if (planType && result.plan) {
-    parts.push(buildPlanMarker(planType, result.plan));
+  if (planType) {
+    // Always emit the classified type marker so detectTakeoffType routes off the
+    // AI's drawing classification — even when geometry failed to parse. Without
+    // this, a house/wall scan with no readable dimensions fell through to loose
+    // keyword matching, where the boilerplate word "decking" misrouted it to the
+    // deck calculator. A type-only marker keeps it on the wall/framing path; the
+    // downstream calculator then asks for the missing dimensions rather than
+    // fabricating them.
+    parts.push(
+      result.plan ? buildPlanMarker(planType, result.plan) : `[T2Q_PLAN] type=${planType}`,
+    );
   }
   parts.push(`[T2Q_TIMBER] stock_length_m=${timberLength}`);
 
   parts.push(`Job type: ${jobType}.`);
   parts.push(
-    `Tradie buys timber in ${timberLength}m lengths. Calculate board / stud / plate / decking counts in whole ${timberLength}m lengths with a 10% waste factor.`,
+    // NB: do NOT mention "decking" here — this instruction is appended to every
+    // scan transcript (wall, subfloor, cladding…), and a stray "decking" token
+    // can misroute non-deck jobs to the deck calculator when no marker is read.
+    `Tradie buys timber in ${timberLength}m lengths. Calculate board / stud / plate counts in whole ${timberLength}m lengths with a 10% waste factor.`,
   );
   if (result.buildType) {
     parts.push(`What is being built: ${result.buildType}.`);

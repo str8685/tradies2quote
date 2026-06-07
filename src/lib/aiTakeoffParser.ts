@@ -377,10 +377,18 @@ export function detectTakeoffType(description: string): TakeoffType {
   if (/\bclad(ding)?\b|\bweatherboards?\b|\bsiding\b/.test(text)) {
     return "cladding";
   }
+  // GIB / plasterboard is an unambiguous interior-lining signal — a deck never
+  // has it — so route a lined-wall job to wall BEFORE the deck keyword check,
+  // preventing a stray "deck"/"decking" mention from misrouting a house/wall
+  // scan to the deck calculator. (The structured marker above is still the
+  // primary source of truth; this only hardens the marker-less fallback.)
+  if (/\bgib\b|\bplasterboard\b/.test(text)) {
+    return "wall";
+  }
   if (/\bdeck(ing|s)?\b/.test(text)) {
     return "deck";
   }
-  if (/\bwall\b|\bgib\b|\bplasterboard\b|\bframing\b|\bstuds?\b/.test(text)) {
+  if (/\bwall\b|\bframing\b|\bstuds?\b/.test(text)) {
     return "wall";
   }
   return "unknown";
