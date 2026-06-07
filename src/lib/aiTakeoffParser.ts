@@ -385,10 +385,24 @@ export function detectTakeoffType(description: string): TakeoffType {
   if (/\bgib\b|\bplasterboard\b/.test(text)) {
     return "wall";
   }
-  if (/\bdeck(ing|s)?\b/.test(text)) {
+  // Ambiguity guard: if marker-less prose carries BOTH a deck signal AND a
+  // STRONG wall-assembly signal (framing/studs — NOT the bare locational word
+  // "wall", which appears in legit deck phrasings like "deck against the back
+  // wall"), a weak keyword pick must NOT send a house/wall job to deck
+  // materials. Surface it for review by returning "unknown" — the caller falls
+  // back to the AI generator (no deck/wall template forced). The authoritative
+  // [T2Q_PLAN] marker above resolves every real scan, so this only affects
+  // ambiguous voice/typed entry.
+  const deckSignal = /\bdeck(ing|s)?\b/.test(text);
+  const wallSignal = /\bwall\b|\bframing\b|\bstuds?\b/.test(text);
+  const wallAssemblySignal = /\bframing\b|\bstuds?\b/.test(text);
+  if (deckSignal && wallAssemblySignal) {
+    return "unknown";
+  }
+  if (deckSignal) {
     return "deck";
   }
-  if (/\bwall\b|\bframing\b|\bstuds?\b/.test(text)) {
+  if (wallSignal) {
     return "wall";
   }
   return "unknown";

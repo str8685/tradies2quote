@@ -35,3 +35,23 @@ describe("detectTakeoffType — house/wall scans never route to deck", () => {
     expect(detectTakeoffType("build a 6x4 deck with joists at 450 centres")).toBe("deck");
   });
 });
+
+describe("detectTakeoffType — ambiguous prose is surfaced, never guessed into deck", () => {
+  it("marker-less prose with BOTH deck and a strong wall-assembly signal → unknown (AI fallback, no template)", () => {
+    // "framing"/"studs" are the strong wall-assembly signals (not bare "wall").
+    expect(detectTakeoffType("wall framing plus some decking off the side")).toBe("unknown");
+    expect(detectTakeoffType("studs for the wall, plus decking boards")).toBe("unknown");
+  });
+
+  it("bare 'wall' as a location does NOT make a deck job ambiguous (deck against the back wall)", () => {
+    expect(detectTakeoffType("6 by 3 deck against the back wall")).toBe("deck");
+  });
+
+  it("an authoritative wall marker still wins even when deck wording is present", () => {
+    expect(detectTakeoffType("[T2Q_PLAN] type=wall\nframe the wall and add decking")).toBe("wall");
+  });
+
+  it("an authoritative deck marker still wins even when wall wording is present", () => {
+    expect(detectTakeoffType("[T2Q_PLAN] type=deck length_m=6 width_m=4\ndeck next to the wall")).toBe("deck");
+  });
+});
