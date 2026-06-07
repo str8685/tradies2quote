@@ -32,8 +32,9 @@ describe("calculateMaterialTakeoff — insulation is exterior-only", () => {
     // Exterior-only is strictly fewer than insulating the whole 40m run.
     expect(exteriorPacks).toBeLessThan(totalPacks);
     // When we know the exterior length the note is the clean exterior-only one
-    // (no "review/confirm" caveat).
+    // (no "review/confirm" caveat) and the line is NOT flagged for review.
     expect(line(exterior, "pink-batts")!.notes).toBe("Exterior walls only.");
+    expect(line(exterior, "pink-batts")!.requiresReview).toBeFalsy();
   });
 
   it("interior-only wall (exteriorWallLengthM = 0) → zero insulation packs", () => {
@@ -57,7 +58,9 @@ describe("calculateMaterialTakeoff — insulation is exterior-only", () => {
       wallHeightM: 2.4,
       includeInsulation: true,
     });
-    // No silent interior insulation: the line is flagged exterior-only for review.
+    // No silent interior insulation: the line is flagged exterior-only for review
+    // (requiresReview drives the "Needs review" badge in the Review Quote UI).
+    expect(line(result, "pink-batts")!.requiresReview).toBe(true);
     expect(line(result, "pink-batts")!.notes).toMatch(/review and exclude interior walls/i);
     expect(line(result, "pink-batts")!.formula).toMatch(/exterior-only/i);
   });

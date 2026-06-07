@@ -531,6 +531,7 @@ export async function POST(request: NextRequest) {
         });
       }
     }
+    let sawInsulationReview = false;
     for (const m of calc?.materials ?? []) {
       const match = matchToLibrary(m.name, library);
       const matchedPrice =
@@ -538,10 +539,22 @@ export async function POST(request: NextRequest) {
           ? Number(match.default_unit_price)
           : 0;
       if (match) usedLibraryIds.add(match.id);
-      const status = orchestratedStatusByFormula.get(m.formula) ?? {
+      const baseStatus = orchestratedStatusByFormula.get(m.formula) ?? {
         status: "ok" as const,
         flags: [] as string[],
       };
+      // A calculator line that flags itself for review (e.g. exterior-only
+      // insulation sized off the total wall run because no exterior wall length
+      // was given) must surface as needs_review so the Review Quote UI shows the
+      // "Needs review" badge + reason — never silently billed as "ok".
+      const status =
+        m.requiresReview && (baseStatus.status === "ok" || baseStatus.status === "assumed")
+          ? {
+              status: "needs_review" as const,
+              flags: [...baseStatus.flags, ...(m.notes ? [m.notes] : [])],
+            }
+          : baseStatus;
+      if (m.requiresReview) sawInsulationReview = true;
       calculatorItems.push({
         type: "material",
         description: m.name,
@@ -562,6 +575,14 @@ export async function POST(request: NextRequest) {
     }
     if (parsedTakeoff.assumptions.length > 0) {
       parsed.notes = [...parsedTakeoff.assumptions, ...(parsed.notes ?? [])];
+    }
+    // Explicit, non-tooltip copy in the visible "// review these" box when
+    // insulation had to fall back to the total wall run (exterior-only rule).
+    if (sawInsulationReview) {
+      parsed.notes = [
+        "Insulation is for exterior walls only. No exterior wall length was detected, so it's sized off the total wall run — review and exclude interior walls before sending.",
+        ...(parsed.notes ?? []),
+      ];
     }
     parsed.takeoff_inputs = parsedTakeoff.input as TakeoffInputsSnapshot;
 

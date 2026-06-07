@@ -36,6 +36,13 @@ export type MaterialTakeoffLine = {
   formula: string;
   notes?: string;
   priceMatchKey?: string;
+  /**
+   * True when this line's quantity is provisional and the tradie must review it
+   * — e.g. insulation sized off the total wall run because no exterior wall
+   * length was supplied (insulation is exterior-only). The generate route maps
+   * this to takeoff_status="needs_review" so the Review Quote UI flags it.
+   */
+  requiresReview?: boolean;
 };
 
 export type MaterialTakeoffResult = {
@@ -277,6 +284,8 @@ export function calculateMaterialTakeoff(
         exteriorWallLengthM !== null
           ? "Exterior walls only."
           : "Exterior walls only — sized off the total wall run because no exterior wall length was given. Review and exclude interior walls.",
+      // Flag for review only when we had to fall back to the total wall run.
+      requiresReview: exteriorWallLengthM === null,
       priceMatchKey: "pink-batts",
     });
   }
