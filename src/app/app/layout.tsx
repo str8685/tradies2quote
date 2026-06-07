@@ -65,20 +65,21 @@ export default function AppLayout({
       <SideMeasureTape />
       {/* The ONE scroll region of the mobile app shell.
 
-          On phones (≤639px) globals.css locks the shell: html/body/canvas are
-          pinned to 100dvh with `overflow:hidden`, and THIS element is the only
-          scroll container (`flex:1; overflow-y:auto`). That's why the fixed
-          bottom nav (`.t2q-bottomnav-bar`, rendered by <MobileAppMenu/> below)
-          stays glued to the true bottom edge with no strip beneath it, and
-          content can't drift outside the viewport.
+          On phones (≤639px) globals.css makes `.t2q-app-canvas` a ROOT FIXED
+          shell (`position:fixed; inset:0`) — anchored to the physical viewport
+          edges, NOT height:100dvh (which resolved short in iOS standalone and
+          left a cream strip in the home-indicator zone). THIS element is the
+          only scroll container (`flex:1; overflow-y:auto`), and the bottom nav
+          (`.t2q-bottomnav-bar`, rendered by <MobileAppMenu/> below) is the
+          shell's LAST FLEX CHILD — so it physically IS the bottom edge and its
+          own background fills the safe-area inset. No strip, no spacer, no
+          overlay.
 
           Safe-area handling: the top notch inset lives here
           (`pt-[env(safe-area-inset-top)]`, dropped at `sm` where the header
-          owns it). The BOTTOM inset + nav-height clearance is owned by the
-          shell CSS (`.t2q-app-scroll` padding-bottom), NOT a spacer element and
-          NOT a duplicated utility here — single source of truth in globals.css.
-          AppHeader is `hidden sm:block`, so phones use the bottom nav + the
-          top-right account avatar. */}
+          owns it). The bottom inset is owned by the nav's own padding/background
+          (single source of truth in globals.css). AppHeader is `hidden sm:block`,
+          so phones use the bottom nav + the top-right account avatar. */}
       <div className="t2q-app-scroll min-w-0 pt-[env(safe-area-inset-top)] sm:pt-0">
         {/* Trial / expired upgrade banner. Server-rendered: renders
             nothing for paid users or users still well inside their
