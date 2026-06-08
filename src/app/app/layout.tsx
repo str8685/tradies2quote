@@ -86,7 +86,7 @@ export default function AppLayout({
           owns it). The bottom inset is owned by the nav's own padding/background
           (single source of truth in globals.css). AppHeader is `hidden sm:block`,
           so phones use the bottom nav + the top-right account avatar. */}
-      <div className="t2q-app-scroll min-w-0 pt-[env(safe-area-inset-top)] sm:pt-0">
+      <div className="t2q-app-scroll min-w-0 pt-[env(safe-area-inset-top)] sm:pt-0 lg:col-start-2">
         {/* Trial / expired upgrade banner. Server-rendered: renders
             nothing for paid users or users still well inside their
             trial; surfaces only when there's something to act on. */}
