@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { captureError } from "@/lib/observability";
 import { createClient } from "@/lib/supabase/server";
 import { adminClient } from "@/lib/supabase/admin";
 import { generateQuotePdf } from "@/lib/pdf-generator";
@@ -91,6 +92,7 @@ export async function POST(
       acceptUrl,
     });
   } catch (e) {
+    captureError(e, { route: "quotes/sms" });
     console.error("PDF generation failed (sms)", e);
     return NextResponse.json(
       { error: "pdf_generation_failed", message: "Could not generate the PDF." },
@@ -102,6 +104,7 @@ export async function POST(
   try {
     pdfPath = await uploadPdf(quote.user_id, quote.id, pdfBytes);
   } catch (e) {
+    captureError(e, { route: "quotes/sms" });
     console.error("PDF upload failed (sms)", e);
     return NextResponse.json(
       { error: "pdf_upload_failed", message: "Could not save the PDF." },

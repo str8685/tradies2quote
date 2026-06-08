@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { captureError } from "@/lib/observability";
 import { createClient } from "@/lib/supabase/server";
 import { isOwnerEmail } from "@/lib/owner";
 
@@ -236,6 +237,7 @@ Rules:
       }),
     });
   } catch (e) {
+    captureError(e, { route: "suppliers/extract" });
     console.error("Claude fetch failed", e);
     return NextResponse.json(
       { error: "Extraction service unreachable." },

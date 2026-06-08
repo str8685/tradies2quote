@@ -1,4 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server";
+import { captureError } from "@/lib/observability";
 import { adminClient } from "@/lib/supabase/admin";
 import { uploadSignature } from "@/lib/quote-storage";
 import { sendPushToUser } from "@/lib/push";
@@ -141,6 +142,7 @@ export async function POST(
       new Uint8Array(signatureBytes),
     );
   } catch (e) {
+    captureError(e, { route: "quote/accept" });
     console.error("Signature upload failed", e);
     return NextResponse.json(
       { error: "signature_upload_failed" },

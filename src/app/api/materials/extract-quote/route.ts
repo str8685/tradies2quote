@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { captureError } from "@/lib/observability";
 import { createClient } from "@/lib/supabase/server";
 import { canWrite, getSubscriptionStatus } from "@/lib/subscription";
 import { isOwnerEmail } from "@/lib/owner";
@@ -269,6 +270,7 @@ export async function POST(request: NextRequest) {
         }),
       });
     } catch (err) {
+      captureError(err, { route: "materials/extract-quote" });
       console.error("extract-quote fetch failed", err);
       return {
         kind: "error",
@@ -308,6 +310,7 @@ export async function POST(request: NextRequest) {
     try {
       raw = parseModelJsonObject<unknown>(text);
     } catch (e) {
+      captureError(e, { route: "materials/extract-quote" });
       console.error(
         "extract-quote failed to parse JSON",
         e,

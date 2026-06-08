@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { captureError } from "@/lib/observability";
 import type Stripe from "stripe";
 import { adminClient } from "@/lib/supabase/admin";
 import { isStripeConfigured, stripeClient } from "@/lib/stripe-client";
@@ -68,6 +69,7 @@ export async function POST(request: NextRequest) {
   try {
     event = stripe.webhooks.constructEvent(rawBody, sig, webhookSecret);
   } catch (err) {
+    captureError(err, { route: "stripe/webhook" });
     console.error(
       "Stripe webhook signature verification failed",
       err instanceof Error ? err.message : String(err),
@@ -208,6 +210,7 @@ export async function POST(request: NextRequest) {
       }
     }
   } catch (err) {
+    captureError(err, { route: "stripe/webhook" });
     // If a handler throws, return 500 so Stripe retries. Be careful:
     // any DB write that DID succeed will run again — that's why every
     // path uses upsert/update with stable keys (idempotent).

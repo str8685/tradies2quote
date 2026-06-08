@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { captureError } from "@/lib/observability";
 import { createClient } from "@/lib/supabase/server";
 import { DEFAULT_NZ_CONTRACT_TERMS } from "@/lib/default-contract";
 import { NZ_DEFAULTS, computeQuoteTotals, round2 } from "@/lib/quote-defaults";
@@ -442,6 +443,7 @@ export async function POST(request: NextRequest) {
   try {
     parsed = JSON.parse(fullJson) as QuoteData;
   } catch (e) {
+    captureError(e, { route: "quotes/generate" });
     console.error(
       "Failed to parse Claude JSON",
       e,

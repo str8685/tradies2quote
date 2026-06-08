@@ -1,4 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server";
+import { captureError } from "@/lib/observability";
 import { adminClient } from "@/lib/supabase/admin";
 import {
   runCustomerChat,
@@ -197,6 +198,7 @@ export async function POST(
       history,
     });
   } catch (e) {
+    captureError(e, { route: "quote/chat" });
     console.error("customer-chat agent failed", e);
     // Persist the customer's message anyway so the tradie can see
     // the question even if the AI couldn't answer it.

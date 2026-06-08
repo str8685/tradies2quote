@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { captureError } from "@/lib/observability";
 import type Stripe from "stripe";
 import { adminClient } from "@/lib/supabase/admin";
 import { stripeClient } from "@/lib/stripe-client";
@@ -31,6 +32,7 @@ export async function POST(request: NextRequest) {
   try {
     event = stripeClient().webhooks.constructEvent(raw, signature, secret);
   } catch (e) {
+    captureError(e, { route: "payments/webhook" });
     console.error("[payments/webhook] bad signature", e);
     return NextResponse.json({ error: "bad_signature" }, { status: 400 });
   }
@@ -72,6 +74,7 @@ export async function POST(request: NextRequest) {
       }
     }
   } catch (e) {
+    captureError(e, { route: "payments/webhook" });
     console.error("[payments/webhook] handler failed", e);
     // Return 500 so Stripe RETRIES. The only write above is the id-keyed,
     // status-guarded payments UPDATE, which is idempotent — a retry safely

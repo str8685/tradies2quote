@@ -1,4 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server";
+import { captureError } from "@/lib/observability";
 import { createClient } from "@/lib/supabase/server";
 import { generateQuotePdf } from "@/lib/pdf-generator";
 import { quoteNumber } from "@/lib/quote-defaults";
@@ -69,6 +70,7 @@ export async function GET(
       acceptUrl,
     });
   } catch (e) {
+    captureError(e, { route: "quotes/pdf" });
     console.error("PDF generation failed", e);
     return NextResponse.json({ error: "generation_failed" }, { status: 500 });
   }

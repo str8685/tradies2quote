@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { captureError } from "@/lib/observability";
 import { createClient } from "@/lib/supabase/server";
 import { loadUserVocab } from "@/lib/transcript/vocab";
 import {
@@ -89,6 +90,7 @@ export async function POST(request: NextRequest) {
     });
     asrPrompt = buildAsrPrompt(vocab);
   } catch (e) {
+    captureError(e, { route: "quotes/transcribe" });
     console.warn("[transcribe] vocab prompt build failed; using static", e);
   }
 

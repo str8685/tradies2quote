@@ -1,4 +1,5 @@
 // On-demand weather assessment for a single scheduled quote ("job").
+import { captureError } from "@/lib/observability";
 // Used when a job is created/scheduled or edited, and for a manual "re-check"
 // button in the Workboard. User-authenticated; assessJob re-checks ownership.
 // Gated by the weather-planning flag. Runs the deterministic engine and (for
@@ -40,6 +41,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const result = await assessJob({ quoteId: body.quoteId, userId: user.id, triggerSource: source });
     return NextResponse.json(result);
   } catch (err) {
+    captureError(err, { route: "weather-planning/assess" });
     console.error("on-demand weather assess failed", body.quoteId, err);
     return NextResponse.json({ error: "assess_failed" }, { status: 500 });
   }

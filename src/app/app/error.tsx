@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import Link from "next/link";
+import * as Sentry from "@sentry/nextjs";
 import { ArrowClockwise, House, WarningOctagon } from "@phosphor-icons/react";
 
 /**
@@ -24,8 +25,10 @@ export default function AppError({
   reset: () => void;
 }) {
   useEffect(() => {
-    // Log the full error for the owner's browser console (and Vercel
-    // function logs for SSR errors). End users only ever see the digest.
+    // Report to Sentry (no-op without a DSN), then log the full error for the
+    // owner's browser console (and Vercel function logs for SSR errors). End
+    // users only ever see the digest.
+    Sentry.captureException(error);
     console.error("[/app/* error]", error);
   }, [error]);
 

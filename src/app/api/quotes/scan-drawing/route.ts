@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { captureError } from "@/lib/observability";
 import { createClient } from "@/lib/supabase/server";
 import { canWrite, getSubscriptionStatus } from "@/lib/subscription";
 import { resolveDocumentType } from "@/lib/scanClassify";
@@ -556,6 +557,7 @@ export async function POST(request: NextRequest) {
       }),
     });
   } catch (err) {
+    captureError(err, { route: "quotes/scan-drawing" });
     console.error("scan-drawing fetch failed", err);
     return NextResponse.json(
       { error: "Network error contacting drawing model. Please try again." },
@@ -620,6 +622,7 @@ export async function POST(request: NextRequest) {
   try {
     parsed = parseModelJsonObject<ScanPayload>(text);
   } catch (e) {
+    captureError(e, { route: "quotes/scan-drawing" });
     console.error(
       "scan-drawing failed to parse JSON",
       e,

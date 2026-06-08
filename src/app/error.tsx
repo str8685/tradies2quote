@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import Link from "next/link";
+import * as Sentry from "@sentry/nextjs";
 import {
   ArrowClockwise,
   ArrowLeft,
@@ -28,6 +29,9 @@ export default function RootError({
   reset: () => void;
 }) {
   useEffect(() => {
+    // Report to Sentry (no-op without a DSN) so client render crashes caught
+    // by this boundary aren't only in the console.
+    Sentry.captureException(error);
     console.error("[root error]", error);
   }, [error]);
 

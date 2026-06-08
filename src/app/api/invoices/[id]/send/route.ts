@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { captureError } from "@/lib/observability";
 import { createClient } from "@/lib/supabase/server";
 import { adminClient } from "@/lib/supabase/admin";
 import { generateInvoicePdf } from "@/lib/invoice-pdf-generator";
@@ -112,6 +113,7 @@ export async function POST(
       paymentInstructions,
     });
   } catch (e) {
+    captureError(e, { route: "invoices/send" });
     console.error("Invoice PDF generation failed", e);
     return NextResponse.json(
       {
