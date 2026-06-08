@@ -51,6 +51,7 @@ import { blockedLineGuide } from "@/lib/takeoff/blockedLineGuide";
 import { PhotoPlanPanel } from "./PhotoPlanPanel";
 import { SendQuoteButton } from "./SendQuoteButton";
 import { MobileCollapsibleCard } from "./MobileCollapsibleCard";
+import { CsiGroupedView } from "./CsiGroupedView";
 import { StickyActionBar } from "./StickyActionBar";
 
 type Props = {
@@ -703,6 +704,27 @@ export function QuoteEditor({
           disabled={isAccepted}
         />
       )}
+
+      {/* CSI grouped view — READ-ONLY presentation lens over the same line
+          items. Collapsed by default so the standard editable view stays the
+          conservative default. Never edits, recalculates, or reprices. */}
+      <section data-testid="csi-grouped-card" className="t2q-card-pro p-5 sm:p-6">
+        <details>
+          <summary className="flex cursor-pointer list-none items-center gap-2 [&::-webkit-details-marker]:hidden">
+            <p className="t2q-section-label-pro">{"// csi grouped view"}</p>
+            <span className="ml-auto font-mono text-[10px] uppercase tracking-[0.15em] text-ink-400">
+              read-only · tap to expand
+            </span>
+          </summary>
+          <p className="mt-2 text-xs text-ink-400">
+            Same lines, grouped into CSI / MasterFormat trade divisions. An
+            organizational view — your editable quote above is unchanged.
+          </p>
+          <div className="mt-4">
+            <CsiGroupedView items={items} />
+          </div>
+        </details>
+      </section>
 
       {reconciliation && (
         <section

@@ -7,6 +7,7 @@ import {
   CheckCircle,
   Info,
   Microphone,
+  Stack,
   Warning,
   XCircle,
 } from "@phosphor-icons/react/dist/ssr";
@@ -340,6 +341,25 @@ export default async function DebugPage({
             <p className="mt-0.5 text-xs text-ink-300">
               Raw vs cleaned transcripts + every domain-term correction
               (before/after, source, confidence) and flagged terms.
+            </p>
+          </div>
+          <CaretRight size={16} weight="bold" className="shrink-0 text-ink-400" />
+        </Link>
+
+        {/* CSI grouping preview — Stage 1 mapping layer (read-only) */}
+        <Link
+          href="/app/debug/csi"
+          data-testid="debug-csi-link"
+          className="t2q-card-pro mb-8 flex items-center gap-4 p-5 transition-colors hover:border-brand/40 sm:p-6"
+        >
+          <Stack size={26} weight="duotone" className="shrink-0 text-brand" />
+          <div className="min-w-0 flex-1">
+            <p className="font-display text-base uppercase tracking-tight text-white">
+              CSI grouping
+            </p>
+            <p className="mt-0.5 text-xs text-ink-300">
+              Group a quote&rsquo;s line items into CSI / MasterFormat trade
+              divisions. Read-only preview — calculates nothing, prices nothing.
             </p>
           </div>
           <CaretRight size={16} weight="bold" className="shrink-0 text-ink-400" />
