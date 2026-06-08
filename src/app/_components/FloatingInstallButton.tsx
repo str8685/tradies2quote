@@ -146,7 +146,7 @@ export function FloatingInstallButton() {
         data-testid="floating-install-button"
         data-state={state.mode}
         data-dismissed={dismissed}
-        className="fixed right-4 z-40 flex items-center gap-2 bottom-[calc(5rem_+_env(safe-area-inset-bottom))] sm:right-6 sm:bottom-6"
+        className="fixed right-4 z-40 flex items-center gap-2 bottom-[calc(5rem_+_env(safe-area-inset-bottom))] sm:right-6 sm:bottom-6 sm:hidden"
       >
         <button
           type="button"

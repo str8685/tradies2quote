@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import Link from "next/link";
 import Script from "next/script";
 import { Cookie } from "@phosphor-icons/react";
@@ -39,6 +40,11 @@ export function CookieConsent() {
   // `undefined` = not yet read (avoid a flash of the banner before we
   // know the stored choice); null = read, no choice yet → show banner.
   const [consent, setConsent] = useState<Consent | undefined>(undefined);
+  // The consent banner belongs on the public/marketing surface, not inside the
+  // authenticated app shell (it overlapped the app's own bottom controls). The
+  // analytics-injection logic below still runs everywhere for opted-in users.
+  const pathname = usePathname();
+  const inApp = pathname?.startsWith("/app") ?? false;
 
   useEffect(() => {
     // Defer the read to a 0-ms timer so it doesn't run synchronously in
@@ -71,7 +77,7 @@ export function CookieConsent() {
         <Script src={ANALYTICS_SRC} strategy="afterInteractive" />
       ) : null}
 
-      {consent === null ? (
+      {consent === null && !inApp ? (
         <div
           data-testid="cookie-consent"
           role="dialog"
