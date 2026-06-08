@@ -1265,6 +1265,18 @@ h1, h2, h3, h4, h5 {
 }
 .t2q-account-avatar:active { transform: scale(0.94); }
 
+/* Desktop (≥640px): hide the mobile-only fixed shell controls. These custom
+   rules set `display` unlayered, which (under Tailwind v4 cascade layers)
+   overrides the `sm:hidden` utility on the markup — so the bottom nav + mobile
+   account avatar leaked onto desktop. This unlayered min-640 rule restores the
+   intended `sm:hidden` behaviour. CSS-only; mobile (≤639px) is unaffected. */
+@media (min-width: 640px) {
+  .t2q-bottomnav-bar,
+  .t2q-account-avatar {
+    display: none;
+  }
+}
+
 /* MOBILE SHELL CONTRACT — owner: ROOT FALLBACK PAINT.
    See docs/mobile-shell-contract.md. This is the single layer that shows in any
    over-scroll or un-covered screen edge. It is the cream paper colour the splash
