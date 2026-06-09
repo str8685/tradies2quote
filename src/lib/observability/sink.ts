@@ -58,14 +58,19 @@ export async function writeAppError(row: AppErrorRow): Promise<WriteResult> {
     }
 
     // The generated Database types don't include `record_app_error` until the
-    // types are regenerated, so call through a permissive cast. Behaviour is
-    // unchanged; this only relaxes the compile-time check.
-    const rpc = supabase.rpc as unknown as (
-      fn: string,
-      args: Record<string, unknown>,
-    ) => Promise<{ error: { message: string } | null }>;
+    // types are regenerated, so call through a permissive cast. IMPORTANT: cast
+    // the CLIENT and call `.rpc(...)` directly on it — do NOT extract the method
+    // into a local (`const rpc = supabase.rpc`), which loses the `this` binding
+    // and throws "Cannot read properties of undefined (reading 'rest')" inside
+    // supabase-js. Calling `db.rpc(...)` keeps `this` bound to the client.
+    const db = supabase as unknown as {
+      rpc: (
+        fn: string,
+        args: Record<string, unknown>,
+      ) => Promise<{ error: { message: string } | null }>;
+    };
 
-    const { error } = await rpc("record_app_error", {
+    const { error } = await db.rpc("record_app_error", {
       p_fingerprint: row.fingerprint,
       p_title: row.title,
       p_surface: row.surface,
