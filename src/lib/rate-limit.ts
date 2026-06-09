@@ -64,6 +64,45 @@ export function consumeDailyQuota(key: string, limit: number): QuotaResult {
   };
 }
 
+/**
+ * Short fixed-window throttle (e.g. per-minute) over the SAME in-memory,
+ * per-instance buckets as `consumeDailyQuota`. Where the daily quota guards
+ * cost-bearing LLM routes, this guards bursty, high-frequency endpoints (the
+ * client-error ingest): it caps a flood and then recovers within `windowMs`,
+ * instead of muting a key for the rest of the day. Blocked calls are NOT
+ * counted, so an over-limit caller can't keep pushing the window out.
+ *
+ * Same tradeoff as the daily limiter: in-memory and per serverless instance, so
+ * it's a circuit-breaker for the common cases (a runaway client loop, one
+ * scripted spammer), not a hard distributed quota.
+ */
+export function consumeFixedWindow(
+  key: string,
+  limit: number,
+  windowMs: number,
+): QuotaResult {
+  const now = Date.now();
+  const existing = buckets.get(key);
+
+  // Fresh window (no bucket yet, or the previous one has expired).
+  if (!existing || existing.resetAt <= now) {
+    const resetAt = now + windowMs;
+    buckets.set(key, { count: 1, resetAt });
+    return { ok: true, remaining: Math.max(0, limit - 1), resetAt };
+  }
+
+  if (existing.count >= limit) {
+    return { ok: false, remaining: 0, resetAt: existing.resetAt };
+  }
+
+  existing.count += 1;
+  return {
+    ok: true,
+    remaining: Math.max(0, limit - existing.count),
+    resetAt: existing.resetAt,
+  };
+}
+
 /** Standard 429 JSON response with a Retry-After header (whole seconds). */
 export function tooManyRequestsResponse(resetAt: number): NextResponse {
   const retryAfterSec = Math.max(1, Math.ceil((resetAt - Date.now()) / 1000));
