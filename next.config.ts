@@ -12,6 +12,39 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "images.pexels.com" },
     ],
   },
+  // Production hardening — baseline security headers on every route.
+  // Notes on the choices:
+  //   - frame-ancestors 'self' (+ X-Frame-Options SAMEORIGIN for older
+  //     browsers): the public /quote/[token] page carries the accept +
+  //     signature flow, so it must not be embeddable on other origins
+  //     (clickjacking). Nothing legitimately iframes this site.
+  //   - Permissions-Policy keeps microphone (voice quotes), camera
+  //     (materials capture) and geolocation (weather planning) available
+  //     to OUR origin only, and shuts them off for any embedded content.
+  //   - HSTS is intentionally absent — Vercel injects it on HTTPS domains.
+  async headers() {
+    return [
+      {
+        source: "/(.*)",
+        headers: [
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "X-Frame-Options", value: "SAMEORIGIN" },
+          {
+            key: "Content-Security-Policy",
+            value: "frame-ancestors 'self'",
+          },
+          {
+            key: "Referrer-Policy",
+            value: "strict-origin-when-cross-origin",
+          },
+          {
+            key: "Permissions-Policy",
+            value: "camera=(self), microphone=(self), geolocation=(self)",
+          },
+        ],
+      },
+    ];
+  },
   // Wave 17 — perf — tell SWC to per-icon tree-shake these packages.
   // Without this hint, importing 3 icons from `@phosphor-icons/react`
   // can pull the entire icon manifest into the client bundle. Hitting
