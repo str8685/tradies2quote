@@ -1,6 +1,6 @@
 import { after } from "next/server";
 import { buildErrorRow, type CaptureContext } from "./observability/fingerprint";
-import { writeAppError } from "./observability/sink";
+import { writeAppError, type WriteResult } from "./observability/sink";
 
 export type { CaptureContext } from "./observability/fingerprint";
 
@@ -45,13 +45,21 @@ export function captureError(error: unknown, context?: CaptureContext): void {
  * to be called behind an env flag in a single preview route to prove the write
  * path end-to-end and surface any RPC error.
  *
- * Never throws. Returns the structured WriteResult outcome for the caller's
- * benefit (currently only logged).
+ * Never throws. RETURNS the structured outcome so a flag-gated caller can both
+ * log it and (in preview) surface it directly — Vercel only indexes the first
+ * console line per invocation, so the return value is the reliable signal.
  */
+export interface DiagnosticOutcome {
+  marker: "ok" | "failed" | "threw";
+  fingerprint?: string;
+  reason?: string;
+  error?: string;
+}
+
 export async function captureErrorAwait(
   error: unknown,
   context?: CaptureContext,
-): Promise<void> {
+): Promise<DiagnosticOutcome> {
   try {
     const row = buildErrorRow(error, context);
     console.error("observability: starting writeAppError diagnostic", {
@@ -60,23 +68,28 @@ export async function captureErrorAwait(
       surface: row.surface,
       environment: row.environment,
     });
-    const result = await writeAppError(row);
+    const result: WriteResult = await writeAppError(row);
     if (result.ok) {
       console.error("observability: writeAppError diagnostic succeeded", {
         fingerprint: row.fingerprint,
       });
-    } else {
-      console.error("observability: writeAppError diagnostic FAILED", {
-        fingerprint: row.fingerprint,
-        reason: result.skipped ?? "rpc_error",
-        error: result.error,
-      });
+      return { marker: "ok", fingerprint: row.fingerprint };
     }
+    console.error("observability: writeAppError diagnostic FAILED", {
+      fingerprint: row.fingerprint,
+      reason: result.skipped ?? "rpc_error",
+      error: result.error,
+    });
+    return {
+      marker: "failed",
+      fingerprint: row.fingerprint,
+      reason: result.skipped ?? "rpc_error",
+      error: result.error,
+    };
   } catch (e) {
     // Defensive: the diagnostic itself must never throw into the route.
-    console.error(
-      "observability: writeAppError diagnostic threw",
-      e instanceof Error ? e.message : String(e),
-    );
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error("observability: writeAppError diagnostic threw", msg);
+    return { marker: "threw", error: msg };
   }
 }

@@ -36,10 +36,14 @@ export async function POST(request: NextRequest) {
     captureError(e, { route: "payments/webhook" });
     // Diagnostic (preview-only, flag-gated): additionally await the write in
     // this guaranteed-alive scope so we can confirm the sink end-to-end and see
-    // the RPC result in logs. Does not alter the response or its timing in
-    // normal operation (flag off). Never throws.
+    // the RPC result. Vercel only indexes the first console line per
+    // invocation, so we also echo the outcome in the response body — but ONLY
+    // when the flag is on (off in prod → response is byte-identical to before).
+    // Never throws; does not change the status code.
     if (process.env.DEBUG_INTERNAL_OBSERVABILITY === "1") {
-      await captureErrorAwait(e, { route: "payments/webhook" });
+      const diag = await captureErrorAwait(e, { route: "payments/webhook" });
+      console.error("[payments/webhook] bad signature", e);
+      return NextResponse.json({ error: "bad_signature", _diag: diag }, { status: 400 });
     }
     console.error("[payments/webhook] bad signature", e);
     return NextResponse.json({ error: "bad_signature" }, { status: 400 });
