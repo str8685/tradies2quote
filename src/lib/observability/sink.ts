@@ -5,56 +5,24 @@
 // group upsert + event insert; see the migration). Uses the service-role
 // admin client so it works regardless of RLS.
 //
-// This function NEVER throws. It returns a small WriteResult so a caller that
-// WANTS to observe the outcome (the flag-gated diagnostic path) can, while the
-// normal `captureError` path simply ignores the return and stays fire-and-
-// forget. If the migration is not applied, the service-role key is missing, or
-// the RPC errors, the failure is captured in the result (and logged) — never
-// rethrown: logging failure must never affect the request.
-//
-// Verbose markers are gated behind DEBUG_INTERNAL_OBSERVABILITY so general
-// operation stays quiet; the unconditional RPC-error line is preserved.
+// This function NEVER throws. It is invoked from `captureError` via `after()`
+// / fire-and-forget, so the caller never awaits it. If the service-role key is
+// absent or the RPC errors, the failure is swallowed (one console line on a
+// genuine RPC error) — logging failure must never affect the request.
 // ─────────────────────────────────────────────────────────────────────────
 
 import { adminClient } from "@/lib/supabase/admin";
 import type { AppErrorRow } from "./fingerprint";
 
-export interface WriteResult {
-  ok: boolean;
-  /** Error message when the write did not succeed. */
-  error?: string;
-  /** Set when the write was a deliberate no-op (e.g. admin client unavailable). */
-  skipped?: string;
-}
-
-function debugEnabled(): boolean {
-  return process.env.DEBUG_INTERNAL_OBSERVABILITY === "1";
-}
-
-export async function writeAppError(row: AppErrorRow): Promise<WriteResult> {
-  const debug = debugEnabled();
+export async function writeAppError(row: AppErrorRow): Promise<void> {
   try {
-    if (debug) {
-      console.error("observability: writeAppError invoked", {
-        fingerprint: row.fingerprint,
-        route: row.route,
-        surface: row.surface,
-        environment: row.environment,
-      });
-    }
-
-    // adminClient() throws if the service-role key / URL is absent. Previously
-    // this throw was swallowed with no trace — the silent failure we were
-    // chasing. Now it surfaces as a structured result (and a debug line).
+    // adminClient() throws if the service-role key / URL is absent — treat as a
+    // no-op (nothing we can do; never surface to the caller).
     let supabase;
     try {
       supabase = adminClient();
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      if (debug) {
-        console.error("observability: writeAppError adminClient unavailable:", msg);
-      }
-      return { ok: false, skipped: "admin_client_unavailable", error: msg };
+    } catch {
+      return;
     }
 
     // The generated Database types don't include `record_app_error` until the
@@ -87,23 +55,11 @@ export async function writeAppError(row: AppErrorRow): Promise<WriteResult> {
     });
 
     if (error) {
-      // Always log a single line for a genuine RPC failure (e.g. migration not
-      // applied, grant missing). Never rethrown.
+      // Genuine RPC failure (e.g. migration not applied, grant missing). One
+      // line for visibility; never rethrown.
       console.error("[observability] writeAppError failed:", error.message);
-      return { ok: false, error: error.message };
     }
-
-    if (debug) {
-      console.error("observability: writeAppError rpc ok", {
-        fingerprint: row.fingerprint,
-      });
-    }
-    return { ok: true };
-  } catch (e) {
-    // Any unexpected throw (network, serialization, …) — surface one line,
-    // never rethrow.
-    const msg = e instanceof Error ? e.message : String(e);
-    console.error("[observability] writeAppError threw:", msg);
-    return { ok: false, error: msg };
+  } catch {
+    /* reporting must never throw */
   }
 }
