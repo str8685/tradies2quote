@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import Link from "next/link";
 import * as Sentry from "@sentry/nextjs";
+import { reportClientError } from "@/lib/observability/clientReport";
 import { ArrowClockwise, House, WarningOctagon } from "@phosphor-icons/react";
 
 /**
@@ -29,6 +30,7 @@ export default function AppError({
     // owner's browser console (and Vercel function logs for SSR errors). End
     // users only ever see the digest.
     Sentry.captureException(error);
+    reportClientError(error, "boundary");
     console.error("[/app/* error]", error);
   }, [error]);
 

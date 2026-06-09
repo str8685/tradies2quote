@@ -13,6 +13,7 @@
  * + media masked so a tradie's transcript / client PII is never captured.
  */
 import * as Sentry from "@sentry/nextjs";
+import { reportClientError } from "@/lib/observability/clientReport";
 
 Sentry.init({
   dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
@@ -38,3 +39,22 @@ Sentry.init({
 // Next 16 client navigation instrumentation — lets Sentry tie errors to the
 // route transition the user was on. Required hook export for the App Router.
 export const onRouterTransitionStart = Sentry.captureRouterTransitionStart;
+
+// Internal monitor — global handlers for errors React boundaries don't catch
+// (async callbacks, event handlers, unhandled promise rejections). Conservative
+// on purpose: we only report when a real Error object is present, which skips
+// the opaque cross-origin "Script error." noise from extensions / 3rd-party
+// scripts. Fire-and-forget; never blocks or throws.
+if (typeof window !== "undefined") {
+  window.addEventListener("error", (event) => {
+    if (event?.error instanceof Error) {
+      reportClientError(event.error, "error");
+    }
+  });
+  window.addEventListener("unhandledrejection", (event) => {
+    const reason = (event as PromiseRejectionEvent)?.reason;
+    if (reason instanceof Error) {
+      reportClientError(reason, "unhandledrejection");
+    }
+  });
+}

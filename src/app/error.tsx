@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import Link from "next/link";
 import * as Sentry from "@sentry/nextjs";
+import { reportClientError } from "@/lib/observability/clientReport";
 import {
   ArrowClockwise,
   ArrowLeft,
@@ -32,6 +33,7 @@ export default function RootError({
     // Report to Sentry (no-op without a DSN) so client render crashes caught
     // by this boundary aren't only in the console.
     Sentry.captureException(error);
+    reportClientError(error, "boundary");
     console.error("[root error]", error);
   }, [error]);
 

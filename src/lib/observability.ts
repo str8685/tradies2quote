@@ -1,5 +1,6 @@
 import { after } from "next/server";
 import { buildErrorRow, type CaptureContext } from "./observability/fingerprint";
+import { sanitizeClientReport } from "./observability/clientErrors";
 import { writeAppError } from "./observability/sink";
 
 export type { CaptureContext } from "./observability/fingerprint";
@@ -30,6 +31,31 @@ export function captureError(error: unknown, context?: CaptureContext): void {
       after(flush);
     } catch {
       // Outside a request scope (or `after` unavailable) → fire-and-forget.
+      void flush().catch(() => {});
+    }
+  } catch {
+    /* reporting must never change request behaviour */
+  }
+}
+
+/**
+ * Report a CLIENT (browser) error to the internal monitor. Called server-side
+ * from the /api/internal/client-error route with the raw, untrusted browser
+ * payload. Sanitizes into the shared AppErrorRow model (surface = "client")
+ * and writes via the same non-blocking, failure-safe path as captureError.
+ *
+ * Safe by construction: never throws; no-ops if the payload is empty/garbage;
+ * scrubs + truncates message/stack; stores no request bodies, customer data,
+ * or secrets — see clientErrors.ts.
+ */
+export function captureClientReport(raw: unknown): void {
+  try {
+    const row = sanitizeClientReport(raw);
+    if (!row) return;
+    const flush = () => writeAppError(row); // never throws
+    try {
+      after(flush);
+    } catch {
       void flush().catch(() => {});
     }
   } catch {

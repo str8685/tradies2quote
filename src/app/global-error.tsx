@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import * as Sentry from "@sentry/nextjs";
+import { reportClientError } from "@/lib/observability/clientReport";
 
 /**
  * Global error boundary — the absolute last-resort fallback. Next.js
@@ -26,6 +27,7 @@ export default function GlobalError({
     // root-layout-crash case, the worst class of error, must be reported
     // explicitly or it's silently swallowed. No-ops without a DSN.
     Sentry.captureException(error);
+    reportClientError(error, "boundary");
     console.error("[global error]", error);
   }, [error]);
 
