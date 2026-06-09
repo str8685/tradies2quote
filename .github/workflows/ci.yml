@@ -1,0 +1,38 @@
+# Minimal CI — lint + unit tests only.
+#
+# Deliberately NO deploy steps, NO production actions, NO env writes, and NO
+# secrets: deployment is owned by the Vercel GitHub integration (push to
+# `prod-shell` = production; see CLAUDE.md → Deploy model). This workflow is
+# the pre-merge quality gate the release process requires.
+#
+# The eval suites (eval:quotes, eval:scan, …) are env-flag-gated inside
+# vitest and skip themselves here — they need paid API keys and are run
+# manually by the owner.
+
+name: CI
+
+on:
+  push:
+    branches: [main, prod-shell]
+  pull_request:
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22 # matches the Vercel project's runtime (22.x)
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit tests
+        run: npm test

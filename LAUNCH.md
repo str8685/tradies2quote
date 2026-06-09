@@ -81,7 +81,7 @@ vercel rollback <previous-deploy-url> --yes
 
 The `<previous-deploy-url>` is the per-deployment hostname like `tradies-xyz.vercel.app`. The production alias (`tradies2quote.com`) flips back to that deploy in ~30s.
 
-Then *figure out what broke* in the new deploy, fix it, re-deploy.
+Then *figure out what broke*, fix it on `main`, verify the preview deploy, and ship the fix by pushing/merging to `prod-shell` — that's the normal production deploy path (the Vercel GitHub integration deploys `prod-shell` to production automatically; see CLAUDE.md → Deploy model). `vercel rollback` is the emergency tool only.
 
 ### "I'm getting hammered with signups / costs spiralling"
 

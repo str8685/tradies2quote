@@ -76,15 +76,34 @@ A few auth/dashboard files reference semantic tokens (`bg-background`, `text-ink
 | `npm run dev` | local dev server (Turbopack), `http://localhost:3000` |
 | `npm run build` | production build — run at the end of every chunk, expect zero errors |
 | `npm run lint` | ESLint with the Next preset |
-| `vercel --prod` | deploy to production from the **primary repo** at `/Users/str8685/Desktop/tradies2quote/`, not a worktree |
+| `npm test` | vitest unit tests (also run in CI on every push) |
+| `git push origin main` | preview deployment via the Vercel GitHub integration |
+| `git push origin prod-shell` | **PRODUCTION deployment** — ask the owner first (see Deploy model) |
 
 ## Deploy model
 
-**A Git remote now exists** (`origin` → `https://github.com/str8builders/tradies2quote.git`) for code hosting / backup, so `git push` works. **But pushing does NOT deploy** — Vercel is connected via the CLI link in `/Users/str8685/Desktop/tradies2quote/.vercel/project.json`, not a GitHub integration. The live site only changes when you run `vercel --prod` from the primary repo. (Was previously local-only with no remote.)
+**⚠ Corrected 2026-06-10 — the previous version of this section was wrong.** Vercel
+IS connected to GitHub (`str8builders/tradies2quote`) via the Git integration, and
+**pushing DOES deploy**. Verified against the Vercel deployments API:
 
-To ship: run `vercel --prod` from the primary repo. Each deploy gets its own immutable per-deployment URL; the `tradies-nz` production aliases (`tradies2quote.com`, `tradies-nz.vercel.app`) auto-repoint to the latest. Per-deployment URLs from older deploys keep serving their frozen content forever — that's by design. `knockoff.app` lives in a different Vercel project and is unaffected.
+- **`git push origin main` → preview deployment** (target: none). Every push gets an
+  immutable per-deployment URL.
+- **`git push origin prod-shell` → PRODUCTION deployment.** The integration treats
+  `prod-shell` as the production branch; the `tradies-nz` production aliases
+  (`tradies2quote.com`, `tradies-nz.vercel.app`) auto-repoint to it. The deploy
+  currently serving production came from a `prod-shell` push, not from the CLI.
 
-Set runtime env vars (`OPENAI_API_KEY`, etc.) in Vercel project settings → Environment Variables. Local dev reads `/Users/str8685/Desktop/tradies2quote/.env.local`.
+**The ONE sanctioned deploy path: merge/push to `prod-shell`.** Do not use
+`vercel --prod` from the CLI for routine shipping — it bypasses the branch flow and
+creates a second, undocumented path to production. (`vercel rollback` remains the
+emergency rollback tool — see LAUNCH.md.) Treat any push to `prod-shell` as a
+production deploy and apply the working-preferences rule: ask the owner first.
+
+Per-deployment URLs from older deploys keep serving their frozen content forever —
+that's by design. `knockoff.app` lives in a different Vercel project and is unaffected.
+
+Set runtime env vars (`OPENAI_API_KEY`, etc.) in Vercel project settings →
+Environment Variables. Local dev reads `/Users/str8685/Desktop/tradies2quote/.env.local`.
 
 ## Scope boundaries
 
@@ -96,6 +115,18 @@ Out of scope for the MVP — do not build:
 **Now in scope (opted in by the owner):** lightweight **job scheduling** — a quote can carry a job date (`quotes.scheduled_for`, set via the date picker on the LifecycleCard schedule step) and the dashboard shows a month **calendar** (`src/app/app/_components/ScheduleCalendar.tsx`) of scheduled jobs plus personal day-**notes** (`calendar_notes` table, owner-only RLS). Full job management / time tracking is still out.
 
 Do **not** modify the marketing landing page (`src/app/page.tsx` and `src/app/_components/landing/*`) without an explicit request.
+
+## Observability (current posture)
+
+Primary error monitoring is the **internal Supabase sink**, not Sentry:
+`captureError()` (`src/lib/observability.ts`) writes scrubbed, fingerprinted rows to
+`app_error_events` / `app_error_groups` via the `record_app_error` RPC, off the hot
+path and failure-safe. Browser errors flow through `/api/internal/client-error`
+(per-IP rate-limited, works for anonymous users on the public quote page). The
+owner-only dashboard lives at `/app/debug`. Sentry is wired but **optional** — every
+Sentry side effect is env-gated and a no-op when `NEXT_PUBLIC_SENTRY_DSN` /
+`SENTRY_*` are absent. When adding a catch block on an API route, call
+`captureError(e, { route })` alongside `console.error`.
 
 ## AI eval loop (Wave 40)
 

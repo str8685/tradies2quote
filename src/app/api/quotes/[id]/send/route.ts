@@ -192,7 +192,10 @@ export async function POST(
       channel: "email",
     });
   }
-  await admin.from("quote_events").insert({
+  // Audit row for the status-history timeline. Non-fatal — the email is out
+  // and the status is already "sent" — but a silent loss here leaves a hole
+  // in the tracking UI, so log + capture instead of fire-and-ignore.
+  const { error: evErr } = await admin.from("quote_events").insert({
     quote_id: quote.id,
     type: "sent",
     metadata: {
@@ -200,6 +203,13 @@ export async function POST(
       ...(acknowledged ? { takeoff_override: true } : {}),
     },
   });
+  if (evErr) {
+    captureError(evErr, {
+      route: "quotes/send",
+      extra: { step: "quote_events.sent" },
+    });
+    console.error("quote_events 'sent' insert failed", evErr);
+  }
 
   return NextResponse.json({
     ok: true,
