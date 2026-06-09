@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { captureError } from "@/lib/observability";
+import { captureError, captureErrorAwait } from "@/lib/observability";
 import type Stripe from "stripe";
 import { adminClient } from "@/lib/supabase/admin";
 import { stripeClient } from "@/lib/stripe-client";
@@ -32,7 +32,15 @@ export async function POST(request: NextRequest) {
   try {
     event = stripeClient().webhooks.constructEvent(raw, signature, secret);
   } catch (e) {
+    // Normal, non-blocking capture (after()-scheduled in general operation).
     captureError(e, { route: "payments/webhook" });
+    // Diagnostic (preview-only, flag-gated): additionally await the write in
+    // this guaranteed-alive scope so we can confirm the sink end-to-end and see
+    // the RPC result in logs. Does not alter the response or its timing in
+    // normal operation (flag off). Never throws.
+    if (process.env.DEBUG_INTERNAL_OBSERVABILITY === "1") {
+      await captureErrorAwait(e, { route: "payments/webhook" });
+    }
     console.error("[payments/webhook] bad signature", e);
     return NextResponse.json({ error: "bad_signature" }, { status: 400 });
   }

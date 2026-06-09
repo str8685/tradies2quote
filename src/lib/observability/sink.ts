@@ -5,22 +5,61 @@
 // group upsert + event insert; see the migration). Uses the service-role
 // admin client so it works regardless of RLS.
 //
-// This function NEVER throws and NEVER blocks the caller's response in a way
-// that matters — it is invoked from `captureError` via `after()` / fire-and-
-// forget. If the migration is not yet applied (RPC/tables missing), the RPC
-// returns an error which is swallowed here: logging failure must never affect
-// the request.
+// This function NEVER throws. It returns a small WriteResult so a caller that
+// WANTS to observe the outcome (the flag-gated diagnostic path) can, while the
+// normal `captureError` path simply ignores the return and stays fire-and-
+// forget. If the migration is not applied, the service-role key is missing, or
+// the RPC errors, the failure is captured in the result (and logged) — never
+// rethrown: logging failure must never affect the request.
+//
+// Verbose markers are gated behind DEBUG_INTERNAL_OBSERVABILITY so general
+// operation stays quiet; the unconditional RPC-error line is preserved.
 // ─────────────────────────────────────────────────────────────────────────
 
 import { adminClient } from "@/lib/supabase/admin";
 import type { AppErrorRow } from "./fingerprint";
 
-export async function writeAppError(row: AppErrorRow): Promise<void> {
+export interface WriteResult {
+  ok: boolean;
+  /** Error message when the write did not succeed. */
+  error?: string;
+  /** Set when the write was a deliberate no-op (e.g. admin client unavailable). */
+  skipped?: string;
+}
+
+function debugEnabled(): boolean {
+  return process.env.DEBUG_INTERNAL_OBSERVABILITY === "1";
+}
+
+export async function writeAppError(row: AppErrorRow): Promise<WriteResult> {
+  const debug = debugEnabled();
   try {
-    const supabase = adminClient(); // throws if SERVICE_ROLE key absent → caught
+    if (debug) {
+      console.error("observability: writeAppError invoked", {
+        fingerprint: row.fingerprint,
+        route: row.route,
+        surface: row.surface,
+        environment: row.environment,
+      });
+    }
+
+    // adminClient() throws if the service-role key / URL is absent. Previously
+    // this throw was swallowed with no trace — the silent failure we were
+    // chasing. Now it surfaces as a structured result (and a debug line).
+    let supabase;
+    try {
+      supabase = adminClient();
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (debug) {
+        console.error("observability: writeAppError adminClient unavailable:", msg);
+      }
+      return { ok: false, skipped: "admin_client_unavailable", error: msg };
+    }
+
     // The generated Database types don't include `record_app_error` until the
-    // migration is applied + types regenerated, so call through a permissive
-    // cast. Behaviour is unchanged; this only relaxes the compile-time check.
+    // types are regenerated, so call through a permissive cast. Behaviour is
+    // unchanged; this only relaxes the compile-time check.
     const rpc = supabase.rpc as unknown as (
       fn: string,
       args: Record<string, unknown>,
@@ -43,11 +82,23 @@ export async function writeAppError(row: AppErrorRow): Promise<void> {
     });
 
     if (error) {
-      // Swallow (e.g. migration not applied yet). One quiet console line for
-      // local/preview visibility; never rethrown.
+      // Always log a single line for a genuine RPC failure (e.g. migration not
+      // applied, grant missing). Never rethrown.
       console.error("[observability] writeAppError failed:", error.message);
+      return { ok: false, error: error.message };
     }
-  } catch {
-    /* reporting must never throw */
+
+    if (debug) {
+      console.error("observability: writeAppError rpc ok", {
+        fingerprint: row.fingerprint,
+      });
+    }
+    return { ok: true };
+  } catch (e) {
+    // Any unexpected throw (network, serialization, …) — surface one line,
+    // never rethrow.
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error("[observability] writeAppError threw:", msg);
+    return { ok: false, error: msg };
   }
 }
