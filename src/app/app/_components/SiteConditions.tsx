@@ -10,6 +10,10 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { isWeatherPlanningEnabled } from "@/lib/weather-planning/flag";
+import {
+  isAssessmentStale,
+  relativeAge,
+} from "@/lib/weather-planning/freshness";
 import type { PatOutput } from "@/lib/weather-planning/types";
 import type { QuoteData } from "@/lib/quote-types";
 import { CloudSun } from "@phosphor-icons/react/dist/ssr";
@@ -31,6 +35,10 @@ interface Row {
   recommendedAction: string;
   pat: PatOutput | null;
   draft: { channel: "sms" | "email" | "none"; message: string; reason: string } | null;
+  /** Trust labels (P1): WHICH location + HOW old the assessment is. */
+  geocodedAddress: string | null;
+  assessedAgo: string;
+  stale: boolean;
 }
 
 export async function SiteConditions({ userId }: { userId: string }) {
@@ -65,7 +73,7 @@ export async function SiteConditions({ userId }: { userId: string }) {
   const assessmentIds = picked.map((a) => a.id);
   const quoteIds = picked.map((a) => a.quote_id);
 
-  const [{ data: recs }, { data: drafts }, { data: quotes }] = await Promise.all([
+  const [{ data: recs }, { data: drafts }, { data: quotes }, { data: siteCtx }] = await Promise.all([
     supabase.from("ai_recommendations").select("assessment_id, output").in("assessment_id", assessmentIds),
     supabase
       .from("customer_message_drafts")
@@ -73,6 +81,9 @@ export async function SiteConditions({ userId }: { userId: string }) {
       .in("assessment_id", assessmentIds)
       .neq("status", "dismissed"),
     supabase.from("quotes").select("id, quote_data").in("id", quoteIds),
+    // P1 trust labels — the resolved/geocoded job location the assessment
+    // was made for (written by the weather-location spine in assess.ts).
+    supabase.from("quote_site_context").select("quote_id, geocoded_address").in("quote_id", quoteIds),
   ]);
 
   const recByAssessment = new Map((recs ?? []).map((r) => [r.assessment_id, r.output as unknown as PatOutput]));
@@ -83,6 +94,12 @@ export async function SiteConditions({ userId }: { userId: string }) {
       return [q.id, (qd?.job_summary as string | undefined) ?? "Scheduled job"];
     }),
   );
+  const addressByQuote = new Map(
+    (siteCtx ?? []).map((c) => [c.quote_id, c.geocoded_address ?? null]),
+  );
+
+  // Server-rendered snapshot time: ages/staleness are as-of this render.
+  const nowISO = new Date().toISOString();
 
   const rows: Row[] = picked.map((a) => {
     const draft = draftByAssessment.get(a.id);
@@ -97,6 +114,9 @@ export async function SiteConditions({ userId }: { userId: string }) {
         draft && draft.message
           ? { channel: (draft.channel as "sms" | "email" | "none") ?? "none", message: draft.message, reason: draft.reason ?? "" }
           : null,
+      geocodedAddress: addressByQuote.get(a.quote_id) ?? null,
+      assessedAgo: relativeAge(a.generated_at, nowISO),
+      stale: isAssessmentStale(a.generated_at, nowISO),
     };
   });
 
@@ -117,11 +137,32 @@ export async function SiteConditions({ userId }: { userId: string }) {
             <li key={row.quoteId} className="rounded-xl border border-white/10 bg-white/[0.04] p-4">
               <div className="flex items-start justify-between gap-3">
                 <p className="min-w-0 flex-1 truncate text-sm font-semibold text-white">{row.title}</p>
-                <span className={`shrink-0 rounded-full border px-2.5 py-0.5 text-[11px] font-semibold ${style.cls}`}>
-                  {style.label}
+                <span className="flex shrink-0 items-center gap-1.5">
+                  {row.stale ? (
+                    <span
+                      data-testid="site-conditions-stale"
+                      className="rounded-full border border-amber-500/40 bg-amber-500/10 px-2.5 py-0.5 text-[11px] font-semibold text-amber-300"
+                    >
+                      Stale forecast
+                    </span>
+                  ) : null}
+                  <span className={`rounded-full border px-2.5 py-0.5 text-[11px] font-semibold ${style.cls}`}>
+                    {style.label}
+                  </span>
                 </span>
               </div>
               {row.summary ? <p className="mt-1.5 text-xs leading-relaxed text-ink-300">{row.summary}</p> : null}
+              {/* P1 trust line: WHICH location this assessment is for + HOW old it is. */}
+              <p
+                data-testid="site-conditions-trust-line"
+                className="mt-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-400"
+              >
+                {row.geocodedAddress
+                  ? `Weather for ${row.geocodedAddress}`
+                  : "Weather location not recorded"}
+                {" · assessed "}
+                {row.assessedAgo}
+              </p>
 
               {row.pat ? (
                 <div className="mt-3 rounded-lg border border-white/8 bg-white/[0.03] p-3">
