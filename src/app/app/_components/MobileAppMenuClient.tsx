@@ -4,6 +4,7 @@ import { useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useBodyScrollLock } from "@/lib/hooks/useBodyScrollLock";
 import type { Icon } from "@phosphor-icons/react";
 import {
   House,
@@ -76,6 +77,12 @@ function isActive(href: string, pathname: string) {
 export function MobileAppMenuClient({ isOwner, userEmail, avatarUrl }: Props) {
   const pathname = usePathname() ?? "";
   const [sheetOpen, setSheetOpen] = useState(false);
+  // Scoped scroll-lock: while the account sheet is open the document must
+  // not scroll behind the backdrop (iOS ignores overflow:hidden for touch
+  // scrolling). Fully reverted + scroll position restored on close — the
+  // document remains the shell's single scroll owner (see
+  // docs/mobile-shell-contract.md; this is not the banned general lock).
+  useBodyScrollLock(sheetOpen);
   const newQuoteActive = pathname === "/app/quotes/new";
 
   const renderTab = ({ href, label, icon: IconCmp, testId }: (typeof TABS)[number]) => {
