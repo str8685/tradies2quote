@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   ArrowClockwise,
   CloudSun,
@@ -19,6 +20,28 @@ import {
   type WeatherImpactStatus,
   type WeatherImpactTrade,
 } from "@/lib/weather-impact";
+
+// ── Job-location-first contract (P0 weather slice) ─────────────────────────
+// The server (page.tsx) resolves WHICH location the weather is for — the
+// client/customer job site stored on the quote. This component fetches live
+// weather for THAT location and always labels it. Device location exists
+// only as an explicit, labeled user choice — never a silent default.
+
+export type JobOption = {
+  id: string;
+  label: string;
+  address: string;
+  scheduled: boolean;
+};
+
+export type JobLocation = {
+  quoteId: string;
+  address: string;
+  latitude: number;
+  longitude: number;
+  matchedName: string;
+  resolvedFrom: "site_context" | "geocoded_now";
+};
 
 const EMPTY_WEATHER: WeatherImpactInput = {
   rainProbabilityPct: null,
@@ -71,7 +94,18 @@ const CONTEXT_TOGGLES: ReadonlyArray<{
   { key: "exteriorFinishApplication", label: "Exterior finish / adhesive" },
 ];
 
-export function WeatherImpactClient() {
+export function WeatherImpactClient({
+  jobOptions,
+  selectedQuoteId,
+  jobLocation,
+  geocodeFailed,
+}: {
+  jobOptions: JobOption[];
+  selectedQuoteId: string | null;
+  jobLocation: JobLocation | null;
+  geocodeFailed: boolean;
+}) {
+  const router = useRouter();
   const [trade, setTrade] = useState<WeatherImpactTrade>("roofing");
   const [context, setContext] = useState<WeatherImpactContext>({
     ...DEFAULT_WEATHER_CONTEXT,
@@ -81,6 +115,9 @@ export function WeatherImpactClient() {
     "idle",
   );
   const [fetchError, setFetchError] = useState<string | null>(null);
+  // WHICH location the current weather values are for — always shown.
+  // null = manual entry (no live fetch yet).
+  const [locationFor, setLocationFor] = useState<string | null>(null);
 
   const result = useMemo(
     () => evaluateWeatherImpact({ trade, weather, context }),
@@ -88,7 +125,76 @@ export function WeatherImpactClient() {
   );
   const status = STATUS_COPY[result.overall_status];
 
-  async function useCurrentWeather() {
+  // Job-location-first: when the server resolved the selected job's site,
+  // fetch the live weather for THAT location automatically. All state
+  // updates happen inside async callbacks (React 19 compiler rule: no
+  // synchronous setState in an effect body).
+  useEffect(() => {
+    if (!jobLocation) return;
+    let cancelled = false;
+    const controller = new AbortController();
+    const abortTimer = setTimeout(() => controller.abort(), 15_000);
+    const start = setTimeout(() => {
+      if (cancelled) return;
+      setFetchState("loading");
+      setFetchError(null);
+      fetchOpenMeteoWeather({
+        latitude: jobLocation.latitude,
+        longitude: jobLocation.longitude,
+        signal: controller.signal,
+      })
+        .then((nextWeather) => {
+          if (cancelled) return;
+          setWeather(nextWeather);
+          setLocationFor(`Job site: ${jobLocation.matchedName}`);
+          setFetchState("ready");
+        })
+        .catch((error) => {
+          if (cancelled) return;
+          setFetchState("error");
+          setFetchError(
+            error instanceof Error && error.name !== "AbortError"
+              ? error.message
+              : "Could not load weather for the job site. Retry, or enter conditions manually.",
+          );
+        })
+        .finally(() => clearTimeout(abortTimer));
+    }, 0);
+    return () => {
+      cancelled = true;
+      controller.abort();
+      clearTimeout(abortTimer);
+      clearTimeout(start);
+    };
+    // Refetch when the selected job (or its resolved coords) changes.
+  }, [jobLocation?.quoteId, jobLocation?.latitude, jobLocation?.longitude]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  function retryJobWeather() {
+    if (!jobLocation) return;
+    setFetchState("loading");
+    setFetchError(null);
+    fetchOpenMeteoWeather({
+      latitude: jobLocation.latitude,
+      longitude: jobLocation.longitude,
+    })
+      .then((nextWeather) => {
+        setWeather(nextWeather);
+        setLocationFor(`Job site: ${jobLocation.matchedName}`);
+        setFetchState("ready");
+      })
+      .catch((error) => {
+        setFetchState("error");
+        setFetchError(
+          error instanceof Error
+            ? error.message
+            : "Could not load weather for the job site.",
+        );
+      });
+  }
+
+  // EXPLICIT device fallback — never a default. Clearly labeled as the
+  // tradie's device location, not the job site.
+  async function useDeviceWeather() {
     setFetchState("loading");
     setFetchError(null);
     try {
@@ -98,6 +204,7 @@ export function WeatherImpactClient() {
         longitude: position.coords.longitude,
       });
       setWeather(nextWeather);
+      setLocationFor("Your device location (not the job site)");
       setFetchState("ready");
     } catch (error) {
       setFetchState("error");
@@ -139,6 +246,11 @@ export function WeatherImpactClient() {
             </p>
             <div className="mt-4 flex flex-wrap gap-2">
               <Badge label={`Score ${result.severity_score}/100`} />
+              {/* WHICH location this weather is for — always visible. */}
+              <Badge
+                label={`Weather for: ${locationFor ?? "manual entry (no live location)"}`}
+                emphasis
+              />
               <Badge
                 label={
                   result.confidence === "degraded"
@@ -154,6 +266,62 @@ export function WeatherImpactClient() {
 
       <section className="grid gap-5 lg:grid-cols-[0.86fr_1.14fr]">
         <div className="space-y-5">
+          {/* Job picker — the weather location comes from the JOB on record. */}
+          <section className="t2q-card-pro p-5 sm:p-6">
+            <p className="t2q-section-label-pro">{"// job site"}</p>
+            <h3 className="mt-2 text-xl font-semibold text-white">
+              Which job is this for?
+            </h3>
+            {jobOptions.length > 0 ? (
+              <>
+                <label className="mt-4 block">
+                  <span className="sr-only">Select job</span>
+                  <select
+                    value={selectedQuoteId ?? ""}
+                    onChange={(event) => {
+                      const id = event.target.value;
+                      router.push(
+                        id ? `/app/weather?quote=${id}` : "/app/weather",
+                      );
+                    }}
+                    data-testid="weather-job-picker"
+                    className="h-12 w-full rounded-lg border border-white/10 bg-white/[0.04] px-3 text-base font-semibold text-white"
+                  >
+                    <option value="">No job selected — manual conditions</option>
+                    {jobOptions.map((option) => (
+                      <option key={option.id} value={option.id}>
+                        {option.scheduled ? "[scheduled] " : ""}
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                {jobLocation ? (
+                  <p className="mt-3 text-sm leading-relaxed text-ink-300">
+                    Live weather loads for{" "}
+                    <span className="font-semibold text-white">
+                      {jobLocation.matchedName}
+                    </span>{" "}
+                    (from the job&apos;s client address).
+                  </p>
+                ) : null}
+                {geocodeFailed ? (
+                  <p className="mt-3 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-300">
+                    Couldn&apos;t place this job&apos;s address on the map.
+                    Enter conditions manually, or use your device location
+                    below (clearly marked as not the job site).
+                  </p>
+                ) : null}
+              </>
+            ) : (
+              <p className="mt-3 text-sm leading-relaxed text-ink-400">
+                No quotes with a client address yet — add the client&apos;s
+                address on a quote and it&apos;ll appear here. You can still
+                enter conditions manually below.
+              </p>
+            )}
+          </section>
+
           <section className="t2q-card-pro p-5 sm:p-6">
             <div className="flex items-start justify-between gap-4">
               <div>
@@ -216,22 +384,43 @@ export function WeatherImpactClient() {
               </div>
               <button
                 type="button"
-                onClick={useCurrentWeather}
+                onClick={useDeviceWeather}
                 disabled={fetchState === "loading"}
-                className="inline-flex h-11 items-center gap-2 rounded-lg border border-brand/40 bg-brand/10 px-3 text-sm font-semibold text-brand disabled:opacity-60"
+                data-testid="weather-device-location"
+                className="inline-flex h-11 items-center gap-2 rounded-lg border border-white/15 bg-white/[0.04] px-3 text-sm font-semibold text-ink-300 disabled:opacity-60"
               >
                 {fetchState === "loading" ? (
                   <ArrowClockwise size={17} className="animate-spin" aria-hidden="true" />
                 ) : (
                   <MapPin size={17} weight="bold" aria-hidden="true" />
                 )}
-                Use location
+                Use my device location
               </button>
             </div>
-            {fetchError ? (
-              <p className="mt-3 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-300">
-                {fetchError}
+            <p className="mt-2 text-xs leading-relaxed text-ink-400">
+              Device location is your phone&apos;s position — not the job site.
+              Pick a job above to load weather for the client&apos;s address.
+            </p>
+            {fetchState === "loading" && jobLocation ? (
+              <p className="mt-3 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-sm text-ink-300">
+                Loading live weather for {jobLocation.matchedName}…
               </p>
+            ) : null}
+            {fetchError ? (
+              <div className="mt-3 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-300">
+                <p>{fetchError}</p>
+                {jobLocation ? (
+                  <button
+                    type="button"
+                    onClick={retryJobWeather}
+                    data-testid="weather-retry-job"
+                    className="mt-2 inline-flex h-9 items-center gap-2 rounded-lg border border-amber-500/40 px-3 text-xs font-semibold text-amber-200"
+                  >
+                    <ArrowClockwise size={14} aria-hidden="true" />
+                    Retry job-site weather
+                  </button>
+                ) : null}
+              </div>
             ) : null}
             <div className="mt-5 grid grid-cols-2 gap-3">
               {WEATHER_FIELDS.map((field) => (
@@ -344,9 +533,15 @@ function ResultSection({
   );
 }
 
-function Badge({ label }: { label: string }) {
+function Badge({ label, emphasis = false }: { label: string; emphasis?: boolean }) {
   return (
-    <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs font-semibold text-ink-300">
+    <span
+      className={
+        emphasis
+          ? "rounded-full border border-brand/40 bg-brand/10 px-3 py-1 text-xs font-semibold text-brand"
+          : "rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs font-semibold text-ink-300"
+      }
+    >
       {label}
     </span>
   );

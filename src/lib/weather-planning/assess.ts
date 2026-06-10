@@ -20,6 +20,7 @@ import { runPat } from "@/lib/agents/pat";
 import { runWilla } from "@/lib/agents/willa";
 import { fetchForecastForWindow } from "./provider";
 import { geocodeAddress } from "./geocode";
+import { pickJobAddress } from "./jobAddress";
 import { evaluateJobWeather } from "./risk-engine";
 import { getRuleFallback, ruleFromRow } from "./rules";
 import { guessJobType, isKnownJobType } from "./job-type";
@@ -92,14 +93,24 @@ export async function assessJob(input: AssessJobInput): Promise<AssessJobResult>
   let geocoded = ctxRow?.geocoded_address ?? null;
 
   if (lat == null || lon == null) {
-    const address = await loadClientAddress(db, quote.client_id);
-    if (!address) return { status: "skipped", reason: "no_address" };
-    const geo = await geocodeAddress({ address, fetchImpl: input.fetchImpl });
+    // P0 weather-location spine: clients.address first (when a client record
+    // is linked), else the per-quote client snapshot in quote_data — today the
+    // only populated source, since nothing writes the clients table yet.
+    // Neither present → explicit skip; this path NEVER uses device location.
+    const clientsAddress = await loadClientAddress(db, quote.client_id);
+    const picked = pickJobAddress({ clientsAddress, quoteData: quote.quote_data });
+    if (!picked) return { status: "skipped", reason: "no_address" };
+    const geo = await geocodeAddress({ address: picked.address, fetchImpl: input.fetchImpl });
     if (!geo) return { status: "skipped", reason: "location_unknown" };
     lat = geo.latitude;
     lon = geo.longitude;
     timezone = geo.timezone;
     geocoded = geo.matchedName;
+    console.log("[weather-planning] job location resolved", {
+      quoteId: input.quoteId,
+      source: picked.source,
+      matched: geo.matchedName,
+    });
   }
 
   const indoorOutdoor = (ctxRow?.indoor_outdoor as JobPayload["indoor_outdoor"]) ?? "outdoor";
