@@ -225,6 +225,30 @@ function extractOpenings(text: string): ExtractedOpening[] {
   return openings;
 }
 
+// ─────────────────────────────────────────────────────────────────────────
+// Wall-kind detection (exterior-only insulation rule).
+//
+// "exterior" requires the tradie to have SAID it (or a scan marker to
+// carry exterior_wall_run_m). No statement → "unknown", which blocks
+// the insulation calculator — we never assume walls are exterior.
+// ─────────────────────────────────────────────────────────────────────────
+
+const EXTERIOR_WALL_RE =
+  /\b(?:exterior|external|outside|outdoor|perimeter)\s+walls?\b/i;
+const INTERIOR_WALL_RE =
+  /\b(?:interior|internal|partition|dividing)\s+walls?\b|\bpartitions?\b/i;
+
+export function detectWallKind(
+  text: string,
+): "exterior" | "interior" | "mixed" | "unknown" {
+  const ext = EXTERIOR_WALL_RE.test(text);
+  const int = INTERIOR_WALL_RE.test(text);
+  if (ext && int) return "mixed";
+  if (ext) return "exterior";
+  if (int) return "interior";
+  return "unknown";
+}
+
 /**
  * Pull a structured plan marker emitted by /api/quotes/scan-drawing
  * (the existing `[T2Q_PLAN] key=value …` format). Returns null if no
@@ -239,6 +263,8 @@ function extractMarker(
   spacing_mm?: number;
   /** Total wall run (Wave 44) — sum of every wall segment on the plan. */
   wall_run_m?: number;
+  /** Exterior (perimeter) wall run — positive evidence for insulation. */
+  exterior_wall_run_m?: number;
   door_count?: number;
   window_count?: number;
 } | null {
@@ -251,6 +277,7 @@ function extractMarker(
     height_m?: number;
     spacing_mm?: number;
     wall_run_m?: number;
+    exterior_wall_run_m?: number;
     door_count?: number;
     window_count?: number;
   } = {};
@@ -271,6 +298,10 @@ function extractMarker(
     // Wall run is a SUM of segments, so it can exceed the single-edge
     // envelope — clamp to a whole-house band (2m–1000m) instead.
     if (key === "wall_run_m" && n >= 2 && n <= 1000) out.wall_run_m = n;
+    // Exterior run is bounded by the total run — same band.
+    if (key === "exterior_wall_run_m" && n >= 2 && n <= 1000) {
+      out.exterior_wall_run_m = n;
+    }
     if (key === "door_count" && n >= 0 && n <= 200) out.door_count = Math.round(n);
     if (key === "window_count" && n >= 0 && n <= 200) out.window_count = Math.round(n);
   }
@@ -380,6 +411,11 @@ export function extractFromText(
     stock_length_m,
     coverage_mm,
     waste_percent,
+    // Exterior-only insulation rule: only the insulation scope carries
+    // wall context, and "exterior" needs a positive statement or the
+    // scan's exterior_wall_run_m marker. Everything else stays null.
+    wall_kind: scope === "insulation" ? detectWallKind(text) : null,
+    exterior_wall_run_m: marker?.exterior_wall_run_m ?? null,
     notes: [],
     needs_clarification,
     clarification_questions: [],

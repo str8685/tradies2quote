@@ -132,6 +132,29 @@ export type ScopeResult = {
   evaluator?: EvaluatorVerdict;
 };
 
+// ─────────────────────────────────────────────────────────────────────────
+// Scope licensing (P0 hardening) — POSITIVE evidence that a material
+// family is allowed in this job. Calculators only run for licensed
+// scopes; a routed-but-unlicensed scope is recorded as a denial and
+// produces NO lines. Types live here (not license.ts) to avoid an
+// import cycle; logic lives in license.ts.
+// ─────────────────────────────────────────────────────────────────────────
+
+export type LicenseEvidenceKind = "scan_marker" | "user_statement" | "keyword";
+
+export type ScopeLicense = {
+  scope: ScopeType;
+  /** The positive evidence that granted this scope. */
+  granted_by: { kind: LicenseEvidenceKind; ref: string };
+  confidence: number;
+};
+
+export type LicenseDenial = {
+  scope: ScopeType;
+  /** Human-readable reason shown to the tradie (never silent). */
+  reason: string;
+};
+
 /**
  * Top-level result of the whole orchestrator.
  *
@@ -148,6 +171,10 @@ export type TakeoffResult = {
   warnings: string[];
   /** Aggregated plausibility verdict across all calculated scopes. */
   evaluator?: EvaluatorVerdict;
+  /** Positive scope licenses that allowed each calculated scope. */
+  licenses?: ScopeLicense[];
+  /** Routed scopes that were refused a license (and why). */
+  license_denials?: LicenseDenial[];
 };
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -248,6 +275,15 @@ export type ExtractedExtraction = {
   coverage_mm?: number | null;
   /** Waste percentage; null → calculator default. */
   waste_percent?: number | null;
+  /**
+   * Wall context for the exterior-only insulation rule. "exterior"
+   * requires POSITIVE evidence (user statement / scan marker) — it is
+   * never guessed. Absence of evidence is "unknown", which BLOCKS the
+   * insulation calculator (fail closed).
+   */
+  wall_kind?: "exterior" | "interior" | "mixed" | "unknown" | null;
+  /** Exterior (perimeter) wall run in metres, when separately known. */
+  exterior_wall_run_m?: number | null;
   /** Free-form notes the calculator should pass through. */
   notes: string[];
   /** Fields the extraction couldn't resolve. */
@@ -351,6 +387,14 @@ export function parseExtractedExtraction(
     stock_length_m: optNumber(obj.stock_length_m),
     coverage_mm: optNumber(obj.coverage_mm),
     waste_percent: optNumber(obj.waste_percent),
+    wall_kind:
+      obj.wall_kind === "exterior" ||
+      obj.wall_kind === "interior" ||
+      obj.wall_kind === "mixed" ||
+      obj.wall_kind === "unknown"
+        ? (obj.wall_kind as ExtractedExtraction["wall_kind"])
+        : null,
+    exterior_wall_run_m: optNumber(obj.exterior_wall_run_m),
     notes: Array.isArray(obj.notes)
       ? obj.notes.filter((s): s is string => typeof s === "string")
       : [],

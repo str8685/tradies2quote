@@ -22,6 +22,7 @@ import { buildClarifications } from "./clarify";
 import { evaluateScope, evaluateTakeoff } from "./evaluate";
 import { explainScope } from "./explain";
 import { extractFromLLM, extractFromText } from "./extraction";
+import { licenseScopes, type LicenseContext } from "./license";
 import { routeScope } from "./scope-router";
 import type {
   ClarificationQuestion,
@@ -46,6 +47,12 @@ export type OrchestratorOptions = {
    * surface a clarification rather than emit shaky numbers.
    */
   allowGenericFallback?: boolean;
+  /**
+   * Context for the positive scope-licensing layer (license.ts) —
+   * e.g. the legacy scan classification, which is positive deck
+   * evidence when type=deck.
+   */
+  licenseContext?: LicenseContext;
 };
 
 /**
@@ -61,7 +68,33 @@ export function runTakeoff(
   const allClarifications: ClarificationQuestion[] = [];
   const warnings: string[] = [];
 
-  for (const scope of route.scopes) {
+  // ── Positive scope licensing (P0) ───────────────────────────────────
+  // The router SUGGESTS scopes; the license layer decides what is
+  // actually allowed to calculate. A denied scope (e.g. deck routed off
+  // bare joist/bearer keywords with no deck evidence) produces NO lines
+  // — only a visible warning + non-blocking clarification so the tradie
+  // can supply the evidence and regenerate.
+  const { licenses, denials } = licenseScopes(
+    description,
+    route,
+    options.licenseContext,
+  );
+  for (const denial of denials) {
+    warnings.push(`${denial.scope}: ${denial.reason}`);
+    allClarifications.push({
+      id: `${denial.scope}.license`,
+      scope: denial.scope,
+      field: "license",
+      question: denial.reason,
+      blocking: false,
+    });
+  }
+  const licensedScopes = licenses.map((l) => l.scope);
+  // Everything denied → run generic (same fallback as a no-match route)
+  // so the tradie still gets a stock/coverage result instead of nothing.
+  if (licensedScopes.length === 0) licensedScopes.push("generic");
+
+  for (const scope of licensedScopes) {
     // 1. Get the extraction — LLM if supplied, else regex.
     const ext: ExtractedExtraction =
       options.llmExtractions?.[scope] ?? extractFromText(description, scope);
@@ -130,13 +163,20 @@ export function runTakeoff(
   const evaluator = evaluateTakeoff(
     scopes.flatMap((s) => (s.evaluator ? [s.evaluator] : [])),
   );
+  // Primary must be a LICENSED scope — a denied route.primary (e.g. deck
+  // routed off joist keywords) must not present itself as the job type.
+  const primary_scope = licensedScopes.includes(route.primary)
+    ? route.primary
+    : licensedScopes[0];
   return {
     status,
-    primary_scope: route.primary,
+    primary_scope,
     scopes,
     clarifications: allClarifications,
     warnings,
     evaluator,
+    licenses,
+    license_denials: denials,
   };
 }
 
@@ -144,6 +184,13 @@ export function runTakeoff(
  * Alternative entry — caller already has a validated extraction (from
  * the LLM extraction agent or from a manual form). Skips the routing
  * step and runs the calculator directly.
+ *
+ * LICENSING NOTE: `ext.scope_type` here is treated as the caller's own
+ * positive scope evidence (a manual form selection is user-confirmed;
+ * a marker is scan evidence). Free-text inputs must go through
+ * `runTakeoff`, where the license layer gates deck on explicit
+ * evidence. The insulation exterior-wall gate still applies here via
+ * validate.ts + the calculator's own guard — it cannot be bypassed.
  */
 export function runTakeoffWithExtraction(
   ext: ExtractedExtraction,

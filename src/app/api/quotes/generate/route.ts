@@ -19,7 +19,11 @@ import {
   complianceReviewEnabledFromEnv,
   safelyReviewQuote,
 } from "@/lib/compliance";
-import { runTakeoff as runOrchestratedTakeoff } from "@/lib/takeoff";
+import {
+  materialFamilyForDescription,
+  runTakeoff as runOrchestratedTakeoff,
+  type MaterialFamily,
+} from "@/lib/takeoff";
 import { legacyScopeCoverage } from "@/lib/takeoff/legacyCoverage";
 import { scopeFamilyForType, guardLinesForScope } from "@/lib/takeoff/scopeFamily";
 import { cleanTranscript } from "@/lib/transcriptCleanup";
@@ -358,7 +362,13 @@ export async function POST(request: NextRequest) {
   // compatibility — those have battle-tested ratio guards we don't
   // want to lose. We map legacy parser type → orchestrator scope to
   // decide which orchestrator scopes are NEW (not already covered).
-  const orchestrated = runOrchestratedTakeoff(transcript);
+  // P0 — the scan classification is passed as license context: a scan
+  // classified type=deck is positive deck evidence; without it (or an
+  // explicit deck noun in the tradie's words) the deck scope is DENIED
+  // and can produce no lines, no matter what keywords were matched.
+  const orchestrated = runOrchestratedTakeoff(transcript, {
+    licenseContext: { scanType: parsedTakeoff.type },
+  });
   // Which orchestrator scopes the legacy calculator already covers for
   // this drawing — see src/lib/takeoff/legacyCoverage.ts. Notably `deck`
   // covers `framing`/`fixing` so the boilerplate "…board / stud / plate…"
@@ -703,6 +713,34 @@ export async function POST(request: NextRequest) {
   const looksLikeOrchestratorMaterial = (description: string): boolean =>
     orchestratorEmittedPatterns.some((p) => p.test(description));
 
+  // P0 — UNLICENSED-FAMILY filter (fail closed). An LLM material line in
+  // the deck or insulation family is only allowed when that family is
+  // positively licensed AND calculable for this job. This closes the gap
+  // where "deck joists H3.2 90x45" slipped past the dedupe filters when
+  // no deck scope existed, and stops an LLM insulation line bypassing a
+  // BLOCKED insulation scope (e.g. no exterior-wall evidence). Framing /
+  // lining keep their existing confirm-gated behaviour — only the two
+  // impossibility-rule families are dropped here.
+  const allowedFamilies = new Set<MaterialFamily>();
+  {
+    const legacyFamily = scopeFamilyForType(parsedTakeoff.type);
+    // Deck/subfloor jobs legitimately carry deck-family members (same
+    // exemption as guardLinesForScope).
+    if (legacyFamily === "deck" || legacyFamily === "subfloor") {
+      allowedFamilies.add("deck");
+    }
+    // Legacy wall jobs produce insulation via the legacy calculator.
+    if (useCalculator && (parsedTakeoff.type === "wall" || parsedTakeoff.type === "subfloor")) {
+      allowedFamilies.add("insulation");
+    }
+    for (const s of orchestrated.scopes) {
+      if (s.status === "blocked") continue; // a blocked scope licenses nothing
+      if (s.scope === "deck") allowedFamilies.add("deck");
+      if (s.scope === "insulation") allowedFamilies.add("insulation");
+    }
+  }
+  const droppedUnlicensed: string[] = [];
+
   const aiItems: QuoteLineItem[] = [];
   for (const it of parsed.line_items) {
     // Drawing/takeoff inputs: never let an AI-estimated MATERIAL quantity
@@ -724,6 +762,18 @@ export async function POST(request: NextRequest) {
       looksLikeOrchestratorMaterial(it.description)
     ) {
       continue;
+    }
+    // P0 — drop deck/insulation-family LLM lines whose family is not
+    // positively licensed for this job (see allowedFamilies above).
+    if (it.type === "material") {
+      const family = materialFamilyForDescription(it.description);
+      if (
+        (family === "deck" || family === "insulation") &&
+        !allowedFamilies.has(family)
+      ) {
+        droppedUnlicensed.push(it.description);
+        continue;
+      }
     }
     const qty = Number(it.quantity) || 0;
     let price = Number(it.unit_price) || 0;
@@ -761,6 +811,17 @@ export async function POST(request: NextRequest) {
     }
     const lt = round2(qty * price);
     aiItems.push({ ...it, quantity: qty, unit_price: price, line_total: lt });
+  }
+
+  // Unlicensed-family drops are never silent — the tradie sees exactly
+  // what was excluded and why, and can supply the evidence to regenerate.
+  if (droppedUnlicensed.length > 0) {
+    parsed.notes = [
+      `Excluded ${droppedUnlicensed.length} material line(s) without scope evidence: ${droppedUnlicensed
+        .slice(0, 3)
+        .join("; ")}${droppedUnlicensed.length > 3 ? "; …" : ""}. Deck materials need explicit deck evidence; insulation needs exterior walls.`,
+      ...(parsed.notes ?? []),
+    ];
   }
 
   parsed.line_items = [...calculatorItems, ...aiItems];

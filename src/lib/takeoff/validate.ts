@@ -157,14 +157,44 @@ export function validateExtractionForScope(
       break;
     }
     case "insulation": {
+      // EXTERIOR-ONLY RULE (P0, fail closed): insulation is quoted for
+      // exterior walls only. Positive evidence required — either the
+      // tradie SAID the walls are exterior (wall_kind === "exterior") or
+      // the scan supplied an exterior wall run. Interior walls block
+      // outright; missing evidence blocks with a clarification. We never
+      // assume walls are exterior.
+      const extRun = ext.exterior_wall_run_m;
+      const haveExtRun = Number.isFinite(extRun ?? NaN) && (extRun ?? 0) > 0;
+      if (ext.wall_kind === "interior" && !haveExtRun) {
+        reasons.push(
+          "interior walls — insulation is quoted for exterior walls only",
+        );
+        return { status: "blocked", reasons, flags };
+      }
+      if (!haveExtRun && ext.wall_kind !== "exterior") {
+        reasons.push(
+          "insulation needs exterior-wall evidence (insulation is quoted for exterior walls only)",
+        );
+        return { status: "blocked", reasons, flags };
+      }
       const haveArea =
         Number.isFinite(dimensions.area_m2 ?? NaN) &&
         (dimensions.area_m2 ?? 0) > 0;
       const haveLH =
         Number.isFinite(dimensions.length_m ?? NaN) &&
         Number.isFinite(dimensions.height_m ?? NaN);
-      if (!haveArea && !haveLH) {
-        reasons.push("insulation needs either area_m2 OR length_m + height_m");
+      const haveHeight =
+        Number.isFinite(dimensions.height_m ?? NaN) &&
+        (dimensions.height_m ?? 0) > 0;
+      // With an exterior run we size off run × height; otherwise we need
+      // the stated (exterior) area or length + height.
+      const haveRunBasis = haveExtRun && haveHeight;
+      if (!haveArea && !haveLH && !haveRunBasis) {
+        reasons.push(
+          haveExtRun
+            ? "insulation needs the wall height (to size exterior run × height)"
+            : "insulation needs either area_m2 OR length_m + height_m",
+        );
         return { status: "blocked", reasons, flags };
       }
       break;

@@ -48,11 +48,13 @@ const SCOPE_PATTERNS: Array<{ scope: ScopeType; pattern: RegExp }> = [
       /\b(?:gib|plasterboard|aqualine|fyreline|ceiling\s+lining|wall\s+lining|line\s+the\s+wall)\b/i,
   },
 
-  // Insulation — pink batts, R-values.
+  // Insulation — pink batts, R-values. Includes the verb forms
+  // ("insulate the walls") so the exterior-only gate engages on natural
+  // speech, not just the noun.
   {
     scope: "insulation",
     pattern:
-      /\b(?:insulation|pink\s*batts?|batts?|R\d(?:\.\d)?(?:\s|$)|wall\s+wrap)\b/i,
+      /\b(?:insulat(?:e|ed|ing|ion)|pink\s*batts?|batts?|R\d(?:\.\d)?(?:\s|$)|wall\s+wrap)\b/i,
   },
 
   // Fencing — paling, post-and-rail, picket.

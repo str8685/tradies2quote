@@ -177,6 +177,14 @@ const QUESTION_BANK: Record<ScopeType, FieldQuestion[]> = {
   ],
   insulation: [
     {
+      field: "wall_kind",
+      question:
+        "Are these exterior walls? Insulation is quoted for exterior walls only.",
+      blocking: true,
+      suggestions: ["Yes — exterior walls", "No — interior only"],
+      hint: "Interior-only walls aren't insulated in this takeoff.",
+    },
+    {
       field: "area_m2",
       question: "What's the area to insulate?",
       blocking: false,
@@ -308,6 +316,14 @@ function isFieldMissing(ext: ExtractedExtraction, field: string): boolean {
     }
     case "material_spec":
       return !ext.material_spec || ext.material_spec.trim() === "";
+    case "wall_kind": {
+      // Resolved when we have positive exterior evidence (statement or
+      // scan exterior run) — or a definite "interior", which is a final
+      // answer (the block reason explains it), not an open question.
+      const run = ext.exterior_wall_run_m;
+      if (Number.isFinite(run ?? NaN) && (run ?? 0) > 0) return false;
+      return ext.wall_kind !== "exterior" && ext.wall_kind !== "interior";
+    }
     case "coverage_mm":
       return (
         ext.coverage_mm === null ||

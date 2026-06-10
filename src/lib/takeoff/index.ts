@@ -6,6 +6,12 @@
 
 export { runTakeoff, runTakeoffWithExtraction } from "./orchestrator";
 export { routeScope, isLegacyScope } from "./scope-router";
+export {
+  licenseScopes,
+  materialFamilyForDescription,
+  type LicenseContext,
+  type MaterialFamily,
+} from "./license";
 export { extractFromText, extractFromLLM } from "./extraction";
 export { validateExtractionForScope } from "./validate";
 export { buildClarifications } from "./clarify";
@@ -17,7 +23,9 @@ export type {
   ExtractedDimensions,
   ExtractedExtraction,
   ExtractedOpening,
+  LicenseDenial,
   LineBasis,
+  ScopeLicense,
   ScopeResult,
   ScopeType,
   TakeoffLine,
