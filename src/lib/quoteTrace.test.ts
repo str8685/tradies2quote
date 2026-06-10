@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildQuoteTrace } from "./quoteTrace";
+import { computeQuoteTotals } from "./quote-defaults";
 import type { QuoteData, QuoteLineItem } from "./quote-types";
 
 function li(o: Partial<QuoteLineItem> = {}): QuoteLineItem {
@@ -16,21 +17,23 @@ function li(o: Partial<QuoteLineItem> = {}): QuoteLineItem {
   };
 }
 
+// Totals are DERIVED from the items so fixtures are arithmetically
+// consistent — the send gate hard-blocks totals that don't tie out, and
+// these tests are about trace shape, not totals. Explicit `o` overrides
+// still win (for tests that deliberately tamper a figure).
 function qd(items: QuoteLineItem[], o: Partial<QuoteData> = {}): QuoteData {
+  const markup_pct = o.markup_pct ?? 0;
+  const tax_rate = o.tax_rate ?? 15;
+  const totals = computeQuoteTotals(items, markup_pct, tax_rate);
   return {
     client: { name: "Jane", address: null, email: "j@e.com", phone: null },
     job_summary: "job",
     line_items: items,
-    materials_subtotal: 0,
-    labour_subtotal: 0,
-    markup_pct: 0,
-    markup_amount: 0,
-    subtotal_before_tax: 0,
-    tax_amount: 0,
-    total: 0,
+    markup_pct,
+    ...totals,
     currency: "NZD",
     tax_label: "GST",
-    tax_rate: 15,
+    tax_rate,
     terms: "",
     notes: [],
     ...o,

@@ -1,5 +1,5 @@
 import type { QuoteData, QuoteLineItem, QuoteStatus } from "./quote-types";
-import { round2 } from "./quote-defaults";
+import { computeQuoteTotals, moneyEquals, round2 } from "./quote-defaults";
 
 export type SendValidationError =
   | "client_name_missing"
@@ -68,11 +68,86 @@ function lineLabels(items: QuoteLineItem[], max = 3): string {
   return shown ? `${shown}${extra}` : `${items.length} line(s)`;
 }
 
+/**
+ * QUOTE QA — deterministic totals integrity (pre-send contradiction check).
+ *
+ * The send gate must never trust stored money fields blindly: every figure
+ * the customer sees has to equal what `computeQuoteTotals` (the single
+ * source of truth, sum-of-rounded) derives from the line items RIGHT NOW.
+ * Both writers (generation + save) already recompute through it, so a
+ * mismatch here means an unknown writer or corrupted data — exactly the
+ * case that must HARD BLOCK rather than reach a customer.
+ *
+ * Legacy tolerance, matching this file's precedent ("absence of data is
+ * never treated as a block"): a stored field that is missing/non-finite is
+ * skipped; a field that is PRESENT but wrong blocks. Comparisons allow 1¢
+ * (`moneyEquals`) so sub-cent float noise never false-blocks.
+ */
+export function assessQuoteTotalsIntegrity(
+  quote_data: QuoteData | null,
+): string[] {
+  if (!quote_data) return [];
+  const reasons: string[] = [];
+  const items: QuoteLineItem[] = Array.isArray(quote_data.line_items)
+    ? quote_data.line_items
+    : [];
+  if (items.length === 0) return [];
+
+  // Per-line: the printed line_total must be qty × unit_price (rounded).
+  const badLines = items.filter((it) => {
+    const stored = Number(it.line_total);
+    if (!Number.isFinite(stored)) return false; // legacy line — skip
+    const expected = round2(
+      (Number(it.quantity) || 0) * (Number(it.unit_price) || 0),
+    );
+    return !moneyEquals(stored, expected);
+  });
+  if (badLines.length > 0) {
+    reasons.push(
+      `${badLines.length} line total(s) don't equal quantity × unit price: ${lineLabels(badLines)}. Re-save the quote to recalculate.`,
+    );
+  }
+
+  // Quote-level: every stored money field must match the deterministic
+  // recomputation from the lines + markup + tax rate.
+  const expected = computeQuoteTotals(
+    items.map((it) => ({
+      type: it.type,
+      quantity: Number(it.quantity) || 0,
+      unit_price: Number(it.unit_price) || 0,
+    })),
+    Number(quote_data.markup_pct) || 0,
+    Number(quote_data.tax_rate) || 0,
+  );
+  const checks: Array<{ label: string; stored: unknown; want: number }> = [
+    { label: "materials subtotal", stored: quote_data.materials_subtotal, want: expected.materials_subtotal },
+    { label: "labour subtotal", stored: quote_data.labour_subtotal, want: expected.labour_subtotal },
+    { label: "markup", stored: quote_data.markup_amount, want: expected.markup_amount },
+    { label: "subtotal before tax", stored: quote_data.subtotal_before_tax, want: expected.subtotal_before_tax },
+    { label: `${quote_data.tax_label || "tax"} amount`, stored: quote_data.tax_amount, want: expected.tax_amount },
+    { label: "total", stored: quote_data.total, want: expected.total },
+  ];
+  for (const c of checks) {
+    const stored = Number(c.stored);
+    if (!Number.isFinite(stored)) continue; // legacy/missing field — skip
+    if (!moneyEquals(stored, c.want)) {
+      reasons.push(
+        `Stored ${c.label} ($${stored.toFixed(2)}) doesn't match the amount calculated from the line items ($${c.want.toFixed(2)}). Re-save the quote to recalculate before sending.`,
+      );
+    }
+  }
+  return reasons;
+}
+
 export function assessQuoteTakeoffSafety(
   quote_data: QuoteData | null,
 ): TakeoffSafetyAssessment {
   const block_reasons: string[] = [];
   const warning_reasons: string[] = [];
+
+  // QUOTE QA — totals integrity is a HARD block: a customer must never see
+  // a total the line items don't add up to.
+  block_reasons.push(...assessQuoteTotalsIntegrity(quote_data));
 
   const items: QuoteLineItem[] = Array.isArray(quote_data?.line_items)
     ? quote_data!.line_items

@@ -5,6 +5,7 @@ import {
   validateQuoteForSending,
   validateQuoteForSmsSending,
 } from "./quote-validation";
+import { computeQuoteTotals } from "./quote-defaults";
 import type {
   DimensionConfirmation,
   QuoteData,
@@ -65,29 +66,34 @@ const li = (o: Partial<QuoteLineItem> = {}): QuoteLineItem => ({
   ...o,
 });
 
-const qd = (o: Partial<QuoteData> = {}): QuoteData => ({
-  client: {
-    name: "Jane Tradie",
-    address: null,
-    email: "jane@example.com",
-    phone: "+6421234567",
-  },
-  job_summary: "job",
-  line_items: [li()],
-  materials_subtotal: 10,
-  labour_subtotal: 0,
-  markup_pct: 0,
-  markup_amount: 0,
-  subtotal_before_tax: 10,
-  tax_amount: 1.5,
-  total: 11.5,
-  currency: "NZD",
-  tax_label: "GST",
-  tax_rate: 15,
-  terms: "",
-  notes: [],
-  ...o,
-});
+// Totals are DERIVED from the line items so every fixture is arithmetically
+// consistent — the send gate now hard-blocks totals that don't tie out, and
+// these tests are about other concerns. Explicit overrides in `o` still win
+// (for tests that deliberately tamper a figure).
+const qd = (o: Partial<QuoteData> = {}): QuoteData => {
+  const line_items = o.line_items ?? [li()];
+  const markup_pct = o.markup_pct ?? 0;
+  const tax_rate = o.tax_rate ?? 15;
+  const totals = computeQuoteTotals(line_items, markup_pct, tax_rate);
+  return {
+    client: {
+      name: "Jane Tradie",
+      address: null,
+      email: "jane@example.com",
+      phone: "+6421234567",
+    },
+    job_summary: "job",
+    line_items,
+    markup_pct,
+    ...totals,
+    currency: "NZD",
+    tax_label: "GST",
+    tax_rate,
+    terms: "",
+    notes: [],
+    ...o,
+  };
+};
 
 describe("assessQuoteTakeoffSafety", () => {
   it("allows a clean quote (all ok lines, no evaluator)", () => {
