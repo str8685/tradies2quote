@@ -101,6 +101,9 @@ export function SendQuoteButton({
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ acknowledged }),
+        // Send can legitimately take ~20s (PDF gen + email) — 90s only
+        // catches a truly stalled connection; existing catch shows retry.
+        signal: AbortSignal.timeout(90_000),
       });
       if (!res.ok) {
         const data = (await res.json().catch(() => ({}))) as {

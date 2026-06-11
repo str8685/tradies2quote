@@ -9,6 +9,7 @@ import {
   Bug,
   Camera,
   ChatCircleDots,
+  CloudSun,
   GearSix,
   Lifebuoy,
   Receipt,
@@ -115,6 +116,14 @@ const PRIMARY_ITEMS: ReadonlyArray<HubLink> = [
     label: "Materials",
     caption: "Your price library",
     Icon: Stack,
+  },
+  {
+    // Mobile-parity fix: /app/weather was reachable only from the
+    // desktop-only header tabs — this is the one mobile entry point.
+    href: "/app/weather",
+    label: "Weather",
+    caption: "Safe / caution / unsafe for the job site",
+    Icon: CloudSun,
   },
   {
     href: "/app/clients",

@@ -14,7 +14,10 @@ const SCOPE_NEEDS: Record<string, string> = {
   framing: "total wall length (m) and wall height (m)",
   wall: "total wall length (m) and wall height (m)",
   lining: "wall area (m²) — or wall length (m) and height (m)",
-  insulation: "exterior wall area (m²) — or wall length (m) and height (m)",
+  // STRICT exterior-only rule: insulation is never sized off the total
+  // wall run, so the unblock is exterior evidence specifically.
+  insulation:
+    "exterior-wall evidence — the exterior wall area (m²), or say the walls are exterior",
   concrete: "length (m) and width (m) — or volume (m³)",
   fixing: "run length (m) or perimeter (m)",
   deck: "deck length (m) and width (m)",
@@ -32,6 +35,21 @@ export function blockedScopeFromDescription(description: string | null | undefin
 /** A short, human recovery sentence for a blocked line. */
 export function blockedLineGuide(description: string | null | undefined): string {
   const scope = blockedScopeFromDescription(description);
+
+  // STRICT legacy insulation: the calculator emits a blocked
+  // "Pink Batts Insulation" line (not the "<scope> takeoff —" form) when no
+  // exterior wall length was given. The Takeoff assumptions panel has no
+  // exterior-run field yet, so the honest recovery is explicit: supply the
+  // exterior run via re-scan/regenerate, or type the count yourself.
+  if (!scope && /insulation/i.test(description ?? "")) {
+    return (
+      "Insulation is quoted for exterior walls only and the exterior wall " +
+      "run wasn't given, so it can't be calculated. Type the pack count " +
+      "below yourself (it becomes your number, not a guess), re-scan the " +
+      "plan with the exterior run marked, or remove the line."
+    );
+  }
+
   const needs = scope ? SCOPE_NEEDS[scope] : undefined;
   const label = scope ? `${scope.charAt(0).toUpperCase()}${scope.slice(1)}` : "This line";
   const tail =

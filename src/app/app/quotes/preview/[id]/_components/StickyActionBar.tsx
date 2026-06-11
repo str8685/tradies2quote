@@ -128,6 +128,8 @@ export function StickyActionBar({
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ acknowledged }),
+        // Same stall guard as SendQuoteButton (90s ≫ legit send time).
+        signal: AbortSignal.timeout(90_000),
       });
       if (!res.ok) {
         const data = (await res.json().catch(() => ({}))) as {

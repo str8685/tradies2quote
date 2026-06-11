@@ -26,6 +26,9 @@ export function QuoteGenerator({ id }: { id: string }) {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ id }),
+        // Generation's server budget is 60s (maxDuration) — 90s only
+        // catches a stalled connection; the error UI offers retry.
+        signal: AbortSignal.timeout(90_000),
       });
       if (res.status === 409) {
         router.refresh();
