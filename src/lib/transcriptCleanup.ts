@@ -34,6 +34,7 @@
  */
 
 import { applyGlossaryCorrections } from "./transcript/glossaryCorrect";
+import { normalizeSpokenMeasurements } from "./transcript/measureNormalize";
 import type { VocabSet, VocabTermType } from "./transcript/glossary";
 
 // ---------------------------------------------------------------------------
@@ -183,6 +184,26 @@ export function applyDeterministicCorrections(
   let text = raw;
 
   // -------------------------------------------------------------------------
+  // 0. Spoken measurements → digits (measurement contexts ONLY; audited;
+  // digits never altered; [T2Q_…] marker lines untouched). This is what lets
+  // "ten metres by two point four" reach the dimension-extraction regexes
+  // downstream — they all need digits. See measureNormalize.ts for the
+  // safety rules.
+  // -------------------------------------------------------------------------
+  {
+    const measured = normalizeSpokenMeasurements(text);
+    text = measured.text;
+    for (const c of measured.corrections) {
+      corrections.push({
+        before: c.before,
+        after: c.after,
+        type: "size",
+        index: c.index,
+      });
+    }
+  }
+
+  // -------------------------------------------------------------------------
   // 1. Compact H-classes (h32 → H3.2 etc.). Run BEFORE simple "h3" matches
   // so we don't half-replace a compact form.
   // -------------------------------------------------------------------------
@@ -314,7 +335,12 @@ export function applyDeterministicCorrections(
   // -------------------------------------------------------------------------
   text = text.replace(
     /\b(\d{1,3})\s*(?:mils?|millimet(?:re|er)s?|mm)\b/gi,
-    (m, n: string, offset: number) => {
+    (m, n: string, offset: number, full: string) => {
+      // Decimal guard: "1.5 mil" is money slang ("$1.5 million"), not a
+      // thickness — \b lets the match start mid-number after the point, so
+      // check the preceding character explicitly.
+      const prev = full[offset - 1];
+      if (prev === "." || prev === ",") return m;
       const target = `${n}mm`;
       if (m === target) return m; // already canonical "12mm"
       corrections.push({

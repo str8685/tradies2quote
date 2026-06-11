@@ -23,11 +23,14 @@ const LEAD =
  * distribution (the worst, highest-frequency mishears). Always included.
  */
 const ALWAYS = [
-  "GIB plasterboard (always written GIB in capitals)",
-  "GIB Standard 13mm, GIB Aqualine 13mm, GIB Braceline 13mm",
-  "Pink Batts insulation R1.8, R2.2, R2.6, R3.6",
-  "treated timber H1.2, H3.2, H4, H5; 90x45 and 140x45 framing",
-  "dwangs, nogs, studs, plates",
+  "GIB plasterboard (always spelled GIB)",
+  "GIB Standard, Aqualine, Braceline",
+  "Pink Batts insulation R1.8, R2.2, R3.6",
+  "treated timber H1.2, H3.2, H4, H5; 90x45, 140x45 framing",
+  "dwangs, nogs, studs, plates, joists, bearers, piles, decking",
+  // Bias measurements toward digit forms so downstream dimension
+  // extraction (which needs digits) gets them straight off the model.
+  "measurements in digits: 3.6 m, 600mm centres",
 ];
 
 /** The full static fallback — used when there's no user vocab to add. */

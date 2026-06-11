@@ -145,6 +145,11 @@ const TRADE_TERMS: VocabEntry[] = [
   g("bargeboard", "trade_term", ["barge board"]),
   g("subfloor", "trade_term", ["sub floor"]),
   g("downpipe", "trade_term", ["down pipe"]),
+  // Structures / groundwork — aliases are MISHEARS only, never real words
+  // ("pylon", "retainer" alone stay untouched).
+  g("retaining wall", "trade_term", ["retainer wall"]),
+  g("pile", "trade_term", []),
+  g("decking", "trade_term", ["deckin"]),
 ];
 
 /** The curated global glossary (suppliers + brands + trade terms). */
