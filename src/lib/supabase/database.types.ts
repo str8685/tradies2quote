@@ -1618,6 +1618,7 @@ export type Database = {
         | "completed"
         | "follow_up_sent"
         | "sms_sent"
+        | "invoice_sent"
       quote_item_type: "material" | "labour" | "other"
       quote_status:
         | "draft"
@@ -1768,6 +1769,7 @@ export const Constants = {
         "completed",
         "follow_up_sent",
         "sms_sent",
+        "invoice_sent",
       ],
       quote_item_type: ["material", "labour", "other"],
       quote_status: [

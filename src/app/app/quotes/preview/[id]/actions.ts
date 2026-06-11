@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { captureError } from "@/lib/observability";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { computeQuoteTotals, round2 } from "@/lib/quote-defaults";
@@ -110,12 +111,20 @@ export async function saveQuoteChanges(
     .eq("id", id)
     .select("id");
   if (uErr) {
+    captureError(new Error(`saveQuoteChanges update failed: ${uErr.message}`), {
+      route: "actions/saveQuoteChanges",
+      surface: "server_action",
+    });
     console.error("saveQuoteChanges update failed", uErr);
     return { error: "Could not save changes." };
   }
   if (!updatedRows || updatedRows.length === 0) {
     // RLS blocked the write — zero rows changed but no error raised.
     // Fail rather than report a save that never happened.
+    captureError(new Error("saveQuoteChanges updated 0 rows (RLS-blocked write)"), {
+      route: "actions/saveQuoteChanges",
+      surface: "server_action",
+    });
     console.error("saveQuoteChanges updated 0 rows", { id });
     return { error: "Could not save changes." };
   }

@@ -157,6 +157,24 @@ export async function POST(
   // Flip status + stamp sent_at. Service role bypass not needed — the
   // user-scoped query above already proved ownership.
   const admin = adminClient();
+
+  // AUDIT PARITY with quote/SMS sends: record the outbound event so the
+  // tracking trail covers invoices too. Best-effort — a logging failure
+  // must never undo a successful delivery (same posture as quote send).
+  if (invoice.quote_id) {
+    const { error: evErr } = await admin.from("quote_events").insert({
+      quote_id: invoice.quote_id,
+      type: "invoice_sent",
+      metadata: { to, invoice_id: invoice.id, invoice_number: invoice.invoice_number },
+    });
+    if (evErr) {
+      captureError(new Error(`invoice_sent event insert failed: ${evErr.message}`), {
+        route: "invoices/send",
+      });
+      console.error("invoice_sent event insert failed", evErr);
+    }
+  }
+
   const { error: uErr } = await admin
     .from("invoices")
     .update({
