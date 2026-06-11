@@ -559,18 +559,24 @@ export async function POST(request: NextRequest) {
         status: "ok" as const,
         flags: [] as string[],
       };
-      // A calculator line that flags itself for review (e.g. exterior-only
-      // insulation sized off the total wall run because no exterior wall length
-      // was given) must surface as needs_review so the Review Quote UI shows the
-      // "Needs review" badge + reason — never silently billed as "ok".
-      const status =
-        m.requiresReview && (baseStatus.status === "ok" || baseStatus.status === "assumed")
+      // STRICT exterior-only: a calculator line that BLOCKED itself (insulation
+      // with no exterior wall length) surfaces as a zero-quantity blocked line
+      // — the send gate hard-blocks it and the editor offers the standard
+      // recovery (enter the exterior run, or type the count → user-confirmed).
+      // A line that flags itself for review must surface as needs_review so
+      // the Review Quote UI shows the badge + reason — never silently "ok".
+      const status = m.blocked
+        ? {
+            status: "blocked" as const,
+            flags: [...baseStatus.flags, ...(m.notes ? [m.notes] : [])],
+          }
+        : m.requiresReview && (baseStatus.status === "ok" || baseStatus.status === "assumed")
           ? {
               status: "needs_review" as const,
               flags: [...baseStatus.flags, ...(m.notes ? [m.notes] : [])],
             }
           : baseStatus;
-      if (m.requiresReview) sawInsulationReview = true;
+      if (m.requiresReview || m.blocked) sawInsulationReview = true;
       calculatorItems.push({
         type: "material",
         description: m.name,

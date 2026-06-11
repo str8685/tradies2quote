@@ -351,9 +351,16 @@ export function QuoteEditor({
         quantity_source: "calculator",
         formula: m.formula,
         price_match_key: m.priceMatchKey,
-        // Carry the exterior-only insulation review flag through.
-        takeoff_status: m.requiresReview ? "needs_review" : undefined,
-        takeoff_flags: m.requiresReview && m.notes ? [m.notes] : [],
+        // Carry the exterior-only insulation flags through. STRICT: a
+        // blocked calculator line (no exterior wall length) stays a
+        // zero-quantity blocked line with the standard recovery UX.
+        takeoff_status: m.blocked
+          ? "blocked"
+          : m.requiresReview
+            ? "needs_review"
+            : undefined,
+        takeoff_flags:
+          (m.blocked || m.requiresReview) && m.notes ? [m.notes] : [],
       };
     });
     setItems((prev) => [

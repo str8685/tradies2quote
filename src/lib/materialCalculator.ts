@@ -37,12 +37,20 @@ export type MaterialTakeoffLine = {
   notes?: string;
   priceMatchKey?: string;
   /**
-   * True when this line's quantity is provisional and the tradie must review it
-   * — e.g. insulation sized off the total wall run because no exterior wall
-   * length was supplied (insulation is exterior-only). The generate route maps
-   * this to takeoff_status="needs_review" so the Review Quote UI flags it.
+   * True when this line's quantity is provisional and the tradie must review it.
+   * Consumers map this to takeoff_status="needs_review" so the Review Quote
+   * UI flags it.
    */
   requiresReview?: boolean;
+  /**
+   * STRICT exterior-only rule: true when the line CANNOT be calculated from
+   * the available evidence (insulation with no exterior wall length — we
+   * never size insulation off interior walls, not even flagged). quantity is
+   * 0; consumers map this to takeoff_status="blocked", the standard
+   * zero-quantity recovery state (the tradie supplies the exterior length or
+   * types the quantity themselves, which makes it user-confirmed).
+   */
+  blocked?: boolean;
 };
 
 export type MaterialTakeoffResult = {
@@ -237,19 +245,18 @@ export function calculateMaterialTakeoff(
   ];
 
   if (includeInsulation) {
-    // RULE: insulation applies to EXTERIOR walls only, never interior walls.
-    // When we know the exterior wall length, size insulation off the exterior
-    // net area exactly. When we don't (only a total wall run is available — the
-    // usual scan case), we cannot split exterior from interior, so we fall back
-    // to the total area and FLAG the line for review rather than silently
-    // billing interior walls as insulated. This exposes the uncertainty instead
-    // of guessing a split.
+    // STRICT RULE: insulation applies to EXTERIOR walls only — and without
+    // an exterior wall length it is IMPOSSIBLE, not estimated. When the
+    // exterior run is known, size insulation off the exterior net area
+    // exactly. When it isn't (only a total wall run — the marker-less scan
+    // case), we never size off the total run any more: the line is emitted
+    // BLOCKED with quantity 0. Recovery: supply the exterior wall length and
+    // recalculate, or type the pack count manually (user-confirmed).
     const rawExterior = input.exteriorWallLengthM;
     const exteriorKnown =
       typeof rawExterior === "number" && Number.isFinite(rawExterior) && rawExterior >= 0;
     const exteriorWallLengthM = exteriorKnown ? Math.max(rawExterior, 0) : null;
 
-    let insulationNetAreaM2: number;
     if (exteriorWallLengthM !== null) {
       // Exterior gross area, less the share of openings on exterior walls
       // (proportional to exterior wall run when total openings are known).
@@ -258,36 +265,42 @@ export function calculateMaterialTakeoff(
         safeWallLength > 0
           ? round2(openingAreaM2 * Math.min(exteriorWallLengthM / safeWallLength, 1))
           : 0;
-      insulationNetAreaM2 = round2(Math.max(exteriorGrossArea - exteriorOpeningArea, 0));
+      const insulationNetAreaM2 = round2(
+        Math.max(exteriorGrossArea - exteriorOpeningArea, 0),
+      );
+      const insulationAreaWithWaste = insulationNetAreaM2 * wasteMultiplier;
+      const insulationPacks =
+        insulationPackCoverageM2 > 0
+          ? Math.ceil(insulationAreaWithWaste / insulationPackCoverageM2)
+          : 0;
+      materials.push({
+        id: "pink-batts",
+        name: "Pink Batts Insulation",
+        category: "Insulation",
+        quantity: insulationPacks,
+        unit: "packs",
+        formula:
+          "ceil((exteriorWallLengthM * wallHeightM − exterior openings) * wasteMultiplier / insulationPackCoverageM2)",
+        notes: "Exterior walls only.",
+        priceMatchKey: "pink-batts",
+      });
     } else {
-      // Only a total wall run is known — flag the line for review (below) rather
-      // than emitting a global warning on every wall quote.
-      insulationNetAreaM2 = netWallAreaM2;
+      // No exterior evidence → blocked zero-quantity line (never a flagged
+      // estimate off the total run — that silently included interior walls).
+      materials.push({
+        id: "pink-batts",
+        name: "Pink Batts Insulation",
+        category: "Insulation",
+        quantity: 0,
+        unit: "packs",
+        formula:
+          "blocked — exterior-only: needs the exterior wall length before it can be calculated",
+        notes:
+          "Exterior walls only — no exterior wall length was given, so this can't be calculated. Enter the exterior wall run and recalculate, or type the pack count yourself.",
+        blocked: true,
+        priceMatchKey: "pink-batts",
+      });
     }
-
-    const insulationAreaWithWaste = insulationNetAreaM2 * wasteMultiplier;
-    const insulationPacks =
-      insulationPackCoverageM2 > 0
-        ? Math.ceil(insulationAreaWithWaste / insulationPackCoverageM2)
-        : 0;
-    materials.push({
-      id: "pink-batts",
-      name: "Pink Batts Insulation",
-      category: "Insulation",
-      quantity: insulationPacks,
-      unit: "packs",
-      formula:
-        exteriorWallLengthM !== null
-          ? "ceil((exteriorWallLengthM * wallHeightM − exterior openings) * wasteMultiplier / insulationPackCoverageM2)"
-          : "ceil((netWallAreaM2 * wasteMultiplier) / insulationPackCoverageM2) — exterior-only: confirm exterior wall length",
-      notes:
-        exteriorWallLengthM !== null
-          ? "Exterior walls only."
-          : "Exterior walls only — sized off the total wall run because no exterior wall length was given. Review and exclude interior walls.",
-      // Flag for review only when we had to fall back to the total wall run.
-      requiresReview: exteriorWallLengthM === null,
-      priceMatchKey: "pink-batts",
-    });
   }
 
   if (includeSkirting) {

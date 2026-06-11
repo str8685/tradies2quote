@@ -42,20 +42,23 @@ describe("exterior_wall_run_m wiring — scan marker → calculator", () => {
     expect(batts!.quantity).toBeGreaterThan(0);
   });
 
-  it("exterior present is strictly fewer packs than sizing off the total run", () => {
-    const withExt = pinkBatts(runTakeoff(parseTakeoffDescription(WITH_EXTERIOR)))!.quantity;
-    const withoutExt = pinkBatts(runTakeoff(parseTakeoffDescription(WITHOUT_EXTERIOR)))!.quantity;
-    expect(withExt).toBeLessThan(withoutExt);
+  it("exterior present calculates; exterior absent is BLOCKED at zero (strict)", () => {
+    const withExt = pinkBatts(runTakeoff(parseTakeoffDescription(WITH_EXTERIOR)))!;
+    const withoutExt = pinkBatts(runTakeoff(parseTakeoffDescription(WITHOUT_EXTERIOR)))!;
+    expect(withExt.quantity).toBeGreaterThan(0);
+    expect(withoutExt.quantity).toBe(0);
+    expect(withoutExt.blocked).toBe(true);
   });
 
-  it("exterior ABSENT → behaviour unchanged: insulation review-required, no fabricated split", () => {
+  it("exterior ABSENT → STRICT: blocked zero-quantity line, never sized off the total run", () => {
     const parsed = parseTakeoffDescription(WITHOUT_EXTERIOR);
     if (parsed.type === "wall") {
       expect(parsed.input.exteriorWallLengthM).toBeUndefined();
     }
     const batts = pinkBatts(runTakeoff(parsed));
-    expect(batts!.requiresReview).toBe(true);
-    expect(batts!.notes).toMatch(/review and exclude interior walls/i);
+    expect(batts!.blocked).toBe(true);
+    expect(batts!.quantity).toBe(0);
+    expect(batts!.notes).toMatch(/enter the exterior wall run|type the pack count/i);
   });
 
   it("an inconsistent exterior > total is clamped to the total (no over-insulation)", () => {

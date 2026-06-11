@@ -15,6 +15,9 @@ describe("calculateMaterialTakeoff", () => {
   it("4m wall, 2.4m high, 600 centres, no openings — happy path", () => {
     const r = calculateMaterialTakeoff({
       wallLengthM: 4,
+      // STRICT exterior-only rule: insulation needs exterior evidence —
+      // this happy-path wall is all exterior.
+      exteriorWallLengthM: 4,
       wallHeightM: 2.4,
       studSpacingMm: 600,
     });
@@ -77,13 +80,23 @@ describe("calculateMaterialTakeoff", () => {
     expect(getMaterial(r, "gib-10mm")?.quantity).toBe(8);
   });
 
-  it("insulation on includes Pink Batts", () => {
+  it("insulation on includes Pink Batts (exterior evidence supplied)", () => {
     const r = calculateMaterialTakeoff({
       wallLengthM: 4,
+      exteriorWallLengthM: 4, // strict rule: insulation needs exterior evidence
       includeInsulation: true,
     });
     expect(getMaterial(r, "pink-batts")).toBeTruthy();
     expect(getMaterial(r, "pink-batts")?.quantity).toBe(2);
+  });
+
+  it("insulation on WITHOUT exterior evidence → blocked zero-quantity line", () => {
+    const r = calculateMaterialTakeoff({
+      wallLengthM: 4,
+      includeInsulation: true,
+    });
+    expect(getMaterial(r, "pink-batts")?.blocked).toBe(true);
+    expect(getMaterial(r, "pink-batts")?.quantity).toBe(0);
   });
 
   it("insulation off omits Pink Batts entirely", () => {
