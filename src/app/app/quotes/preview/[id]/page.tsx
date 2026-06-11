@@ -29,6 +29,7 @@ import { VoiceCleanupAgent } from "../../../_components/agents/VoiceCleanupAgent
 import { ForgottenCostsAgent } from "../../../_components/agents/ForgottenCostsAgent";
 import { QuoteGenerator } from "./_components/QuoteGenerator";
 import { QuoteEditor } from "./_components/QuoteEditor";
+import { guardQuoteForReview } from "@/lib/reviewGuard";
 import { CompliancePanel } from "./_components/CompliancePanel";
 import { LifecycleCard } from "./_components/LifecycleCard";
 import { CollapsibleSection } from "./_components/CollapsibleSection";
@@ -69,7 +70,35 @@ export default async function QuotePreviewPage({
 
   if (error || !quote) redirect("/app/quotes/new");
 
-  const quoteData = (quote.quote_data ?? null) as QuoteData | null;
+  // REVIEW GUARD (render-stage) — provenance + licensing enforcement. Lines
+  // with invalid values or machine-origin deck/insulation lines that this
+  // job's own evidence never licensed are STRIPPED (and logged below);
+  // legacy AI lines are normalized into the explicit confirm workflow. The
+  // guard never mutates the stored row — it sanitizes what review renders.
+  const rawQuoteData = (quote.quote_data ?? null) as QuoteData | null;
+  const guard = rawQuoteData
+    ? guardQuoteForReview(rawQuoteData, {
+        description: quote.voice_transcript ?? rawQuoteData.job_summary,
+      })
+    : null;
+  const quoteData = guard?.data ?? rawQuoteData;
+  if (guard && guard.stripped.length > 0) {
+    console.warn("[review-guard] stripped lines", {
+      quoteId: quote.id,
+      stripped: guard.stripped,
+    });
+    logAgentEvent({
+      agentName: "Review Guard",
+      runId: `review-guard-${quote.id}`,
+      stepName: "strip",
+      status: "complete",
+      message: guard.stripped
+        .map((s) => `${s.reason}: ${s.description}`)
+        .join(" | ")
+        .slice(0, 280),
+      quoteId: quote.id,
+    });
+  }
   const headerNumber = quoteNumber(quote.id, quote.created_at);
 
   // Wave 11 — load the user's business profile for the readiness check
@@ -342,6 +371,19 @@ export default async function QuotePreviewPage({
                 the same signals as a paused question-and-options sheet
                 rather than a card the operator could miss. See the
                 /api/quotes/cleanup endpoint + ClarificationModal. */}
+
+            {/* REVIEW GUARD notice — strips are never silent. */}
+            {guard && guard.stripped.length > 0 ? (
+              <p
+                data-testid="review-guard-strip-notice"
+                className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-300"
+              >
+                {guard.stripped.length} line(s) were excluded from this review
+                because they had no valid source for this job:{" "}
+                {guard.stripped.map((s) => s.description).join("; ")}. Add them
+                manually if they really belong.
+              </p>
+            ) : null}
 
             {/* Wave 13.1 — the editor is the primary work surface and
                 now sits second so it's above the fold once the user

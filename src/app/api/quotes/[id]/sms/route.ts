@@ -39,7 +39,7 @@ export async function POST(
   const { data: quote, error: qErr } = await supabase
     .from("quotes")
     .select(
-      "id, user_id, status, quote_data, total_amount, currency, created_at, public_token, pdf_path, expires_at",
+      "id, user_id, status, quote_data, total_amount, currency, created_at, public_token, pdf_path, expires_at, voice_transcript",
     )
     .eq("id", id)
     .eq("user_id", user.id)
@@ -55,6 +55,12 @@ export async function POST(
     total_amount: quote.total_amount,
     quote_data: qd,
     acknowledged,
+    // Contradiction gate evidence: the same text generation licensed
+    // scopes from (transcript/scan), falling back to the job summary.
+    description:
+      (quote as { voice_transcript?: string | null }).voice_transcript ??
+      qd?.job_summary ??
+      null,
   });
   if (!validation.ok) {
     return NextResponse.json(

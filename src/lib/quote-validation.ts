@@ -1,5 +1,10 @@
 import type { QuoteData, QuoteLineItem, QuoteStatus } from "./quote-types";
 import { computeQuoteTotals, moneyEquals, round2 } from "./quote-defaults";
+import {
+  classifyLineProvenance,
+  licensedFamiliesForDescription,
+} from "./reviewGuard";
+import { materialFamilyForDescription } from "./takeoff/license";
 
 export type SendValidationError =
   | "client_name_missing"
@@ -139,8 +144,75 @@ export function assessQuoteTotalsIntegrity(
   return reasons;
 }
 
+/**
+ * QUOTE QA — scope/state contradictions (pre-send, HARD block, no auto-fix).
+ *
+ * Taxonomy:
+ *   blocked_with_quantity — a line still marked `blocked` carries a real
+ *     quantity. The recovery path clears `blocked` when the tradie types a
+ *     quantity, so this state means corrupt/contradictory data. Never
+ *     auto-fixed: the tradie must re-save (which re-derives state) so the
+ *     fix is visible, not silent.
+ *   unlicensed_deck / unlicensed_insulation — a MACHINE-origin (calculated
+ *     or AI) deck/insulation-family line on a job whose own description
+ *     never licensed that family: a leak-through past the generation
+ *     guards. User-confirmed lines are exempt (rule 3 — explicit user
+ *     confirmation is valid provenance for any family).
+ *
+ * `description` should be the same evidence generation licensed from —
+ * the voice transcript / scan text; falls back to job_summary.
+ */
+export function assessQuoteContradictions(
+  quote_data: QuoteData | null,
+  description?: string | null,
+): string[] {
+  if (!quote_data) return [];
+  const items: QuoteLineItem[] = Array.isArray(quote_data.line_items)
+    ? quote_data.line_items
+    : [];
+  if (items.length === 0) return [];
+  const reasons: string[] = [];
+
+  const blockedWithQty = items.filter(
+    (it) => it.takeoff_status === "blocked" && (Number(it.quantity) || 0) > 0,
+  );
+  if (blockedWithQty.length > 0) {
+    reasons.push(
+      `${blockedWithQty.length} blocked line(s) carry a quantity — contradictory state: ${lineLabels(blockedWithQty)}. Re-save the quote (or clear/re-enter the quantity) before sending.`,
+    );
+  }
+
+  const licensed = licensedFamiliesForDescription(
+    description ?? quote_data.job_summary,
+  );
+  const unlicensed = (family: "deck" | "insulation") =>
+    items.filter((it) => {
+      if (it.type !== "material") return false;
+      const prov = classifyLineProvenance(it);
+      if (prov !== "calculated" && prov !== "ai_unconfirmed") return false;
+      return (
+        materialFamilyForDescription(it.description ?? "") === family &&
+        !licensed.has(family)
+      );
+    });
+  const deckLeaks = unlicensed("deck");
+  if (deckLeaks.length > 0) {
+    reasons.push(
+      `${deckLeaks.length} deck material line(s) have no deck evidence on this job: ${lineLabels(deckLeaks)}. Remove them, or confirm the quantities yourself if this really is deck work.`,
+    );
+  }
+  const insulationLeaks = unlicensed("insulation");
+  if (insulationLeaks.length > 0) {
+    reasons.push(
+      `${insulationLeaks.length} insulation line(s) have no insulation scope on this job: ${lineLabels(insulationLeaks)}. Remove them, or confirm the quantities yourself.`,
+    );
+  }
+  return reasons;
+}
+
 export function assessQuoteTakeoffSafety(
   quote_data: QuoteData | null,
+  opts: { description?: string | null } = {},
 ): TakeoffSafetyAssessment {
   const block_reasons: string[] = [];
   const warning_reasons: string[] = [];
@@ -148,6 +220,10 @@ export function assessQuoteTakeoffSafety(
   // QUOTE QA — totals integrity is a HARD block: a customer must never see
   // a total the line items don't add up to.
   block_reasons.push(...assessQuoteTotalsIntegrity(quote_data));
+  // QUOTE QA — scope/state contradictions are HARD blocks too.
+  block_reasons.push(
+    ...assessQuoteContradictions(quote_data, opts.description),
+  );
 
   const items: QuoteLineItem[] = Array.isArray(quote_data?.line_items)
     ? quote_data!.line_items
@@ -302,8 +378,12 @@ export function validateQuoteForSending(args: {
   quote_data: QuoteData | null;
   /** Set true once the operator has acknowledged caution-level warnings. */
   acknowledged?: boolean;
+  /** Original job description (voice transcript / scan text) — the same
+   *  evidence generation licensed scopes from; used by the contradiction
+   *  gate. Falls back to quote_data.job_summary when omitted. */
+  description?: string | null;
 }): SendValidationResult {
-  const { status, quote_data, acknowledged } = args;
+  const { status, quote_data, acknowledged, description } = args;
   if (status === "accepted") {
     return { ok: false, error: "already_accepted" };
   }
@@ -337,7 +417,7 @@ export function validateQuoteForSending(args: {
   // Blocked "needs dimensions" lines report the actionable missing-info error
   // FIRST (before the genuinely-empty check), so a quote that is all blocked
   // lines tells the tradie exactly what's missing rather than just "empty".
-  const safety = assessQuoteTakeoffSafety(quote_data);
+  const safety = assessQuoteTakeoffSafety(quote_data, { description });
   if (!safety.can_send) {
     return { ok: false, error: "takeoff_blocked", reasons: safety.block_reasons };
   }
@@ -363,8 +443,10 @@ export function validateQuoteForSmsSending(args: {
   quote_data: QuoteData | null;
   /** Set true once the operator has acknowledged caution-level warnings. */
   acknowledged?: boolean;
+  /** See validateQuoteForSending — evidence text for the contradiction gate. */
+  description?: string | null;
 }): SmsSendValidationResult {
-  const { status, quote_data, acknowledged } = args;
+  const { status, quote_data, acknowledged, description } = args;
   if (status === "accepted") {
     return { ok: false, error: "already_accepted" };
   }
@@ -391,7 +473,7 @@ export function validateQuoteForSmsSending(args: {
   // Blocked "needs dimensions" lines report the actionable missing-info error
   // FIRST (before the genuinely-empty check), so a quote that is all blocked
   // lines tells the tradie exactly what's missing rather than just "empty".
-  const safety = assessQuoteTakeoffSafety(quote_data);
+  const safety = assessQuoteTakeoffSafety(quote_data, { description });
   if (!safety.can_send) {
     return { ok: false, error: "takeoff_blocked", reasons: safety.block_reasons };
   }
