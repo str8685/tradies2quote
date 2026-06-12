@@ -4,9 +4,15 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowClockwise,
+  Cloud,
+  CloudFog,
+  CloudLightning,
+  CloudRain,
   CloudSun,
   MapPin,
   ShieldCheck,
+  Snowflake,
+  Sun,
   Warning,
   XCircle,
 } from "@phosphor-icons/react";
@@ -15,6 +21,7 @@ import {
   TRADE_OPTIONS,
   evaluateWeatherImpact,
   fetchOpenMeteoWeather,
+  type WeatherDailyForecast,
   type WeatherImpactContext,
   type WeatherImpactInput,
   type WeatherImpactStatus,
@@ -263,6 +270,26 @@ export function WeatherImpactClient({
           </div>
         </div>
       </section>
+
+      {/* 5-day outlook — live fetches only (manual entry has no forecast). */}
+      {weather.daily && weather.daily.length > 0 ? (
+        <section className="t2q-card-pro p-5 sm:p-6" data-testid="weather-5day">
+          <div className="flex items-baseline justify-between gap-3">
+            <div>
+              <p className="t2q-section-label-pro">{"// 5-day outlook"}</p>
+              <h3 className="mt-2 text-xl font-semibold text-white">Next 5 days</h3>
+            </div>
+            {locationFor ? (
+              <p className="hidden text-xs font-semibold text-ink-400 sm:block">{locationFor}</p>
+            ) : null}
+          </div>
+          <div className="mt-4 grid grid-cols-5 gap-2">
+            {weather.daily.slice(0, 5).map((day, index) => (
+              <DailyForecastCard key={day.date} day={day} isToday={index === 0} />
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       <section className="grid gap-5 lg:grid-cols-[0.86fr_1.14fr]">
         <div className="space-y-5">
@@ -531,6 +558,60 @@ function ResultSection({
       )}
     </section>
   );
+}
+
+const CONDITION_ICONS: Record<
+  WeatherDailyForecast["condition"],
+  { Icon: typeof Sun; tint: string }
+> = {
+  clear: { Icon: Sun, tint: "text-hivis" },
+  cloud: { Icon: CloudSun, tint: "text-ink-300" },
+  drizzle: { Icon: CloudRain, tint: "text-sky-300" },
+  rain: { Icon: CloudRain, tint: "text-sky-300" },
+  thunderstorm: { Icon: CloudLightning, tint: "text-red-300" },
+  fog: { Icon: CloudFog, tint: "text-ink-300" },
+  snow: { Icon: Snowflake, tint: "text-sky-200" },
+  changing: { Icon: Cloud, tint: "text-ink-300" },
+};
+
+function DailyForecastCard({ day, isToday }: { day: WeatherDailyForecast; isToday: boolean }) {
+  const { Icon, tint } = CONDITION_ICONS[day.condition];
+  const wet = day.condition === "rain" || day.condition === "thunderstorm";
+  return (
+    <div
+      className={`flex min-w-0 flex-col items-center gap-1.5 rounded-xl border px-1.5 py-3 text-center ${
+        wet ? "border-sky-500/30 bg-sky-500/[0.06]" : "border-white/10 bg-white/[0.03]"
+      }`}
+      title={day.summary}
+    >
+      <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-400">
+        {isToday ? "Today" : formatDayLabel(day.date)}
+      </p>
+      <Icon size={24} weight="bold" className={tint} aria-hidden="true" />
+      <p className="text-sm font-semibold text-white">
+        {formatTemp(day.tempMaxC)}
+        <span className="ml-1 font-normal text-ink-400">{formatTemp(day.tempMinC)}</span>
+      </p>
+      <p className={`text-[11px] font-semibold ${wet ? "text-sky-300" : "text-ink-400"}`}>
+        {day.rainProbabilityMaxPct != null ? `${Math.round(day.rainProbabilityMaxPct)}%` : "—"}
+      </p>
+      {day.windGustMaxKph != null && day.windGustMaxKph >= 50 ? (
+        <p className="text-[10px] font-semibold text-amber-300">
+          gusts {Math.round(day.windGustMaxKph)}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+function formatDayLabel(isoDate: string) {
+  const date = new Date(`${isoDate}T12:00:00`);
+  if (Number.isNaN(date.getTime())) return isoDate;
+  return date.toLocaleDateString("en-NZ", { weekday: "short" });
+}
+
+function formatTemp(value: number | null) {
+  return value == null ? "—" : `${Math.round(value)}°`;
 }
 
 function Badge({ label, emphasis = false }: { label: string; emphasis?: boolean }) {

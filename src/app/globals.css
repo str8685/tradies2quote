@@ -1997,3 +1997,27 @@ body:has([data-shell="app"]) {
   right: 1rem;
   z-index: 40;
 }
+
+/* ── Landing scroll-reveal (Reveal.tsx) ──────────────────────────────────
+   Hidden state is added by JS on mount only, so no-JS visitors and bots
+   always see content. One transition, GPU-friendly props only. */
+.t2q-reveal {
+  opacity: 0;
+  transform: translateY(28px);
+  transition:
+    opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: opacity, transform;
+}
+.t2q-reveal.is-revealed {
+  opacity: 1;
+  transform: none;
+  will-change: auto;
+}
+@media (prefers-reduced-motion: reduce) {
+  .t2q-reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}

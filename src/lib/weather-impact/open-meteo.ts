@@ -1,4 +1,4 @@
-import type { WeatherForecastWindow, WeatherImpactInput } from "./types";
+import type { WeatherDailyForecast, WeatherForecastWindow, WeatherImpactInput } from "./types";
 
 interface OpenMeteoResponse {
   current?: {
@@ -22,6 +22,16 @@ interface OpenMeteoResponse {
     temperature_2m?: Array<number | null>;
     visibility?: Array<number | null>;
   };
+  daily?: {
+    time?: string[];
+    weather_code?: Array<number | null>;
+    temperature_2m_max?: Array<number | null>;
+    temperature_2m_min?: Array<number | null>;
+    precipitation_probability_max?: Array<number | null>;
+    precipitation_sum?: Array<number | null>;
+    wind_speed_10m_max?: Array<number | null>;
+    wind_gusts_10m_max?: Array<number | null>;
+  };
 }
 
 export async function fetchOpenMeteoWeather({
@@ -37,7 +47,9 @@ export async function fetchOpenMeteoWeather({
     latitude: String(latitude),
     longitude: String(longitude),
     timezone: "auto",
-    forecast_days: "2",
+    // 5 days so the PWA can show the full outlook; the better-window scan
+    // still only reads the first 24 hourly slots.
+    forecast_days: "5",
     current: [
       "temperature_2m",
       "relative_humidity_2m",
@@ -56,6 +68,15 @@ export async function fetchOpenMeteoWeather({
       "wind_gusts_10m",
       "temperature_2m",
       "visibility",
+    ].join(","),
+    daily: [
+      "weather_code",
+      "temperature_2m_max",
+      "temperature_2m_min",
+      "precipitation_probability_max",
+      "precipitation_sum",
+      "wind_speed_10m_max",
+      "wind_gusts_10m_max",
     ].join(","),
   });
 
@@ -90,7 +111,38 @@ export function normalizeOpenMeteo(data: OpenMeteoResponse): WeatherImpactInput 
     humidityPct: current.relative_humidity_2m ?? null,
     visibilityKm: metersToKm(valueAt(hourly.visibility, currentHourIndex)),
     forecast,
+    daily: buildDaily(data.daily ?? {}),
   };
+}
+
+function buildDaily(daily: NonNullable<OpenMeteoResponse["daily"]>): WeatherDailyForecast[] {
+  const dates = daily.time ?? [];
+  return dates.slice(0, 5).map((date, index) => {
+    const code = valueAt(daily.weather_code, index);
+    return {
+      date,
+      condition: codeCondition(code),
+      summary: weatherCodeSummary(code ?? undefined) ?? "Weather changing",
+      tempMaxC: valueAt(daily.temperature_2m_max, index),
+      tempMinC: valueAt(daily.temperature_2m_min, index),
+      rainProbabilityMaxPct: valueAt(daily.precipitation_probability_max, index),
+      precipitationSumMm: valueAt(daily.precipitation_sum, index),
+      windMaxKph: valueAt(daily.wind_speed_10m_max, index),
+      windGustMaxKph: valueAt(daily.wind_gusts_10m_max, index),
+    };
+  });
+}
+
+function codeCondition(code: number | null): WeatherDailyForecast["condition"] {
+  if (code == null) return "changing";
+  if (isThunderstormCode(code)) return "thunderstorm";
+  if ([61, 63, 65, 80, 81, 82].includes(code)) return "rain";
+  if ([51, 53, 55].includes(code)) return "drizzle";
+  if ([45, 48].includes(code)) return "fog";
+  if ([71, 73, 75, 77, 85, 86].includes(code)) return "snow";
+  if ([1, 2, 3].includes(code)) return "cloud";
+  if (code === 0) return "clear";
+  return "changing";
 }
 
 function buildForecast(

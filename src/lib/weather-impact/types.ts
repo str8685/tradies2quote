@@ -29,6 +29,21 @@ export interface WeatherForecastWindow {
   temperatureC: number | null;
 }
 
+/** One calendar day of the 5-day outlook shown on /app/weather. */
+export interface WeatherDailyForecast {
+  /** ISO date (YYYY-MM-DD) in the site's local timezone. */
+  date: string;
+  /** Coarse condition bucket used to pick an icon + label. */
+  condition: "clear" | "cloud" | "drizzle" | "rain" | "thunderstorm" | "fog" | "snow" | "changing";
+  summary: string;
+  tempMaxC: number | null;
+  tempMinC: number | null;
+  rainProbabilityMaxPct: number | null;
+  precipitationSumMm: number | null;
+  windMaxKph: number | null;
+  windGustMaxKph: number | null;
+}
+
 export interface WeatherImpactInput {
   observedAt?: string | null;
   source?: string | null;
@@ -43,6 +58,8 @@ export interface WeatherImpactInput {
   humidityPct: number | null;
   visibilityKm: number | null;
   forecast?: WeatherForecastWindow[];
+  /** 5-day daily outlook (live fetches only; manual entry has none). */
+  daily?: WeatherDailyForecast[];
 }
 
 export interface TriggeredWeatherRule {

@@ -13,6 +13,7 @@ import { ScrollProgress } from "./_components/landing/ScrollProgress";
 import { CursorSpotlight } from "./_components/landing/CursorSpotlight";
 import TapeDivider from "./_components/landing/TapeDivider";
 import InstallNudge from "./_components/landing/InstallNudge";
+import { Reveal } from "./_components/landing/Reveal";
 import { softwareApplicationLd } from "./_components/landing/structured-data";
 
 /**
@@ -37,15 +38,33 @@ export default function HomePage() {
       <Header />
       <main className="relative z-[2]">
         <Hero />
-        <Pain />
-        <QuoteWorkflow />
-        <HowItWorks />
+        {/* Scroll-reveal motion on every below-the-fold section (Reveal.tsx).
+            Hero stays unwrapped — it's the LCP and must paint instantly. */}
+        <Reveal>
+          <Pain />
+        </Reveal>
+        <Reveal>
+          <QuoteWorkflow />
+        </Reveal>
+        <Reveal>
+          <HowItWorks />
+        </Reveal>
         <TapeDivider label="ONE TOOL · DOES ONE THING · DOES IT WELL" />
-        <Features />
-        <FounderStory />
-        <Pricing />
-        <FAQ />
-        <FinalCta />
+        <Reveal>
+          <Features />
+        </Reveal>
+        <Reveal>
+          <FounderStory />
+        </Reveal>
+        <Reveal>
+          <Pricing />
+        </Reveal>
+        <Reveal>
+          <FAQ />
+        </Reveal>
+        <Reveal>
+          <FinalCta />
+        </Reveal>
       </main>
       <Footer />
       {/* Wave 19.4 — <LoadingScreen /> removed from the marketing
