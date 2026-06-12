@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { captureError } from "@/lib/observability";
 import { adminClient } from "@/lib/supabase/admin";
 import { stripeClient } from "@/lib/stripe-client";
 import {
@@ -114,6 +115,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ url: session.url });
   } catch (e) {
     console.error("[payments/checkout] failed", e);
+    captureError(e, { route: "/api/payments/checkout" });
     return NextResponse.json(
       { error: "checkout_failed", message: e instanceof Error ? e.message : String(e) },
       { status: 500 },

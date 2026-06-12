@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { captureError } from "@/lib/observability";
 import { createClient } from "@/lib/supabase/server";
 import {
   MAX_IMAGE_BYTES,
@@ -131,6 +132,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true, result });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
+    captureError(err, { route: "/api/agents/photo-plan" });
     logAgentRunFinish({
       agentName: "Photo / Plan Reading Agent",
       runId,

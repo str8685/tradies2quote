@@ -1,4 +1,5 @@
 import "server-only";
+import { fetchWithTimeout, TIMEOUTS } from "@/lib/fetchTimeout";
 
 /**
  * Trial / onboarding email orchestrator.
@@ -286,7 +287,7 @@ export async function sendTrialEmail(args: {
   if (!apiKey) return { ok: false, error: "email_not_configured" };
   if (!from) return { ok: false, error: "email_from_not_configured" };
 
-  const res = await fetch(RESEND_URL, {
+  const res = await fetchWithTimeout(RESEND_URL, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${apiKey}`,
@@ -299,7 +300,7 @@ export async function sendTrialEmail(args: {
       text: args.rendered.text,
       html: args.rendered.html,
     }),
-  });
+  }, TIMEOUTS.email);
 
   if (!res.ok) {
     const detail = await res.text().catch(() => "");

@@ -23,6 +23,7 @@ import {
   logAgentRunStart,
   newRunId,
 } from "@/lib/agent-monitor/logger";
+import { fetchWithTimeout, TIMEOUTS } from "@/lib/fetchTimeout";
 
 export type ModelTier = "fast" | "default" | "deep";
 
@@ -227,15 +228,20 @@ export async function runStructuredAgent<T>(
         includeTemperature: tier !== "deep",
       });
 
-      const res = await doFetch(ANTHROPIC_URL, {
-        method: "POST",
-        headers: {
-          "x-api-key": apiKey,
-          "anthropic-version": "2023-06-01",
-          "content-type": "application/json",
+      const res = await fetchWithTimeout(
+        ANTHROPIC_URL,
+        {
+          method: "POST",
+          headers: {
+            "x-api-key": apiKey,
+            "anthropic-version": "2023-06-01",
+            "content-type": "application/json",
+          },
+          body: JSON.stringify(body),
         },
-        body: JSON.stringify(body),
-      });
+        TIMEOUTS.llm,
+        doFetch,
+      );
 
       if (!res.ok) {
         const detail = await res.text().catch(() => "");

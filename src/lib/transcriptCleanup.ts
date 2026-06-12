@@ -36,6 +36,7 @@
 import { applyGlossaryCorrections } from "./transcript/glossaryCorrect";
 import { normalizeSpokenMeasurements } from "./transcript/measureNormalize";
 import type { VocabSet, VocabTermType } from "./transcript/glossary";
+import { fetchWithTimeout, TIMEOUTS } from "@/lib/fetchTimeout";
 
 // ---------------------------------------------------------------------------
 // Public types
@@ -504,7 +505,7 @@ async function defaultAnthropicCall({
   model: string;
   maxTokens: number;
 }): Promise<string> {
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
+  const res = await fetchWithTimeout("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
       "x-api-key": apiKey,
@@ -522,7 +523,7 @@ async function defaultAnthropicCall({
         { role: "assistant", content: "{" },
       ],
     }),
-  });
+  }, TIMEOUTS.llm);
   if (!res.ok) {
     const detail = await res.text().catch(() => "");
     throw new Error(`Anthropic ${res.status}: ${detail.slice(0, 200)}`);

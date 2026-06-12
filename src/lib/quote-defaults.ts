@@ -83,6 +83,28 @@ export function round2(n: number): number {
 }
 
 /**
+ * Hard bounds on the two user-editable percentage inputs that feed
+ * `computeQuoteTotals`. These are typo guards, not business rules: a markup
+ * of 900% or a GST rate of 155% is always a slipped digit, and without a
+ * clamp it flows silently into a customer-facing total. Limits are generous
+ * enough that no legitimate trade pricing hits them.
+ */
+export const MAX_MARKUP_PCT = 200;
+export const MAX_TAX_RATE = 50;
+
+export function clampMarkupPct(n: unknown): number {
+  const v = Number(n);
+  if (!Number.isFinite(v) || v < 0) return 0;
+  return Math.min(v, MAX_MARKUP_PCT);
+}
+
+export function clampTaxRate(n: unknown): number {
+  const v = Number(n);
+  if (!Number.isFinite(v) || v < 0) return 0;
+  return Math.min(v, MAX_TAX_RATE);
+}
+
+/**
  * The single source of truth for quote totals.
  *
  * Every total displayed or persisted (AI generation, the save action, and

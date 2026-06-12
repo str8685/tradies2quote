@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { captureError } from "@/lib/observability";
 import { createClient } from "@/lib/supabase/server";
 import { adminClient } from "@/lib/supabase/admin";
 import { isStripeConfigured, stripeClient } from "@/lib/stripe-client";
@@ -68,6 +69,7 @@ export async function POST(_request: NextRequest) {
     return NextResponse.json({ ok: true, url: session.url });
   } catch (err) {
     console.error("[stripe/portal] failed", err);
+    captureError(err, { route: "/api/stripe/portal" });
     return NextResponse.json(
       {
         error: "portal_create_failed",

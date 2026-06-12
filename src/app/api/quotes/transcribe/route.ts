@@ -7,6 +7,7 @@ import {
   STATIC_TRADE_VOCAB_PROMPT,
 } from "@/lib/transcript/asrHints";
 import { consumeDailyQuota, tooManyRequestsResponse } from "@/lib/rate-limit";
+import { fetchWithTimeout, TIMEOUTS } from "@/lib/fetchTimeout";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -114,21 +115,32 @@ export async function POST(request: NextRequest) {
   // on a job site is painful, and these blips usually clear instantly.
   // A 4xx won't fix itself, so it's returned straight away.
   let transcribeRes: Response | null = null;
-  for (let attempt = 1; attempt <= 2; attempt++) {
-    transcribeRes = await fetch(TRANSCRIBE_URL, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${apiKey}` },
-      body: upstream,
-    });
-    if (transcribeRes.ok) break;
-    if (
-      attempt === 1 &&
-      (transcribeRes.status >= 500 || transcribeRes.status === 429)
-    ) {
-      await new Promise((r) => setTimeout(r, 600));
-      continue;
+  try {
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      transcribeRes = await fetchWithTimeout(TRANSCRIBE_URL, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${apiKey}` },
+        body: upstream,
+      }, TIMEOUTS.transcribe);
+      if (transcribeRes.ok) break;
+      if (
+        attempt === 1 &&
+        (transcribeRes.status >= 500 || transcribeRes.status === 429)
+      ) {
+        await new Promise((r) => setTimeout(r, 600));
+        continue;
+      }
+      break;
     }
-    break;
+  } catch (e) {
+    // Timeout or network failure — the recording is still on the client,
+    // so a clean retryable error beats an opaque platform 500.
+    console.error("Transcription upstream failure", e);
+    captureError(e, { route: "/api/quotes/transcribe" });
+    return NextResponse.json(
+      { error: "Transcription took too long. Please try again." },
+      { status: 504 },
+    );
   }
 
   if (!transcribeRes || !transcribeRes.ok) {

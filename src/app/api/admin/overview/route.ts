@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { captureError } from "@/lib/observability";
 import { getCachedAuthUser } from "@/lib/supabase/auth";
 import { isOwnerEmail } from "@/lib/owner";
 import { buildAdminOverview } from "@/lib/admin/overview";
@@ -27,6 +28,7 @@ export async function GET() {
     });
   } catch (err) {
     console.error("[api/admin/overview] failed", err);
+    captureError(err, { route: "/api/admin/overview" });
     return NextResponse.json(
       {
         error: "overview_failed",

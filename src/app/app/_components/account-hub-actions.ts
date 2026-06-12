@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { captureError } from "@/lib/observability";
 
 /**
  * Wave 14.7 — avatar photo server actions for the account hub.
@@ -175,7 +176,7 @@ export async function uploadAvatarAction(
   if (dbErr) {
     // Best-effort cleanup of the new object so we don't leave an
     // orphan in storage on a DB failure.
-    await supabase.storage.from(BUCKET).remove([up.path]).catch(() => {});
+    await supabase.storage.from(BUCKET).remove([up.path]).catch((e) => captureError(e, { route: "account-hub/avatar-cleanup" }));
     return { ok: false, error: dbErr.message || "Could not save avatar." };
   }
 
@@ -184,7 +185,7 @@ export async function uploadAvatarAction(
   if (priorUrl) {
     const priorPath = extractPathFromPublicUrl(priorUrl);
     if (priorPath) {
-      await supabase.storage.from(BUCKET).remove([priorPath]).catch(() => {});
+      await supabase.storage.from(BUCKET).remove([priorPath]).catch((e) => captureError(e, { route: "account-hub/avatar-cleanup" }));
     }
   }
 
@@ -230,7 +231,7 @@ export async function removeAvatarAction(): Promise<AvatarActionResult> {
   if (priorUrl) {
     const path = extractPathFromPublicUrl(priorUrl);
     if (path) {
-      await supabase.storage.from(BUCKET).remove([path]).catch(() => {});
+      await supabase.storage.from(BUCKET).remove([path]).catch((e) => captureError(e, { route: "account-hub/avatar-cleanup" }));
     }
   }
 

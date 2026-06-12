@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { captureError } from "@/lib/observability";
 import { createClient } from "@/lib/supabase/server";
 import {
   runQuoteGenerationAgent,
@@ -84,6 +85,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true, result });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
+    captureError(err, { route: "/api/agents/quote-generation" });
     logAgentRunFinish({
       agentName: "Quote Generation Agent",
       runId,

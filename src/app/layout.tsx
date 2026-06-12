@@ -13,6 +13,7 @@ import { ThemeBoot } from "./_components/ThemeBoot";
 import { FloatingInstallButton } from "./_components/FloatingInstallButton";
 import { SignupBeacon } from "./_components/SignupBeacon";
 import { CookieConsent } from "./_components/CookieConsent";
+import { GlobalErrorListeners } from "./_components/GlobalErrorListeners";
 
 const archivoblack = Archivo_Black({
   variable: "--font-archivo-black",
@@ -219,6 +220,9 @@ export default function RootLayout({
             so the non-essential tracker never runs pre-consent. */}
         <SignupBeacon />
         <CookieConsent />
+        {/* Window error/unhandledrejection → internal error monitor.
+            Boundaries only see render errors; this catches the rest. */}
+        <GlobalErrorListeners />
       </body>
     </html>
   );

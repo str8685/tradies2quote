@@ -12,6 +12,7 @@ import {
   sniffPreparedImageMime,
 } from "@/lib/imageUpload";
 import { parseModelJsonObject } from "@/lib/modelJson";
+import { fetchWithTimeout, TIMEOUTS } from "@/lib/fetchTimeout";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -518,7 +519,7 @@ export async function POST(request: NextRequest) {
 
   let claudeRes: Response;
   try {
-    claudeRes = await fetch(ANTHROPIC_URL, {
+    claudeRes = await fetchWithTimeout(ANTHROPIC_URL, {
       method: "POST",
       headers: {
         "x-api-key": apiKey,
@@ -555,7 +556,7 @@ export async function POST(request: NextRequest) {
           // prompt's "Output STRICT JSON only" instruction instead.
         ],
       }),
-    });
+    }, TIMEOUTS.llm);
   } catch (err) {
     captureError(err, { route: "quotes/scan-drawing" });
     console.error("scan-drawing fetch failed", err);

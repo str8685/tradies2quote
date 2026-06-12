@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { captureError } from "@/lib/observability";
 import { createClient } from "@/lib/supabase/server";
 import {
   runCustomerReplyAgent,
@@ -75,6 +76,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true, result });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
+    captureError(err, { route: "/api/agents/customer-reply" });
     logAgentRunFinish({
       agentName: "Customer Reply Agent",
       runId,

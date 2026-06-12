@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
+  MAX_MARKUP_PCT,
+  MAX_TAX_RATE,
   addGst,
+  clampMarkupPct,
+  clampTaxRate,
   computeQuoteTotals,
   formatCurrency,
   gstInclusiveBreakdown,
@@ -242,5 +246,92 @@ describe("moneyEquals", () => {
   it("treats sub-cent differences as equal", () => {
     expect(moneyEquals(100.004, 100)).toBe(true);
     expect(moneyEquals(100.02, 100)).toBe(false);
+  });
+});
+
+// ─── clampMarkupPct / clampTaxRate ───────────────────────────────────────
+// Typo guards on the two user-editable percentages that feed totals. A
+// slipped digit (155% GST) must never silently flow into a customer total.
+describe("rate clamps", () => {
+  it("passes legitimate values through unchanged", () => {
+    expect(clampMarkupPct(20)).toBe(20);
+    expect(clampMarkupPct(0)).toBe(0);
+    expect(clampTaxRate(15)).toBe(15);
+    expect(clampTaxRate(0)).toBe(0);
+  });
+
+  it("clamps slipped digits to the hard ceilings", () => {
+    expect(clampMarkupPct(900)).toBe(MAX_MARKUP_PCT);
+    expect(clampTaxRate(155)).toBe(MAX_TAX_RATE);
+  });
+
+  it("treats negative, NaN, Infinity and junk strings as 0", () => {
+    expect(clampMarkupPct(-20)).toBe(0);
+    expect(clampMarkupPct(Number.NaN)).toBe(0);
+    expect(clampTaxRate(Number.POSITIVE_INFINITY)).toBe(0); // non-finite fails closed
+    expect(clampTaxRate("garbage")).toBe(0);
+    expect(clampMarkupPct(undefined)).toBe(0);
+    expect(clampTaxRate(null)).toBe(0);
+  });
+});
+
+// ─── computeQuoteTotals: hostile inputs ──────────────────────────────────
+describe("computeQuoteTotals hostile inputs", () => {
+  it("non-finite quantities/prices contribute 0, never NaN totals", () => {
+    const t = computeQuoteTotals(
+      [
+        { type: "material", quantity: Number.NaN, unit_price: 100 },
+        { type: "material", quantity: 2, unit_price: Number.POSITIVE_INFINITY },
+        { type: "labour", quantity: 3, unit_price: 90 },
+      ],
+      20,
+      15,
+    );
+    for (const v of Object.values(t)) expect(Number.isFinite(v)).toBe(true);
+    expect(t.materials_subtotal).toBe(0);
+    expect(t.labour_subtotal).toBe(270);
+  });
+
+  it("string-typed numbers (malformed quote_data) coerce instead of poisoning", () => {
+    const t = computeQuoteTotals(
+      [
+        {
+          type: "material",
+          quantity: "3" as unknown as number,
+          unit_price: "10.50" as unknown as number,
+        },
+      ],
+      0,
+      15,
+    );
+    expect(t.materials_subtotal).toBe(31.5);
+    expect(t.total).toBe(round2(31.5 * 1.15));
+  });
+
+  it("multi-line rounding cascade: visible lines always sum to the subtotal", () => {
+    // 10 lines of 2.5 × $19.999 — each line shows $50.00 (rounded), so the
+    // subtotal must be 10 × 50.00, not round(10 × 49.9975).
+    const lines = Array.from({ length: 10 }, () => ({
+      type: "material",
+      quantity: 2.5,
+      unit_price: 19.999,
+    }));
+    const t = computeQuoteTotals(lines, 0, 15);
+    const visibleSum = lines.reduce(
+      (s, l) => s + round2(l.quantity * l.unit_price),
+      0,
+    );
+    expect(t.materials_subtotal).toBe(round2(visibleSum));
+    expect(t.materials_subtotal).toBe(500); // sum-of-rounded, not 499.98
+  });
+
+  it(".005 midpoint lines round half-up consistently", () => {
+    const t = computeQuoteTotals(
+      [{ type: "material", quantity: 1, unit_price: 10.005 }],
+      0,
+      0,
+    );
+    expect(t.materials_subtotal).toBe(10.01);
+    expect(t.total).toBe(10.01);
   });
 });

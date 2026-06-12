@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { captureError } from "@/lib/observability";
 import { adminClient } from "@/lib/supabase/admin";
 import { isAuthorizedCron } from "@/lib/cron-auth";
 import {
@@ -181,6 +182,7 @@ async function handle(request: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ ok: true, now: new Date(now).toISOString(), ...counters });
   } catch (err) {
     console.error("[cron/engagement] run failed", err);
+    captureError(err, { route: "/api/cron/engagement" });
     return NextResponse.json(
       { error: "cron_run_failed", message: err instanceof Error ? err.message : String(err), ...counters },
       { status: 500 },

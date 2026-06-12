@@ -1,7 +1,9 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { captureError } from "@/lib/observability";
 import { createClient } from "@/lib/supabase/server";
 import { adminClient } from "@/lib/supabase/admin";
 import { isOwnerEmail } from "@/lib/owner";
+import { fetchWithTimeout, TIMEOUTS } from "@/lib/fetchTimeout";
 
 /**
  * Owner-only triage endpoint for failed (or any) agent run.
@@ -141,7 +143,7 @@ export async function POST(request: NextRequest) {
     events,
   };
 
-  const claudeRes = await fetch(ANTHROPIC_URL, {
+  const claudeRes = await fetchWithTimeout(ANTHROPIC_URL, {
     method: "POST",
     headers: {
       "content-type": "application/json",
@@ -159,11 +161,12 @@ export async function POST(request: NextRequest) {
         },
       ],
     }),
-  });
+  }, TIMEOUTS.llm);
 
   if (!claudeRes.ok) {
     const detail = await claudeRes.text().catch(() => "");
     console.error("Claude diagnose call failed", claudeRes.status, detail);
+    captureError(new Error(`Claude diagnose ${claudeRes.status}: ${detail.slice(0, 120)}`), { route: "/api/agents/diagnose" });
     return NextResponse.json(
       {
         error: `ai_error_${claudeRes.status}`,

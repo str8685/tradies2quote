@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { captureError } from "@/lib/observability";
 import { adminClient } from "@/lib/supabase/admin";
 import { isAuthorizedCron } from "@/lib/cron-auth";
 import { OWNER_EMAIL } from "@/lib/owner";
@@ -97,6 +98,7 @@ async function handle(request: NextRequest): Promise<NextResponse> {
     });
   } catch (err) {
     console.error("[weekly-digest] failed", err);
+    captureError(err, { route: "/api/cron/weekly-digest" });
     return NextResponse.json(
       { ok: false, error: (err as Error).message },
       { status: 500 },

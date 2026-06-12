@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { captureError } from "@/lib/observability";
 import { adminClient } from "@/lib/supabase/admin";
 import { isAuthorizedCron } from "@/lib/cron-auth";
 import {
@@ -108,6 +109,7 @@ async function handle(request: NextRequest): Promise<NextResponse> {
     });
     if (error) {
       console.error("listUsers failed", error);
+      captureError(error, { route: "/api/cron/trial-emails" });
       return NextResponse.json(
         { error: "list_users_failed", message: error.message },
         { status: 500 },
@@ -241,6 +243,7 @@ async function handle(request: NextRequest): Promise<NextResponse> {
   });
   } catch (err) {
     console.error("[cron/trial-emails] run failed", err);
+    captureError(err, { route: "/api/cron/trial-emails" });
     return NextResponse.json(
       {
         error: "cron_run_failed",

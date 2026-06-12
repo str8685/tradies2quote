@@ -4,7 +4,12 @@ import { redirect } from "next/navigation";
 import { captureError } from "@/lib/observability";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { computeQuoteTotals, round2 } from "@/lib/quote-defaults";
+import {
+  clampMarkupPct,
+  clampTaxRate,
+  computeQuoteTotals,
+  round2,
+} from "@/lib/quote-defaults";
 import { applyMaterialCorrections } from "@/lib/quoteEditLearning";
 import { buildQuoteEditDiff, diffIsNonEmpty } from "@/lib/quoteEditDiff";
 import { confirmAndRecalc, type DimensionEdit } from "@/lib/dimensionConfirmation";
@@ -69,8 +74,8 @@ export async function saveQuoteChanges(
     const price = Number(it.unit_price) || 0;
     return { ...it, quantity: qty, unit_price: price, line_total: round2(qty * price) };
   });
-  const markup_pct = Number(data.markup_pct) || 0;
-  const tax_rate = Number(data.tax_rate) || 0;
+  const markup_pct = clampMarkupPct(data.markup_pct);
+  const tax_rate = clampTaxRate(data.tax_rate);
   const totals = computeQuoteTotals(items, markup_pct, tax_rate);
   const total = totals.total;
 
@@ -78,6 +83,7 @@ export async function saveQuoteChanges(
     ...data,
     line_items: items,
     markup_pct,
+    tax_rate,
     ...totals,
   };
 
@@ -254,14 +260,15 @@ export async function confirmDimensions(
     const price = Number(it.unit_price) || 0;
     return { ...it, quantity: qty, unit_price: price, line_total: round2(qty * price) };
   });
-  const markup_pct = Number(data.markup_pct) || 0;
-  const tax_rate = Number(data.tax_rate) || 0;
+  const markup_pct = clampMarkupPct(data.markup_pct);
+  const tax_rate = clampTaxRate(data.tax_rate);
   const totals = computeQuoteTotals(items, markup_pct, tax_rate);
 
   const next: QuoteData = {
     ...data,
     line_items: items,
     markup_pct,
+    tax_rate,
     ...totals,
     dimension_confirmation: result.dimension_confirmation,
   };
@@ -277,6 +284,7 @@ export async function confirmDimensions(
     .select("id");
   if (uErr || !updatedRows || updatedRows.length === 0) {
     console.error("confirmDimensions update failed", uErr);
+    captureError(uErr, { route: "action:confirmDimensions" });
     return { error: "Could not save the confirmation." };
   }
 
@@ -286,6 +294,7 @@ export async function confirmDimensions(
     .eq("quote_id", id);
   if (dErr) {
     console.error("confirmDimensions delete items failed", dErr);
+    captureError(dErr, { route: "action:confirmDimensions" });
     return { error: "Could not refresh line items." };
   }
   if (items.length > 0) {
@@ -302,6 +311,7 @@ export async function confirmDimensions(
     );
     if (iErr) {
       console.error("confirmDimensions insert items failed", iErr);
+      captureError(iErr, { route: "action:confirmDimensions" });
       return { error: "Could not write line items." };
     }
   }
@@ -498,6 +508,7 @@ async function transition(
   );
   if (rpcErr) {
     console.error("transition_quote_lifecycle RPC failed", rpcErr);
+    captureError(rpcErr, { route: "action:transitionQuoteLifecycle" });
     return explainRpcError(rpcErr);
   }
 
@@ -561,6 +572,7 @@ export async function scheduleJob(
         .eq("user_id", user.id);
       if (error) {
         console.error("scheduleJob scheduled_for write failed", error);
+        captureError(error, { route: "action:scheduleJob" });
       }
       revalidatePath(`/app/quotes/preview/${quoteId}`);
       revalidatePath("/app");
@@ -661,6 +673,7 @@ export async function createInvoiceFromQuote(
 
   if (error) {
     console.error("create_invoice_from_quote RPC failed", error);
+    captureError(error, { route: "action:createInvoiceFromQuote" });
     logAgentError({
       agentName: "Invoice Agent",
       quoteId,
@@ -738,6 +751,7 @@ export async function markInvoicePaid(
 
   if (error) {
     console.error("markInvoicePaid failed", error);
+    captureError(error, { route: "action:markInvoicePaid" });
     return { error: error.message ?? "Could not mark the invoice paid." };
   }
   if (!data) {

@@ -17,6 +17,7 @@ import {
   sniffPreparedImageMime,
 } from "@/lib/imageUpload";
 import { parseModelJsonObject } from "@/lib/modelJson";
+import { fetchWithTimeout, TIMEOUTS } from "@/lib/fetchTimeout";
 
 /**
  * POST /api/materials/extract-quote
@@ -240,7 +241,7 @@ export async function POST(request: NextRequest) {
         : "";
     let res: Response;
     try {
-      res = await fetch(ANTHROPIC_URL, {
+      res = await fetchWithTimeout(ANTHROPIC_URL, {
         method: "POST",
         headers: {
           "x-api-key": apiKey!,
@@ -268,7 +269,7 @@ export async function POST(request: NextRequest) {
             },
           ],
         }),
-      });
+      }, TIMEOUTS.extraction);
     } catch (err) {
       captureError(err, { route: "materials/extract-quote" });
       console.error("extract-quote fetch failed", err);

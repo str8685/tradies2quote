@@ -21,6 +21,7 @@ import {
   logAgentRunStart,
   newRunId,
 } from "@/lib/agent-monitor/logger";
+import { fetchWithTimeout, TIMEOUTS } from "@/lib/fetchTimeout";
 import type { ParseResult } from "./runtime";
 
 const OPENAI_URL = "https://api.openai.com/v1/chat/completions";
@@ -159,14 +160,19 @@ export async function runOpenAIStructuredAgent<T>(
         temperature,
       });
 
-      const res = await doFetch(OPENAI_URL, {
-        method: "POST",
-        headers: {
-          authorization: `Bearer ${apiKey}`,
-          "content-type": "application/json",
+      const res = await fetchWithTimeout(
+        OPENAI_URL,
+        {
+          method: "POST",
+          headers: {
+            authorization: `Bearer ${apiKey}`,
+            "content-type": "application/json",
+          },
+          body: JSON.stringify(body),
         },
-        body: JSON.stringify(body),
-      });
+        TIMEOUTS.llm,
+        doFetch,
+      );
 
       if (!res.ok) {
         const detail = await res.text().catch(() => "");

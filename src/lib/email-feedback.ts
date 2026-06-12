@@ -1,4 +1,5 @@
 import "server-only";
+import { fetchWithTimeout, TIMEOUTS } from "@/lib/fetchTimeout";
 
 const RESEND_URL = "https://api.resend.com/emails";
 
@@ -67,7 +68,7 @@ export async function sendFeedbackEmail(
   }
 </body></html>`;
 
-  const res = await fetch(RESEND_URL, {
+  const res = await fetchWithTimeout(RESEND_URL, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${apiKey}`,
@@ -81,7 +82,7 @@ export async function sendFeedbackEmail(
       text,
       html,
     }),
-  });
+  }, TIMEOUTS.email);
 
   if (!res.ok) {
     const detail = await res.text().catch(() => "");
