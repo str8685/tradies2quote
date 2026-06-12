@@ -82,22 +82,26 @@ A few auth/dashboard files reference semantic tokens (`bg-background`, `text-ink
 
 ## Deploy model
 
-**⚠ Corrected 2026-06-10 — the previous version of this section was wrong.** Vercel
-IS connected to GitHub (`str8builders/tradies2quote`) via the Git integration, and
-**pushing DOES deploy**. Verified against the Vercel deployments API:
+**⚠ Corrected 2026-06-12 — the Git integration claim below was wrong again.** The
+`tradies-nz` Vercel project has **NO Git link** (`link: null` on the project API);
+pushes to GitHub deploy NOTHING. Verified exhaustively (pushed `prod-shell`, zero
+builds; GitHub deployment-events count: 0 forever).
 
-- **`git push origin main` → preview deployment** (target: none). Every push gets an
-  immutable per-deployment URL.
-- **`git push origin prod-shell` → PRODUCTION deployment.** The integration treats
-  `prod-shell` as the production branch; the `tradies-nz` production aliases
-  (`tradies2quote.com`, `tradies-nz.vercel.app`) auto-repoint to it. The deploy
-  currently serving production came from a `prod-shell` push, not from the CLI.
+**The working deploy path: `vercel deploy --prod --yes` from the repo root**
+(commit first; the CLI uploads the working tree). `/api/health` then reports the
+local commit SHA. `vercel rollback` is the emergency rollback tool — see LAUNCH.md.
+Ask the owner before any production deploy.
 
-**The ONE sanctioned deploy path: merge/push to `prod-shell`.** Do not use
-`vercel --prod` from the CLI for routine shipping — it bypasses the branch flow and
-creates a second, undocumented path to production. (`vercel rollback` remains the
-emergency rollback tool — see LAUNCH.md.) Treat any push to `prod-shell` as a
-production deploy and apply the working-preferences rule: ask the owner first.
+**Why the integration is broken (two GitHub accounts):** the Vercel account's
+GitHub OAuth identity is `str8685`, but the repo lives under `str8builders` — a
+SEPARATE personal GitHub account. Vercel only surfaces namespaces/installations
+visible to its single OAuth identity, so `str8builders/tradies2quote` can never be
+linked directly. A deploy mirror **`str8685/tradies2quote`** exists (keep it synced:
+`git push https://github.com/str8685/tradies2quote.git main:main main:prod-shell`);
+linking it in Vercel still requires the str8685 GitHub App installation
+(63277212, "selected repos") to be granted access to that repo — a str8685
+web-session-only action. `gh` CLI has BOTH accounts (`gh auth switch -u str8685`).
+str8685 has admin on the str8builders repo and vice versa.
 
 Per-deployment URLs from older deploys keep serving their frozen content forever —
 that's by design. `knockoff.app` lives in a different Vercel project and is unaffected.
